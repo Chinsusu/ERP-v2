@@ -1,10 +1,63 @@
 :root {
-  --erp-color-background: #f6f7f9;
-  --erp-color-surface: #ffffff;
-  --erp-color-text: #172033;
-  --erp-color-muted: #607089;
-  --erp-color-border: #d7dee8;
-  --erp-color-primary: #1d6f5f;
+  --erp-red: #D50C2D;
+  --erp-dark-grey: #3C3C3B;
+  --erp-bg: #F5F5F5;
+  --erp-section-bg: #FAFAFA;
+  --erp-surface: #FFFFFF;
+  --erp-surface-hover: #F7F7F7;
+  --erp-surface-selected: #FFF1F3;
+  --erp-border: #D9D9D9;
+  --erp-border-soft: #E8E8E8;
+  --erp-border-card: #E5E5E5;
+  --erp-text: #1F1F1F;
+  --erp-text-secondary: #666666;
+  --erp-text-muted: #8C8C8C;
+  --erp-success: #2E7D32;
+  --erp-success-bg: #EAF5EC;
+  --erp-warning: #B26A00;
+  --erp-warning-bg: #FFF4E0;
+  --erp-danger: #D50C2D;
+  --erp-danger-bg: #FFE8EC;
+  --erp-info: #246BFE;
+  --erp-info-bg: #EAF1FF;
+  --erp-neutral: #666666;
+  --erp-neutral-bg: #F0F0F0;
+  --erp-radius-sm: 2px;
+  --erp-radius: 4px;
+  --erp-radius-lg: 6px;
+  --erp-page-padding: 24px;
+  --erp-page-padding-tablet: 16px;
+  --erp-card-padding: 16px;
+  --erp-section-gap: 24px;
+  --erp-field-gap: 12px;
+  --erp-topbar-height: 56px;
+  --erp-sidebar-width: 240px;
+  --erp-sidebar-collapsed-width: 72px;
+  --erp-control-height: 36px;
+  --erp-table-row-height: 44px;
+  --erp-shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --erp-shadow-raised: 0 8px 24px rgba(31, 31, 31, 0.08);
+  --erp-font-family: Inter, "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --erp-font-mono: "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+  --erp-font-size-page-title: 24px;
+  --erp-line-height-page-title: 32px;
+  --erp-font-size-section-title: 18px;
+  --erp-line-height-section-title: 26px;
+  --erp-font-size-body: 14px;
+  --erp-line-height-body: 22px;
+  --erp-font-size-table: 13px;
+  --erp-line-height-table: 20px;
+  --erp-font-size-helper: 12px;
+  --erp-line-height-helper: 18px;
+  --erp-font-weight-regular: 400;
+  --erp-font-weight-medium: 500;
+  --erp-font-weight-semibold: 600;
+  --erp-color-background: var(--erp-bg);
+  --erp-color-surface: var(--erp-surface);
+  --erp-color-text: var(--erp-text);
+  --erp-color-muted: var(--erp-text-secondary);
+  --erp-color-border: var(--erp-border);
+  --erp-color-primary: var(--erp-red);
 }
 
 * {
@@ -13,12 +66,194 @@
 
 body {
   margin: 0;
-  background: var(--erp-color-background);
-  color: var(--erp-color-text);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--erp-bg);
+  color: var(--erp-text);
+  font-family: var(--erp-font-family);
+  font-size: var(--erp-font-size-body);
+  line-height: var(--erp-line-height-body);
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.erp-page {
+  min-height: 100vh;
+  padding: var(--erp-page-padding);
+  background: var(--erp-bg);
+}
+
+.erp-page--centered {
+  display: grid;
+  place-items: center;
+}
+
+.erp-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.erp-page-title {
+  margin: 0;
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-page-title);
+  font-weight: var(--erp-font-weight-semibold);
+  line-height: var(--erp-line-height-page-title);
+}
+
+.erp-page-description {
+  margin: 4px 0 0;
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-body);
+  line-height: var(--erp-line-height-body);
+}
+
+.erp-card {
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+  box-shadow: var(--erp-shadow-subtle);
+}
+
+.erp-card--padded {
+  padding: var(--erp-card-padding);
+}
+
+.erp-kpi-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.erp-kpi-card {
+  min-height: 112px;
+}
+
+.erp-kpi-label {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-table);
+  line-height: var(--erp-line-height-table);
+}
+
+.erp-kpi-value {
+  display: block;
+  margin-top: 8px;
+  color: var(--erp-text);
+  font-size: 28px;
+  font-weight: var(--erp-font-weight-semibold);
+  line-height: 36px;
+}
+
+.erp-status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin-top: 8px;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: var(--erp-font-size-helper);
+  font-weight: var(--erp-font-weight-medium);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-status-chip--normal {
+  color: var(--erp-neutral);
+  background: var(--erp-neutral-bg);
+}
+
+.erp-status-chip--warning {
+  color: var(--erp-warning);
+  background: var(--erp-warning-bg);
+}
+
+.erp-status-chip--danger {
+  color: var(--erp-danger);
+  background: var(--erp-danger-bg);
+}
+
+.erp-form-card {
+  width: min(100%, 360px);
+  padding: 24px;
+}
+
+.erp-form-title {
+  margin: 0 0 20px;
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-section-title);
+  font-weight: var(--erp-font-weight-semibold);
+  line-height: var(--erp-line-height-section-title);
+}
+
+.erp-field {
+  display: grid;
+  gap: 8px;
+  color: var(--erp-text);
+  font-size: 13px;
+  font-weight: var(--erp-font-weight-medium);
+  line-height: 20px;
+}
+
+.erp-field + .erp-field {
+  margin-top: 16px;
+}
+
+.erp-input {
+  width: 100%;
+  height: var(--erp-control-height);
+  padding: 0 12px;
+  color: var(--erp-text);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius);
+  outline: none;
+}
+
+.erp-input:focus {
+  border-color: var(--erp-red);
+  box-shadow: 0 0 0 2px rgba(213, 12, 45, 0.12);
+}
+
+.erp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--erp-control-height);
+  padding: 0 14px;
+  border-radius: var(--erp-radius);
+  font-size: 14px;
+  font-weight: var(--erp-font-weight-medium);
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.erp-button--primary {
+  color: var(--erp-surface);
+  background: var(--erp-red);
+  border: 1px solid var(--erp-red);
+}
+
+.erp-button--full {
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .erp-page {
+    padding: var(--erp-page-padding-tablet);
+  }
+
+  .erp-page-header {
+    display: block;
+  }
 }
