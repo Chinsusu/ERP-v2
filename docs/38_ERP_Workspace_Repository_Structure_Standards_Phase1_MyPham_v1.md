@@ -1536,6 +1536,7 @@ Auto-merge rule:
 - Non-draft same-repo PRs targeting main or develop get auto-merge enabled.
 - Add label no-auto-merge when manual merge is required.
 - Auto-merge must not bypass required CI or required human review.
+- Auto-merge may delete short-lived feature/fix/chore branches after merge, but must never delete long-lived main or develop branches.
 ```
 
 ---
@@ -1935,6 +1936,8 @@ Every PR into `develop` or `main` must pass:
 ```
 
 Auto-merge is enabled by default for non-draft same-repo PRs. It merges only after all required status checks pass and branch protection review requirements are satisfied. Use the `no-auto-merge` label when a PR needs manual merge control.
+
+When promoting `develop` to `main`, do not delete the `develop` branch after merge. `main` and `develop` are long-lived branches and must always remain available on remote.
 
 ---
 
