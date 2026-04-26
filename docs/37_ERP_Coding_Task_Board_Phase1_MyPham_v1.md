@@ -120,7 +120,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Done | `docs/19_...` |
 | S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
 | S0-06-03 | Audit log base | Auth, RBAC, audit | BE Lead + FE Lead | P0 | In Progress | `docs/19_...` |
-| S0-07-01 | Stock movement write path | Stock ledger prototype | BE Lead | P0 | Review | `docs/17_...` + `docs/33_...` |
+| S0-07-01 | Stock movement write path | Stock ledger prototype | BE Lead | P0 | Done | `docs/17_...` + `docs/33_...` |
 | S0-07-02 | Available stock calculation prototype | Stock ledger prototype | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` |
 | S0-08-01 | Warehouse daily board skeleton | Warehouse daily board | FE Lead + BA + Warehouse Super User | P0 | In Progress | `docs/33_...` + `docs/39_...` |
 | S0-08-02 | End-of-day reconciliation skeleton | Warehouse daily board | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
@@ -497,7 +497,7 @@ Current state:
 
 **Owner:** BE Lead
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`, `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
 
 Acceptance criteria:
@@ -510,8 +510,8 @@ Acceptance criteria:
 
 Current state:
 
-- Inventory domain includes stock movement type, direction, status, source document, and balance delta rules.
-- Database-backed transaction store is under PR review.
+- Done via PR #42 and PR #43.
+- Transaction store writes stock ledger, stock balance, and adjustment audit rows under unit test coverage.
 
 ### S0-07-02 Available Stock Calculation Prototype
 
@@ -812,6 +812,7 @@ Acceptance criteria:
 | S0-06-01 | PR #29, PR #30; mock login, protected API, frontend mock session, OpenAPI contract |
 | S0-06-02 | PR #33, PR #34, PR #35; role catalog, API permission middleware, frontend menu/action permission filtering |
 | S0-03-02 | PR #38, PR #39; reusable DataTable, FormSection, StatusChip, modal, drawer, toast, state, and scan components |
+| S0-07-01 | PR #42, PR #43; stock movement transaction store, balance delta updates, immutable ledger path, adjustment audit logging |
 
 ---
 
@@ -831,7 +832,7 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-07-01` - Database-backed stock movement write path.
+1. `S0-07-02` - Available stock calculation prototype.
 2. `S0-05-01` - OpenAPI base file.
 3. `S0-05-02` - API codegen integration.
 4. `S0-06-03` - Audit log base.
