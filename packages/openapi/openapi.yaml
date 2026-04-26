@@ -25,6 +25,45 @@ paths:
                 $ref: "#/components/schemas/HealthSuccessResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+  /auth/mock-login:
+    post:
+      summary: Create a controlled mock auth session
+      operationId: mockLogin
+      security: []
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+      responses:
+        "200":
+          description: Mock login accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthLoginSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /me:
+    get:
+      summary: Get current authenticated user
+      operationId: getCurrentUser
+      tags:
+        - auth
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /inventory/stock-movements:
     post:
       summary: Record stock movement
@@ -125,6 +164,78 @@ components:
         timestamp:
           type: string
           format: date-time
+    AuthLoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@example.local
+        password:
+          type: string
+          format: password
+    AuthLoginSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/AuthLoginResponse"
+    AuthLoginResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+        - user
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum:
+            - Bearer
+        expires_in:
+          type: integer
+          minimum: 1
+        user:
+          $ref: "#/components/schemas/UserProfile"
+    MeSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/UserProfile"
+    UserProfile:
+      type: object
+      required:
+        - id
+        - email
+        - name
+        - role
+        - permissions
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
     StockMovementRequest:
       type: object
       required:

@@ -117,7 +117,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-04-02 | Base tables | Database foundation | BE Lead | P0 | Done | `docs/17_...` |
 | S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | In Progress | `docs/16_...` |
 | S0-05-02 | API codegen integration | API contract foundation | FE Lead + BE Lead | P0 | In Progress | `docs/16_...` + `docs/15_...` |
-| S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Backlog | `docs/19_...` |
+| S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Review | `docs/19_...` |
 | S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Backlog | `docs/04_...` + `docs/19_...` |
 | S0-06-03 | Audit log base | Auth, RBAC, audit | BE Lead + FE Lead | P0 | In Progress | `docs/19_...` |
 | S0-07-01 | Stock movement write path | Stock ledger prototype | BE Lead | P0 | In Progress | `docs/17_...` + `docs/33_...` |
@@ -422,7 +422,7 @@ Current state:
 
 **Owner:** BE Lead + FE Lead
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -431,6 +431,10 @@ Acceptance criteria:
 - Token/session storage follows environment rules.
 - Protected API rejects unauthenticated requests.
 - Frontend redirects unauthenticated users.
+
+Current state:
+
+- Mock login, protected API, and frontend mock session are in review.
 
 ### S0-06-02 RBAC Skeleton
 

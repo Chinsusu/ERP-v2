@@ -40,14 +40,30 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`);
+export type ApiRequestOptions = {
+  accessToken?: string;
+};
+
+export async function apiGet<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    headers: authHeaders(options)
+  });
   if (!response.ok) {
     throw await createApiError(response);
   }
 
   const payload = (await response.json()) as ApiSuccessResponse<T>;
   return payload.data;
+}
+
+function authHeaders(options: ApiRequestOptions) {
+  if (!options.accessToken) {
+    return undefined;
+  }
+
+  return {
+    Authorization: `Bearer ${options.accessToken}`
+  };
 }
 
 async function createApiError(response: Response): Promise<Error> {
