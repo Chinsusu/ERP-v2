@@ -17,6 +17,14 @@ const warehouseUser: MockUser = {
   permissions: ["dashboard:view", "warehouse:view", "inventory:view"]
 };
 
+const productionUser: MockUser = {
+  id: "production-user",
+  name: "Production User",
+  email: "production@example.local",
+  role: "PRODUCTION_OPS",
+  permissions: ["dashboard:view", "production:view", "subcontract:view"]
+};
+
 describe("permission menu", () => {
   it("defines the Phase 1 RBAC skeleton roles", () => {
     expect(roleKeys).toEqual([
@@ -41,6 +49,14 @@ describe("permission menu", () => {
     expect(labels).toContain("Inventory");
     expect(labels).not.toContain("Settings");
     expect(labels).not.toContain("Audit Log");
+    expect(labels).not.toContain("Subcontract");
+  });
+
+  it("shows subcontract operations only to users with subcontract access", () => {
+    const labels = getVisibleMenuGroups(productionUser).flatMap((group) => group.items.map((item) => item.label));
+
+    expect(labels).toContain("Production");
+    expect(labels).toContain("Subcontract");
   });
 
   it("checks single menu item access", () => {
