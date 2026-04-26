@@ -133,7 +133,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-11-01 | External factory order skeleton | Subcontract manufacturing | BE Lead + FE Lead + Production/Ops Super User | P1 | Backlog | `docs/33_...` |
 | S0-11-02 | Material transfer to factory skeleton | Subcontract manufacturing | BE Lead + FE Lead | P1 | Backlog | `docs/33_...` |
 | S0-11-03 | Subcontract UI template | Subcontract manufacturing | FE Lead + UI/UX | P1 | Backlog | `docs/39_...` |
-| S0-12-01 | Docker compose local | DevOps/CI/CD foundation | DevOps + Tech Leads | P0 | In Progress | `docs/18_...` + `docs/38_...` |
+| S0-12-01 | Docker compose local | DevOps/CI/CD foundation | DevOps + Tech Leads | P0 | Review | `docs/18_...` + `docs/38_...` |
 | S0-12-02 | CI pipeline | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
 | S0-12-04 | Automated PR review gate and auto-merge | DevOps/CI/CD foundation | DevOps + Tech Lead | P0 | Done | `docs/18_...` + `docs/38_...` |
 | S0-12-03 | Dev/Staging deployment skeleton | DevOps/CI/CD foundation | DevOps | P0 | Backlog | `docs/18_...` |
@@ -736,7 +736,7 @@ Acceptance criteria:
 
 **Owner:** DevOps + Tech Leads
 **Priority:** P0
-**Status:** In Progress
+**Status:** Review
 **Primary Ref:** `docs/18_ERP_DevOps_CICD_Environment_Standards_Phase1_MyPham_v1.md`, `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -748,8 +748,9 @@ Acceptance criteria:
 
 Current state:
 
-- Compose and Dockerfiles exist.
-- Local verification still needs a machine with Docker available.
+- Compose runs app services with PostgreSQL, Redis, MinIO, and Mailhog using container service networking.
+- Migration and seed commands run through Dockerized tooling.
+- README documents local startup, reset, service URLs, mock login, and seeded demo data.
 
 ### S0-12-02 CI Pipeline
 
