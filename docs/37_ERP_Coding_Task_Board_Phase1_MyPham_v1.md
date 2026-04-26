@@ -138,7 +138,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-12-04 | Automated PR review gate and auto-merge | DevOps/CI/CD foundation | DevOps + Tech Lead | P0 | Done | `docs/18_...` + `docs/38_...` |
 | S0-12-03 | Dev/Staging deployment skeleton | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
 | S0-13-01 | Smoke test pack | QA foundation | QA Lead | P0 | Done | `docs/24_...` |
-| S0-13-02 | Sprint 0 demo script | QA foundation | QA Lead + BA + PO | P0 | Backlog | `docs/34_...` |
+| S0-13-02 | Sprint 0 demo script | QA foundation | QA Lead + BA + PO | P0 | Review | `docs/34_...` |
 
 ---
 
@@ -985,7 +985,7 @@ Evidence:
 
 **Owner:** QA Lead + BA + PO
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -995,6 +995,14 @@ Acceptance criteria:
 - Demo includes successful and failed scan cases.
 - Demo includes audit log.
 - Demo includes stock movement and available stock.
+
+Current state:
+
+- Sprint 0 demo script lives at `docs/qa/S0-13-02_sprint0_demo_script.md`.
+- Script uses cosmetics sample data from `tools/seed/smoke/sprint0_smoke_seed.json`.
+- Script includes successful scan, duplicate scan, wrong manifest, and unknown code cases.
+- Script includes audit log evidence for stock movement and shipping scan actions.
+- Script includes available stock and stock movement demo steps.
 
 ---
 
