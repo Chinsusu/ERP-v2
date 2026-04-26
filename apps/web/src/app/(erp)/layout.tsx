@@ -1,16 +1,18 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { mockSession } from "@/shared/auth/mockSession";
+import { getMockSession } from "@/shared/auth/mockSession";
 import { AppShell } from "@/shared/layouts/AppShell";
 
 type ERPLayoutProps = {
   children: ReactNode;
 };
 
-export default function ERPLayout({ children }: ERPLayoutProps) {
-  if (!mockSession.isAuthenticated) {
+export default async function ERPLayout({ children }: ERPLayoutProps) {
+  const session = await getMockSession();
+
+  if (!session.isAuthenticated) {
     redirect("/login");
   }
 
-  return <AppShell user={mockSession.user}>{children}</AppShell>;
+  return <AppShell user={session.user}>{children}</AppShell>;
 }
