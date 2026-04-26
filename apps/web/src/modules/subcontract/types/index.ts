@@ -16,6 +16,14 @@ export type SubcontractDepositStatus = "not_required" | "pending" | "paid";
 
 export type SubcontractFinalPaymentStatus = "pending" | "hold" | "released";
 
+export type SubcontractTransferStatus = "DRAFT" | "READY_TO_SEND" | "SENT";
+
+export type SubcontractMaterialItemType = "raw_material" | "packaging";
+
+export type SubcontractMaterialQcStatus = "passed" | "pending" | "failed";
+
+export type SubcontractTransferAttachmentType = "COA" | "MSDS" | "LABEL" | "VAT_INVOICE";
+
 export type SubcontractFactory = {
   id: string;
   code: string;
@@ -93,4 +101,69 @@ export type SubcontractOrderSummary = {
   rejected: number;
   closed: number;
   nextDeliveryDate?: string;
+};
+
+export type SubcontractMaterialTransferLine = {
+  id: string;
+  itemCode: string;
+  itemName: string;
+  itemType: SubcontractMaterialItemType;
+  quantity: number;
+  unit: string;
+  lotControlled: boolean;
+  batchNo?: string;
+  qcStatus: SubcontractMaterialQcStatus;
+};
+
+export type SubcontractTransferAttachmentPlaceholder = {
+  type: SubcontractTransferAttachmentType;
+  label: string;
+  required: boolean;
+  attached: boolean;
+};
+
+export type SubcontractStockMovement = {
+  id: string;
+  movementType: "SUBCONTRACT_ISSUE";
+  itemCode: string;
+  quantity: number;
+  unit: string;
+  sourceWarehouseId: string;
+  targetLocation: string;
+  batchNo?: string;
+  sourceDocId: string;
+};
+
+export type SubcontractMaterialTransfer = {
+  id: string;
+  transferNo: string;
+  orderId: string;
+  orderNo: string;
+  sourceWarehouseId: string;
+  sourceWarehouseCode: string;
+  factoryId: string;
+  factoryName: string;
+  signedHandover: boolean;
+  status: SubcontractTransferStatus;
+  attachmentPlaceholders: SubcontractTransferAttachmentPlaceholder[];
+  lines: SubcontractMaterialTransferLine[];
+  stockMovements: SubcontractStockMovement[];
+  createdBy: string;
+  createdAt: string;
+};
+
+export type CreateSubcontractMaterialTransferInput = {
+  order: SubcontractOrder;
+  sourceWarehouseId: string;
+  sourceWarehouseCode: string;
+  signedHandover: boolean;
+  lines: SubcontractMaterialTransferLine[];
+  createdBy?: string;
+};
+
+export type SubcontractMaterialTransferSummary = {
+  total: number;
+  signed: number;
+  movementCount: number;
+  attachmentPlaceholderCount: number;
 };

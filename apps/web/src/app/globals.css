@@ -1231,6 +1231,13 @@ textarea {
   align-items: start;
 }
 
+.erp-subcontract-transfer-grid {
+  display: grid;
+  grid-template-columns: minmax(420px, 0.95fr) minmax(460px, 1.05fr);
+  gap: 12px;
+  align-items: start;
+}
+
 .erp-subcontract-card,
 .erp-subcontract-audit-card {
   min-width: 0;
@@ -1266,6 +1273,70 @@ textarea {
   gap: 8px;
   align-items: center;
   margin-top: 12px;
+}
+
+.erp-subcontract-transfer-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 220px);
+  gap: 12px;
+  align-items: end;
+}
+
+.erp-subcontract-line-list,
+.erp-subcontract-movement-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.erp-subcontract-line-item {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.8fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-subcontract-line-item strong,
+.erp-subcontract-line-item span {
+  overflow-wrap: anywhere;
+}
+
+.erp-subcontract-line-item span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+}
+
+.erp-subcontract-attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.erp-subcontract-movement-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-subcontract-movement-item strong,
+.erp-subcontract-movement-item span {
+  overflow-wrap: anywhere;
+}
+
+.erp-subcontract-movement-item span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
 }
 
 .erp-subcontract-fact-grid {
@@ -2311,6 +2382,9 @@ textarea {
   .erp-returns-result-grid,
   .erp-subcontract-kpis,
   .erp-subcontract-workspace,
+  .erp-subcontract-transfer-grid,
+  .erp-subcontract-transfer-controls,
+  .erp-subcontract-line-item,
   .erp-subcontract-form-grid,
   .erp-subcontract-fact-grid,
   .erp-subcontract-status-grid,
