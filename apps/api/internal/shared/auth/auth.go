@@ -20,8 +20,8 @@ type Principal struct {
 	UserID      string
 	Email       string
 	Name        string
-	Role        string
-	Permissions []string
+	Role        RoleKey
+	Permissions []PermissionKey
 }
 
 type principalContextKey struct{}
@@ -38,27 +38,16 @@ func ValidateMockLogin(cfg MockConfig, email string, password string) (Principal
 }
 
 func MockPrincipal(cfg MockConfig) Principal {
+	return MockPrincipalForRole(cfg, RoleERPAdmin)
+}
+
+func MockPrincipalForRole(cfg MockConfig, role RoleKey) Principal {
 	return Principal{
-		UserID: "user-erp-admin",
-		Email:  cfg.Email,
-		Name:   "ERP Admin",
-		Role:   "ERP_ADMIN",
-		Permissions: []string{
-			"dashboard:view",
-			"warehouse:view",
-			"inventory:view",
-			"purchase:view",
-			"qc:view",
-			"production:view",
-			"sales:view",
-			"shipping:view",
-			"returns:view",
-			"master-data:view",
-			"approvals:view",
-			"audit-log:view",
-			"reports:view",
-			"settings:view",
-		},
+		UserID:      "user-" + strings.ToLower(strings.ReplaceAll(string(role), "_", "-")),
+		Email:       cfg.Email,
+		Name:        RoleDisplayName(role),
+		Role:        role,
+		Permissions: PermissionsForRole(role),
 	}
 }
 

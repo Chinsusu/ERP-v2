@@ -1,7 +1,9 @@
-import type { AppMenuItem } from "@/shared/permissions/menu";
+import type { MockUser } from "@/shared/auth/mockSession";
+import { getVisibleActions, moduleActions, type AppMenuItem } from "@/shared/permissions/menu";
 
 type ModulePlaceholderProps = {
   item: AppMenuItem;
+  user: MockUser;
 };
 
 const kpis = [
@@ -12,7 +14,9 @@ const kpis = [
 
 const rows = ["New receipts", "Exception review", "Daily checkpoint"];
 
-export function ModulePlaceholder({ item }: ModulePlaceholderProps) {
+export function ModulePlaceholder({ item, user }: ModulePlaceholderProps) {
+  const actions = getVisibleActions(user, moduleActions);
+
   return (
     <section className="erp-module-page">
       <header className="erp-page-header">
@@ -20,14 +24,19 @@ export function ModulePlaceholder({ item }: ModulePlaceholderProps) {
           <p className="erp-module-eyebrow">{item.code}</p>
           <h1 className="erp-page-title">{item.label}</h1>
         </div>
-        <div className="erp-page-actions">
-          <button className="erp-button erp-button--secondary" type="button">
-            Export
-          </button>
-          <button className="erp-button erp-button--primary" type="button">
-            New record
-          </button>
-        </div>
+        {actions.length > 0 ? (
+          <div className="erp-page-actions">
+            {actions.map((action) => (
+              <button
+                className={`erp-button erp-button--${action.variant}`}
+                key={action.label}
+                type="button"
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </header>
 
       <section className="erp-kpi-grid">
