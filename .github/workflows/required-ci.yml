@@ -1,0 +1,94 @@
+name: required-ci
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  required-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache: false
+      - name: Format check
+        working-directory: apps/api
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        working-directory: apps/api
+        run: go vet ./...
+      - name: Test
+        working-directory: apps/api
+        run: go test ./...
+      - name: Build
+        working-directory: apps/api
+        run: |
+          go build ./cmd/api
+          go build ./cmd/worker
+
+  required-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: pnpm install --filter web --frozen-lockfile=false
+      - name: Typecheck
+        run: pnpm --filter web typecheck
+      - name: Test
+        run: pnpm --filter web test
+      - name: Build
+        run: pnpm --filter web build
+
+  required-openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate OpenAPI
+        run: pnpm --package=@redocly/cli dlx redocly lint packages/openapi/openapi.yaml
+      - name: Generate frontend client dry run
+        run: pnpm dlx openapi-typescript packages/openapi/openapi.yaml -o /tmp/erp-openapi-schema.ts
+
+  required-migration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: erp
+          POSTGRES_USER: erp
+          POSTGRES_PASSWORD: erp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U erp -d erp"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Apply baseline migration
+        env:
+          PGPASSWORD: erp
+        run: psql -h localhost -U erp -d erp -f apps/api/migrations/000001_init.up.sql
+      - name: Roll back baseline migration
+        env:
+          PGPASSWORD: erp
+        run: psql -h localhost -U erp -d erp -f apps/api/migrations/000001_init.down.sql
