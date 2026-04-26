@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { DataTable, ScanInput, StatusChip, type DataTableColumn, type ToastMessage } from "@/shared/design-system/components";
 import { useWarehouseDailyBoard } from "../hooks/useWarehouseDailyBoard";
+import { ShiftClosingPanel } from "./ShiftClosingPanel";
 import {
   defaultWarehouseDailyBoardDate,
   statusOptions,
@@ -175,6 +176,8 @@ export default function WarehouseDailyBoard() {
           </div>
         </div>
       </section>
+
+      <ShiftClosingPanel query={{ warehouseId: warehouseId || undefined, date }} />
 
       <section className="erp-card erp-card--padded erp-module-table-card">
         <div className="erp-section-header">

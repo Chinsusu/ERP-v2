@@ -285,6 +285,77 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+  /warehouse/end-of-day-reconciliations:
+    get:
+      summary: List warehouse end-of-day reconciliation sessions
+      operationId: listEndOfDayReconciliations
+      tags:
+        - warehouse
+      parameters:
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/EndOfDayReconciliationStatus"
+      responses:
+        "200":
+          description: End-of-day reconciliation sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EndOfDayReconciliationListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /warehouse/end-of-day-reconciliations/{reconciliation_id}/close:
+    post:
+      summary: Close a warehouse end-of-day reconciliation session
+      operationId: closeEndOfDayReconciliation
+      tags:
+        - warehouse
+      parameters:
+        - name: reconciliation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseEndOfDayReconciliationRequest"
+      responses:
+        "200":
+          description: End-of-day reconciliation closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EndOfDayReconciliationSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   responses:
     BadRequest:
@@ -932,6 +1003,157 @@ components:
           type: number
         available_stock:
           type: number
+    EndOfDayReconciliationStatus:
+      type: string
+      enum:
+        - open
+        - in_review
+        - closed
+    EndOfDayReconciliationListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/EndOfDayReconciliation"
+    EndOfDayReconciliationSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/EndOfDayReconciliation"
+    CloseEndOfDayReconciliationRequest:
+      type: object
+      properties:
+        exception_note:
+          type: string
+          maxLength: 500
+    EndOfDayReconciliation:
+      type: object
+      required:
+        - id
+        - warehouse_id
+        - warehouse_code
+        - date
+        - shift_code
+        - status
+        - owner
+        - summary
+        - checklist
+        - lines
+      properties:
+        id:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        date:
+          type: string
+          format: date
+        shift_code:
+          type: string
+        status:
+          $ref: "#/components/schemas/EndOfDayReconciliationStatus"
+        owner:
+          type: string
+        closed_at:
+          type: string
+          format: date-time
+        closed_by:
+          type: string
+        audit_log_id:
+          type: string
+        summary:
+          $ref: "#/components/schemas/EndOfDayReconciliationSummary"
+        checklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReconciliationChecklistItem"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReconciliationLine"
+    EndOfDayReconciliationSummary:
+      type: object
+      required:
+        - system_quantity
+        - counted_quantity
+        - variance_quantity
+        - variance_count
+        - checklist_total
+        - checklist_completed
+        - ready_to_close
+      properties:
+        system_quantity:
+          type: number
+        counted_quantity:
+          type: number
+        variance_quantity:
+          type: number
+        variance_count:
+          type: integer
+        checklist_total:
+          type: integer
+        checklist_completed:
+          type: integer
+        ready_to_close:
+          type: boolean
+    ReconciliationChecklistItem:
+      type: object
+      required:
+        - key
+        - label
+        - complete
+        - blocking
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        complete:
+          type: boolean
+        blocking:
+          type: boolean
+        note:
+          type: string
+    ReconciliationLine:
+      type: object
+      required:
+        - id
+        - sku
+        - batch_no
+        - bin_code
+        - system_quantity
+        - counted_quantity
+        - variance_quantity
+        - owner
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        batch_no:
+          type: string
+        bin_code:
+          type: string
+        system_quantity:
+          type: number
+        counted_quantity:
+          type: number
+        variance_quantity:
+          type: number
+        reason:
+          type: string
+        owner:
+          type: string
     SuccessResponse:
       type: object
       required:
