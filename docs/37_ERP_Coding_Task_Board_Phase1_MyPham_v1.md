@@ -136,7 +136,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-12-01 | Docker compose local | DevOps/CI/CD foundation | DevOps + Tech Leads | P0 | Done | `docs/18_...` + `docs/38_...` |
 | S0-12-02 | CI pipeline | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
 | S0-12-04 | Automated PR review gate and auto-merge | DevOps/CI/CD foundation | DevOps + Tech Lead | P0 | Done | `docs/18_...` + `docs/38_...` |
-| S0-12-03 | Dev/Staging deployment skeleton | DevOps/CI/CD foundation | DevOps | P0 | Review | `docs/18_...` |
+| S0-12-03 | Dev/Staging deployment skeleton | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
 | S0-13-01 | Smoke test pack | QA foundation | QA Lead | P0 | Backlog | `docs/24_...` |
 | S0-13-02 | Sprint 0 demo script | QA foundation | QA Lead + BA + PO | P0 | Backlog | `docs/34_...` |
 
@@ -928,7 +928,7 @@ Evidence:
 
 **Owner:** DevOps
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/18_ERP_DevOps_CICD_Environment_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -946,6 +946,12 @@ Current state:
 - Nginx reverse proxy exposes `/healthz`, routes API/web traffic, and writes basic access logs.
 - API exposes `/healthz` and `/readyz`, with access log middleware for request summaries.
 - Deploy scripts run migrations, start services, and run internal plus host smoke checks.
+- Implementation and promotion are merged.
+
+Evidence:
+
+- PR #119: Dev/Staging deployment skeleton merged to `develop`.
+- PR #120: Dev/Staging deployment skeleton promoted to `main`.
 
 ### S0-13-01 Smoke Test Pack
 
@@ -1019,8 +1025,7 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-12-03` - Dev/Staging deployment skeleton.
-2. `S0-13-01` - Smoke test pack.
-3. `S0-13-02` - Sprint 0 demo script.
+1. `S0-13-01` - Smoke test pack.
+2. `S0-13-02` - Sprint 0 demo script.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
