@@ -129,7 +129,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-09-02 | Scan verify endpoint/UI | Shipping handover scan | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
 | S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-10-01 | Return receiving skeleton | Returns skeleton | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
-| S0-10-02 | Return inspection UI template | Returns skeleton | FE Lead + UI/UX | P0 | Review | `docs/39_...` |
+| S0-10-02 | Return inspection UI template | Returns skeleton | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-11-01 | External factory order skeleton | Subcontract manufacturing | BE Lead + FE Lead + Production/Ops Super User | P1 | Backlog | `docs/33_...` |
 | S0-11-02 | Material transfer to factory skeleton | Subcontract manufacturing | BE Lead + FE Lead | P1 | Backlog | `docs/33_...` |
 | S0-11-03 | Subcontract UI template | Subcontract manufacturing | FE Lead + UI/UX | P1 | Backlog | `docs/39_...` |
@@ -754,7 +754,7 @@ Evidence:
 
 **Owner:** FE Lead + UI/UX
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -770,6 +770,12 @@ Current state:
 - Return condition options cover intact, dented box, seal torn, used, damaged, and QA required states with visible tone chips.
 - Inspection disposition options cover usable, not usable, and QA hold with target locations and result status chips.
 - Inspector actions include confirm inspection and explicit QA escalation with a recorded result preview.
+- Implementation and promotion are merged.
+
+Evidence:
+
+- PR #103: Return inspection UI template merged to `develop`.
+- PR #104: Return inspection UI template promoted to `main`.
 
 ### S0-11-01 External Factory Order Skeleton
 
@@ -966,9 +972,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-10-02` - Return inspection UI template.
-2. `S0-11-01` - External factory order skeleton.
-3. `S0-11-02` - Material transfer to factory skeleton.
-4. `S0-11-03` - Subcontract UI template.
+1. `S0-11-01` - External factory order skeleton.
+2. `S0-11-02` - Material transfer to factory skeleton.
+3. `S0-11-03` - Subcontract UI template.
+4. `S0-12-03` - Dev/Staging deployment skeleton.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
