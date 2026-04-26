@@ -97,3 +97,28 @@ make ci-check
 ```
 
 `ci-check` validates OpenAPI, backend lint/tests, and frontend lint/tests.
+
+## Dev/Staging Deployment Skeleton
+
+Shared dev and staging use Docker Compose stacks under `infra/compose`.
+
+Prepare environment variables:
+
+```bash
+cp infra/env/dev.env.example infra/env/dev.env
+cp infra/env/staging.env.example infra/env/staging.env
+```
+
+Deploy or smoke-check:
+
+```bash
+make deploy-dev
+make smoke-dev
+make logs-dev
+
+make deploy-staging
+make smoke-staging
+make logs-staging
+```
+
+The deploy script uses environment-specific env files, runs migrations, starts API/worker/web behind an Nginx reverse proxy, writes proxy access logs, and runs post-deploy smoke checks.

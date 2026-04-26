@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
@@ -14,6 +16,52 @@ import (
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
+
+func TestReadinessHandlerReturnsReady(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+
+	readinessHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var payload response.SuccessEnvelope[healthResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.Status != "ready" {
+		t.Fatalf("readiness status = %q, want ready", payload.Data.Status)
+	}
+}
+
+func TestAccessLogMiddlewareWritesRequestSummary(t *testing.T) {
+	var logs bytes.Buffer
+	logger := log.New(&logs, "", 0)
+	handler := accessLogMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte("ok"))
+	}), logger)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/test", nil)
+	req.Header.Set(response.HeaderRequestID, "req-access")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	got := logs.String()
+	for _, want := range []string{
+		"access method=POST",
+		"path=/api/v1/test",
+		"status=201",
+		"bytes=2",
+		"request_id=req-access",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("access log %q missing %q", got, want)
+		}
+	}
+}
 
 func TestAvailableStockHandlerReturnsFilteredRows(t *testing.T) {
 	service := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())

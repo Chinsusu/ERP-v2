@@ -1,7 +1,7 @@
 COMPOSE = docker compose -f infra/compose/docker-compose.local.yml
 MIGRATE_DSN = postgres://erp:erp@postgres:5432/erp?sslmode=disable
 
-.PHONY: help local-up local-down local-reset local-logs api-dev worker-dev web-dev api-test web-test api-lint web-lint migrate-up migrate-down seed-local openapi-generate openapi-validate ci-check
+.PHONY: help local-up local-down local-reset local-logs deploy-dev deploy-staging smoke-dev smoke-staging logs-dev logs-staging api-dev worker-dev web-dev api-test web-test api-lint web-lint migrate-up migrate-down seed-local openapi-generate openapi-validate ci-check
 
 help:
 	@echo "ERP Platform commands"
@@ -9,6 +9,12 @@ help:
 	@echo "  local-down         Stop local services"
 	@echo "  local-reset        Reset local data, run migrations, and seed data"
 	@echo "  local-logs         Tail local service logs"
+	@echo "  deploy-dev         Deploy the shared dev skeleton"
+	@echo "  deploy-staging     Deploy the staging skeleton"
+	@echo "  smoke-dev          Run shared dev smoke checks"
+	@echo "  smoke-staging      Run staging smoke checks"
+	@echo "  logs-dev           Tail shared dev deploy logs"
+	@echo "  logs-staging       Tail staging deploy logs"
 	@echo "  api-dev            Run Go API"
 	@echo "  worker-dev         Run Go worker"
 	@echo "  web-dev            Run Next.js web app"
@@ -38,6 +44,24 @@ local-reset:
 
 local-logs:
 	$(COMPOSE) logs -f --tail=100
+
+deploy-dev:
+	./infra/scripts/deploy-dev-staging.sh dev
+
+deploy-staging:
+	./infra/scripts/deploy-dev-staging.sh staging
+
+smoke-dev:
+	./infra/scripts/smoke-dev-staging.sh dev
+
+smoke-staging:
+	./infra/scripts/smoke-dev-staging.sh staging
+
+logs-dev:
+	docker compose --env-file infra/env/dev.env.example -f infra/compose/docker-compose.dev.yml logs -f --tail=100 reverse-proxy api worker web
+
+logs-staging:
+	docker compose --env-file infra/env/staging.env.example -f infra/compose/docker-compose.staging.yml logs -f --tail=100 reverse-proxy api worker web
 
 api-dev:
 	cd apps/api && go run ./cmd/api
