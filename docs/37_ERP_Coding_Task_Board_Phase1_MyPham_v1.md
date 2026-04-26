@@ -128,7 +128,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-09-01 | Carrier manifest skeleton | Shipping handover scan | BE Lead + FE Lead | P0 | Done | `docs/33_...` |
 | S0-09-02 | Scan verify endpoint/UI | Shipping handover scan | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
 | S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
-| S0-10-01 | Return receiving skeleton | Returns skeleton | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
+| S0-10-01 | Return receiving skeleton | Returns skeleton | BE Lead + FE Lead + Warehouse Super User | P0 | Review | `docs/33_...` |
 | S0-10-02 | Return inspection UI template | Returns skeleton | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-11-01 | External factory order skeleton | Subcontract manufacturing | BE Lead + FE Lead + Production/Ops Super User | P1 | Backlog | `docs/33_...` |
 | S0-11-02 | Material transfer to factory skeleton | Subcontract manufacturing | BE Lead + FE Lead | P1 | Backlog | `docs/33_...` |
@@ -724,7 +724,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead + Warehouse Super User
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
 
 Acceptance criteria:
@@ -735,6 +735,14 @@ Acceptance criteria:
 - Reusable return can create `RETURN_RECEIPT` movement after confirmation.
 - Not reusable return goes to lab/damaged placeholder.
 - Audit log is written.
+
+Current state:
+
+- Returns module has a prototype return receiving use case and API contract for listing and creating return receipts.
+- Known order, tracking, return code, and shipment scans link to expected return records; unmatched scans create unknown return cases.
+- Reusable receipts create a `RETURN_RECEIPT` movement into `return_pending`; not reusable receipts route to the lab/damaged placeholder.
+- Returns page exposes a scan-first receiving form with source, package condition, disposition choice, latest receipt, and receipt table.
+- Return receipt creation writes audit evidence through the shared audit log store.
 
 ### S0-10-02 Return Inspection UI Template
 
