@@ -120,7 +120,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Done | `docs/19_...` |
 | S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
 | S0-06-03 | Audit log base | Auth, RBAC, audit | BE Lead + FE Lead | P0 | In Progress | `docs/19_...` |
-| S0-07-01 | Stock movement write path | Stock ledger prototype | BE Lead | P0 | In Progress | `docs/17_...` + `docs/33_...` |
+| S0-07-01 | Stock movement write path | Stock ledger prototype | BE Lead | P0 | Review | `docs/17_...` + `docs/33_...` |
 | S0-07-02 | Available stock calculation prototype | Stock ledger prototype | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` |
 | S0-08-01 | Warehouse daily board skeleton | Warehouse daily board | FE Lead + BA + Warehouse Super User | P0 | In Progress | `docs/33_...` + `docs/39_...` |
 | S0-08-02 | End-of-day reconciliation skeleton | Warehouse daily board | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
@@ -497,7 +497,7 @@ Current state:
 
 **Owner:** BE Lead
 **Priority:** P0
-**Status:** In Progress
+**Status:** Review
 **Primary Ref:** `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`, `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
 
 Acceptance criteria:
@@ -510,8 +510,8 @@ Acceptance criteria:
 
 Current state:
 
-- Inventory domain and application prototype exist.
-- Database-backed transaction path still needs implementation.
+- Inventory domain includes stock movement type, direction, status, source document, and balance delta rules.
+- Database-backed transaction store is under PR review.
 
 ### S0-07-02 Available Stock Calculation Prototype
 
