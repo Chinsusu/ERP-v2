@@ -114,7 +114,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-04-01 | PostgreSQL migration setup | Database foundation | BE Lead + DevOps | P0 | In Progress | `docs/17_...` |
-| S0-04-02 | Base tables | Database foundation | BE Lead | P0 | Backlog | `docs/17_...` |
+| S0-04-02 | Base tables | Database foundation | BE Lead | P0 | Review | `docs/17_...` |
 | S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | In Progress | `docs/16_...` |
 | S0-05-02 | API codegen integration | API contract foundation | FE Lead + BE Lead | P0 | In Progress | `docs/16_...` + `docs/15_...` |
 | S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Backlog | `docs/19_...` |
@@ -356,7 +356,7 @@ Current state:
 
 **Owner:** BE Lead
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -365,6 +365,12 @@ Acceptance criteria:
 - Primary keys and foreign keys are defined.
 - Audit columns exist where needed.
 - Stock changes are not direct table updates.
+
+Current state:
+
+- Phase 1 base table migration is in review.
+- Migration CI now applies all migration files in order and rolls back in reverse order.
+- Stock ledger immutability and stock balance write guard are enforced at database level.
 
 ### S0-05-01 OpenAPI Base File
 
