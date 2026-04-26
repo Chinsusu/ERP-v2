@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
+	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
@@ -332,6 +333,130 @@ func TestVerifyCarrierManifestScanHandlerReturnsWarningCodes(t *testing.T) {
 				t.Fatal("scan event id is empty")
 			}
 		})
+	}
+}
+
+func TestReturnReceiptsHandlerReturnsFilteredRows(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	listService := returnsapp.NewListReturnReceipts(store)
+	receiveService := returnsapp.NewReceiveReturn(store, audit.NewInMemoryLogStore())
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/returns/receipts?warehouse_id=wh-hcm&status=pending_inspection",
+		nil,
+	)
+	req.Header.Set(response.HeaderRequestID, "req-return-list")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnReceiptsHandler(listService, receiveService).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[[]returnReceiptResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(payload.Data) != 1 {
+		t.Fatalf("rows = %d, want 1", len(payload.Data))
+	}
+	if payload.Data[0].ReceiptNo != "RR-260426-0001" {
+		t.Fatalf("receipt no = %q, want RR-260426-0001", payload.Data[0].ReceiptNo)
+	}
+}
+
+func TestReturnReceiptsHandlerCreatesReusableReceiptMovementAndAudit(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	auditStore := audit.NewInMemoryLogStore()
+	listService := returnsapp.NewListReturnReceipts(store)
+	receiveService := returnsapp.NewReceiveReturn(store, auditStore)
+	body := bytes.NewBufferString(`{
+		"warehouse_id": "wh-hcm",
+		"warehouse_code": "HCM",
+		"source": "CARRIER",
+		"code": "GHN260426001",
+		"package_condition": "sealed",
+		"disposition": "reusable"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/returns/receipts", body)
+	req.Header.Set(response.HeaderRequestID, "req-return-create")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnReceiptsHandler(listService, receiveService).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[returnReceiptResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.OriginalOrderNo != "SO-260426-001" {
+		t.Fatalf("order no = %q, want SO-260426-001", payload.Data.OriginalOrderNo)
+	}
+	if payload.Data.StockMovement == nil || payload.Data.StockMovement.MovementType != "RETURN_RECEIPT" {
+		t.Fatalf("stock movement = %+v, want RETURN_RECEIPT", payload.Data.StockMovement)
+	}
+	if payload.Data.AuditLogID == "" {
+		t.Fatal("audit log id is empty")
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "returns.receipt.created"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestReturnReceiptsHandlerCreatesUnknownCase(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	listService := returnsapp.NewListReturnReceipts(store)
+	receiveService := returnsapp.NewReceiveReturn(store, audit.NewInMemoryLogStore())
+	body := bytes.NewBufferString(`{
+		"warehouse_id": "wh-hcm",
+		"source": "SHIPPER",
+		"code": "UNKNOWN-RETURN",
+		"package_condition": "damaged box",
+		"disposition": "needs_inspection"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/returns/receipts", body)
+	req.Header.Set(response.HeaderRequestID, "req-return-unknown")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnReceiptsHandler(listService, receiveService).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[returnReceiptResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !payload.Data.UnknownCase {
+		t.Fatal("unknown case = false, want true")
+	}
+	if payload.Data.TargetLocation != "return-inspection-queue" {
+		t.Fatalf("target location = %q, want return-inspection-queue", payload.Data.TargetLocation)
 	}
 }
 

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { AuditLogPrototype } from "@/modules/audit/components/AuditLogPrototype";
 import { AvailableStockPrototype } from "@/modules/inventory/components/AvailableStockPrototype";
+import { ReturnReceivingPrototype } from "@/modules/returns/components/ReturnReceivingPrototype";
 import { CarrierManifestPrototype } from "@/modules/shipping/components/CarrierManifestPrototype";
 import WarehouseDailyBoard from "@/modules/warehouse/components/WarehouseDailyBoard";
 import { getMockSession } from "@/shared/auth/mockSession";
@@ -34,6 +35,10 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
 
   if (module === "shipping") {
     return <CarrierManifestPrototype />;
+  }
+
+  if (module === "returns") {
+    return <ReturnReceivingPrototype />;
   }
 
   if (module === "audit-log") {

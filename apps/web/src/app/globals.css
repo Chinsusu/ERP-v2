@@ -962,6 +962,182 @@ textarea {
   color: var(--erp-text-secondary);
 }
 
+.erp-returns-page {
+  display: grid;
+  gap: 16px;
+}
+
+.erp-returns-page .erp-page-header,
+.erp-returns-page .erp-module-table-card {
+  margin-bottom: 0;
+}
+
+.erp-returns-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(180px, 220px) minmax(240px, 1fr);
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-returns-kpis {
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+}
+
+.erp-returns-receiving-grid {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.05fr) minmax(360px, 0.95fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.erp-returns-receiving-card,
+.erp-returns-result-card {
+  min-width: 0;
+}
+
+.erp-returns-disposition-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.erp-returns-disposition-option {
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--erp-text);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius);
+  cursor: pointer;
+}
+
+.erp-returns-disposition-option[data-active="true"] {
+  color: var(--erp-red);
+  background: var(--erp-red-bg);
+  border-color: var(--erp-red);
+}
+
+.erp-returns-scan-primary {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--erp-section-bg);
+  border: 2px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-returns-scan-primary--success {
+  border-color: var(--erp-success);
+  background: var(--erp-success-bg);
+}
+
+.erp-returns-scan-primary--warning {
+  border-color: var(--erp-warning);
+  background: var(--erp-warning-bg);
+}
+
+.erp-returns-scan-primary--danger {
+  border-color: var(--erp-danger);
+  background: var(--erp-danger-bg);
+}
+
+.erp-returns-scan-primary--info {
+  border-color: var(--erp-info);
+  background: var(--erp-info-bg);
+}
+
+.erp-returns-scan-primary span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-table);
+}
+
+.erp-returns-scan-primary input {
+  min-height: 56px;
+  padding: 0 16px;
+  color: var(--erp-text);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius);
+  font-size: 20px;
+  font-weight: 700;
+  outline: none;
+}
+
+.erp-returns-scan-primary input:focus {
+  border-color: var(--erp-red);
+  box-shadow: 0 0 0 2px rgba(213, 12, 45, 0.14);
+}
+
+.erp-returns-scan-primary small {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-returns-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.erp-returns-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.erp-returns-fact {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-returns-fact span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+}
+
+.erp-returns-fact strong {
+  overflow-wrap: anywhere;
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-body);
+}
+
+.erp-returns-receipt-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.erp-returns-receipt-cell strong,
+.erp-returns-receipt-cell small {
+  overflow-wrap: anywhere;
+}
+
+.erp-returns-receipt-cell small,
+.erp-returns-empty-state {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-returns-empty-state {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
 .erp-shift-closing-panel {
   display: grid;
   gap: 14px;
@@ -1897,17 +2073,24 @@ textarea {
   .erp-shipping-detail-grid,
   .erp-shipping-add-box,
   .erp-shipping-scan-list li,
+  .erp-returns-toolbar,
+  .erp-returns-kpis,
+  .erp-returns-receiving-grid,
+  .erp-returns-disposition-options,
+  .erp-returns-result-grid,
   .erp-stock-kpis {
     grid-template-columns: 1fr;
   }
 
   .erp-shipping-scan-actions,
-  .erp-shipping-missing-actions {
+  .erp-shipping-missing-actions,
+  .erp-returns-actions {
     align-items: stretch;
   }
 
   .erp-shipping-scan-actions .erp-button,
-  .erp-shipping-missing-actions .erp-button {
+  .erp-shipping-missing-actions .erp-button,
+  .erp-returns-actions .erp-button {
     flex: 1 1 120px;
   }
 
