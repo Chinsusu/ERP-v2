@@ -94,9 +94,11 @@ Local test data:
 
 ```bash
 make ci-check
+make smoke-test
 ```
 
 `ci-check` validates OpenAPI, backend lint/tests, and frontend lint/tests.
+`smoke-test` runs the Sprint 0 API and frontend smoke pack from `docs/qa/S0-13-01_smoke_test_pack.md`.
 
 ## Dev/Staging Deployment Skeleton
 

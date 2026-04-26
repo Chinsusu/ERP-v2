@@ -137,7 +137,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-12-02 | CI pipeline | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
 | S0-12-04 | Automated PR review gate and auto-merge | DevOps/CI/CD foundation | DevOps + Tech Lead | P0 | Done | `docs/18_...` + `docs/38_...` |
 | S0-12-03 | Dev/Staging deployment skeleton | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
-| S0-13-01 | Smoke test pack | QA foundation | QA Lead | P0 | Backlog | `docs/24_...` |
+| S0-13-01 | Smoke test pack | QA foundation | QA Lead | P0 | Review | `docs/24_...` |
 | S0-13-02 | Sprint 0 demo script | QA foundation | QA Lead + BA + PO | P0 | Backlog | `docs/34_...` |
 
 ---
@@ -957,7 +957,7 @@ Evidence:
 
 **Owner:** QA Lead
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/24_ERP_QA_Test_Strategy_Automation_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -966,6 +966,14 @@ Acceptance criteria:
 - Sample API test exists.
 - Sample frontend smoke test exists.
 - Test seed data exists.
+
+Current state:
+
+- Smoke checklist lives at `docs/qa/S0-13-01_smoke_test_pack.md`.
+- Sample API smoke test covers health/readiness, login, master data permission, stock movement audit, and scan handover.
+- Sample frontend smoke test covers login, master data, stock movement, and scan handover route access.
+- Smoke seed data lives at `tools/seed/smoke/sprint0_smoke_seed.json`.
+- E2E CI runs the Sprint 0 API and frontend smoke tests.
 
 ### S0-13-02 Sprint 0 Demo Script
 
