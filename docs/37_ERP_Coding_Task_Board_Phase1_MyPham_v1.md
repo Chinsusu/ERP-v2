@@ -111,7 +111,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-02-03 | Error model and API response standard | Backend Go foundation | BE Lead + FE Lead | P0 | Review | `docs/16_...` |
 | S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | In Progress | `docs/15_...` + `docs/39_...` |
 | S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
-| S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Review | `docs/39_...` |
+| S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-04-01 | PostgreSQL migration setup | Database foundation | BE Lead + DevOps | P0 | In Progress | `docs/17_...` |
 | S0-04-02 | Base tables | Database foundation | BE Lead | P0 | Backlog | `docs/17_...` |
@@ -170,7 +170,7 @@ Evidence:
 
 **Owner:** PM + BA
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -297,6 +297,11 @@ Acceptance criteria:
 - Radius, border, shadow, color, spacing, and typography rules are implemented.
 - Red accent is reserved for primary/critical actions, not used as general decoration.
 - UI is dense but readable.
+
+Evidence:
+
+- PR #15: UI token foundation into `develop`.
+- PR #17: UI token foundation promoted to `main`.
 
 ### S0-03-04 UI Page Templates Foundation
 
@@ -745,6 +750,7 @@ Acceptance criteria:
 | --- | --- |
 | S0-01-01 | PR #1, PR #2, PR #6; `main` and `develop`; branch protection |
 | S0-12-02 | PR #3, PR #4, PR #5, PR #6; `required-ci` pass on `main` |
+| S0-03-03 | PR #15, PR #17; CSS variables, Ant Design theme, token tests |
 
 ---
 
