@@ -16,6 +16,7 @@
 - `25_ERP_Product_Backlog_Sprint_Plan_Phase1_MyPham_v1.md`
 - `34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md`
 - `37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md`
+- `39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 ---
 
@@ -2016,7 +2017,7 @@ Backend mới là nơi quyết định nghiệp vụ.
 | Backend architecture | `docs/11_ERP_Technical_Architecture_Go_Backend...md` |
 | Go coding standard | `docs/12_ERP_Go_Coding_Standards...md` |
 | Module boundary | `docs/13_ERP_Go_Module_Component_Design_Standards...md` |
-| UI/UX design | `docs/14_ERP_UI_UX_Design_System_Standards...md` |
+| UI/UX design | `docs/14_ERP_UI_UX_Design_System_Standards...md` + `docs/39_ERP_UI_Template_Hetzner_Minimal_Style...md` |
 | Frontend architecture | `docs/15_ERP_Frontend_Architecture...md` |
 | API contract | `packages/openapi/openapi.yaml` + `docs/16_ERP_API_Contract...md` |
 | DB schema | `apps/api/migrations` + `docs/17_ERP_Database_Schema...md` |
@@ -2091,4 +2092,3 @@ Câu chốt để đội dev nhớ:
 Đừng tạo folder để chứa code.
 Hãy tạo boundary để chứa trách nhiệm.
 ```
-

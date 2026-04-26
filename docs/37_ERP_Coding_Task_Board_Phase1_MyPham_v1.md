@@ -1,26 +1,758 @@
 # 37_ERP_Coding_Task_Board_Phase1_MyPham_v1
 
 **Project:** ERP my pham - Phase 1
-**Document type:** Coding task board
-**Version:** v1.0
+**Document type:** Coding Task Board / Implementation Tracker
+**Version:** v1.1
+**Date:** 2026-04-26
+**Status:** Active
+**Primary audience:** PM, BA, Tech Lead, BE, FE, DevOps, QA, vendor
 
-This file is the task reference required by `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`.
+---
 
-## Sprint 0
+## 1. Purpose
 
-| Task ID | Title | Owner | Priority | Status | Primary Ref |
-| --- | --- | --- | --- | --- | --- |
-| S0-01-01 | Setup repository and branch strategy | Tech Lead | P0 | In Progress | docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md |
-| S0-03-01 | Setup backend modular skeleton | BE Lead | P0 | Backlog | docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md |
-| S0-04-01 | Setup frontend app shell skeleton | FE Lead | P0 | Backlog | docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md |
-| S0-05-01 | Setup OpenAPI source of truth | BE Lead | P0 | Backlog | docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md |
-| S0-12-02 | Setup CI pipeline | DevOps | P0 | Backlog | docs/18_ERP_DevOps_CICD_Environment_Standards_Phase1_MyPham_v1.md |
+This file is the official implementation task board for Phase 1 coding work.
 
-## PR Reference Rule
+It turns the source documents into trackable engineering tasks with stable task IDs, owners, priorities, acceptance criteria, references, and PR traceability rules.
 
-Every pull request must include:
+This file replaces the previous placeholder task board.
+
+---
+
+## 2. Source Of Truth
+
+| Topic | Primary source |
+| --- | --- |
+| Sprint 0 backlog | `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md` |
+| Workspace and repo structure | `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md` |
+| DevOps and CI/CD | `docs/18_ERP_DevOps_CICD_Environment_Standards_Phase1_MyPham_v1.md` |
+| QA and test gates | `docs/24_ERP_QA_Test_Strategy_Automation_Phase1_MyPham_v1.md` |
+| UI template and visual direction | `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md` |
+| Backend architecture | `docs/11_ERP_Technical_Architecture_Go_Backend_Phase1_MyPham_v1.md` |
+| Go coding standard | `docs/12_ERP_Go_Coding_Standards_Phase1_MyPham_v1.md` |
+| Module boundary | `docs/13_ERP_Go_Module_Component_Design_Standards_Phase1_MyPham_v1.md` |
+| Frontend architecture | `docs/15_ERP_Frontend_Architecture_React_NextJS_Phase1_MyPham_v1.md` |
+| OpenAPI standard | `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md` + `packages/openapi/openapi.yaml` |
+| Database standard | `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md` + `apps/api/migrations` |
+
+If this file conflicts with file 34 for Sprint 0 task IDs, file 34 wins and this file must be corrected.
+
+---
+
+## 3. Board Columns
+
+```text
+Backlog -> Ready -> In Progress -> Review -> QA -> Done
+```
+
+Status rules:
+
+- `Backlog`: task exists but is not ready to start.
+- `Ready`: scope, source docs, acceptance criteria, and dependency are clear.
+- `In Progress`: implementation branch is active.
+- `Review`: PR is open.
+- `QA`: implementation merged to develop or test environment and needs QA evidence.
+- `Done`: merged through the required flow, relevant CI passes, and evidence is linked.
+
+Do not mark a task `Done` only because code exists locally.
+
+---
+
+## 4. Git And PR Rules
+
+Branch naming:
+
+```text
+feature/<task-id>-short-name
+fix/<task-id>-short-name
+hotfix/<incident-id>-short-name
+chore/<short-name>
+```
+
+Commit style:
+
+```text
+feat(<scope>): short description
+fix(<scope>): short description
+test(<scope>): short description
+docs(<scope>): short description
+chore(<scope>): short description
+```
+
+PR title:
+
+```text
+[TASK-ID] Short description
+```
+
+Every PR must include:
 
 ```text
 Primary Ref: docs/<source-document>.md
 Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#<task-id>
 ```
+
+Every task below has a heading so GitHub anchors work, for example:
+
+```text
+Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repository-and-branch-strategy
+```
+
+---
+
+## 5. Sprint 0 Summary Board
+
+| Task ID | Title | Epic | Owner | Priority | Status | Primary Ref |
+| --- | --- | --- | --- | --- | --- | --- |
+| S0-01-01 | Setup repository and branch strategy | Project foundation | Tech Lead + PM | P0 | Done | `docs/34_...` + `docs/38_...` |
+| S0-01-02 | Setup issue/story board | Project foundation | PM + BA | P0 | In Progress | `docs/34_...` |
+| S0-02-01 | Go backend skeleton | Backend Go foundation | BE Lead | P0 | In Progress | `docs/11_...` + `docs/12_...` |
+| S0-02-02 | Module structure base | Backend Go foundation | BE Lead + Architect | P0 | In Progress | `docs/13_...` + `docs/38_...` |
+| S0-02-03 | Error model and API response standard | Backend Go foundation | BE Lead + FE Lead | P0 | Backlog | `docs/16_...` |
+| S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | In Progress | `docs/15_...` + `docs/39_...` |
+| S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
+| S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
+| S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
+| S0-04-01 | PostgreSQL migration setup | Database foundation | BE Lead + DevOps | P0 | In Progress | `docs/17_...` |
+| S0-04-02 | Base tables | Database foundation | BE Lead | P0 | Backlog | `docs/17_...` |
+| S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | In Progress | `docs/16_...` |
+| S0-05-02 | API codegen integration | API contract foundation | FE Lead + BE Lead | P0 | In Progress | `docs/16_...` + `docs/15_...` |
+| S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Backlog | `docs/19_...` |
+| S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Backlog | `docs/04_...` + `docs/19_...` |
+| S0-06-03 | Audit log base | Auth, RBAC, audit | BE Lead + FE Lead | P0 | In Progress | `docs/19_...` |
+| S0-07-01 | Stock movement write path | Stock ledger prototype | BE Lead | P0 | In Progress | `docs/17_...` + `docs/33_...` |
+| S0-07-02 | Available stock calculation prototype | Stock ledger prototype | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` |
+| S0-08-01 | Warehouse daily board skeleton | Warehouse daily board | FE Lead + BA + Warehouse Super User | P0 | In Progress | `docs/33_...` + `docs/39_...` |
+| S0-08-02 | End-of-day reconciliation skeleton | Warehouse daily board | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
+| S0-08-03 | Warehouse Daily Board UI template | Warehouse daily board | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
+| S0-09-01 | Carrier manifest skeleton | Shipping handover scan | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` |
+| S0-09-02 | Scan verify endpoint/UI | Shipping handover scan | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
+| S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
+| S0-10-01 | Return receiving skeleton | Returns skeleton | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
+| S0-10-02 | Return inspection UI template | Returns skeleton | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
+| S0-11-01 | External factory order skeleton | Subcontract manufacturing | BE Lead + FE Lead + Production/Ops Super User | P1 | Backlog | `docs/33_...` |
+| S0-11-02 | Material transfer to factory skeleton | Subcontract manufacturing | BE Lead + FE Lead | P1 | Backlog | `docs/33_...` |
+| S0-11-03 | Subcontract UI template | Subcontract manufacturing | FE Lead + UI/UX | P1 | Backlog | `docs/39_...` |
+| S0-12-01 | Docker compose local | DevOps/CI/CD foundation | DevOps + Tech Leads | P0 | In Progress | `docs/18_...` + `docs/38_...` |
+| S0-12-02 | CI pipeline | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
+| S0-12-03 | Dev/Staging deployment skeleton | DevOps/CI/CD foundation | DevOps | P0 | Backlog | `docs/18_...` |
+| S0-13-01 | Smoke test pack | QA foundation | QA Lead | P0 | Backlog | `docs/24_...` |
+| S0-13-02 | Sprint 0 demo script | QA foundation | QA Lead + BA + PO | P0 | Backlog | `docs/34_...` |
+
+---
+
+## 6. Sprint 0 Detailed Tasks
+
+### S0-01-01 Setup Repository And Branch Strategy
+
+**Owner:** Tech Lead + PM
+**Priority:** P0
+**Status:** Done
+**Primary Ref:** `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md`, `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Repo created and connected to `git@github.com:Chinsusu/ERP-v2.git`.
+- `main` and `develop` branches exist.
+- Branch protection is enabled for `main` and `develop`.
+- PR template exists.
+- Branch naming and commit convention are documented.
+- README local setup exists.
+
+Evidence:
+
+- PR #1: repository foundation into `develop`.
+- PR #2: repository foundation promoted to `main`.
+- PR #6: required CI gate promoted to `main`.
+
+### S0-01-02 Setup Issue Story Board
+
+**Owner:** PM + BA
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Board columns: Backlog, Ready, In Progress, Review, QA, Done.
+- Story template includes goal, acceptance criteria, dependency, and test note.
+- Bug template includes severity, reproduce steps, expected, actual, and evidence.
+- Decision log exists.
+
+Current state:
+
+- Story and bug templates exist under `.github/ISSUE_TEMPLATE`.
+- GitHub Project board and decision log still need to be created or linked.
+
+### S0-02-01 Go Backend Skeleton
+
+**Owner:** BE Lead
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/11_ERP_Technical_Architecture_Go_Backend_Phase1_MyPham_v1.md`, `docs/12_ERP_Go_Coding_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- API runs locally.
+- Healthcheck endpoint exists.
+- Config reads from environment.
+- Base middleware exists: request id, logging, auth placeholder, error handler.
+- Standard response envelope exists.
+- Folder structure follows file 12, 13, and 38.
+
+Current state:
+
+- `apps/api/cmd/api` and `apps/api/cmd/worker` exist.
+- API health endpoint exists.
+- Config package exists.
+- Middleware and response envelope still need implementation.
+
+### S0-02-02 Module Structure Base
+
+**Owner:** BE Lead + Architect
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/13_ERP_Go_Module_Component_Design_Standards_Phase1_MyPham_v1.md`, `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Modules exist for Phase 1: masterdata, purchase, inventory, qc, production, sales, shipping, returns, finance, reporting.
+- Each module has handler/application/domain/repository/dto/events/queries/tests once code is added.
+- No module calls another module repository directly.
+- Shared packages contain only cross-module infrastructure concerns.
+
+Current state:
+
+- Module root folders and module README files exist.
+- Inventory has an initial domain/application prototype.
+- Empty subfolders need tracked placeholder files or first real code per module.
+
+### S0-02-03 Error Model And API Response Standard
+
+**Owner:** BE Lead + FE Lead
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Success response is consistent.
+- Error response has `code`, `message`, `details`, and `request_id`.
+- Common error codes exist.
+- Frontend can parse all API errors consistently.
+
+### S0-03-01 Next.js App Shell
+
+**Owner:** FE Lead
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/15_ERP_Frontend_Architecture_React_NextJS_Phase1_MyPham_v1.md`, `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- App runs locally.
+- Layout has sidebar, header, and content area.
+- Login page or controlled mock login exists.
+- Protected route exists.
+- Menu follows permission mock.
+- Design token base exists.
+
+Current state:
+
+- Next.js skeleton exists.
+- Login page skeleton exists.
+- Warehouse board placeholder exists.
+- Real app shell, sidebar, header, protected route, and permission menu still need implementation.
+
+### S0-03-02 Core UI Components
+
+**Owner:** FE Lead + UI/UX
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Data table base.
+- Form wrapper base.
+- Status chip base.
+- Confirm modal.
+- Drawer detail.
+- Toast notification.
+- Empty/loading/error states.
+- Scan input prototype.
+
+### S0-03-03 Industrial Minimal ERP UI Tokens
+
+**Owner:** FE Lead + UI/UX
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Ant Design theme tokens match file 39.
+- CSS variables match file 39.
+- Radius, border, shadow, color, spacing, and typography rules are implemented.
+- Red accent is reserved for primary/critical actions, not used as general decoration.
+- UI is dense but readable.
+
+### S0-03-04 UI Page Templates Foundation
+
+**Owner:** FE Lead + UI/UX
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- App shell template.
+- Page header template.
+- Table template.
+- Form template.
+- Detail page template.
+- Modal/drawer/popover template.
+- Empty/loading/error state template.
+- Audit log and attachment panel templates.
+
+### S0-04-01 PostgreSQL Migration Setup
+
+**Owner:** BE Lead + DevOps
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Migration tool runs local/dev.
+- Baseline migration exists.
+- Rollback/down script exists for baseline where appropriate.
+- Naming convention follows file 17.
+- Migration is checked in CI.
+
+Current state:
+
+- Baseline migration exists.
+- Migration CI exists and passes.
+- Local migration tool setup still needs final verification on a developer machine with Docker/toolchain.
+
+### S0-04-02 Base Tables
+
+**Owner:** BE Lead
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Base tables exist for users, roles, permissions, audit, idempotency, outbox, warehouses, SKUs, batches, stock movements, stock balances, orders, shipments, manifests, scan events, returns, subcontract orders.
+- Primary keys and foreign keys are defined.
+- Audit columns exist where needed.
+- Stock changes are not direct table updates.
+
+### S0-05-01 OpenAPI Base File
+
+**Owner:** BE Lead + FE Lead
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- `packages/openapi/openapi.yaml` exists.
+- `/api/v1` prefix is represented.
+- Error, success, pagination, and auth schemas exist.
+- Security scheme exists.
+- Healthcheck, auth, and master data sample endpoints exist.
+- Frontend generated client can be created.
+
+Current state:
+
+- OpenAPI file exists and validates in CI.
+- Health and stock movement sample endpoints exist.
+- Auth/master data sample endpoints and pagination schema still need completion.
+
+### S0-05-02 API Codegen Integration
+
+**Owner:** FE Lead + BE Lead
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`, `docs/15_ERP_Frontend_Architecture_React_NextJS_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Generated frontend client is created from OpenAPI.
+- Frontend calls API through generated client.
+- CI checks OpenAPI lint and codegen dry run.
+- No hard-coded API shape in frontend when schema exists.
+
+Current state:
+
+- CI codegen dry run passes.
+- Actual generated client integration still needs implementation.
+
+### S0-06-01 Auth Skeleton
+
+**Owner:** BE Lead + FE Lead
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Controlled login exists using seed account or mock auth.
+- Token/session storage follows environment rules.
+- Protected API rejects unauthenticated requests.
+- Frontend redirects unauthenticated users.
+
+### S0-06-02 RBAC Skeleton
+
+**Owner:** BE Lead + FE Lead + BA
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/04_ERP_Permission_Approval_Matrix_Phase1_My_Pham_v1.md`, `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Roles include CEO, ERP_ADMIN, WAREHOUSE_STAFF, WAREHOUSE_LEAD, QA, SALES_OPS, PRODUCTION_OPS.
+- API permission check exists.
+- Frontend hides menu/action by permission.
+- Permission denied returns standard `FORBIDDEN`.
+
+### S0-06-03 Audit Log Base
+
+**Owner:** BE Lead + FE Lead
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Sensitive action writes audit log.
+- Audit log stores actor, action, entity type, entity id, before/after or metadata.
+- Audit log screen prototype exists.
+- Normal users cannot delete audit logs.
+
+Current state:
+
+- Audit package and audit table baseline exist.
+- API write path and UI screen still need implementation.
+
+### S0-07-01 Stock Movement Write Path
+
+**Owner:** BE Lead
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`, `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
+
+Acceptance criteria:
+
+- Stock movement types exist.
+- Movement is written in transaction.
+- Balance updates follow movement.
+- Posted movement cannot be edited or deleted.
+- Adjustment writes audit log.
+
+Current state:
+
+- Inventory domain and application prototype exist.
+- Database-backed transaction path still needs implementation.
+
+### S0-07-02 Available Stock Calculation Prototype
+
+**Owner:** BE Lead + FE Lead
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
+
+Acceptance criteria:
+
+- Physical stock can be calculated.
+- Reserved stock can be calculated.
+- Available stock equals physical minus reserved minus hold where applicable.
+- API returns stock by warehouse, SKU, and batch.
+- UI displays stock prototype.
+
+### S0-08-01 Warehouse Daily Board Skeleton
+
+**Owner:** FE Lead + BA + Warehouse Super User
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`, `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- UI has daily warehouse work board.
+- Counters include waiting, picking, packed, handover, returns, and reconciliation mismatch.
+- Filter by warehouse, date, and status.
+- Links to order/shipment/return prototypes.
+
+Current state:
+
+- Placeholder board exists.
+- It must be rebuilt to match file 39 section 20.
+
+### S0-08-02 End Of Day Reconciliation Skeleton
+
+**Owner:** BE Lead + FE Lead + Warehouse Super User
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
+
+Acceptance criteria:
+
+- End-of-day reconciliation prototype exists.
+- Shows system quantity versus counted quantity.
+- Statuses: Open, In Review, Closed.
+- Closing writes audit log.
+- Checklist exists before shift close.
+
+### S0-08-03 Warehouse Daily Board UI Template
+
+**Owner:** FE Lead + UI/UX
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Implements file 39 section 20.
+- Uses dense operational layout.
+- Supports counters, active work queues, exception area, and scan-first interactions.
+- Does not use decorative dashboard cards without operational action.
+
+### S0-09-01 Carrier Manifest Skeleton
+
+**Owner:** BE Lead + FE Lead
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
+
+Acceptance criteria:
+
+- Manifest can be created by carrier, date, and warehouse.
+- Shipment can be added to manifest.
+- Manifest tracks expected, scanned, and missing counts.
+- Statuses: Draft, Ready, Scanning, Completed, Exception.
+
+### S0-09-02 Scan Verify Endpoint UI
+
+**Owner:** BE Lead + FE Lead + Warehouse Super User
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
+
+Acceptance criteria:
+
+- Scan order code or tracking code.
+- Valid and invalid states return clear response.
+- Unpacked order returns `INVALID_STATE`.
+- Unknown code returns `NOT_FOUND`.
+- Wrong manifest returns `MANIFEST_MISMATCH`.
+- Scan event is recorded.
+- UI supports scanner and keyboard speed.
+
+### S0-09-03 Shipping Handover Scan UI Template
+
+**Owner:** FE Lead + UI/UX
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Implements file 39 section 24.
+- Scan input is primary and always focused where appropriate.
+- Success/error feedback is immediate.
+- Missing/exception state is visible.
+
+### S0-10-01 Return Receiving Skeleton
+
+**Owner:** BE Lead + FE Lead + Warehouse Super User
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
+
+Acceptance criteria:
+
+- Return receiving form exists.
+- User can scan order/tracking code.
+- User can choose reusable, not reusable, or needs inspection.
+- Reusable return can create `RETURN_RECEIPT` movement after confirmation.
+- Not reusable return goes to lab/damaged placeholder.
+- Audit log is written.
+
+### S0-10-02 Return Inspection UI Template
+
+**Owner:** FE Lead + UI/UX
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Implements file 39 section 25.
+- Return condition and disposition are visible.
+- Risk/status chips use text and color.
+- Inspector action is clear and traceable.
+
+### S0-11-01 External Factory Order Skeleton
+
+**Owner:** BE Lead + FE Lead + Production/Ops Super User
+**Priority:** P1
+**Status:** Backlog
+**Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
+
+Acceptance criteria:
+
+- External factory order can be created.
+- Fields include factory, product, quantity, spec, sample required, expected delivery date, and deposit status.
+- Status model exists: Draft, Confirmed, MaterialTransferred, SampleApproved, InProduction, Delivered, QCReview, Accepted, Rejected, Closed.
+- Status change writes audit log.
+
+### S0-11-02 Material Transfer To Factory Skeleton
+
+**Owner:** BE Lead + FE Lead
+**Priority:** P1
+**Status:** Backlog
+**Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
+
+Acceptance criteria:
+
+- Material/packaging transfer document can be created.
+- Attachment placeholder exists for COA/MSDS/label/VAT invoice where needed.
+- Signed handover flag exists.
+- Stock movement or placeholder movement type `SUBCONTRACT_ISSUE` exists.
+
+### S0-11-03 Subcontract UI Template
+
+**Owner:** FE Lead + UI/UX
+**Priority:** P1
+**Status:** Backlog
+**Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Implements file 39 section 27.
+- List/detail pages support external factory status.
+- Sample approval and factory claim blocks exist.
+- Critical status and SLA are visible.
+
+### S0-12-01 Docker Compose Local
+
+**Owner:** DevOps + Tech Leads
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/18_ERP_DevOps_CICD_Environment_Standards_Phase1_MyPham_v1.md`, `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Backend, frontend, PostgreSQL, Redis, MinIO, and mail service can run locally.
+- Dev seed data exists.
+- README local setup is clear.
+- New developer can set up within one day.
+
+Current state:
+
+- Compose and Dockerfiles exist.
+- Local verification still needs a machine with Docker available.
+
+### S0-12-02 CI Pipeline
+
+**Owner:** DevOps
+**Priority:** P0
+**Status:** Done
+**Primary Ref:** `docs/18_ERP_DevOps_CICD_Environment_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Backend runs format, vet, test, build.
+- Frontend runs typecheck, test, build.
+- OpenAPI validates and client generation dry run passes.
+- Migration dry run/check passes.
+- Pipeline fails if quality gate fails.
+
+Evidence:
+
+- `required-ci` exists and passes on `main`.
+- Branch protection requires `required-api`, `required-web`, `required-openapi`, and `required-migration`.
+
+### S0-12-03 Dev Staging Deployment Skeleton
+
+**Owner:** DevOps
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/18_ERP_DevOps_CICD_Environment_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Deploy works to Dev or Staging.
+- Environment variables are separated by environment.
+- Basic healthcheck exists.
+- Basic access logs exist.
+- Smoke test runs after deploy.
+
+### S0-13-01 Smoke Test Pack
+
+**Owner:** QA Lead
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/24_ERP_QA_Test_Strategy_Automation_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Smoke checklist covers login, healthcheck, master data, stock movement, and scan handover.
+- Sample API test exists.
+- Sample frontend smoke test exists.
+- Test seed data exists.
+
+### S0-13-02 Sprint 0 Demo Script
+
+**Owner:** QA Lead + BA + PO
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Demo script has clear steps.
+- Demo uses cosmetics sample data.
+- Demo includes successful and failed scan cases.
+- Demo includes audit log.
+- Demo includes stock movement and available stock.
+
+---
+
+## 7. Done Evidence Log
+
+| Task ID | Evidence |
+| --- | --- |
+| S0-01-01 | PR #1, PR #2, PR #6; `main` and `develop`; branch protection |
+| S0-12-02 | PR #3, PR #4, PR #5, PR #6; `required-ci` pass on `main` |
+
+---
+
+## 8. Guardrails
+
+- Do not create folders outside file 38.
+- Do not edit generated code manually.
+- Do not mark UI tasks done unless they follow file 39.
+- Do not mark backend tasks done unless module boundary rules in file 13 hold.
+- Do not merge high-risk workflow changes without relevant tests from file 24.
+- Do not implement stock change by direct balance update.
+- Do not create PR without `Primary Ref` and `Task Ref`.
+
+---
+
+## 9. Next Recommended Ready Tasks
+
+Recommended next tasks:
+
+1. `S0-02-03` - Error model and API response standard.
+2. `S0-03-03` - Industrial Minimal ERP UI tokens.
+3. `S0-03-01` - Complete real app shell from file 39.
+4. `S0-04-02` - Add base tables needed by auth/RBAC/audit/stock.
+5. `S0-06-01` - Auth skeleton.
+6. `S0-07-01` - Database-backed stock movement write path.
+
+These unlock later inventory, shipping, returns, and subcontract workflows.
