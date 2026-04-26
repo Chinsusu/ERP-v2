@@ -75,7 +75,7 @@ jobs:
             exit 0
           fi
 
-          if echo "$output" | grep -Eiq "already.*auto-merge|auto-merge.*already"; then
+          if echo "$output" | grep -Eiq "already.*auto-merge|auto-merge.*already|merge already in progress"; then
             exit 0
           fi
 
