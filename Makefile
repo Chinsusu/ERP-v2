@@ -58,6 +58,6 @@ openapi-generate:
 	pnpm dlx openapi-typescript packages/openapi/openapi.yaml -o apps/web/src/shared/api/generated/schema.ts
 
 openapi-validate:
-	pnpm dlx @redocly/cli lint packages/openapi/openapi.yaml
+	pnpm --package=@redocly/cli dlx redocly lint packages/openapi/openapi.yaml
 
 ci-check: openapi-validate api-lint api-test web-lint web-test
