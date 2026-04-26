@@ -741,6 +741,64 @@ textarea {
   line-height: var(--erp-line-height-helper);
 }
 
+.erp-shipping-page {
+  display: grid;
+  gap: 16px;
+}
+
+.erp-shipping-page .erp-page-header,
+.erp-shipping-page .erp-module-table-card {
+  margin-bottom: 0;
+}
+
+.erp-shipping-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(160px, 200px) minmax(180px, 220px) minmax(180px, 220px);
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-shipping-kpis {
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+}
+
+.erp-shipping-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(420px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.erp-shipping-manifest-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.erp-shipping-manifest-cell strong,
+.erp-shipping-manifest-cell small {
+  overflow-wrap: anywhere;
+}
+
+.erp-shipping-manifest-cell small,
+.erp-shipping-feedback {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-shipping-add-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 12px;
+}
+
 .erp-shift-closing-panel {
   display: grid;
   gap: 14px;
@@ -1669,6 +1727,10 @@ textarea {
   .erp-warehouse-ops,
   .erp-shift-closing-summary,
   .erp-shift-closing-grid,
+  .erp-shipping-toolbar,
+  .erp-shipping-kpis,
+  .erp-shipping-detail-grid,
+  .erp-shipping-add-box,
   .erp-stock-kpis {
     grid-template-columns: 1fr;
   }

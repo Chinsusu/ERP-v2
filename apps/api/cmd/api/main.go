@@ -11,6 +11,8 @@ import (
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
+	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
+	shippingdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/config"
@@ -111,6 +113,55 @@ type closeReconciliationRequest struct {
 	ExceptionNote string `json:"exception_note"`
 }
 
+type carrierManifestSummaryResponse struct {
+	ExpectedCount int `json:"expected_count"`
+	ScannedCount  int `json:"scanned_count"`
+	MissingCount  int `json:"missing_count"`
+}
+
+type carrierManifestLineResponse struct {
+	ID          string `json:"id"`
+	ShipmentID  string `json:"shipment_id"`
+	OrderNo     string `json:"order_no"`
+	TrackingNo  string `json:"tracking_no"`
+	PackageCode string `json:"package_code"`
+	StagingZone string `json:"staging_zone"`
+	Scanned     bool   `json:"scanned"`
+}
+
+type carrierManifestResponse struct {
+	ID            string                         `json:"id"`
+	CarrierCode   string                         `json:"carrier_code"`
+	CarrierName   string                         `json:"carrier_name"`
+	WarehouseID   string                         `json:"warehouse_id"`
+	WarehouseCode string                         `json:"warehouse_code"`
+	Date          string                         `json:"date"`
+	HandoverBatch string                         `json:"handover_batch"`
+	StagingZone   string                         `json:"staging_zone"`
+	Status        string                         `json:"status"`
+	Owner         string                         `json:"owner"`
+	AuditLogID    string                         `json:"audit_log_id,omitempty"`
+	Summary       carrierManifestSummaryResponse `json:"summary"`
+	Lines         []carrierManifestLineResponse  `json:"lines"`
+	CreatedAt     string                         `json:"created_at,omitempty"`
+}
+
+type createCarrierManifestRequest struct {
+	ID            string `json:"id"`
+	CarrierCode   string `json:"carrier_code"`
+	CarrierName   string `json:"carrier_name"`
+	WarehouseID   string `json:"warehouse_id"`
+	WarehouseCode string `json:"warehouse_code"`
+	Date          string `json:"date"`
+	HandoverBatch string `json:"handover_batch"`
+	StagingZone   string `json:"staging_zone"`
+	Owner         string `json:"owner"`
+}
+
+type addShipmentToManifestRequest struct {
+	ShipmentID string `json:"shipment_id"`
+}
+
 type stockMovementRequest struct {
 	MovementID   string  `json:"movementId"`
 	SKU          string  `json:"sku"`
@@ -150,6 +201,10 @@ func main() {
 	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	listEndOfDayReconciliations := inventoryapp.NewListEndOfDayReconciliations(reconciliationStore)
 	closeEndOfDayReconciliation := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditLogStore)
+	carrierManifestStore := shippingapp.NewPrototypeCarrierManifestStore()
+	listCarrierManifests := shippingapp.NewListCarrierManifests(carrierManifestStore)
+	createCarrierManifest := shippingapp.NewCreateCarrierManifest(carrierManifestStore, auditLogStore)
+	addShipmentToCarrierManifest := shippingapp.NewAddShipmentToCarrierManifest(carrierManifestStore, auditLogStore)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
@@ -198,6 +253,21 @@ func main() {
 			authConfig,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(closeEndOfDayReconciliationHandler(closeEndOfDayReconciliation)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/shipping/manifests",
+		auth.RequireBearerToken(
+			authConfig,
+			http.HandlerFunc(carrierManifestsHandler(listCarrierManifests, createCarrierManifest)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/shipping/manifests/{manifest_id}/shipments",
+		auth.RequireBearerPermission(
+			authConfig,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(addShipmentToCarrierManifestHandler(addShipmentToCarrierManifest)),
 		),
 	)
 
@@ -511,6 +581,130 @@ func closeEndOfDayReconciliationHandler(service inventoryapp.CloseEndOfDayReconc
 	}
 }
 
+func carrierManifestsHandler(
+	listService shippingapp.ListCarrierManifests,
+	createService shippingapp.CreateCarrierManifest,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionShippingView) {
+				writePermissionDenied(w, r, auth.PermissionShippingView)
+				return
+			}
+			filter := shippingdomain.NewCarrierManifestFilter(
+				r.URL.Query().Get("warehouse_id"),
+				r.URL.Query().Get("date"),
+				r.URL.Query().Get("carrier_code"),
+				shippingdomain.CarrierManifestStatus(r.URL.Query().Get("status")),
+			)
+			manifests, err := listService.Execute(r.Context(), filter)
+			if err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusConflict,
+					response.ErrorCodeConflict,
+					"Carrier manifests could not be loaded",
+					nil,
+				)
+				return
+			}
+
+			payload := make([]carrierManifestResponse, 0, len(manifests))
+			for _, manifest := range manifests {
+				payload = append(payload, newCarrierManifestResponse(manifest, ""))
+			}
+			response.WriteSuccess(w, r, http.StatusOK, payload)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			var payload createCarrierManifestRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid carrier manifest payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := createService.Execute(r.Context(), shippingapp.CreateCarrierManifestInput{
+				ID:            payload.ID,
+				CarrierCode:   payload.CarrierCode,
+				CarrierName:   payload.CarrierName,
+				WarehouseID:   payload.WarehouseID,
+				WarehouseCode: payload.WarehouseCode,
+				Date:          payload.Date,
+				HandoverBatch: payload.HandoverBatch,
+				StagingZone:   payload.StagingZone,
+				Owner:         payload.Owner,
+				ActorID:       principal.UserID,
+				RequestID:     response.RequestID(r),
+			})
+			if err != nil {
+				writeCarrierManifestError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusCreated, newCarrierManifestResponse(result.Manifest, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func addShipmentToCarrierManifestHandler(service shippingapp.AddShipmentToCarrierManifest) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		var payload addShipmentToManifestRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid add shipment payload",
+				nil,
+			)
+			return
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		result, err := service.Execute(r.Context(), shippingapp.AddShipmentToCarrierManifestInput{
+			ManifestID: r.PathValue("manifest_id"),
+			ShipmentID: payload.ShipmentID,
+			ActorID:    principal.UserID,
+			RequestID:  response.RequestID(r),
+		})
+		if err != nil {
+			writeCarrierManifestError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newCarrierManifestResponse(result.Manifest, result.AuditLogID))
+	}
+}
+
 func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) availableStockResponse {
 	return availableStockResponse{
 		WarehouseID:    snapshot.WarehouseID,
@@ -583,6 +777,45 @@ func newEndOfDayReconciliationResponse(
 	return payload
 }
 
+func newCarrierManifestResponse(manifest shippingdomain.CarrierManifest, auditLogID string) carrierManifestResponse {
+	summary := manifest.Summary()
+	payload := carrierManifestResponse{
+		ID:            manifest.ID,
+		CarrierCode:   manifest.CarrierCode,
+		CarrierName:   manifest.CarrierName,
+		WarehouseID:   manifest.WarehouseID,
+		WarehouseCode: manifest.WarehouseCode,
+		Date:          manifest.Date,
+		HandoverBatch: manifest.HandoverBatch,
+		StagingZone:   manifest.StagingZone,
+		Status:        string(manifest.Status),
+		Owner:         manifest.Owner,
+		AuditLogID:    auditLogID,
+		Summary: carrierManifestSummaryResponse{
+			ExpectedCount: summary.ExpectedCount,
+			ScannedCount:  summary.ScannedCount,
+			MissingCount:  summary.MissingCount,
+		},
+		Lines: make([]carrierManifestLineResponse, 0, len(manifest.Lines)),
+	}
+	if !manifest.CreatedAt.IsZero() {
+		payload.CreatedAt = manifest.CreatedAt.UTC().Format(time.RFC3339)
+	}
+	for _, line := range manifest.Lines {
+		payload.Lines = append(payload.Lines, carrierManifestLineResponse{
+			ID:          line.ID,
+			ShipmentID:  line.ShipmentID,
+			OrderNo:     line.OrderNo,
+			TrackingNo:  line.TrackingNo,
+			PackageCode: line.PackageCode,
+			StagingZone: line.StagingZone,
+			Scanned:     line.Scanned,
+		})
+	}
+
+	return payload
+}
+
 func writeCloseReconciliationError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, inventoryapp.ErrEndOfDayReconciliationNotFound):
@@ -622,6 +855,41 @@ func writeCloseReconciliationError(w http.ResponseWriter, r *http.Request, err e
 			nil,
 		)
 	}
+}
+
+func writeCarrierManifestError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, shippingapp.ErrCarrierManifestNotFound), errors.Is(err, shippingapp.ErrPackedShipmentNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Carrier manifest resource not found", nil)
+	case errors.Is(err, shippingdomain.ErrManifestRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Invalid carrier manifest payload",
+			map[string]any{"required": "carrier_code, warehouse_id, and date"},
+		)
+	case errors.Is(err, shippingdomain.ErrManifestShipmentNotPacked):
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Shipment must be packed before adding to manifest", nil)
+	case errors.Is(err, shippingdomain.ErrManifestDuplicateShipment):
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Shipment already exists in carrier manifest", nil)
+	case errors.Is(err, shippingdomain.ErrManifestAlreadyCompleted):
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier manifest is already completed", nil)
+	default:
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier manifest request could not be processed", nil)
+	}
+}
+
+func writePermissionDenied(w http.ResponseWriter, r *http.Request, permission auth.PermissionKey) {
+	response.WriteError(
+		w,
+		r,
+		http.StatusForbidden,
+		response.ErrorCodeForbidden,
+		"Permission denied",
+		map[string]any{"permission": string(permission)},
+	)
 }
 
 func newAuditLogResponse(log audit.Log) auditLogResponse {

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
+	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
@@ -122,6 +123,119 @@ func TestCloseEndOfDayReconciliationHandlerWritesAudit(t *testing.T) {
 	}
 	if len(logs) != 1 {
 		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestCarrierManifestsHandlerReturnsFilteredRows(t *testing.T) {
+	store := shippingapp.NewPrototypeCarrierManifestStore()
+	service := shippingapp.NewListCarrierManifests(store)
+	createService := shippingapp.NewCreateCarrierManifest(store, audit.NewInMemoryLogStore())
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/shipping/manifests?warehouse_id=wh-hcm&date=2026-04-26&carrier_code=GHN&status=scanning",
+		nil,
+	)
+	req.Header.Set(response.HeaderRequestID, "req-manifest-list")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	carrierManifestsHandler(service, createService).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[[]carrierManifestResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(payload.Data) != 1 {
+		t.Fatalf("rows = %d, want 1", len(payload.Data))
+	}
+	if payload.Data[0].Summary.ExpectedCount != 3 || payload.Data[0].Summary.MissingCount != 1 {
+		t.Fatalf("summary = %+v, want expected 3 missing 1", payload.Data[0].Summary)
+	}
+}
+
+func TestCarrierManifestsHandlerCreatesManifestAndWritesAudit(t *testing.T) {
+	store := shippingapp.NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	listService := shippingapp.NewListCarrierManifests(store)
+	createService := shippingapp.NewCreateCarrierManifest(store, auditStore)
+	body := bytes.NewBufferString(`{
+		"carrier_code": "NJV",
+		"carrier_name": "Ninja Van",
+		"warehouse_id": "wh-hcm",
+		"warehouse_code": "HCM",
+		"date": "2026-04-26"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/shipping/manifests", body)
+	req.Header.Set(response.HeaderRequestID, "req-manifest-create")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	carrierManifestsHandler(listService, createService).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[carrierManifestResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.Status != "draft" || payload.Data.AuditLogID == "" {
+		t.Fatalf("manifest response = %+v, want draft with audit log", payload.Data)
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "shipping.manifest.created"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestAddShipmentToCarrierManifestHandlerUpdatesCounts(t *testing.T) {
+	store := shippingapp.NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	service := shippingapp.NewAddShipmentToCarrierManifest(store, auditStore)
+	body := bytes.NewBufferString(`{"shipment_id":"ship-hcm-260426-004"}`)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/shipping/manifests/manifest-hcm-ghn-morning/shipments",
+		body,
+	)
+	req.SetPathValue("manifest_id", "manifest-hcm-ghn-morning")
+	req.Header.Set(response.HeaderRequestID, "req-manifest-add")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	addShipmentToCarrierManifestHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[carrierManifestResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.Summary.ExpectedCount != 4 || payload.Data.Summary.MissingCount != 2 {
+		t.Fatalf("summary = %+v, want expected 4 missing 2", payload.Data.Summary)
 	}
 }
 
