@@ -4,6 +4,15 @@ import { useMemo, useState } from "react";
 import type { AuditLogItem } from "@/modules/audit/types";
 import { DataTable, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
 import {
+  createSubcontractMaterialTransfer,
+  formatSubcontractAttachmentType,
+  formatSubcontractTransferStatus,
+  prototypeTransferLines,
+  subcontractTransferStatusTone,
+  subcontractTransferWarehouseOptions,
+  summarizeSubcontractMaterialTransfers
+} from "../services/subcontractMaterialTransferService";
+import {
   changeSubcontractOrderStatus,
   createSubcontractOrder,
   formatSubcontractDepositStatus,
@@ -17,7 +26,12 @@ import {
   subcontractProductOptions,
   summarizeSubcontractOrders
 } from "../services/subcontractOrderService";
-import type { SubcontractDepositStatus, SubcontractOrder, SubcontractOrderStatus } from "../types";
+import type {
+  SubcontractDepositStatus,
+  SubcontractMaterialTransfer,
+  SubcontractOrder,
+  SubcontractOrderStatus
+} from "../types";
 
 const orderColumns: DataTableColumn<SubcontractOrder>[] = [
   {
@@ -100,8 +114,14 @@ export function SubcontractOrderPrototype() {
   const [selectedOrderId, setSelectedOrderId] = useState(prototypeSubcontractOrders[0]?.id ?? "");
   const [feedback, setFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
   const [lastAudit, setLastAudit] = useState<AuditLogItem | null>(null);
+  const [sourceWarehouseId, setSourceWarehouseId] = useState<string>(subcontractTransferWarehouseOptions[0].value);
+  const [signedHandover, setSignedHandover] = useState(false);
+  const [transfers, setTransfers] = useState<SubcontractMaterialTransfer[]>([]);
+  const [transferFeedback, setTransferFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
   const summary = useMemo(() => summarizeSubcontractOrders(orders), [orders]);
+  const transferSummary = useMemo(() => summarizeSubcontractMaterialTransfers(transfers), [transfers]);
   const selectedOrder = orders.find((order) => order.id === selectedOrderId) ?? orders[0] ?? null;
+  const latestTransfer = transfers[0] ?? null;
 
   function handleCreateOrder() {
     try {
@@ -151,6 +171,46 @@ export function SubcontractOrderPrototype() {
     });
   }
 
+  function handleCreateTransfer() {
+    if (!selectedOrder) {
+      return;
+    }
+
+    const warehouse =
+      subcontractTransferWarehouseOptions.find((option) => option.value === sourceWarehouseId) ??
+      subcontractTransferWarehouseOptions[0];
+
+    try {
+      const transfer = createSubcontractMaterialTransfer({
+        order: selectedOrder,
+        sourceWarehouseId: warehouse.value,
+        sourceWarehouseCode: warehouse.code,
+        signedHandover,
+        lines: prototypeTransferLines
+      });
+      const statusResult = changeSubcontractOrderStatus({
+        order: selectedOrder,
+        nextStatus: "MATERIAL_TRANSFERRED",
+        actorName: "Subcontract Coordinator",
+        note: `${transfer.transferNo} created with SUBCONTRACT_ISSUE movement`
+      });
+
+      setTransfers((current) => [transfer, ...current]);
+      setOrders((current) => current.map((order) => (order.id === statusResult.order.id ? statusResult.order : order)));
+      setSelectedOrderId(statusResult.order.id);
+      setLastAudit(statusResult.auditLog);
+      setTransferFeedback({
+        tone: subcontractTransferStatusTone(transfer.status),
+        message: `${transfer.transferNo} created with ${transfer.stockMovements.length} SUBCONTRACT_ISSUE movements`
+      });
+    } catch (error) {
+      setTransferFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "Material transfer could not be created"
+      });
+    }
+  }
+
   return (
     <section className="erp-module-page erp-subcontract-page">
       <header className="erp-page-header">
@@ -165,6 +225,9 @@ export function SubcontractOrderPrototype() {
           </a>
           <a className="erp-button erp-button--secondary" href="#subcontract-workflow">
             Workflow
+          </a>
+          <a className="erp-button erp-button--secondary" href="#subcontract-transfer">
+            Transfer
           </a>
           <a className="erp-button erp-button--primary" href="#subcontract-orders">
             Orders
@@ -325,6 +388,104 @@ export function SubcontractOrderPrototype() {
             </>
           ) : (
             <div className="erp-subcontract-empty-state">No subcontract order selected</div>
+          )}
+        </div>
+      </section>
+
+      <section className="erp-subcontract-transfer-grid" id="subcontract-transfer">
+        <div className="erp-card erp-card--padded erp-subcontract-card">
+          <div className="erp-section-header">
+            <h2 className="erp-section-title">Material transfer</h2>
+            <StatusChip tone="info">{selectedOrder?.orderNo ?? "No order"}</StatusChip>
+          </div>
+
+          <div className="erp-subcontract-transfer-controls">
+            <label className="erp-field">
+              <span>Source warehouse</span>
+              <select
+                className="erp-input"
+                value={sourceWarehouseId}
+                onChange={(event) => setSourceWarehouseId(event.target.value)}
+              >
+                {subcontractTransferWarehouseOptions.map((warehouse) => (
+                  <option key={warehouse.value} value={warehouse.value}>
+                    {warehouse.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="erp-subcontract-sample-toggle">
+              <input
+                checked={signedHandover}
+                type="checkbox"
+                onChange={(event) => setSignedHandover(event.target.checked)}
+              />
+              <span>Signed handover</span>
+            </label>
+          </div>
+
+          <div className="erp-subcontract-line-list" aria-label="Material and packaging lines">
+            {prototypeTransferLines.map((line) => (
+              <div className="erp-subcontract-line-item" key={line.id}>
+                <strong>{line.itemName}</strong>
+                <span>
+                  {line.itemCode} / {formatQuantity(line.quantity)} {line.unit}
+                </span>
+                <StatusChip tone={line.lotControlled ? "warning" : "normal"}>
+                  {line.lotControlled ? line.batchNo : "No lot"}
+                </StatusChip>
+                <StatusChip tone={line.qcStatus === "passed" ? "success" : "warning"}>{line.qcStatus}</StatusChip>
+              </div>
+            ))}
+          </div>
+
+          <div className="erp-subcontract-actions">
+            <button className="erp-button erp-button--primary" type="button" onClick={handleCreateTransfer}>
+              Create transfer
+            </button>
+            {transferFeedback ? <StatusChip tone={transferFeedback.tone}>{transferFeedback.message}</StatusChip> : null}
+          </div>
+        </div>
+
+        <div className="erp-card erp-card--padded erp-subcontract-card">
+          <div className="erp-section-header">
+            <h2 className="erp-section-title">Transfer result</h2>
+            <StatusChip tone={latestTransfer ? subcontractTransferStatusTone(latestTransfer.status) : "normal"}>
+              {latestTransfer ? formatSubcontractTransferStatus(latestTransfer.status) : `${transferSummary.total} docs`}
+            </StatusChip>
+          </div>
+
+          {latestTransfer ? (
+            <>
+              <div className="erp-subcontract-fact-grid">
+                <SubcontractFact label="Transfer" value={latestTransfer.transferNo} />
+                <SubcontractFact label="Order" value={latestTransfer.orderNo} />
+                <SubcontractFact label="Source" value={latestTransfer.sourceWarehouseCode} />
+                <SubcontractFact label="Factory" value={latestTransfer.factoryName} />
+                <SubcontractFact label="Signed" value={latestTransfer.signedHandover ? "Yes" : "No"} />
+                <SubcontractFact label="Movements" value={String(latestTransfer.stockMovements.length)} />
+              </div>
+              <div className="erp-subcontract-attachment-list" aria-label="Attachment placeholders">
+                {latestTransfer.attachmentPlaceholders.map((placeholder) => (
+                  <StatusChip key={placeholder.type} tone={placeholder.required ? "warning" : "normal"}>
+                    {formatSubcontractAttachmentType(placeholder.type)}
+                  </StatusChip>
+                ))}
+              </div>
+              <div className="erp-subcontract-movement-list" aria-label="Stock movements">
+                {latestTransfer.stockMovements.map((movement) => (
+                  <div className="erp-subcontract-movement-item" key={movement.id}>
+                    <strong>{movement.movementType}</strong>
+                    <span>
+                      {movement.itemCode} / {formatQuantity(movement.quantity)} {movement.unit} /{" "}
+                      {movement.targetLocation}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="erp-subcontract-empty-state">No material transfer created</div>
           )}
         </div>
       </section>
