@@ -110,7 +110,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-02-02 | Module structure base | Backend Go foundation | BE Lead + Architect | P0 | In Progress | `docs/13_...` + `docs/38_...` |
 | S0-02-03 | Error model and API response standard | Backend Go foundation | BE Lead + FE Lead | P0 | Done | `docs/16_...` |
 | S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | Done | `docs/15_...` + `docs/39_...` |
-| S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
+| S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Review | `docs/39_...` |
 | S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-04-01 | PostgreSQL migration setup | Database foundation | BE Lead + DevOps | P0 | In Progress | `docs/17_...` |
@@ -279,7 +279,7 @@ Evidence:
 
 **Owner:** FE Lead + UI/UX
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -292,6 +292,10 @@ Acceptance criteria:
 - Toast notification.
 - Empty/loading/error states.
 - Scan input prototype.
+
+Current state:
+
+- Core reusable UI components are in review under `apps/web/src/shared/design-system`.
 
 ### S0-03-03 Industrial Minimal ERP UI Tokens
 
