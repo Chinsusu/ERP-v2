@@ -178,8 +178,8 @@ INSERT INTO audit.audit_logs (
   $1,
   $2,
   'inventory.stock_movement.adjusted',
-  'inventory.stock_ledger',
-  NULL,
+  'inventory.stock_movement',
+  $12,
   jsonb_build_object(
     'movement_no', $3,
     'movement_type', $4,
