@@ -61,7 +61,12 @@ jobs:
           fi
 
           set +e
-          merge_args=("$PR_URL" --auto --squash)
+          merge_args=("$PR_URL" --auto)
+          if [[ "$BASE_REF" == "main" && "$HEAD_REF" == "develop" ]]; then
+            merge_args+=(--merge)
+          else
+            merge_args+=(--squash)
+          fi
           if [[ "$HEAD_REF" != "develop" && "$HEAD_REF" != "main" ]]; then
             merge_args+=(--delete-branch)
           fi
