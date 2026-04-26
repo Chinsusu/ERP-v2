@@ -225,6 +225,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shipping/manifests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List carrier manifests */
+        get: operations["listCarrierManifests"];
+        put?: never;
+        /** Create a carrier manifest */
+        post: operations["createCarrierManifest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shipping/manifests/{manifest_id}/shipments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a packed shipment to a carrier manifest */
+        post: operations["addShipmentToCarrierManifest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -509,6 +544,61 @@ export interface components {
             variance_quantity: number;
             reason?: string;
             owner: string;
+        };
+        /** @enum {string} */
+        CarrierManifestStatus: "draft" | "ready" | "scanning" | "completed" | "exception";
+        CarrierManifestListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CarrierManifest"][];
+        };
+        CarrierManifestSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CarrierManifest"];
+        };
+        CreateCarrierManifestRequest: {
+            id?: string;
+            carrier_code: string;
+            carrier_name?: string;
+            warehouse_id: string;
+            warehouse_code?: string;
+            /** Format: date */
+            date: string;
+            handover_batch?: string;
+            staging_zone?: string;
+            owner?: string;
+        };
+        AddShipmentToCarrierManifestRequest: {
+            shipment_id: string;
+        };
+        CarrierManifest: {
+            id: string;
+            carrier_code: string;
+            carrier_name: string;
+            warehouse_id: string;
+            warehouse_code: string;
+            /** Format: date */
+            date: string;
+            handover_batch: string;
+            staging_zone: string;
+            status: components["schemas"]["CarrierManifestStatus"];
+            owner: string;
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at?: string;
+            summary: components["schemas"]["CarrierManifestSummary"];
+            lines: components["schemas"]["CarrierManifestLine"][];
+        };
+        CarrierManifestSummary: {
+            expected_count: number;
+            scanned_count: number;
+            missing_count: number;
+        };
+        CarrierManifestLine: {
+            id: string;
+            shipment_id: string;
+            order_no: string;
+            tracking_no: string;
+            package_code: string;
+            staging_zone: string;
+            scanned: boolean;
         };
         SuccessResponse: {
             /** @example true */
@@ -944,6 +1034,93 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EndOfDayReconciliationSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listCarrierManifests: {
+        parameters: {
+            query?: {
+                warehouse_id?: string;
+                date?: string;
+                carrier_code?: string;
+                status?: components["schemas"]["CarrierManifestStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Carrier manifest rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarrierManifestListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createCarrierManifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCarrierManifestRequest"];
+            };
+        };
+        responses: {
+            /** @description Carrier manifest created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarrierManifestSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    addShipmentToCarrierManifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                manifest_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddShipmentToCarrierManifestRequest"];
+            };
+        };
+        responses: {
+            /** @description Shipment added to carrier manifest */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarrierManifestSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];
