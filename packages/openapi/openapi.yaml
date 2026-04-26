@@ -81,6 +81,102 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /products:
+    get:
+      summary: List product master data
+      operationId: listProducts
+      tags:
+        - master-data
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/MasterDataStatusParam"
+      responses:
+        "200":
+          description: Product master data list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /suppliers:
+    get:
+      summary: List supplier master data
+      operationId: listSuppliers
+      tags:
+        - master-data
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/MasterDataStatusParam"
+      responses:
+        "200":
+          description: Supplier master data list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierListSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /customers:
+    get:
+      summary: List customer master data
+      operationId: listCustomers
+      tags:
+        - master-data
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/MasterDataStatusParam"
+      responses:
+        "200":
+          description: Customer master data list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerListSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /warehouses:
+    get:
+      summary: List warehouse master data
+      operationId: listWarehouses
+      tags:
+        - master-data
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/MasterDataStatusParam"
+      responses:
+        "200":
+          description: Warehouse master data list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseListSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /inventory/stock-movements:
     post:
       summary: Record stock movement
@@ -175,6 +271,41 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number for page-based pagination.
+    PageSizeParam:
+      name: page_size
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Number of records returned per page.
+    SearchParam:
+      name: q
+      in: query
+      required: false
+      schema:
+        type: string
+        maxLength: 100
+      description: Quick search term for code, name, phone, or other whitelisted fields.
+    MasterDataStatusParam:
+      name: status
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/MasterDataStatus"
+      description: Filter by master data lifecycle status.
   securitySchemes:
     bearerAuth:
       type: http
@@ -349,6 +480,275 @@ components:
         - settings:view
         - record:create
         - record:export
+    Pagination:
+      type: object
+      required:
+        - page
+        - page_size
+        - total_items
+        - total_pages
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 20
+        total_items:
+          type: integer
+          minimum: 0
+          example: 245
+        total_pages:
+          type: integer
+          minimum: 0
+          example: 13
+    MasterDataStatus:
+      type: string
+      enum:
+        - draft
+        - active
+        - inactive
+        - obsolete
+    ProductListSuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+        - request_id
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductListItem"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        request_id:
+          type: string
+          example: req_lq7z2t9c
+    ProductListItem:
+      type: object
+      required:
+        - id
+        - sku_code
+        - name
+        - item_type
+        - uom_code
+        - lot_controlled
+        - expiry_controlled
+        - qc_required
+        - status
+      properties:
+        id:
+          type: string
+          example: sku_01HXABCDEF
+        sku_code:
+          type: string
+          example: FG-ABC-SER-30-0012
+        name:
+          type: string
+          example: Serum Vitamin C 30ml
+        item_type:
+          type: string
+          enum:
+            - raw_material
+            - packaging
+            - semi_finished
+            - finished_good
+            - service
+        uom_code:
+          type: string
+          example: PCS
+        lot_controlled:
+          type: boolean
+          example: true
+        expiry_controlled:
+          type: boolean
+          example: true
+        qc_required:
+          type: boolean
+          example: true
+        status:
+          $ref: "#/components/schemas/MasterDataStatus"
+    SupplierListSuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+        - request_id
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupplierListItem"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        request_id:
+          type: string
+          example: req_lq7z2t9c
+    SupplierListItem:
+      type: object
+      required:
+        - id
+        - supplier_code
+        - supplier_name
+        - supplier_group
+        - status
+      properties:
+        id:
+          type: string
+          example: sup_01HXABCDEF
+        supplier_code:
+          type: string
+          example: SUP-RM-0021
+        supplier_name:
+          type: string
+          example: Nguyen Lieu A Trading
+        supplier_group:
+          type: string
+          enum:
+            - raw_material
+            - packaging
+            - service
+            - logistics
+            - outsource
+        contact_name:
+          type: string
+          example: Nguyen Van A
+        payment_terms:
+          type: string
+          example: 30D
+        status:
+          $ref: "#/components/schemas/MasterDataStatus"
+    CustomerListSuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+        - request_id
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerListItem"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        request_id:
+          type: string
+          example: req_lq7z2t9c
+    CustomerListItem:
+      type: object
+      required:
+        - id
+        - customer_code
+        - customer_name
+        - customer_type
+        - status
+      properties:
+        id:
+          type: string
+          example: cus_01HXABCDEF
+        customer_code:
+          type: string
+          example: CUS-DL-0009
+        customer_name:
+          type: string
+          example: Dai Ly Minh Anh
+        customer_type:
+          type: string
+          enum:
+            - distributor
+            - dealer
+            - retail_customer
+            - marketplace
+            - internal_store
+        channel_code:
+          type: string
+          example: B2B
+        price_list_code:
+          type: string
+          example: PL-B2B-2026
+        status:
+          $ref: "#/components/schemas/MasterDataStatus"
+    WarehouseListSuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+        - request_id
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/WarehouseListItem"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        request_id:
+          type: string
+          example: req_lq7z2t9c
+    WarehouseListItem:
+      type: object
+      required:
+        - id
+        - warehouse_code
+        - warehouse_name
+        - warehouse_type
+        - site_code
+        - allow_sale_issue
+        - allow_prod_issue
+        - allow_quarantine
+        - status
+      properties:
+        id:
+          type: string
+          example: wh_01HXABCDEF
+        warehouse_code:
+          type: string
+          example: WH-HCM-FG
+        warehouse_name:
+          type: string
+          example: Finished Goods Warehouse HCM
+        warehouse_type:
+          type: string
+          enum:
+            - raw_material
+            - packaging
+            - semi_finished
+            - finished_good
+            - quarantine
+            - retail_store
+        site_code:
+          type: string
+          example: HCM
+        allow_sale_issue:
+          type: boolean
+          example: true
+        allow_prod_issue:
+          type: boolean
+          example: false
+        allow_quarantine:
+          type: boolean
+          example: false
+        status:
+          $ref: "#/components/schemas/MasterDataStatus"
     StockMovementRequest:
       type: object
       required:

@@ -115,7 +115,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-04-01 | PostgreSQL migration setup | Database foundation | BE Lead + DevOps | P0 | In Progress | `docs/17_...` |
 | S0-04-02 | Base tables | Database foundation | BE Lead | P0 | Done | `docs/17_...` |
-| S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | In Progress | `docs/16_...` |
+| S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | Review | `docs/16_...` |
 | S0-05-02 | API codegen integration | API contract foundation | FE Lead + BE Lead | P0 | In Progress | `docs/16_...` + `docs/15_...` |
 | S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Done | `docs/19_...` |
 | S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
@@ -390,7 +390,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead
 **Priority:** P0
-**Status:** In Progress
+**Status:** Review
 **Primary Ref:** `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -404,9 +404,9 @@ Acceptance criteria:
 
 Current state:
 
-- OpenAPI file exists and validates in CI.
-- Health and stock movement sample endpoints exist.
-- Auth/master data sample endpoints and pagination schema still need completion.
+- OpenAPI base contract is under PR review.
+- Health, auth, inventory, pagination, and master data sample endpoints are represented.
+- Frontend client generation dry run is pending GitHub OpenAPI CI.
 
 ### S0-05-02 API Codegen Integration
 
