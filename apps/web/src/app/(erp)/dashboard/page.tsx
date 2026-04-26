@@ -1,4 +1,4 @@
-import WarehouseDailyBoard from "@/modules/inventory/components/WarehouseDailyBoard";
+import WarehouseDailyBoard from "@/modules/warehouse/components/WarehouseDailyBoard";
 
 export default function ERPDashboardPage() {
   return <WarehouseDailyBoard />;
