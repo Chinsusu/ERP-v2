@@ -191,6 +191,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/warehouse/end-of-day-reconciliations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List warehouse end-of-day reconciliation sessions */
+        get: operations["listEndOfDayReconciliations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/warehouse/end-of-day-reconciliations/{reconciliation_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a warehouse end-of-day reconciliation session */
+        post: operations["closeEndOfDayReconciliation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -420,6 +454,61 @@ export interface components {
             reserved_stock: number;
             hold_stock: number;
             available_stock: number;
+        };
+        /** @enum {string} */
+        EndOfDayReconciliationStatus: "open" | "in_review" | "closed";
+        EndOfDayReconciliationListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["EndOfDayReconciliation"][];
+        };
+        EndOfDayReconciliationSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["EndOfDayReconciliation"];
+        };
+        CloseEndOfDayReconciliationRequest: {
+            exception_note?: string;
+        };
+        EndOfDayReconciliation: {
+            id: string;
+            warehouse_id: string;
+            warehouse_code: string;
+            /** Format: date */
+            date: string;
+            shift_code: string;
+            status: components["schemas"]["EndOfDayReconciliationStatus"];
+            owner: string;
+            /** Format: date-time */
+            closed_at?: string;
+            closed_by?: string;
+            audit_log_id?: string;
+            summary: components["schemas"]["EndOfDayReconciliationSummary"];
+            checklist: components["schemas"]["ReconciliationChecklistItem"][];
+            lines: components["schemas"]["ReconciliationLine"][];
+        };
+        EndOfDayReconciliationSummary: {
+            system_quantity: number;
+            counted_quantity: number;
+            variance_quantity: number;
+            variance_count: number;
+            checklist_total: number;
+            checklist_completed: number;
+            ready_to_close: boolean;
+        };
+        ReconciliationChecklistItem: {
+            key: string;
+            label: string;
+            complete: boolean;
+            blocking: boolean;
+            note?: string;
+        };
+        ReconciliationLine: {
+            id: string;
+            sku: string;
+            batch_no: string;
+            bin_code: string;
+            system_quantity: number;
+            counted_quantity: number;
+            variance_quantity: number;
+            reason?: string;
+            owner: string;
         };
         SuccessResponse: {
             /** @example true */
@@ -803,6 +892,64 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listEndOfDayReconciliations: {
+        parameters: {
+            query?: {
+                warehouse_id?: string;
+                date?: string;
+                status?: components["schemas"]["EndOfDayReconciliationStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description End-of-day reconciliation sessions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EndOfDayReconciliationListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    closeEndOfDayReconciliation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reconciliation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseEndOfDayReconciliationRequest"];
+            };
+        };
+        responses: {
+            /** @description End-of-day reconciliation closed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EndOfDayReconciliationSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
         };
     };
