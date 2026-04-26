@@ -129,7 +129,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-09-02 | Scan verify endpoint/UI | Shipping handover scan | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
 | S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-10-01 | Return receiving skeleton | Returns skeleton | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
-| S0-10-02 | Return inspection UI template | Returns skeleton | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
+| S0-10-02 | Return inspection UI template | Returns skeleton | FE Lead + UI/UX | P0 | Review | `docs/39_...` |
 | S0-11-01 | External factory order skeleton | Subcontract manufacturing | BE Lead + FE Lead + Production/Ops Super User | P1 | Backlog | `docs/33_...` |
 | S0-11-02 | Material transfer to factory skeleton | Subcontract manufacturing | BE Lead + FE Lead | P1 | Backlog | `docs/33_...` |
 | S0-11-03 | Subcontract UI template | Subcontract manufacturing | FE Lead + UI/UX | P1 | Backlog | `docs/39_...` |
@@ -754,7 +754,7 @@ Evidence:
 
 **Owner:** FE Lead + UI/UX
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -763,6 +763,13 @@ Acceptance criteria:
 - Return condition and disposition are visible.
 - Risk/status chips use text and color.
 - Inspector action is clear and traceable.
+
+Current state:
+
+- Returns page includes a return inspection panel with receipt/order/tracking lookup and selected receipt order details.
+- Return condition options cover intact, dented box, seal torn, used, damaged, and QA required states with visible tone chips.
+- Inspection disposition options cover usable, not usable, and QA hold with target locations and result status chips.
+- Inspector actions include confirm inspection and explicit QA escalation with a recorded result preview.
 
 ### S0-11-01 External Factory Order Skeleton
 
