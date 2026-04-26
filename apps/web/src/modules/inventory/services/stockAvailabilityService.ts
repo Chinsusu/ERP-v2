@@ -1,4 +1,4 @@
-import { apiGet } from "@/shared/api/client";
+import { apiGet } from "../../../shared/api/client";
 import type { AvailableStockItem, AvailableStockQuery, AvailableStockSummary } from "../types";
 
 type AvailableStockApiItem = {
