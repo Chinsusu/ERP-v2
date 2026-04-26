@@ -259,7 +259,8 @@ export async function getWarehouseDailyBoard(query: WarehouseDailyBoardQuery = {
 
     return true;
   });
-  const tasks = query.status ? baseTasks.filter((task) => task.status === query.status) : baseTasks;
+  const filteredTasks = query.status ? baseTasks.filter((task) => task.status === query.status) : baseTasks;
+  const tasks = sortWarehouseTasksByRisk(filteredTasks);
   const warehouseCode = warehouseId ? baseTasks[0]?.warehouseCode ?? warehouseId : "All";
 
   return {
@@ -330,6 +331,17 @@ export function summarizeWarehouseDailyBoard(tasks: WarehouseDailyTask[]): Wareh
   };
 }
 
+export function sortWarehouseTasksByRisk(tasks: WarehouseDailyTask[]): WarehouseDailyTask[] {
+  return [...tasks].sort((left, right) => {
+    const riskDelta = taskRiskScore(left) - taskRiskScore(right);
+    if (riskDelta !== 0) {
+      return riskDelta;
+    }
+
+    return new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime();
+  });
+}
+
 export function summarizeReconciliationLines(lines: ReconciliationLine[]): EndOfDayReconciliationSummary {
   const systemQuantity = lines.reduce((total, line) => total + line.systemQuantity, 0);
   const countedQuantity = lines.reduce((total, line) => total + line.countedQuantity, 0);
@@ -384,6 +396,20 @@ function countByStatus(tasks: WarehouseDailyTask[], status: WarehouseDailyTaskSt
 
 function hasPriorityZero(tasks: WarehouseDailyTask[]) {
   return tasks.some((task) => task.priority === "P0");
+}
+
+function taskRiskScore(task: WarehouseDailyTask) {
+  if (task.status === "mismatch") {
+    return 0;
+  }
+  if (task.priority === "P0") {
+    return 1;
+  }
+  if (task.priority === "P1") {
+    return 2;
+  }
+
+  return 3;
 }
 
 function canCloseReconciliation(reconciliation: EndOfDayReconciliation, exceptionNote: string) {
