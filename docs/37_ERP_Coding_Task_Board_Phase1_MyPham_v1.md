@@ -107,7 +107,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-01-01 | Setup repository and branch strategy | Project foundation | Tech Lead + PM | P0 | Done | `docs/34_...` + `docs/38_...` |
 | S0-01-02 | Setup issue/story board | Project foundation | PM + BA | P0 | In Progress | `docs/34_...` |
 | S0-02-01 | Go backend skeleton | Backend Go foundation | BE Lead | P0 | In Progress | `docs/11_...` + `docs/12_...` |
-| S0-02-02 | Module structure base | Backend Go foundation | BE Lead + Architect | P0 | In Progress | `docs/13_...` + `docs/38_...` |
+| S0-02-02 | Module structure base | Backend Go foundation | BE Lead + Architect | P0 | Done | `docs/13_...` + `docs/38_...` |
 | S0-02-03 | Error model and API response standard | Backend Go foundation | BE Lead + FE Lead | P0 | Done | `docs/16_...` |
 | S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | Done | `docs/15_...` + `docs/39_...` |
 | S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
@@ -212,7 +212,7 @@ Current state:
 
 **Owner:** BE Lead + Architect
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/13_ERP_Go_Module_Component_Design_Standards_Phase1_MyPham_v1.md`, `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -227,7 +227,12 @@ Current state:
 - Module root folders, module README files, and tracked component folders exist.
 - Inventory has an initial domain/application prototype.
 - Structure guard test verifies required module/component folders and blocks direct imports of another module repository package.
-- Implementation PR is ready for review.
+- Implementation and promotion are merged.
+
+Evidence:
+
+- PR #71: Module structure base merged to `develop`.
+- PR #72: Module structure base promoted to `main`.
 
 ### S0-02-03 Error Model And API Response Standard
 
@@ -838,6 +843,7 @@ Acceptance criteria:
 | --- | --- |
 | S0-01-01 | PR #1, PR #2, PR #6; `main` and `develop`; branch protection |
 | S0-12-02 | PR #3, PR #4, PR #5, PR #6; `required-ci` pass on `main` |
+| S0-02-02 | PR #71, PR #72; tracked module component folders and module boundary guard test |
 | S0-02-03 | PR #9, PR #12; API response standard, shared error envelope, parsing tests |
 | S0-03-03 | PR #15, PR #17; CSS variables, Ant Design theme, token tests |
 | S0-12-04 | PR #13, PR #14, PR #16, PR #19, PR #20, PR #21, PR #22; review gate and auto-merge flow |
@@ -872,9 +878,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-02-02` - Module structure base.
-2. `S0-12-01` - Docker compose local.
-3. `S0-08-02` - End-of-day reconciliation skeleton.
-4. `S0-08-03` - Warehouse Daily Board UI template.
+1. `S0-12-01` - Docker compose local.
+2. `S0-08-02` - End-of-day reconciliation skeleton.
+3. `S0-08-03` - Warehouse Daily Board UI template.
+4. `S0-09-01` - Carrier manifest skeleton.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
