@@ -3,6 +3,7 @@ import { AuditLogPrototype } from "@/modules/audit/components/AuditLogPrototype"
 import { AvailableStockPrototype } from "@/modules/inventory/components/AvailableStockPrototype";
 import { ReturnReceivingPrototype } from "@/modules/returns/components/ReturnReceivingPrototype";
 import { CarrierManifestPrototype } from "@/modules/shipping/components/CarrierManifestPrototype";
+import { SubcontractOrderPrototype } from "@/modules/subcontract/components/SubcontractOrderPrototype";
 import WarehouseDailyBoard from "@/modules/warehouse/components/WarehouseDailyBoard";
 import { getMockSession } from "@/shared/auth/mockSession";
 import { ModulePlaceholder } from "@/shared/layouts/ModulePlaceholder";
@@ -39,6 +40,10 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
 
   if (module === "returns") {
     return <ReturnReceivingPrototype />;
+  }
+
+  if (module === "subcontract") {
+    return <SubcontractOrderPrototype />;
   }
 
   if (module === "audit-log") {
