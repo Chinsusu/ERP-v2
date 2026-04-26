@@ -138,7 +138,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-12-04 | Automated PR review gate and auto-merge | DevOps/CI/CD foundation | DevOps + Tech Lead | P0 | Done | `docs/18_...` + `docs/38_...` |
 | S0-12-03 | Dev/Staging deployment skeleton | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
 | S0-13-01 | Smoke test pack | QA foundation | QA Lead | P0 | Done | `docs/24_...` |
-| S0-13-02 | Sprint 0 demo script | QA foundation | QA Lead + BA + PO | P0 | Review | `docs/34_...` |
+| S0-13-02 | Sprint 0 demo script | QA foundation | QA Lead + BA + PO | P0 | Done | `docs/34_...` |
 
 ---
 
@@ -985,7 +985,7 @@ Evidence:
 
 **Owner:** QA Lead + BA + PO
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1003,6 +1003,12 @@ Current state:
 - Script includes successful scan, duplicate scan, wrong manifest, and unknown code cases.
 - Script includes audit log evidence for stock movement and shipping scan actions.
 - Script includes available stock and stock movement demo steps.
+- Implementation and promotion are merged.
+
+Evidence:
+
+- PR #127: Sprint 0 demo script merged to `develop`.
+- PR #128: Sprint 0 demo script promoted to `main`; promotion CI was blocked by a GitHub Actions billing/spending-limit infrastructure issue and the admin merge reason is recorded on the PR.
 
 ---
 
@@ -1028,6 +1034,7 @@ Current state:
 | S0-08-01 | PR #63, PR #64; warehouse daily board skeleton, filters, counters, task links, scan station, and exception panel |
 | S0-05-01 | PR #51, PR #52; OpenAPI base contract with pagination schema, auth/health coverage, master data sample endpoints, and client generation dry run |
 | S0-05-02 | PR #55, PR #56; generated frontend OpenAPI schema, typed API wrapper, inventory service generated DTO integration, and CI web/OpenAPI gates |
+| S0-13-02 | PR #127, PR #128; Sprint 0 demo script, cosmetics sample data path, success/failure scan cases, stock movement, available stock, and audit evidence |
 
 ---
 
@@ -1047,6 +1054,6 @@ Current state:
 
 Recommended next tasks:
 
-1. `S0-13-02` - Sprint 0 demo script.
+No Sprint 0 ready tasks remain. Start Sprint 1 planning from file 34 section 20.
 
-These unlock later inventory, shipping, returns, and subcontract workflows.
+Sprint 0 now has demo, smoke, deployment, review, and merge evidence for the implemented foundation.
