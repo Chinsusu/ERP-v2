@@ -2,9 +2,13 @@ import type {
   CarrierManifest,
   CarrierManifestLine,
   CarrierManifestQuery,
+  CarrierManifestScanResult,
+  CarrierManifestScanResultCode,
+  CarrierManifestScanSeverity,
   CarrierManifestStatus,
   CarrierManifestSummary,
-  CreateCarrierManifestInput
+  CreateCarrierManifestInput,
+  VerifyCarrierManifestScanInput
 } from "../types";
 
 export const defaultCarrierManifestDate = "2026-04-26";
@@ -124,6 +128,19 @@ export const prototypeCarrierManifests: CarrierManifest[] = [
   })
 ];
 
+const prototypeShipmentStates = [
+  {
+    shipmentId: "ship-hcm-260426-099",
+    orderNo: "SO-260426-099",
+    trackingNo: "GHN260426099",
+    packageCode: "PACKING-LANE-01",
+    stagingZone: "packing",
+    packed: false
+  }
+];
+
+let prototypeScanSequence = 0;
+
 export async function getCarrierManifests(query: CarrierManifestQuery = {}): Promise<CarrierManifest[]> {
   return prototypeCarrierManifests
     .filter((manifest) => {
@@ -193,6 +210,116 @@ export async function addShipmentToManifest(manifestId: string, shipmentId: stri
   });
 }
 
+export async function verifyCarrierManifestScan(
+  input: VerifyCarrierManifestScanInput,
+  manifests: CarrierManifest[] = prototypeCarrierManifests
+): Promise<CarrierManifestScanResult> {
+  const manifest = manifests.find((candidate) => candidate.id === input.manifestId);
+  if (!manifest) {
+    throw new Error("Carrier manifest not found");
+  }
+
+  const code = normalizeScanCode(input.code);
+  if (code === "") {
+    throw new Error("Scan code is required");
+  }
+
+  const lineIndex = manifest.lines.findIndex((line) => matchesScanCode(line, code));
+  if (lineIndex >= 0) {
+    const line = manifest.lines[lineIndex];
+    if (manifest.status !== "ready" && manifest.status !== "scanning") {
+      return createScanResult({
+        code,
+        manifest,
+        line,
+        resultCode: "INVALID_STATE",
+        severity: "danger",
+        message: "Manifest cannot accept scans in its current state",
+        stationId: input.stationId
+      });
+    }
+    if (line.scanned) {
+      return createScanResult({
+        code,
+        manifest,
+        line,
+        resultCode: "DUPLICATE_SCAN",
+        severity: "warning",
+        message: "Shipment was already scanned for this manifest",
+        stationId: input.stationId
+      });
+    }
+
+    const updatedManifest = createManifest({
+      ...manifest,
+      status: manifest.status === "ready" ? "scanning" : manifest.status,
+      auditLogId: "audit-manifest-scan-prototype",
+      lines: manifest.lines.map((candidate, index) => (index === lineIndex ? { ...candidate, scanned: true } : candidate))
+    });
+
+    return createScanResult({
+      code,
+      manifest: updatedManifest,
+      line: updatedManifest.lines[lineIndex],
+      resultCode: "MATCHED",
+      severity: "success",
+      message: "Scan matched manifest line",
+      stationId: input.stationId,
+      auditLogId: "audit-manifest-scan-prototype"
+    });
+  }
+
+  const expectedManifest = manifests.find((candidate) => candidate.lines.some((line) => matchesScanCode(line, code)));
+  if (expectedManifest) {
+    const expectedLine = expectedManifest.lines.find((line) => matchesScanCode(line, code));
+
+    return createScanResult({
+      code,
+      manifest,
+      line: expectedLine,
+      resultCode: "MANIFEST_MISMATCH",
+      severity: "danger",
+      message: "Scan code belongs to a different manifest",
+      expectedManifestId: expectedManifest.id,
+      stationId: input.stationId
+    });
+  }
+
+  const shipment = prototypeShipmentStates.find((candidate) =>
+    [candidate.shipmentId, candidate.orderNo, candidate.trackingNo, candidate.packageCode].some(
+      (value) => normalizeScanCode(value) === code
+    )
+  );
+  if (shipment && !shipment.packed) {
+    return createScanResult({
+      code,
+      manifest,
+      line: {
+        id: `line-${shipment.shipmentId}`,
+        shipmentId: shipment.shipmentId,
+        orderNo: shipment.orderNo,
+        trackingNo: shipment.trackingNo,
+        packageCode: shipment.packageCode,
+        stagingZone: shipment.stagingZone,
+        scanned: false
+      },
+      resultCode: "INVALID_STATE",
+      severity: "danger",
+      message: "Shipment is not packed and cannot be handed over",
+      stationId: input.stationId
+    });
+  }
+
+  return createScanResult({
+    code,
+    manifest,
+    resultCode: "NOT_FOUND",
+    severity: "danger",
+    message: "Scan code was not found",
+    stationId: input.stationId
+  });
+}
+
 export function summarizeCarrierManifestLines(lines: CarrierManifestLine[]): CarrierManifestSummary {
   const expectedCount = lines.length;
   const scannedCount = lines.filter((line) => line.scanned).length;
@@ -222,11 +349,74 @@ export function carrierManifestStatusTone(
   }
 }
 
+export function carrierManifestScanSeverityTone(severity: CarrierManifestScanSeverity) {
+  return severity;
+}
+
 function createManifest(input: Omit<CarrierManifest, "summary">): CarrierManifest {
   return {
     ...input,
     summary: summarizeCarrierManifestLines(input.lines)
   };
+}
+
+function createScanResult({
+  code,
+  manifest,
+  line,
+  resultCode,
+  severity,
+  message,
+  expectedManifestId,
+  stationId,
+  auditLogId
+}: {
+  code: string;
+  manifest: CarrierManifest;
+  line?: CarrierManifestLine;
+  resultCode: CarrierManifestScanResultCode;
+  severity: CarrierManifestScanSeverity;
+  message: string;
+  expectedManifestId?: string;
+  stationId?: string;
+  auditLogId?: string;
+}): CarrierManifestScanResult {
+  const scanEvent = {
+    id: `scan-${manifest.id}-${code}-${resultCode}-${++prototypeScanSequence}`.toLowerCase(),
+    manifestId: manifest.id,
+    expectedManifestId,
+    code,
+    resultCode,
+    severity,
+    message,
+    shipmentId: line?.shipmentId,
+    orderNo: line?.orderNo,
+    trackingNo: line?.trackingNo,
+    actorId: "user-handover-operator",
+    stationId: stationId || "shipping-handover",
+    warehouseId: manifest.warehouseId,
+    carrierCode: manifest.carrierCode,
+    createdAt: "2026-04-26T10:15:00Z"
+  };
+
+  return {
+    resultCode,
+    severity,
+    message,
+    expectedManifestId,
+    line,
+    scanEvent,
+    manifest,
+    auditLogId
+  };
+}
+
+function matchesScanCode(line: CarrierManifestLine, code: string) {
+  return [line.orderNo, line.trackingNo, line.shipmentId, line.packageCode].some((candidate) => normalizeScanCode(candidate) === code);
+}
+
+function normalizeScanCode(code: string) {
+  return code.trim().toUpperCase();
 }
 
 function sortManifests(left: CarrierManifest, right: CarrierManifest) {

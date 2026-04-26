@@ -77,3 +77,57 @@ func TestCarrierManifestRejectsDuplicateAndUnpackedShipments(t *testing.T) {
 		t.Fatalf("err = %v, want duplicate error", err)
 	}
 }
+
+func TestCarrierManifestScansByOrderOrTrackingCode(t *testing.T) {
+	manifest := CarrierManifest{
+		ID:     "manifest-hcm-ghn-morning",
+		Status: ManifestStatusReady,
+		Lines: []CarrierManifestLine{
+			{
+				ID:         "line-001",
+				ShipmentID: "ship-001",
+				OrderNo:    "SO-001",
+				TrackingNo: "GHN001",
+			},
+		},
+	}
+
+	updated, line, err := manifest.MarkLineScanned(" ghn001 ")
+	if err != nil {
+		t.Fatalf("scan line: %v", err)
+	}
+	if line.ID != "line-001" || !updated.Lines[0].Scanned {
+		t.Fatalf("scan result = %+v, manifest = %+v", line, updated)
+	}
+	if updated.Status != ManifestStatusScanning {
+		t.Fatalf("status = %q, want scanning", updated.Status)
+	}
+}
+
+func TestCarrierManifestScanRejectsDuplicateUnknownAndInvalidState(t *testing.T) {
+	manifest := CarrierManifest{
+		ID:     "manifest-hcm-ghn-morning",
+		Status: ManifestStatusScanning,
+		Lines: []CarrierManifestLine{
+			{
+				ID:         "line-001",
+				ShipmentID: "ship-001",
+				OrderNo:    "SO-001",
+				TrackingNo: "GHN001",
+				Scanned:    true,
+			},
+		},
+	}
+
+	if _, _, err := manifest.MarkLineScanned("GHN001"); !errors.Is(err, ErrManifestScanDuplicate) {
+		t.Fatalf("err = %v, want duplicate scan", err)
+	}
+	if _, _, err := manifest.MarkLineScanned("GHN999"); !errors.Is(err, ErrManifestScanNotFound) {
+		t.Fatalf("err = %v, want not found", err)
+	}
+
+	manifest.Status = ManifestStatusCompleted
+	if _, _, err := manifest.MarkLineScanned("SO-001"); !errors.Is(err, ErrManifestScanInvalidState) {
+		t.Fatalf("err = %v, want invalid state", err)
+	}
+}
