@@ -1,5 +1,5 @@
-import WarehouseDailyBoard from "@/modules/inventory/components/WarehouseDailyBoard";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <WarehouseDailyBoard />;
+  redirect("/dashboard");
 }

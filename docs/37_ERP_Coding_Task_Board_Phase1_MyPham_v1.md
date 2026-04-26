@@ -108,8 +108,8 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-01-02 | Setup issue/story board | Project foundation | PM + BA | P0 | In Progress | `docs/34_...` |
 | S0-02-01 | Go backend skeleton | Backend Go foundation | BE Lead | P0 | In Progress | `docs/11_...` + `docs/12_...` |
 | S0-02-02 | Module structure base | Backend Go foundation | BE Lead + Architect | P0 | In Progress | `docs/13_...` + `docs/38_...` |
-| S0-02-03 | Error model and API response standard | Backend Go foundation | BE Lead + FE Lead | P0 | Review | `docs/16_...` |
-| S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | In Progress | `docs/15_...` + `docs/39_...` |
+| S0-02-03 | Error model and API response standard | Backend Go foundation | BE Lead + FE Lead | P0 | Done | `docs/16_...` |
+| S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | Review | `docs/15_...` + `docs/39_...` |
 | S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
@@ -189,7 +189,7 @@ Current state:
 
 **Owner:** BE Lead
 **Priority:** P0
-**Status:** In Progress
+**Status:** Done
 **Primary Ref:** `docs/11_ERP_Technical_Architecture_Go_Backend_Phase1_MyPham_v1.md`, `docs/12_ERP_Go_Coding_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -232,7 +232,7 @@ Current state:
 
 **Owner:** BE Lead + FE Lead
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -242,11 +242,16 @@ Acceptance criteria:
 - Common error codes exist.
 - Frontend can parse all API errors consistently.
 
+Evidence:
+
+- PR #9: API response standard into `develop`.
+- PR #12: API response standard promoted to `main`.
+
 ### S0-03-01 Next.js App Shell
 
 **Owner:** FE Lead
 **Priority:** P0
-**Status:** In Progress
+**Status:** Review
 **Primary Ref:** `docs/15_ERP_Frontend_Architecture_React_NextJS_Phase1_MyPham_v1.md`, `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -263,7 +268,7 @@ Current state:
 - Next.js skeleton exists.
 - Login page skeleton exists.
 - Warehouse board placeholder exists.
-- Real app shell, sidebar, header, protected route, and permission menu still need implementation.
+- Real app shell, sidebar, header, protected route, and permission menu are in review.
 
 ### S0-03-02 Core UI Components
 
@@ -287,7 +292,7 @@ Acceptance criteria:
 
 **Owner:** FE Lead + UI/UX
 **Priority:** P0
-**Status:** In Progress
+**Status:** Done
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -750,6 +755,7 @@ Acceptance criteria:
 | --- | --- |
 | S0-01-01 | PR #1, PR #2, PR #6; `main` and `develop`; branch protection |
 | S0-12-02 | PR #3, PR #4, PR #5, PR #6; `required-ci` pass on `main` |
+| S0-02-03 | PR #9, PR #12; API response standard, shared error envelope, parsing tests |
 | S0-03-03 | PR #15, PR #17; CSS variables, Ant Design theme, token tests |
 
 ---
@@ -770,12 +776,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-12-04` - Automated PR review gate and auto-merge.
-2. `S0-02-03` - Error model and API response standard.
-3. `S0-03-03` - Industrial Minimal ERP UI tokens.
-4. `S0-03-01` - Complete real app shell from file 39.
-5. `S0-04-02` - Add base tables needed by auth/RBAC/audit/stock.
-6. `S0-06-01` - Auth skeleton.
-7. `S0-07-01` - Database-backed stock movement write path.
+1. `S0-03-01` - Complete real app shell from file 39.
+2. `S0-04-02` - Add base tables needed by auth/RBAC/audit/stock.
+3. `S0-06-01` - Auth skeleton.
+4. `S0-07-01` - Database-backed stock movement write path.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
