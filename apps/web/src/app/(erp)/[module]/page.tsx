@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { AvailableStockPrototype } from "@/modules/inventory/components/AvailableStockPrototype";
 import { getMockSession } from "@/shared/auth/mockSession";
 import { ModulePlaceholder } from "@/shared/layouts/ModulePlaceholder";
 import { appMenuGroups, canAccessMenuItem } from "@/shared/permissions/menu";
@@ -18,6 +19,10 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
 
   if (!session.isAuthenticated || !item || !canAccessMenuItem(session.user, item)) {
     notFound();
+  }
+
+  if (module === "inventory") {
+    return <AvailableStockPrototype />;
   }
 
   return <ModulePlaceholder item={item} user={session.user} />;

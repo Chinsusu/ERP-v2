@@ -504,6 +504,31 @@ textarea {
   margin-top: var(--erp-section-gap);
 }
 
+.erp-stock-page {
+  display: grid;
+  gap: 16px;
+}
+
+.erp-stock-page .erp-page-header,
+.erp-stock-page .erp-module-table-card {
+  margin-bottom: 0;
+}
+
+.erp-stock-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(220px, 320px);
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-stock-kpis {
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+}
+
 .erp-module-table {
   display: grid;
   border: 1px solid var(--erp-border-soft);
@@ -926,6 +951,11 @@ textarea {
 
   .erp-shell-content {
     padding: var(--erp-page-padding-tablet);
+  }
+
+  .erp-stock-toolbar,
+  .erp-stock-kpis {
+    grid-template-columns: 1fr;
   }
 
   .erp-module-table {
