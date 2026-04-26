@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -60,6 +61,56 @@ type availableStockResponse struct {
 	AvailableStock int64  `json:"available_stock"`
 }
 
+type endOfDayReconciliationSummaryResponse struct {
+	SystemQuantity     int64 `json:"system_quantity"`
+	CountedQuantity    int64 `json:"counted_quantity"`
+	VarianceQuantity   int64 `json:"variance_quantity"`
+	VarianceCount      int   `json:"variance_count"`
+	ChecklistTotal     int   `json:"checklist_total"`
+	ChecklistCompleted int   `json:"checklist_completed"`
+	ReadyToClose       bool  `json:"ready_to_close"`
+}
+
+type endOfDayReconciliationChecklistResponse struct {
+	Key      string `json:"key"`
+	Label    string `json:"label"`
+	Complete bool   `json:"complete"`
+	Blocking bool   `json:"blocking"`
+	Note     string `json:"note,omitempty"`
+}
+
+type endOfDayReconciliationLineResponse struct {
+	ID               string `json:"id"`
+	SKU              string `json:"sku"`
+	BatchNo          string `json:"batch_no"`
+	BinCode          string `json:"bin_code"`
+	SystemQuantity   int64  `json:"system_quantity"`
+	CountedQuantity  int64  `json:"counted_quantity"`
+	VarianceQuantity int64  `json:"variance_quantity"`
+	Reason           string `json:"reason,omitempty"`
+	Owner            string `json:"owner"`
+}
+
+type endOfDayReconciliationResponse struct {
+	ID            string                                    `json:"id"`
+	WarehouseID   string                                    `json:"warehouse_id"`
+	WarehouseCode string                                    `json:"warehouse_code"`
+	Date          string                                    `json:"date"`
+	ShiftCode     string                                    `json:"shift_code"`
+	Status        string                                    `json:"status"`
+	Owner         string                                    `json:"owner"`
+	ClosedAt      string                                    `json:"closed_at,omitempty"`
+	ClosedBy      string                                    `json:"closed_by,omitempty"`
+	AuditLogID    string                                    `json:"audit_log_id,omitempty"`
+	Summary       endOfDayReconciliationSummaryResponse     `json:"summary"`
+	Checklist     []endOfDayReconciliationChecklistResponse `json:"checklist"`
+	Lines         []endOfDayReconciliationLineResponse      `json:"lines"`
+}
+
+type closeReconciliationRequest struct {
+	ExceptionNote string `json:"exception_note"`
+}
+
 type stockMovementRequest struct {
 	MovementID   string  `json:"movementId"`
 	SKU          string  `json:"sku"`
@@ -96,6 +147,9 @@ func main() {
 	}
 	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
 	auditLogStore := audit.NewPrototypeLogStore()
+	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
+	listEndOfDayReconciliations := inventoryapp.NewListEndOfDayReconciliations(reconciliationStore)
+	closeEndOfDayReconciliation := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditLogStore)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
@@ -128,6 +182,22 @@ func main() {
 			authConfig,
 			auth.PermissionInventoryView,
 			http.HandlerFunc(availableStockHandler(availableStockService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/warehouse/end-of-day-reconciliations",
+		auth.RequireBearerPermission(
+			authConfig,
+			auth.PermissionWarehouseView,
+			http.HandlerFunc(endOfDayReconciliationsHandler(listEndOfDayReconciliations)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/warehouse/end-of-day-reconciliations/{reconciliation_id}/close",
+		auth.RequireBearerPermission(
+			authConfig,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(closeEndOfDayReconciliationHandler(closeEndOfDayReconciliation)),
 		),
 	)
 
@@ -361,6 +431,86 @@ func availableStockHandler(service inventoryapp.ListAvailableStock) http.Handler
 	}
 }
 
+func endOfDayReconciliationsHandler(service inventoryapp.ListEndOfDayReconciliations) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		filter := domain.NewEndOfDayReconciliationFilter(
+			r.URL.Query().Get("warehouse_id"),
+			r.URL.Query().Get("date"),
+			domain.EndOfDayReconciliationStatus(r.URL.Query().Get("status")),
+		)
+		reconciliations, err := service.Execute(r.Context(), filter)
+		if err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusConflict,
+				response.ErrorCodeConflict,
+				"End-of-day reconciliations could not be loaded",
+				nil,
+			)
+			return
+		}
+
+		payload := make([]endOfDayReconciliationResponse, 0, len(reconciliations))
+		for _, reconciliation := range reconciliations {
+			payload = append(payload, newEndOfDayReconciliationResponse(reconciliation, ""))
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, payload)
+	}
+}
+
+func closeEndOfDayReconciliationHandler(service inventoryapp.CloseEndOfDayReconciliation) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		var payload closeReconciliationRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid close reconciliation payload",
+				nil,
+			)
+			return
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		result, err := service.Execute(r.Context(), inventoryapp.CloseEndOfDayReconciliationInput{
+			ID:            r.PathValue("reconciliation_id"),
+			ActorID:       principal.UserID,
+			RequestID:     response.RequestID(r),
+			ExceptionNote: payload.ExceptionNote,
+		})
+		if err != nil {
+			writeCloseReconciliationError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(
+			w,
+			r,
+			http.StatusOK,
+			newEndOfDayReconciliationResponse(result.Reconciliation, result.AuditLogID),
+		)
+	}
+}
+
 func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) availableStockResponse {
 	return availableStockResponse{
 		WarehouseID:    snapshot.WarehouseID,
@@ -372,6 +522,105 @@ func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) available
 		ReservedStock:  snapshot.ReservedStock,
 		HoldStock:      snapshot.HoldStock,
 		AvailableStock: snapshot.AvailableStock,
+	}
+}
+
+func newEndOfDayReconciliationResponse(
+	reconciliation domain.EndOfDayReconciliation,
+	auditLogID string,
+) endOfDayReconciliationResponse {
+	summary := reconciliation.Summary("")
+	payload := endOfDayReconciliationResponse{
+		ID:            reconciliation.ID,
+		WarehouseID:   reconciliation.WarehouseID,
+		WarehouseCode: reconciliation.WarehouseCode,
+		Date:          reconciliation.Date,
+		ShiftCode:     reconciliation.ShiftCode,
+		Status:        string(reconciliation.Status),
+		Owner:         reconciliation.Owner,
+		AuditLogID:    auditLogID,
+		Summary: endOfDayReconciliationSummaryResponse{
+			SystemQuantity:     summary.SystemQuantity,
+			CountedQuantity:    summary.CountedQuantity,
+			VarianceQuantity:   summary.VarianceQuantity,
+			VarianceCount:      summary.VarianceCount,
+			ChecklistTotal:     summary.ChecklistTotal,
+			ChecklistCompleted: summary.ChecklistCompleted,
+			ReadyToClose:       summary.ReadyToClose,
+		},
+		Checklist: make([]endOfDayReconciliationChecklistResponse, 0, len(reconciliation.Checklist)),
+		Lines:     make([]endOfDayReconciliationLineResponse, 0, len(reconciliation.Lines)),
+	}
+	if !reconciliation.ClosedAt.IsZero() {
+		payload.ClosedAt = reconciliation.ClosedAt.UTC().Format(time.RFC3339)
+	}
+	if strings.TrimSpace(reconciliation.ClosedBy) != "" {
+		payload.ClosedBy = strings.TrimSpace(reconciliation.ClosedBy)
+	}
+	for _, item := range reconciliation.Checklist {
+		payload.Checklist = append(payload.Checklist, endOfDayReconciliationChecklistResponse{
+			Key:      item.Key,
+			Label:    item.Label,
+			Complete: item.Complete,
+			Blocking: item.Blocking,
+			Note:     item.Note,
+		})
+	}
+	for _, line := range reconciliation.Lines {
+		payload.Lines = append(payload.Lines, endOfDayReconciliationLineResponse{
+			ID:               line.ID,
+			SKU:              line.SKU,
+			BatchNo:          line.BatchNo,
+			BinCode:          line.BinCode,
+			SystemQuantity:   line.SystemQuantity,
+			CountedQuantity:  line.CountedQuantity,
+			VarianceQuantity: line.VarianceQuantity(),
+			Reason:           line.Reason,
+			Owner:            line.Owner,
+		})
+	}
+
+	return payload
+}
+
+func writeCloseReconciliationError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, inventoryapp.ErrEndOfDayReconciliationNotFound):
+		response.WriteError(
+			w,
+			r,
+			http.StatusNotFound,
+			response.ErrorCodeNotFound,
+			"End-of-day reconciliation not found",
+			nil,
+		)
+	case errors.Is(err, domain.ErrReconciliationAlreadyClosed):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"End-of-day reconciliation is already closed",
+			nil,
+		)
+	case errors.Is(err, domain.ErrReconciliationNeedsExceptionNote):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Exception note is required before closing this shift",
+			map[string]any{"exception_note": "required"},
+		)
+	default:
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"End-of-day reconciliation could not be closed",
+			nil,
+		)
 	}
 }
 

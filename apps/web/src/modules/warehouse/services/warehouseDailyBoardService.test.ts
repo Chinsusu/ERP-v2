@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  closeEndOfDayReconciliation,
+  getEndOfDayReconciliations,
   getWarehouseDailyBoard,
+  prototypeEndOfDayReconciliations,
   prototypeWarehouseDailyTasks,
+  summarizeReconciliationLines,
+  reconciliationStatusTone,
   summarizeWarehouseDailyBoard,
   warehouseTaskTone
 } from "./warehouseDailyBoardService";
@@ -41,5 +46,51 @@ describe("warehouseDailyBoardService", () => {
     expect(warehouseTaskTone("packed")).toBe("success");
     expect(warehouseTaskTone("handover")).toBe("info");
     expect(warehouseTaskTone("mismatch")).toBe("danger");
+  });
+
+  it("filters end-of-day reconciliation sessions", async () => {
+    await expect(
+      getEndOfDayReconciliations({
+        warehouseId: "wh-hcm",
+        date: "2026-04-26",
+        status: "in_review"
+      })
+    ).resolves.toMatchObject([
+      {
+        id: "rec-hcm-260426-day",
+        summary: {
+          systemQuantity: 164,
+          countedQuantity: 162,
+          varianceQuantity: -2,
+          varianceCount: 1
+        }
+      }
+    ]);
+  });
+
+  it("summarizes system quantity versus counted quantity", () => {
+    expect(summarizeReconciliationLines(prototypeEndOfDayReconciliations[0].lines)).toMatchObject({
+      systemQuantity: 164,
+      countedQuantity: 162,
+      varianceQuantity: -2,
+      varianceCount: 1
+    });
+  });
+
+  it("requires an exception note before closing with blocking checklist items", async () => {
+    await expect(closeEndOfDayReconciliation("rec-hcm-260426-day", "")).rejects.toThrow(
+      "Exception note is required before closing this shift"
+    );
+
+    await expect(closeEndOfDayReconciliation("rec-hcm-260426-day", "Variance accepted")).resolves.toMatchObject({
+      status: "closed",
+      auditLogId: "audit-close-rec-hcm-260426-day"
+    });
+  });
+
+  it("maps reconciliation status to UI tones", () => {
+    expect(reconciliationStatusTone("open")).toBe("info");
+    expect(reconciliationStatusTone("in_review")).toBe("warning");
+    expect(reconciliationStatusTone("closed")).toBe("success");
   });
 });
