@@ -1,0 +1,90 @@
+name: pr-review-gate
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  required-review-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR metadata and guardrails
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.info("No pull_request payload found.");
+              return;
+            }
+
+            const failures = [];
+            const body = pr.body || "";
+            const titlePattern = /^\[(?:S0-\d{2}-\d{2}|T-[A-Z0-9-]+|BUG-[A-Z0-9-]+|HOTFIX-[A-Z0-9-]+|CHORE-[A-Z0-9-]+)\]\s+\S.+$/;
+            const primaryRefPattern = /Primary Ref:\s*docs\/[^\s#]+\.md/i;
+            const taskRefPattern = /Task Ref:\s*docs\/37_ERP_Coding_Task_Board_Phase1_MyPham_v1\.md#[a-z0-9-]+/i;
+
+            if (!titlePattern.test(pr.title || "")) {
+              failures.push("PR title must follow `[TASK-ID] Short description`, for example `[S0-12-04] Add automated review gate`.");
+            }
+
+            if (!primaryRefPattern.test(body)) {
+              failures.push("PR body must include a concrete `Primary Ref: docs/<source-document>.md` line.");
+            }
+
+            if (!taskRefPattern.test(body)) {
+              failures.push("PR body must include `Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#<task-anchor>`.");
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const changedPaths = files.map((file) => file.filename);
+            const forbiddenPaths = new Set([
+              "Credential.txt",
+              ".env",
+              ".env.local",
+              ".env.production",
+              "apps/api/.env",
+              "apps/web/.env",
+              "apps/web/.env.local",
+              "apps/web/.env.production",
+            ]);
+
+            const forbiddenMatches = changedPaths.filter((path) => forbiddenPaths.has(path));
+            if (forbiddenMatches.length > 0) {
+              failures.push(`Do not commit credential/env files: ${forbiddenMatches.join(", ")}.`);
+            }
+
+            const generatedPaths = changedPaths.filter((path) =>
+              path.startsWith("apps/web/src/shared/api/generated/") ||
+              path.startsWith("apps/api/internal/shared/openapi/generated/") ||
+              path.startsWith("packages/openapi/generated/")
+            );
+
+            if (generatedPaths.length > 0 && !/Generated Code:\s*regenerated/i.test(body)) {
+              failures.push("PR touches generated code; add `Generated Code: regenerated` to the PR body.");
+            }
+
+            if (failures.length > 0) {
+              core.setFailed(`Automated review gate failed:\n- ${failures.join("\n- ")}`);
+              return;
+            }
+
+            core.info("Automated review gate passed.");

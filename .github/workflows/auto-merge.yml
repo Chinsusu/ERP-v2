@@ -1,0 +1,77 @@
+name: auto-merge
+
+on:
+  pull_request_target:
+    branches:
+      - main
+      - develop
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+      - ready_for_review
+      - labeled
+      - unlabeled
+  pull_request_review:
+    types:
+      - submitted
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.state == 'open'
+    steps:
+      - name: Enable auto-merge when policy allows
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$BASE_REF" != "develop" && "$BASE_REF" != "main" ]]; then
+            echo "Auto-merge only applies to PRs targeting develop or main."
+            exit 0
+          fi
+
+          if [[ "$IS_DRAFT" == "true" ]]; then
+            echo "Draft PRs are not auto-merged."
+            exit 0
+          fi
+
+          if [[ "$HEAD_REPO" != "$BASE_REPO" ]]; then
+            echo "External fork PRs require manual merge."
+            exit 0
+          fi
+
+          if echo "$LABELS_JSON" | jq -e '.[] | select(. == "no-auto-merge")' >/dev/null; then
+            echo "no-auto-merge label is set; skipping auto-merge."
+            exit 0
+          fi
+
+          set +e
+          output="$(gh pr merge "$PR_URL" --auto --squash --delete-branch 2>&1)"
+          status=$?
+          set -e
+
+          echo "$output"
+
+          if [[ "$status" -eq 0 ]]; then
+            exit 0
+          fi
+
+          if echo "$output" | grep -Eiq "already.*auto-merge|auto-merge.*already"; then
+            exit 0
+          fi
+
+          exit "$status"
