@@ -1,5 +1,10 @@
 import type {
+  InspectReturnInput,
   ReceiveReturnInput,
+  ReturnInspectionCondition,
+  ReturnInspectionDisposition,
+  ReturnInspectionResult,
+  ReturnInspectionStatus,
   ReturnDisposition,
   ReturnReceipt,
   ReturnReceiptLine,
@@ -18,6 +23,10 @@ type ExpectedReturnRecord = {
   sku: string;
   productName: string;
   quantity: number;
+  channel: string;
+  batchNo: string;
+  deliveredAt: string;
+  returnReason: string;
   warehouseId: string;
   warehouseCode: string;
   source: ReturnSource;
@@ -42,6 +51,21 @@ export const returnDispositionOptions: { label: string; value: ReturnDisposition
   { label: "Needs inspection", value: "needs_inspection" }
 ];
 
+export const returnInspectionConditionOptions: { label: string; value: ReturnInspectionCondition }[] = [
+  { label: "Intact", value: "intact" },
+  { label: "Dented box", value: "dented_box" },
+  { label: "Seal torn", value: "seal_torn" },
+  { label: "Used", value: "used" },
+  { label: "Damaged", value: "damaged" },
+  { label: "QA required", value: "qa_required" }
+];
+
+export const returnInspectionDispositionOptions: { label: string; value: ReturnInspectionDisposition }[] = [
+  { label: "Usable", value: "usable" },
+  { label: "Not usable", value: "not_usable" },
+  { label: "QA hold", value: "qa_hold" }
+];
+
 export const prototypeReturnReceipts: ReturnReceipt[] = [
   createReturnReceipt({
     id: "rr-260426-0001",
@@ -58,6 +82,10 @@ export const prototypeReturnReceipts: ReturnReceipt[] = [
     originalOrderNo: "SO-260425-099",
     trackingNo: "GHN260425099",
     returnCode: "RET-260425-099",
+    channel: "Website",
+    batchNo: "CREAM-260425-A",
+    deliveredAt: "2026-04-24",
+    returnReason: "Customer reported wrong shade",
     scanCode: "GHN260425099",
     customerName: "Tran Binh",
     unknownCase: false,
@@ -85,6 +113,10 @@ const expectedReturnRecords: ExpectedReturnRecord[] = [
     sku: "SERUM-30ML",
     productName: "Hydrating Serum 30ml",
     quantity: 1,
+    channel: "Website",
+    batchNo: "SER-260426-A",
+    deliveredAt: "2026-04-24",
+    returnReason: "Customer refused delivery",
     warehouseId: "wh-hcm",
     warehouseCode: "HCM",
     source: "CARRIER"
@@ -98,6 +130,10 @@ const expectedReturnRecords: ExpectedReturnRecord[] = [
     sku: "TONER-100ML",
     productName: "Balancing Toner 100ml",
     quantity: 2,
+    channel: "Marketplace",
+    batchNo: "TON-260426-B",
+    deliveredAt: "2026-04-25",
+    returnReason: "Damaged packaging",
     warehouseId: "wh-hcm",
     warehouseCode: "HCM",
     source: "SHIPPER"
@@ -111,6 +147,10 @@ const expectedReturnRecords: ExpectedReturnRecord[] = [
     sku: "MASK-SET-05",
     productName: "Sheet Mask Set",
     quantity: 1,
+    channel: "TikTok Shop",
+    batchNo: "MASK-260426-HN",
+    deliveredAt: "2026-04-25",
+    returnReason: "Wrong item claim",
     warehouseId: "wh-hn",
     warehouseCode: "HN",
     source: "MARKETPLACE"
@@ -166,6 +206,10 @@ export async function receiveReturn(input: ReceiveReturnInput): Promise<ReturnRe
     originalOrderNo: expected?.orderNo,
     trackingNo: expected?.trackingNo ?? scanCode,
     returnCode: expected?.returnCode,
+    channel: expected?.channel,
+    batchNo: expected?.batchNo,
+    deliveredAt: expected?.deliveredAt,
+    returnReason: expected?.returnReason,
     scanCode,
     customerName: expected?.customerName ?? "Unknown customer",
     unknownCase: !expected,
@@ -193,6 +237,87 @@ export function returnDispositionTone(
     default:
       return "warning";
   }
+}
+
+export function createReturnInspection(input: InspectReturnInput): ReturnInspectionResult {
+  const disposition = normalizeInspectionDisposition(input.disposition);
+  const condition = normalizeInspectionCondition(input.condition);
+  const status: ReturnInspectionStatus = disposition === "qa_hold" ? "RETURN_QA_HOLD" : "INSPECTION_RECORDED";
+
+  return {
+    id: `inspect-${input.receipt.id}-${condition}-${disposition}`,
+    receiptId: input.receipt.id,
+    receiptNo: input.receipt.receiptNo,
+    condition,
+    disposition,
+    status,
+    targetLocation: inspectionTargetLocation(disposition),
+    riskLevel: inspectionRiskLevel(condition, disposition),
+    inspector: "Return Inspector",
+    note: input.note?.trim() || undefined,
+    evidenceLabel: input.evidenceLabel?.trim() || undefined,
+    inspectedAt: "2026-04-26T11:00:00Z"
+  };
+}
+
+export function matchesReturnReceiptCode(receipt: ReturnReceipt, code: string) {
+  const scanCode = normalizeReturnScanCode(code);
+  if (scanCode === "") {
+    return false;
+  }
+
+  return [
+    receipt.id,
+    receipt.receiptNo,
+    receipt.originalOrderNo,
+    receipt.trackingNo,
+    receipt.returnCode,
+    receipt.scanCode
+  ].some((value) => normalizeReturnScanCode(value ?? "") === scanCode);
+}
+
+export function returnInspectionConditionTone(
+  condition: ReturnInspectionCondition
+): "normal" | "success" | "warning" | "danger" | "info" {
+  switch (condition) {
+    case "intact":
+      return "success";
+    case "damaged":
+      return "danger";
+    case "qa_required":
+      return "info";
+    case "dented_box":
+    case "seal_torn":
+    case "used":
+    default:
+      return "warning";
+  }
+}
+
+export function returnInspectionDispositionTone(
+  disposition: ReturnInspectionDisposition
+): "success" | "warning" | "danger" {
+  switch (disposition) {
+    case "usable":
+      return "success";
+    case "not_usable":
+      return "danger";
+    case "qa_hold":
+    default:
+      return "warning";
+  }
+}
+
+export function returnInspectionStatusTone(status: ReturnInspectionStatus): "success" | "warning" {
+  return status === "RETURN_QA_HOLD" ? "warning" : "success";
+}
+
+export function formatReturnInspectionCondition(condition: ReturnInspectionCondition) {
+  return returnInspectionConditionOptions.find((option) => option.value === condition)?.label ?? condition;
+}
+
+export function formatReturnInspectionDisposition(disposition: ReturnInspectionDisposition) {
+  return returnInspectionDispositionOptions.find((option) => option.value === disposition)?.label ?? disposition;
 }
 
 export function formatReturnDisposition(disposition: ReturnDisposition) {
@@ -257,6 +382,45 @@ function targetLocationForDisposition(disposition: ReturnDisposition) {
     default:
       return "return-inspection-queue";
   }
+}
+
+function normalizeInspectionCondition(condition: ReturnInspectionCondition): ReturnInspectionCondition {
+  if (returnInspectionConditionOptions.some((option) => option.value === condition)) {
+    return condition;
+  }
+
+  return "qa_required";
+}
+
+function normalizeInspectionDisposition(disposition: ReturnInspectionDisposition): ReturnInspectionDisposition {
+  if (returnInspectionDispositionOptions.some((option) => option.value === disposition)) {
+    return disposition;
+  }
+
+  return "qa_hold";
+}
+
+function inspectionTargetLocation(disposition: ReturnInspectionDisposition) {
+  switch (disposition) {
+    case "usable":
+      return "return-area-qc-release";
+    case "not_usable":
+      return "lab-damaged-placeholder";
+    case "qa_hold":
+    default:
+      return "return-qa-hold";
+  }
+}
+
+function inspectionRiskLevel(condition: ReturnInspectionCondition, disposition: ReturnInspectionDisposition) {
+  if (condition === "damaged" || disposition === "not_usable") {
+    return "high";
+  }
+  if (condition === "qa_required" || disposition === "qa_hold" || condition === "used") {
+    return "medium";
+  }
+
+  return "low";
 }
 
 function matchesExpectedReturn(candidate: ExpectedReturnRecord, scanCode: string) {
