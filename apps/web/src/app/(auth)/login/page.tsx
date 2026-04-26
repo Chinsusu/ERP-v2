@@ -1,17 +1,17 @@
 export default function LoginPage() {
   return (
-    <main style={{ maxWidth: 360, margin: "80px auto", padding: 24 }}>
-      <h1>ERP Login</h1>
-      <form>
-        <label>
+    <main className="erp-page erp-page--centered">
+      <form className="erp-card erp-form-card">
+        <h1 className="erp-form-title">ERP Login</h1>
+        <label className="erp-field">
           Email
-          <input name="email" type="email" style={{ display: "block", width: "100%", marginTop: 8 }} />
+          <input className="erp-input" name="email" type="email" />
         </label>
-        <label style={{ display: "block", marginTop: 16 }}>
+        <label className="erp-field">
           Password
-          <input name="password" type="password" style={{ display: "block", width: "100%", marginTop: 8 }} />
+          <input className="erp-input" name="password" type="password" />
         </label>
-        <button type="submit" style={{ marginTop: 20 }}>
+        <button className="erp-button erp-button--primary erp-button--full" type="submit">
           Sign in
         </button>
       </form>

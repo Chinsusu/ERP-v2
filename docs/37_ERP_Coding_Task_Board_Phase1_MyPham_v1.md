@@ -111,7 +111,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-02-03 | Error model and API response standard | Backend Go foundation | BE Lead + FE Lead | P0 | Review | `docs/16_...` |
 | S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | In Progress | `docs/15_...` + `docs/39_...` |
 | S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
-| S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
+| S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Review | `docs/39_...` |
 | S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-04-01 | PostgreSQL migration setup | Database foundation | BE Lead + DevOps | P0 | In Progress | `docs/17_...` |
 | S0-04-02 | Base tables | Database foundation | BE Lead | P0 | Backlog | `docs/17_...` |
@@ -170,7 +170,7 @@ Evidence:
 
 **Owner:** PM + BA
 **Priority:** P0
-**Status:** In Progress
+**Status:** Review
 **Primary Ref:** `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -287,7 +287,7 @@ Acceptance criteria:
 
 **Owner:** FE Lead + UI/UX
 **Priority:** P0
-**Status:** Backlog
+**Status:** In Progress
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
