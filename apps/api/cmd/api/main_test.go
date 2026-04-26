@@ -239,6 +239,102 @@ func TestAddShipmentToCarrierManifestHandlerUpdatesCounts(t *testing.T) {
 	}
 }
 
+func TestVerifyCarrierManifestScanHandlerMarksLineAndWritesAudit(t *testing.T) {
+	store := shippingapp.NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	service := shippingapp.NewVerifyCarrierManifestScan(store, auditStore)
+	body := bytes.NewBufferString(`{"code":"GHN260426003","station_id":"dock-a"}`)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/shipping/manifests/manifest-hcm-ghn-morning/scan",
+		body,
+	)
+	req.SetPathValue("manifest_id", "manifest-hcm-ghn-morning")
+	req.Header.Set(response.HeaderRequestID, "req-manifest-scan")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseStaff)))
+	rec := httptest.NewRecorder()
+
+	verifyCarrierManifestScanHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[carrierManifestScanResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.ResultCode != "MATCHED" || payload.Data.Manifest.Summary.MissingCount != 0 {
+		t.Fatalf("scan response = %+v, want MATCHED and 0 missing", payload.Data)
+	}
+	if payload.Data.ScanEvent.ID == "" || payload.Data.AuditLogID == "" {
+		t.Fatalf("scan event/audit response = %+v, want ids", payload.Data)
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "shipping.manifest.scan_recorded"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestVerifyCarrierManifestScanHandlerReturnsWarningCodes(t *testing.T) {
+	cases := []struct {
+		name string
+		code string
+		want string
+	}{
+		{name: "duplicate", code: "GHN260426001", want: "DUPLICATE_SCAN"},
+		{name: "wrong manifest", code: "VTP260426011", want: "MANIFEST_MISMATCH"},
+		{name: "unpacked", code: "GHN260426099", want: "INVALID_STATE"},
+		{name: "unknown", code: "UNKNOWN-CODE", want: "NOT_FOUND"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := shippingapp.NewPrototypeCarrierManifestStore()
+			service := shippingapp.NewVerifyCarrierManifestScan(store, audit.NewInMemoryLogStore())
+			body := bytes.NewBufferString(`{"code":"` + tc.code + `","station_id":"dock-a"}`)
+			req := httptest.NewRequest(
+				http.MethodPost,
+				"/api/v1/shipping/manifests/manifest-hcm-ghn-morning/scan",
+				body,
+			)
+			req.SetPathValue("manifest_id", "manifest-hcm-ghn-morning")
+			req.Header.Set(response.HeaderRequestID, "req-manifest-scan-warning")
+			req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+				Email:       "admin@example.local",
+				Password:    "local-only-mock-password",
+				AccessToken: "local-dev-access-token",
+			}, auth.RoleWarehouseStaff)))
+			rec := httptest.NewRecorder()
+
+			verifyCarrierManifestScanHandler(service).ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+			}
+
+			var payload response.SuccessEnvelope[carrierManifestScanResponse]
+			if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if payload.Data.ResultCode != tc.want {
+				t.Fatalf("result code = %q, want %q", payload.Data.ResultCode, tc.want)
+			}
+			if payload.Data.ScanEvent.ID == "" {
+				t.Fatal("scan event id is empty")
+			}
+		})
+	}
+}
+
 func TestAuditLogsHandlerReturnsFilteredRows(t *testing.T) {
 	log, err := audit.NewLog(audit.NewLogInput{
 		ID:         "audit-test",

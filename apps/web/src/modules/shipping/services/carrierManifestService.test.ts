@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   addShipmentToManifest,
+  carrierManifestScanSeverityTone,
   carrierManifestStatusTone,
   createCarrierManifest,
   getCarrierManifests,
   prototypeCarrierManifests,
-  summarizeCarrierManifestLines
+  summarizeCarrierManifestLines,
+  verifyCarrierManifestScan
 } from "./carrierManifestService";
 
 describe("carrierManifestService", () => {
@@ -72,5 +74,52 @@ describe("carrierManifestService", () => {
     expect(carrierManifestStatusTone("completed")).toBe("success");
     expect(carrierManifestStatusTone("exception")).toBe("danger");
     expect(carrierManifestStatusTone("scanning")).toBe("warning");
+  });
+
+  it("verifies a matching tracking scan and updates counts", async () => {
+    await expect(
+      verifyCarrierManifestScan({
+        manifestId: "manifest-hcm-ghn-morning",
+        code: "GHN260426003",
+        stationId: "dock-a"
+      })
+    ).resolves.toMatchObject({
+      resultCode: "MATCHED",
+      severity: "success",
+      manifest: {
+        summary: {
+          expectedCount: 3,
+          scannedCount: 3,
+          missingCount: 0
+        }
+      },
+      scanEvent: {
+        code: "GHN260426003",
+        resultCode: "MATCHED",
+        stationId: "dock-a"
+      }
+    });
+  });
+
+  it("returns clear warning codes for duplicate wrong manifest unpacked and unknown scans", async () => {
+    await expect(verifyCarrierManifestScan({ manifestId: "manifest-hcm-ghn-morning", code: "GHN260426001" })).resolves.toMatchObject({
+      resultCode: "DUPLICATE_SCAN"
+    });
+    await expect(verifyCarrierManifestScan({ manifestId: "manifest-hcm-ghn-morning", code: "VTP260426011" })).resolves.toMatchObject({
+      resultCode: "MANIFEST_MISMATCH",
+      expectedManifestId: "manifest-hcm-vtp-noon"
+    });
+    await expect(verifyCarrierManifestScan({ manifestId: "manifest-hcm-ghn-morning", code: "GHN260426099" })).resolves.toMatchObject({
+      resultCode: "INVALID_STATE"
+    });
+    await expect(verifyCarrierManifestScan({ manifestId: "manifest-hcm-ghn-morning", code: "UNKNOWN-CODE" })).resolves.toMatchObject({
+      resultCode: "NOT_FOUND"
+    });
+  });
+
+  it("maps scan severity directly to UI tone", () => {
+    expect(carrierManifestScanSeverityTone("success")).toBe("success");
+    expect(carrierManifestScanSeverityTone("warning")).toBe("warning");
+    expect(carrierManifestScanSeverityTone("danger")).toBe("danger");
   });
 });
