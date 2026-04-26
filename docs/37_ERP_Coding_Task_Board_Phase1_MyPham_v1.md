@@ -2,7 +2,7 @@
 
 **Project:** ERP my pham - Phase 1
 **Document type:** Coding Task Board / Implementation Tracker
-**Version:** v1.1
+**Version:** v1.2
 **Date:** 2026-04-26
 **Status:** Active
 **Primary audience:** PM, BA, Tech Lead, BE, FE, DevOps, QA, vendor
@@ -135,6 +135,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-11-03 | Subcontract UI template | Subcontract manufacturing | FE Lead + UI/UX | P1 | Backlog | `docs/39_...` |
 | S0-12-01 | Docker compose local | DevOps/CI/CD foundation | DevOps + Tech Leads | P0 | In Progress | `docs/18_...` + `docs/38_...` |
 | S0-12-02 | CI pipeline | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
+| S0-12-04 | Automated PR review gate and auto-merge | DevOps/CI/CD foundation | DevOps + Tech Lead | P0 | In Progress | `docs/18_...` + `docs/38_...` |
 | S0-12-03 | Dev/Staging deployment skeleton | DevOps/CI/CD foundation | DevOps | P0 | Backlog | `docs/18_...` |
 | S0-13-01 | Smoke test pack | QA foundation | QA Lead | P0 | Backlog | `docs/24_...` |
 | S0-13-02 | Sprint 0 demo script | QA foundation | QA Lead + BA + PO | P0 | Backlog | `docs/34_...` |
@@ -677,6 +678,21 @@ Evidence:
 - `required-ci` exists and passes on `main`.
 - Branch protection requires `required-api`, `required-web`, `required-openapi`, and `required-migration`.
 
+### S0-12-04 Automated PR Review Gate And Auto Merge
+
+**Owner:** DevOps + Tech Lead
+**Priority:** P0
+**Status:** In Progress
+**Primary Ref:** `docs/18_ERP_DevOps_CICD_Environment_Standards_Phase1_MyPham_v1.md`, `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Automated PR review gate validates PR title, `Primary Ref`, `Task Ref`, generated-code notes, and credential guardrails.
+- Branch protection requires the automated review gate for `main` and `develop`.
+- Auto-merge is enabled for non-draft same-repo PRs unless the `no-auto-merge` label is set.
+- Auto-merge does not bypass required CI or human review requirements.
+- PR template and README document the flow.
+
 ### S0-12-03 Dev Staging Deployment Skeleton
 
 **Owner:** DevOps
@@ -748,11 +764,12 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-02-03` - Error model and API response standard.
-2. `S0-03-03` - Industrial Minimal ERP UI tokens.
-3. `S0-03-01` - Complete real app shell from file 39.
-4. `S0-04-02` - Add base tables needed by auth/RBAC/audit/stock.
-5. `S0-06-01` - Auth skeleton.
-6. `S0-07-01` - Database-backed stock movement write path.
+1. `S0-12-04` - Automated PR review gate and auto-merge.
+2. `S0-02-03` - Error model and API response standard.
+3. `S0-03-03` - Industrial Minimal ERP UI tokens.
+4. `S0-03-01` - Complete real app shell from file 39.
+5. `S0-04-02` - Add base tables needed by auth/RBAC/audit/stock.
+6. `S0-06-01` - Auth skeleton.
+7. `S0-07-01` - Database-backed stock movement write path.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
