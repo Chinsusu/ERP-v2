@@ -1,0 +1,47 @@
+name: migration-ci
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "fix/**"
+      - "hotfix/**"
+    paths:
+      - "apps/api/migrations/**"
+      - ".github/workflows/migration-ci.yml"
+  pull_request:
+    paths:
+      - "apps/api/migrations/**"
+      - ".github/workflows/migration-ci.yml"
+
+jobs:
+  migration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: erp
+          POSTGRES_USER: erp
+          POSTGRES_PASSWORD: erp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U erp -d erp"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Apply baseline migration
+        env:
+          PGPASSWORD: erp
+        run: psql -h localhost -U erp -d erp -f apps/api/migrations/000001_init.up.sql
+      - name: Roll back baseline migration
+        env:
+          PGPASSWORD: erp
+        run: psql -h localhost -U erp -d erp -f apps/api/migrations/000001_init.down.sql

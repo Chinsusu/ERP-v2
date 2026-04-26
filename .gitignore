@@ -1,0 +1,39 @@
+# Secrets
+Credential.txt
+.env
+.env.*
+!.env.example
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Go
+bin/
+coverage.out
+
+# Node/Next.js
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# Docker/local data
+.docker-data/
+tmp/
+
+# Generated code: regenerate from source contracts
+apps/web/src/shared/api/generated/*
+!apps/web/src/shared/api/generated/.gitkeep
+apps/api/internal/shared/openapi/generated/*
+!apps/api/internal/shared/openapi/generated/.gitkeep
+packages/openapi/generated/*
+!packages/openapi/generated/.gitkeep

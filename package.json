@@ -1,0 +1,13 @@
+{
+  "name": "erp-platform",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "web:dev": "pnpm --filter web dev",
+    "web:build": "pnpm --filter web build",
+    "web:test": "pnpm --filter web test",
+    "web:lint": "pnpm --filter web lint",
+    "openapi:validate": "pnpm dlx @redocly/cli lint packages/openapi/openapi.yaml",
+    "openapi:generate": "pnpm dlx openapi-typescript packages/openapi/openapi.yaml -o apps/web/src/shared/api/generated/schema.ts"
+  }
+}

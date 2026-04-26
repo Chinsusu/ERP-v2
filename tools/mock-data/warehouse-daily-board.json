@@ -1,0 +1,9 @@
+{
+  "date": "2026-04-26",
+  "items": [
+    { "id": "receiving", "label": "Receiving", "count": 0, "status": "normal" },
+    { "id": "qc-hold", "label": "QC Hold", "count": 0, "status": "warning" },
+    { "id": "packing", "label": "Packing", "count": 0, "status": "normal" },
+    { "id": "handover", "label": "Carrier Handover", "count": 0, "status": "blocked" }
+  ]
+}
