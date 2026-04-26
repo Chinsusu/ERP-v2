@@ -32,23 +32,36 @@ Start with:
 
 Required tools:
 
-- Go
-- Node.js LTS
-- pnpm
 - Docker
 - Make
 - Git
 
-Common commands:
+First-time Docker setup:
+
+```bash
+make local-reset
+```
+
+Normal Docker restart:
 
 ```bash
 make local-up
 make migrate-up
 make seed-local
+```
+
+This starts PostgreSQL, Redis, MinIO, Mailhog, API, worker, and web through `infra/compose/docker-compose.local.yml`.
+Use `make local-reset` when you want to recreate local volumes, run migrations, seed demo data, and restart app services.
+
+Host-based app development:
+
+```bash
 make api-dev
 make worker-dev
 make web-dev
 ```
+
+Host-based development also requires Go, Node.js LTS, and pnpm. The default `.env.example` values work for services exposed by Docker on localhost.
 
 Local URLs:
 
@@ -58,6 +71,13 @@ Local URLs:
 - Redis: `localhost:6379`
 - MinIO: `http://localhost:9000`
 - Mailhog: `http://localhost:8025`
+
+Local test data:
+
+- Mock login: `admin@example.local` / `local-only-mock-password`
+- Seeded users: `admin@example.local`, `warehouse_user@example.local`, `sales_user@example.local`
+- Seeded warehouses: `warehouse_main`, `warehouse_return`
+- Seeded SKUs: `FG-LIP-001`, `FG-SER-001`, `FG-CRM-001`, `FG-SUN-001`, `PKG-BOX-001`
 
 ## Development Flow
 
