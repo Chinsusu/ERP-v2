@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List immutable audit logs */
+        get: operations["listAuditLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/products": {
         parameters: {
             query?: never;
@@ -233,6 +250,30 @@ export interface components {
             name: string;
             permissions: components["schemas"]["PermissionKey"][];
         };
+        AuditLogSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["AuditLogItem"][];
+        };
+        AuditLogItem: {
+            id: string;
+            actor_id: string;
+            /** @example inventory.stock_movement.adjusted */
+            action: string;
+            /** @example inventory.stock_movement */
+            entity_type: string;
+            entity_id: string;
+            request_id?: string;
+            before_data?: {
+                [key: string]: unknown;
+            };
+            after_data?: {
+                [key: string]: unknown;
+            };
+            metadata: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            created_at: string;
+        };
         /** @enum {string} */
         RoleKey: "CEO" | "ERP_ADMIN" | "WAREHOUSE_STAFF" | "WAREHOUSE_LEAD" | "QA" | "SALES_OPS" | "PRODUCTION_OPS";
         /** @enum {string} */
@@ -357,6 +398,14 @@ export interface components {
             movementType: "RECEIVE" | "ISSUE" | "TRANSFER_IN" | "ADJUST";
             quantity: number;
             reason: string;
+        };
+        StockMovementSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["StockMovementResponse"];
+        };
+        StockMovementResponse: {
+            movement_id: string;
+            /** @enum {string} */
+            status: "recorded";
         };
         AvailableStockSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["AvailableStockItem"][];
@@ -546,6 +595,34 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    listAuditLogs: {
+        parameters: {
+            query?: {
+                actor_id?: string;
+                action?: string;
+                entity_type?: string;
+                entity_id?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit log rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     listProducts: {
         parameters: {
             query?: {
@@ -693,7 +770,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SuccessResponse"];
+                    "application/json": components["schemas"]["StockMovementSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { AuditLogPrototype } from "@/modules/audit/components/AuditLogPrototype";
 import { AvailableStockPrototype } from "@/modules/inventory/components/AvailableStockPrototype";
 import { getMockSession } from "@/shared/auth/mockSession";
 import { ModulePlaceholder } from "@/shared/layouts/ModulePlaceholder";
@@ -23,6 +24,10 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
 
   if (module === "inventory") {
     return <AvailableStockPrototype />;
+  }
+
+  if (module === "audit-log") {
+    return <AuditLogPrototype />;
   }
 
   return <ModulePlaceholder item={item} user={session.user} />;

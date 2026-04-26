@@ -81,6 +81,52 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /audit-logs:
+    get:
+      summary: List immutable audit logs
+      operationId: listAuditLogs
+      tags:
+        - audit
+      parameters:
+        - name: actor_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: entity_type
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: entity_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Audit log rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /products:
     get:
       summary: List product master data
@@ -195,7 +241,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResponse"
+                $ref: "#/components/schemas/StockMovementSuccessResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -451,6 +497,54 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PermissionKey"
+    AuditLogSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditLogItem"
+    AuditLogItem:
+      type: object
+      required:
+        - id
+        - actor_id
+        - action
+        - entity_type
+        - entity_id
+        - metadata
+        - created_at
+      properties:
+        id:
+          type: string
+        actor_id:
+          type: string
+        action:
+          type: string
+          example: inventory.stock_movement.adjusted
+        entity_type:
+          type: string
+          example: inventory.stock_movement
+        entity_id:
+          type: string
+        request_id:
+          type: string
+        before_data:
+          type: object
+          additionalProperties: true
+        after_data:
+          type: object
+          additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
     RoleKey:
       type: string
       enum:
@@ -777,6 +871,27 @@ components:
           exclusiveMinimum: 0
         reason:
           type: string
+    StockMovementSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/StockMovementResponse"
+    StockMovementResponse:
+      type: object
+      required:
+        - movement_id
+        - status
+      properties:
+        movement_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - recorded
     AvailableStockSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
