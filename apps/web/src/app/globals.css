@@ -579,6 +579,78 @@ textarea {
   line-height: var(--erp-line-height-helper);
 }
 
+.erp-warehouse-page {
+  display: grid;
+  gap: 16px;
+}
+
+.erp-warehouse-page .erp-page-header,
+.erp-warehouse-page .erp-module-table-card {
+  margin-bottom: 0;
+}
+
+.erp-warehouse-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(160px, 200px) minmax(180px, 240px);
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-warehouse-kpis {
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+}
+
+.erp-warehouse-ops {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(280px, 420px);
+  gap: 12px;
+}
+
+.erp-warehouse-scan-card,
+.erp-warehouse-exception-card {
+  min-width: 0;
+}
+
+.erp-warehouse-exception-list {
+  display: grid;
+  gap: 8px;
+}
+
+.erp-warehouse-exception,
+.erp-warehouse-empty {
+  display: grid;
+  gap: 2px;
+  min-height: 44px;
+  padding: 8px 10px;
+  color: var(--erp-text);
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-warehouse-exception strong,
+.erp-warehouse-exception span,
+.erp-warehouse-empty,
+.erp-warehouse-task-link {
+  overflow-wrap: anywhere;
+}
+
+.erp-warehouse-exception span,
+.erp-warehouse-empty {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-table);
+  line-height: var(--erp-line-height-table);
+}
+
+.erp-warehouse-task-link {
+  color: var(--erp-red);
+  font-weight: var(--erp-font-weight-semibold);
+}
+
 .erp-module-table {
   display: grid;
   border: 1px solid var(--erp-border-soft);
@@ -1006,6 +1078,9 @@ textarea {
   .erp-stock-toolbar,
   .erp-audit-toolbar,
   .erp-audit-kpis,
+  .erp-warehouse-toolbar,
+  .erp-warehouse-kpis,
+  .erp-warehouse-ops,
   .erp-stock-kpis {
     grid-template-columns: 1fr;
   }
