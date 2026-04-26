@@ -125,7 +125,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-08-01 | Warehouse daily board skeleton | Warehouse daily board | FE Lead + BA + Warehouse Super User | P0 | Done | `docs/33_...` + `docs/39_...` |
 | S0-08-02 | End-of-day reconciliation skeleton | Warehouse daily board | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
 | S0-08-03 | Warehouse Daily Board UI template | Warehouse daily board | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
-| S0-09-01 | Carrier manifest skeleton | Shipping handover scan | BE Lead + FE Lead | P0 | Review | `docs/33_...` |
+| S0-09-01 | Carrier manifest skeleton | Shipping handover scan | BE Lead + FE Lead | P0 | Done | `docs/33_...` |
 | S0-09-02 | Scan verify endpoint/UI | Shipping handover scan | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
 | S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-10-01 | Return receiving skeleton | Returns skeleton | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
@@ -642,7 +642,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
 
 Acceptance criteria:
@@ -656,6 +656,12 @@ Current state:
 
 - Shipping module exposes carrier manifest domain/application skeleton and API endpoints for list, create, and add shipment.
 - Shipping UI prototype shows manifest batches, expected/scanned/missing counters, selected manifest lines, and add-shipment action.
+- Implementation and promotion are merged.
+
+Evidence:
+
+- PR #87: Carrier manifest skeleton merged to `develop`.
+- PR #88: Carrier manifest skeleton promoted to `main`.
 
 ### S0-09-02 Scan Verify Endpoint UI
 
@@ -913,9 +919,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-09-01` - Carrier manifest skeleton.
-2. `S0-09-02` - Scan verify endpoint/UI.
-3. `S0-09-03` - Shipping handover scan UI template.
-4. `S0-10-01` - Return receiving skeleton.
+1. `S0-09-02` - Scan verify endpoint/UI.
+2. `S0-09-03` - Shipping handover scan UI template.
+3. `S0-10-01` - Return receiving skeleton.
+4. `S0-10-02` - Return inspection UI template.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
