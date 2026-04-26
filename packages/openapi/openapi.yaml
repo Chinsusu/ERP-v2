@@ -356,6 +356,108 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /shipping/manifests:
+    get:
+      summary: List carrier manifests
+      operationId: listCarrierManifests
+      tags:
+        - shipping
+      parameters:
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: carrier_code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/CarrierManifestStatus"
+      responses:
+        "200":
+          description: Carrier manifest rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarrierManifestListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    post:
+      summary: Create a carrier manifest
+      operationId: createCarrierManifest
+      tags:
+        - shipping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCarrierManifestRequest"
+      responses:
+        "201":
+          description: Carrier manifest created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarrierManifestSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /shipping/manifests/{manifest_id}/shipments:
+    post:
+      summary: Add a packed shipment to a carrier manifest
+      operationId: addShipmentToCarrierManifest
+      tags:
+        - shipping
+      parameters:
+        - name: manifest_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddShipmentToCarrierManifestRequest"
+      responses:
+        "200":
+          description: Shipment added to carrier manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarrierManifestSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   responses:
     BadRequest:
@@ -1154,6 +1256,153 @@ components:
           type: string
         owner:
           type: string
+    CarrierManifestStatus:
+      type: string
+      enum:
+        - draft
+        - ready
+        - scanning
+        - completed
+        - exception
+    CarrierManifestListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/CarrierManifest"
+    CarrierManifestSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/CarrierManifest"
+    CreateCarrierManifestRequest:
+      type: object
+      required:
+        - carrier_code
+        - warehouse_id
+        - date
+      properties:
+        id:
+          type: string
+        carrier_code:
+          type: string
+        carrier_name:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        date:
+          type: string
+          format: date
+        handover_batch:
+          type: string
+        staging_zone:
+          type: string
+        owner:
+          type: string
+    AddShipmentToCarrierManifestRequest:
+      type: object
+      required:
+        - shipment_id
+      properties:
+        shipment_id:
+          type: string
+    CarrierManifest:
+      type: object
+      required:
+        - id
+        - carrier_code
+        - carrier_name
+        - warehouse_id
+        - warehouse_code
+        - date
+        - handover_batch
+        - staging_zone
+        - status
+        - owner
+        - summary
+        - lines
+      properties:
+        id:
+          type: string
+        carrier_code:
+          type: string
+        carrier_name:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        date:
+          type: string
+          format: date
+        handover_batch:
+          type: string
+        staging_zone:
+          type: string
+        status:
+          $ref: "#/components/schemas/CarrierManifestStatus"
+        owner:
+          type: string
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        summary:
+          $ref: "#/components/schemas/CarrierManifestSummary"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/CarrierManifestLine"
+    CarrierManifestSummary:
+      type: object
+      required:
+        - expected_count
+        - scanned_count
+        - missing_count
+      properties:
+        expected_count:
+          type: integer
+        scanned_count:
+          type: integer
+        missing_count:
+          type: integer
+    CarrierManifestLine:
+      type: object
+      required:
+        - id
+        - shipment_id
+        - order_no
+        - tracking_no
+        - package_code
+        - staging_zone
+        - scanned
+      properties:
+        id:
+          type: string
+        shipment_id:
+          type: string
+        order_no:
+          type: string
+        tracking_no:
+          type: string
+        package_code:
+          type: string
+        staging_zone:
+          type: string
+        scanned:
+          type: boolean
     SuccessResponse:
       type: object
       required:
