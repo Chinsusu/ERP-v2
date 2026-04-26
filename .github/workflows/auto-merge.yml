@@ -31,6 +31,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
           BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           IS_DRAFT: ${{ github.event.pull_request.draft }}
@@ -60,7 +61,11 @@ jobs:
           fi
 
           set +e
-          output="$(gh pr merge "$PR_URL" --auto --squash --delete-branch 2>&1)"
+          merge_args=("$PR_URL" --auto --squash)
+          if [[ "$HEAD_REF" != "develop" && "$HEAD_REF" != "main" ]]; then
+            merge_args+=(--delete-branch)
+          fi
+          output="$(gh pr merge "${merge_args[@]}" 2>&1)"
           status=$?
           set -e
 
