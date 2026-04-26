@@ -24,6 +24,28 @@ describe("apiGet", () => {
     await expect(apiGet<{ status: string }>("/health")).resolves.toEqual({ status: "ok" });
   });
 
+  it("passes bearer tokens when provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: { id: "user-erp-admin" },
+          request_id: "req-test"
+        }),
+        { status: 200 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiGet<{ id: string }>("/me", { accessToken: "local-dev-access-token" });
+
+    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/me", {
+      headers: {
+        Authorization: "Bearer local-dev-access-token"
+      }
+    });
+  });
+
   it("throws structured API errors", async () => {
     vi.stubGlobal(
       "fetch",
