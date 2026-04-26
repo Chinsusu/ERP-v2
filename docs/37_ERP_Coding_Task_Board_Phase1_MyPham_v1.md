@@ -135,7 +135,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-11-03 | Subcontract UI template | Subcontract manufacturing | FE Lead + UI/UX | P1 | Done | `docs/39_...` |
 | S0-12-01 | Docker compose local | DevOps/CI/CD foundation | DevOps + Tech Leads | P0 | Done | `docs/18_...` + `docs/38_...` |
 | S0-12-02 | CI pipeline | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
-| S0-12-04 | Automated PR review gate and auto-merge | DevOps/CI/CD foundation | DevOps + Tech Lead | P0 | Done | `docs/18_...` + `docs/38_...` |
+| S0-12-04 | Manual self-review and merge policy | DevOps/CI/CD foundation | DevOps + Tech Lead | P0 | Done | `docs/18_...` + `docs/38_...` |
 | S0-12-03 | Dev/Staging deployment skeleton | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
 | S0-13-01 | Smoke test pack | QA foundation | QA Lead | P0 | Done | `docs/24_...` |
 | S0-13-02 | Sprint 0 demo script | QA foundation | QA Lead + BA + PO | P0 | Done | `docs/34_...` |
@@ -155,7 +155,7 @@ Acceptance criteria:
 
 - Repo created and connected to `git@github.com:Chinsusu/ERP-v2.git`.
 - `main` and `develop` branches exist.
-- Branch protection is enabled for `main` and `develop`.
+- `main` and `develop` are long-lived branches; enable branch protection when the GitHub plan supports it, otherwise use manual merge discipline.
 - PR template exists.
 - Branch naming and commit convention are documented.
 - README local setup exists.
@@ -902,9 +902,9 @@ Acceptance criteria:
 Evidence:
 
 - `required-ci` exists and passes on `main`.
-- Branch protection requires `required-api`, `required-web`, `required-openapi`, and `required-migration`.
+- Technical gates remain `required-api`, `required-web`, `required-openapi`, and `required-migration` when CI and plan support are available.
 
-### S0-12-04 Automated PR Review Gate And Auto Merge
+### S0-12-04 Manual Self Review And Merge Policy
 
 **Owner:** DevOps + Tech Lead
 **Priority:** P0
@@ -913,16 +913,17 @@ Evidence:
 
 Acceptance criteria:
 
-- Automated PR review gate validates PR title, `Primary Ref`, `Task Ref`, generated-code notes, and credential guardrails.
-- Branch protection requires the automated review gate for `main` and `develop`.
-- Auto-merge is enabled for non-draft same-repo PRs unless the `no-auto-merge` label is set.
-- Auto-merge does not bypass required CI or human review requirements.
-- PR template and README document the flow.
+- GitHub auto-review and auto-merge workflows are disabled.
+- Implementer self-review validates title, `Primary Ref`, `Task Ref`, generated-code notes, credential guardrails, tests, and docs.
+- Manual merge is performed only after relevant local or CI validation evidence is recorded.
+- Promotion from `develop` to `main` is manual and must preserve long-lived branches.
+- PR template and README document the manual review and merge flow.
 
 Evidence:
 
-- PR #13, PR #14, PR #16, PR #19, PR #20: review gate and auto-merge workflow fixes.
-- PR #21 and PR #22: review gate and auto-merge verified on real feature and promote PRs.
+- PR #13, PR #14, PR #16, PR #19, PR #20: historical automated workflow fixes.
+- PR #21 and PR #22: historical automated workflow verification on real feature and promote PRs.
+- Automated GitHub review/merge was superseded by the manual self-review and merge policy.
 
 ### S0-12-03 Dev Staging Deployment Skeleton
 
@@ -1016,12 +1017,12 @@ Evidence:
 
 | Task ID | Evidence |
 | --- | --- |
-| S0-01-01 | PR #1, PR #2, PR #6; `main` and `develop`; branch protection |
+| S0-01-01 | PR #1, PR #2, PR #6; `main` and `develop`; manual merge discipline when branch protection is unavailable |
 | S0-12-02 | PR #3, PR #4, PR #5, PR #6; `required-ci` pass on `main` |
 | S0-02-02 | PR #71, PR #72; tracked module component folders and module boundary guard test |
 | S0-02-03 | PR #9, PR #12; API response standard, shared error envelope, parsing tests |
 | S0-03-03 | PR #15, PR #17; CSS variables, Ant Design theme, token tests |
-| S0-12-04 | PR #13, PR #14, PR #16, PR #19, PR #20, PR #21, PR #22; review gate and auto-merge flow |
+| S0-12-04 | PR #13, PR #14, PR #16, PR #19, PR #20, PR #21, PR #22; historical automated workflow later superseded by manual self-review and merge policy |
 | S0-03-01 | PR #21, PR #22; protected ERP app shell, permission menu, module placeholders |
 | S0-03-04 | PR #67, PR #68; page header, filter, table, form, detail, overlay, audit, and attachment templates |
 | S0-04-02 | PR #25, PR #26; Phase 1 base tables, FK/check constraints, migration apply/rollback CI |

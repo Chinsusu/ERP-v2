@@ -1499,44 +1499,26 @@ migration up again
 basic seed smoke test
 ```
 
-### 13.5. Automated PR review gate
+### 13.5. Manual PR self-review gate
 
-File:
-
-```text
-.github/workflows/pr-review-gate.yml
-```
-
-Required status check:
+GitHub auto-review is disabled. Do not rely on `.github/workflows/pr-review-gate.yml`.
 
 ```text
-required-review-gate
-```
-
-Gate rules:
-
-```text
-- PR title must follow [TASK-ID] Short description.
-- PR body must include Primary Ref and Task Ref.
-- PR body must declare Generated Code: regenerated when generated paths are touched.
+- Implementer self-reviews title, Primary Ref, Task Ref, generated-code notes, credential guardrails, tests, and docs.
 - Credential.txt and real env files must not be committed.
+- Generated paths must not be edited manually unless regenerated and declared.
+- Review evidence must be recorded before manual merge.
 ```
 
-### 13.6. Auto-merge workflow
+### 13.6. Manual merge workflow
 
-File:
-
-```text
-.github/workflows/auto-merge.yml
-```
-
-Auto-merge rule:
+GitHub auto-merge is disabled. Do not rely on `.github/workflows/auto-merge.yml`.
 
 ```text
-- Non-draft same-repo PRs targeting main or develop get auto-merge enabled.
-- Add label no-auto-merge when manual merge is required.
-- Auto-merge must not bypass required CI or required human review.
-- Auto-merge may delete short-lived feature/fix/chore branches after merge, but must never delete long-lived main or develop branches.
+- Merge to develop manually after self-review and validation.
+- Promote from develop to main manually after develop is verified.
+- Delete only short-lived feature/fix/chore branches after merge.
+- Never delete long-lived main or develop branches.
 ```
 
 ---
@@ -1912,7 +1894,7 @@ Ví dụ:
 ```text
 - [ ] Ref đúng tài liệu chính
 - [ ] Ref task trong file 37
-- [ ] Automated PR review gate passes
+- [ ] Self-review diff and guardrails completed
 - [ ] Không sửa generated code bằng tay
 - [ ] Không vi phạm module boundary
 - [ ] Có unit/integration test phù hợp
@@ -1923,19 +1905,19 @@ Ví dụ:
 - [ ] Có UI state loading/error/empty nếu thay đổi frontend
 ```
 
-### 19.4. Auto-review and merge rule
+### 19.4. Manual review and merge rule
 
-Every PR into `develop` or `main` must pass:
+Every change merged into `develop` or `main` must be self-reviewed by the implementer and have validation evidence recorded.
+When CI is available, run or check the relevant technical gates:
 
 ```text
 - required-api
 - required-web
 - required-openapi
 - required-migration
-- required-review-gate
 ```
 
-Auto-merge is enabled by default for non-draft same-repo PRs. It merges only after all required status checks pass and branch protection review requirements are satisfied. Use the `no-auto-merge` label when a PR needs manual merge control.
+GitHub auto-review and auto-merge are disabled for this repository. Manual merge is the default path after self-review and validation.
 
 When promoting `develop` to `main`, use a merge commit and do not delete the `develop` branch after merge. `main` and `develop` are long-lived branches and must always remain available on remote.
 
