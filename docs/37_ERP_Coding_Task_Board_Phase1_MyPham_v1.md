@@ -116,7 +116,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-04-01 | PostgreSQL migration setup | Database foundation | BE Lead + DevOps | P0 | In Progress | `docs/17_...` |
 | S0-04-02 | Base tables | Database foundation | BE Lead | P0 | Done | `docs/17_...` |
 | S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | Done | `docs/16_...` |
-| S0-05-02 | API codegen integration | API contract foundation | FE Lead + BE Lead | P0 | Review | `docs/16_...` + `docs/15_...` |
+| S0-05-02 | API codegen integration | API contract foundation | FE Lead + BE Lead | P0 | Done | `docs/16_...` + `docs/15_...` |
 | S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Done | `docs/19_...` |
 | S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
 | S0-06-03 | Audit log base | Auth, RBAC, audit | BE Lead + FE Lead | P0 | In Progress | `docs/19_...` |
@@ -412,7 +412,7 @@ Current state:
 
 **Owner:** FE Lead + BE Lead
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`, `docs/15_ERP_Frontend_Architecture_React_NextJS_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -424,7 +424,8 @@ Acceptance criteria:
 
 Current state:
 
-- Generated schema is created from OpenAPI and under PR review.
+- Done via PR #55 and PR #56.
+- Generated schema is created from OpenAPI and committed for frontend use.
 - Shared frontend API wrapper uses generated GET paths, query parameters, and response data types.
 - Inventory available-stock API service consumes generated schema types instead of hard-coded DTO shape.
 
@@ -821,6 +822,7 @@ Acceptance criteria:
 | S0-07-01 | PR #42, PR #43; stock movement transaction store, balance delta updates, immutable ledger path, adjustment audit logging |
 | S0-07-02 | PR #46, PR #47, PR #48; available stock calculator, inventory API endpoint, OpenAPI contract, and Inventory UI prototype |
 | S0-05-01 | PR #51, PR #52; OpenAPI base contract with pagination schema, auth/health coverage, master data sample endpoints, and client generation dry run |
+| S0-05-02 | PR #55, PR #56; generated frontend OpenAPI schema, typed API wrapper, inventory service generated DTO integration, and CI web/OpenAPI gates |
 
 ---
 
@@ -840,9 +842,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-05-02` - API codegen integration.
-2. `S0-06-03` - Audit log base.
-3. `S0-08-01` - Warehouse daily board skeleton.
-4. `S0-03-04` - UI page templates foundation.
+1. `S0-06-03` - Audit log base.
+2. `S0-08-01` - Warehouse daily board skeleton.
+3. `S0-03-04` - UI page templates foundation.
+4. `S0-02-02` - Module structure base.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
