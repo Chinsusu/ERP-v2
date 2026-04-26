@@ -128,7 +128,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-09-01 | Carrier manifest skeleton | Shipping handover scan | BE Lead + FE Lead | P0 | Done | `docs/33_...` |
 | S0-09-02 | Scan verify endpoint/UI | Shipping handover scan | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
 | S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
-| S0-10-01 | Return receiving skeleton | Returns skeleton | BE Lead + FE Lead + Warehouse Super User | P0 | Review | `docs/33_...` |
+| S0-10-01 | Return receiving skeleton | Returns skeleton | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
 | S0-10-02 | Return inspection UI template | Returns skeleton | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-11-01 | External factory order skeleton | Subcontract manufacturing | BE Lead + FE Lead + Production/Ops Super User | P1 | Backlog | `docs/33_...` |
 | S0-11-02 | Material transfer to factory skeleton | Subcontract manufacturing | BE Lead + FE Lead | P1 | Backlog | `docs/33_...` |
@@ -724,7 +724,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead + Warehouse Super User
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
 
 Acceptance criteria:
@@ -743,6 +743,12 @@ Current state:
 - Reusable receipts create a `RETURN_RECEIPT` movement into `return_pending`; not reusable receipts route to the lab/damaged placeholder.
 - Returns page exposes a scan-first receiving form with source, package condition, disposition choice, latest receipt, and receipt table.
 - Return receipt creation writes audit evidence through the shared audit log store.
+- Implementation and promotion are merged.
+
+Evidence:
+
+- PR #99: Return receiving skeleton merged to `develop`.
+- PR #100: Return receiving skeleton promoted to `main`.
 
 ### S0-10-02 Return Inspection UI Template
 
@@ -953,9 +959,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-10-01` - Return receiving skeleton.
-2. `S0-10-02` - Return inspection UI template.
-3. `S0-11-01` - External factory order skeleton.
-4. `S0-11-02` - Material transfer to factory skeleton.
+1. `S0-10-02` - Return inspection UI template.
+2. `S0-11-01` - External factory order skeleton.
+3. `S0-11-02` - Material transfer to factory skeleton.
+4. `S0-11-03` - Subcontract UI template.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
