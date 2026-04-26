@@ -1937,7 +1937,7 @@ Every PR into `develop` or `main` must pass:
 
 Auto-merge is enabled by default for non-draft same-repo PRs. It merges only after all required status checks pass and branch protection review requirements are satisfied. Use the `no-auto-merge` label when a PR needs manual merge control.
 
-When promoting `develop` to `main`, do not delete the `develop` branch after merge. `main` and `develop` are long-lived branches and must always remain available on remote.
+When promoting `develop` to `main`, use a merge commit and do not delete the `develop` branch after merge. `main` and `develop` are long-lived branches and must always remain available on remote.
 
 ---
 
