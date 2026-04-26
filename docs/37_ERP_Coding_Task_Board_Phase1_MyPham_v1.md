@@ -224,9 +224,10 @@ Acceptance criteria:
 
 Current state:
 
-- Module root folders and module README files exist.
+- Module root folders, module README files, and tracked component folders exist.
 - Inventory has an initial domain/application prototype.
-- Empty subfolders need tracked placeholder files or first real code per module.
+- Structure guard test verifies required module/component folders and blocks direct imports of another module repository package.
+- Implementation PR is ready for review.
 
 ### S0-02-03 Error Model And API Response Standard
 
