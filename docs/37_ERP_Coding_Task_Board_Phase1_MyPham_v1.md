@@ -116,7 +116,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-04-01 | PostgreSQL migration setup | Database foundation | BE Lead + DevOps | P0 | In Progress | `docs/17_...` |
 | S0-04-02 | Base tables | Database foundation | BE Lead | P0 | Done | `docs/17_...` |
 | S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | Done | `docs/16_...` |
-| S0-05-02 | API codegen integration | API contract foundation | FE Lead + BE Lead | P0 | In Progress | `docs/16_...` + `docs/15_...` |
+| S0-05-02 | API codegen integration | API contract foundation | FE Lead + BE Lead | P0 | Review | `docs/16_...` + `docs/15_...` |
 | S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Done | `docs/19_...` |
 | S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
 | S0-06-03 | Audit log base | Auth, RBAC, audit | BE Lead + FE Lead | P0 | In Progress | `docs/19_...` |
@@ -412,7 +412,7 @@ Current state:
 
 **Owner:** FE Lead + BE Lead
 **Priority:** P0
-**Status:** In Progress
+**Status:** Review
 **Primary Ref:** `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`, `docs/15_ERP_Frontend_Architecture_React_NextJS_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -424,8 +424,9 @@ Acceptance criteria:
 
 Current state:
 
-- CI codegen dry run passes.
-- Actual generated client integration still needs implementation.
+- Generated schema is created from OpenAPI and under PR review.
+- Shared frontend API wrapper uses generated GET paths, query parameters, and response data types.
+- Inventory available-stock API service consumes generated schema types instead of hard-coded DTO shape.
 
 ### S0-06-01 Auth Skeleton
 

@@ -33,6 +33,7 @@ tmp/
 # Generated code: regenerate from source contracts
 apps/web/src/shared/api/generated/*
 !apps/web/src/shared/api/generated/.gitkeep
+!apps/web/src/shared/api/generated/schema.ts
 apps/api/internal/shared/openapi/generated/*
 !apps/api/internal/shared/openapi/generated/.gitkeep
 packages/openapi/generated/*
