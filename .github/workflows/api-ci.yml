@@ -1,0 +1,48 @@
+name: api-ci
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "fix/**"
+      - "hotfix/**"
+    paths:
+      - "apps/api/**"
+      - "packages/openapi/**"
+      - "infra/docker/Dockerfile.api"
+      - ".github/workflows/api-ci.yml"
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - "packages/openapi/**"
+      - "infra/docker/Dockerfile.api"
+      - ".github/workflows/api-ci.yml"
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache: false
+      - name: Format check
+        working-directory: apps/api
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        working-directory: apps/api
+        run: go vet ./...
+      - name: Test
+        working-directory: apps/api
+        run: go test ./...
+      - name: Build API
+        working-directory: apps/api
+        run: go build ./cmd/api
+      - name: Build worker
+        working-directory: apps/api
+        run: go build ./cmd/worker
+      - name: Build Docker image
+        run: docker build -f infra/docker/Dockerfile.api .
