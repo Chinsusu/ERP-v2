@@ -301,7 +301,9 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
+	mux.HandleFunc("/readyz", readinessHandler)
 	mux.HandleFunc("/api/v1/health", healthHandler)
+	mux.HandleFunc("/api/v1/ready", readinessHandler)
 	mux.HandleFunc("/api/v1/auth/mock-login", mockLoginHandler(authConfig))
 	mux.Handle("/api/v1/me", auth.RequireBearerToken(authConfig, http.HandlerFunc(meHandler)))
 	mux.Handle(
@@ -381,7 +383,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:              ":" + cfg.AppPort,
-		Handler:           mux,
+		Handler:           accessLogMiddleware(mux, log.Default()),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -394,6 +396,62 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 		Status:    "ok",
 		Service:   "api",
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+func readinessHandler(w http.ResponseWriter, r *http.Request) {
+	response.WriteSuccess(w, r, http.StatusOK, healthResponse{
+		Status:    "ready",
+		Service:   "api",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+type statusRecordingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	bytes      int
+}
+
+func (w *statusRecordingResponseWriter) WriteHeader(statusCode int) {
+	if w.statusCode != 0 {
+		return
+	}
+	w.statusCode = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *statusRecordingResponseWriter) Write(body []byte) (int, error) {
+	if w.statusCode == 0 {
+		w.statusCode = http.StatusOK
+	}
+	written, err := w.ResponseWriter.Write(body)
+	w.bytes += written
+	return written, err
+}
+
+func accessLogMiddleware(next http.Handler, logger *log.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		startedAt := time.Now()
+		recorder := &statusRecordingResponseWriter{ResponseWriter: w}
+
+		next.ServeHTTP(recorder, r)
+
+		statusCode := recorder.statusCode
+		if statusCode == 0 {
+			statusCode = http.StatusOK
+		}
+
+		logger.Printf(
+			"access method=%s path=%s status=%d bytes=%d duration_ms=%d remote=%s request_id=%s",
+			r.Method,
+			r.URL.Path,
+			statusCode,
+			recorder.bytes,
+			time.Since(startedAt).Milliseconds(),
+			r.RemoteAddr,
+			r.Header.Get(response.HeaderRequestID),
+		)
 	})
 }
 

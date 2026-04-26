@@ -1,35 +1,35 @@
-name: erp-dev
+name: erp-staging
 
 x-api-environment: &api-environment
-  APP_ENV: ${APP_ENV:-dev}
+  APP_ENV: ${APP_ENV:-staging}
   APP_NAME: ${APP_NAME:-erp-platform}
-  APP_VERSION: ${APP_VERSION:-dev}
+  APP_VERSION: ${APP_VERSION:-staging}
   APP_PORT: ${APP_PORT:-8080}
-  DATABASE_URL: ${DATABASE_URL:-postgres://erp_dev:erp_dev@postgres:5432/erp_dev?sslmode=disable}
+  DATABASE_URL: ${DATABASE_URL:-postgres://erp_staging:erp_staging@postgres:5432/erp_staging?sslmode=disable}
   DB_HOST: ${DB_HOST:-postgres}
   REDIS_HOST: ${REDIS_HOST:-redis}
   REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
   QUEUE_URL: ${QUEUE_URL:-redis://redis:6379/1}
-  JWT_SECRET: ${JWT_SECRET:-change-me-dev-only}
+  JWT_SECRET: ${JWT_SECRET:-change-me-staging-only}
   AUTH_MOCK_EMAIL: ${AUTH_MOCK_EMAIL:-admin@example.local}
   AUTH_MOCK_PASSWORD: ${AUTH_MOCK_PASSWORD:-local-only-mock-password}
-  AUTH_MOCK_ACCESS_TOKEN: ${AUTH_MOCK_ACCESS_TOKEN:-local-dev-access-token}
+  AUTH_MOCK_ACCESS_TOKEN: ${AUTH_MOCK_ACCESS_TOKEN:-staging-access-token}
   S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
-  S3_BUCKET: ${S3_BUCKET:-erp-dev}
+  S3_BUCKET: ${S3_BUCKET:-erp-staging}
   S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minio}
   S3_SECRET_KEY: ${S3_SECRET_KEY:-minio123}
   S3_USE_SSL: ${S3_USE_SSL:-false}
   S3_USE_PATH_STYLE: ${S3_USE_PATH_STYLE:-true}
   SMTP_HOST: ${SMTP_HOST:-mailhog}
   SMTP_PORT: ${SMTP_PORT:-1025}
-  SMTP_FROM: ${SMTP_FROM:-no-reply-dev@example.local}
+  SMTP_FROM: ${SMTP_FROM:-no-reply-staging@example.local}
   LOG_LEVEL: ${LOG_LEVEL:-info}
 
 x-web-environment: &web-environment
   NODE_ENV: production
-  NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV:-dev}
-  NEXT_PUBLIC_APP_VERSION: ${NEXT_PUBLIC_APP_VERSION:-dev}
-  NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8088/api/v1}
+  NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV:-staging}
+  NEXT_PUBLIC_APP_VERSION: ${NEXT_PUBLIC_APP_VERSION:-staging}
+  NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://staging-erp.example.vn/api/v1}
   NEXT_PUBLIC_MOCK_AUTH_STATE: ${NEXT_PUBLIC_MOCK_AUTH_STATE:-signed-in}
 
 x-logging: &default-logging
@@ -42,9 +42,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-erp_dev}
-      POSTGRES_USER: ${POSTGRES_USER:-erp_dev}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-erp_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-erp_staging}
+      POSTGRES_USER: ${POSTGRES_USER:-erp_staging}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-erp_staging}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -78,7 +78,7 @@ services:
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minio}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minio123}
-      S3_BUCKET: ${S3_BUCKET:-erp-dev}
+      S3_BUCKET: ${S3_BUCKET:-erp-staging}
     depends_on:
       - minio
     entrypoint: ["/bin/sh", "-c"]
@@ -104,37 +104,12 @@ services:
       - -path
       - /migrations
       - -database
-      - ${DATABASE_URL:-postgres://erp_dev:erp_dev@postgres:5432/erp_dev?sslmode=disable}
+      - ${DATABASE_URL:-postgres://erp_staging:erp_staging@postgres:5432/erp_staging?sslmode=disable}
       - up
     logging: *default-logging
 
-  seed:
-    image: postgres:16-alpine
-    profiles:
-      - tools
-    environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD:-erp_dev}
-    volumes:
-      - ../../apps/api/sql/dev_seed.sql:/seed/dev_seed.sql:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command:
-      - psql
-      - -h
-      - postgres
-      - -U
-      - ${POSTGRES_USER:-erp_dev}
-      - -d
-      - ${POSTGRES_DB:-erp_dev}
-      - -v
-      - ON_ERROR_STOP=1
-      - -f
-      - /seed/dev_seed.sql
-    logging: *default-logging
-
   api:
-    image: ghcr.io/chinsusu/erp-v2-api:${ERP_IMAGE_TAG:-dev}
+    image: ghcr.io/chinsusu/erp-v2-api:${ERP_IMAGE_TAG:-staging}
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.api
@@ -156,7 +131,7 @@ services:
     logging: *default-logging
 
   worker:
-    image: ghcr.io/chinsusu/erp-v2-worker:${ERP_IMAGE_TAG:-dev}
+    image: ghcr.io/chinsusu/erp-v2-worker:${ERP_IMAGE_TAG:-staging}
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.worker
@@ -173,7 +148,7 @@ services:
     logging: *default-logging
 
   web:
-    image: ghcr.io/chinsusu/erp-v2-web:${ERP_IMAGE_TAG:-dev}
+    image: ghcr.io/chinsusu/erp-v2-web:${ERP_IMAGE_TAG:-staging}
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.web
@@ -191,7 +166,7 @@ services:
   reverse-proxy:
     image: nginx:1.27-alpine
     ports:
-      - "${PUBLIC_HTTP_PORT:-8088}:8080"
+      - "${PUBLIC_HTTP_PORT:-8089}:8080"
     volumes:
       - ../nginx/dev-staging.conf:/etc/nginx/nginx.conf:ro
       - access-logs:/var/log/nginx
