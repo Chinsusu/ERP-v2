@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/config"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
@@ -43,6 +45,18 @@ type roleResponse struct {
 	Permissions []string `json:"permissions"`
 }
 
+type availableStockResponse struct {
+	WarehouseID    string `json:"warehouse_id"`
+	WarehouseCode  string `json:"warehouse_code"`
+	SKU            string `json:"sku"`
+	BatchID        string `json:"batch_id,omitempty"`
+	BatchNo        string `json:"batch_no,omitempty"`
+	PhysicalStock  int64  `json:"physical_stock"`
+	ReservedStock  int64  `json:"reserved_stock"`
+	HoldStock      int64  `json:"hold_stock"`
+	AvailableStock int64  `json:"available_stock"`
+}
+
 func main() {
 	cfg := config.FromEnv()
 	authConfig := auth.MockConfig{
@@ -50,6 +64,7 @@ func main() {
 		Password:    cfg.AuthMockPassword,
 		AccessToken: cfg.AuthMockAccessToken,
 	}
+	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
@@ -59,6 +74,14 @@ func main() {
 	mux.Handle(
 		"/api/v1/rbac/roles",
 		auth.RequireBearerPermission(authConfig, auth.PermissionSettingsView, http.HandlerFunc(rbacRolesHandler)),
+	)
+	mux.Handle(
+		"/api/v1/inventory/available-stock",
+		auth.RequireBearerPermission(
+			authConfig,
+			auth.PermissionInventoryView,
+			http.HandlerFunc(availableStockHandler(availableStockService)),
+		),
 	)
 
 	server := &http.Server{
@@ -167,4 +190,52 @@ func permissionStrings(permissions []auth.PermissionKey) []string {
 	}
 
 	return values
+}
+
+func availableStockHandler(service inventoryapp.ListAvailableStock) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		filter := domain.NewAvailableStockFilter(
+			r.URL.Query().Get("warehouse_id"),
+			r.URL.Query().Get("sku"),
+			r.URL.Query().Get("batch_id"),
+		)
+		snapshots, err := service.Execute(r.Context(), filter)
+		if err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusConflict,
+				response.ErrorCodeConflict,
+				"Available stock could not be calculated",
+				nil,
+			)
+			return
+		}
+
+		payload := make([]availableStockResponse, 0, len(snapshots))
+		for _, snapshot := range snapshots {
+			payload = append(payload, newAvailableStockResponse(snapshot))
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, payload)
+	}
+}
+
+func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) availableStockResponse {
+	return availableStockResponse{
+		WarehouseID:    snapshot.WarehouseID,
+		WarehouseCode:  snapshot.WarehouseCode,
+		SKU:            snapshot.SKU,
+		BatchID:        snapshot.BatchID,
+		BatchNo:        snapshot.BatchNo,
+		PhysicalStock:  snapshot.PhysicalStock,
+		ReservedStock:  snapshot.ReservedStock,
+		HoldStock:      snapshot.HoldStock,
+		AvailableStock: snapshot.AvailableStock,
+	}
 }

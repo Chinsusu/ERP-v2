@@ -108,6 +108,41 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+  /inventory/available-stock:
+    get:
+      summary: List available stock by warehouse, SKU, and batch
+      operationId: listAvailableStock
+      tags:
+        - inventory
+      parameters:
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sku
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: batch_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Available stock rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailableStockSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   responses:
     BadRequest:
@@ -342,6 +377,46 @@ components:
           exclusiveMinimum: 0
         reason:
           type: string
+    AvailableStockSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AvailableStockItem"
+    AvailableStockItem:
+      type: object
+      required:
+        - warehouse_id
+        - warehouse_code
+        - sku
+        - physical_stock
+        - reserved_stock
+        - hold_stock
+        - available_stock
+      properties:
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        sku:
+          type: string
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        physical_stock:
+          type: number
+        reserved_stock:
+          type: number
+        hold_stock:
+          type: number
+        available_stock:
+          type: number
     SuccessResponse:
       type: object
       required:
