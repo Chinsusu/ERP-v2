@@ -51,6 +51,80 @@ func TestAvailableStockHandlerRejectsUnsupportedMethod(t *testing.T) {
 	}
 }
 
+func TestEndOfDayReconciliationsHandlerReturnsFilteredRows(t *testing.T) {
+	store := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
+	service := inventoryapp.NewListEndOfDayReconciliations(store)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/warehouse/end-of-day-reconciliations?warehouse_id=wh-hcm&date=2026-04-26&status=in_review",
+		nil,
+	)
+	req.Header.Set(response.HeaderRequestID, "req-reconciliation")
+	rec := httptest.NewRecorder()
+
+	endOfDayReconciliationsHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[[]endOfDayReconciliationResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(payload.Data) != 1 {
+		t.Fatalf("rows = %d, want 1", len(payload.Data))
+	}
+	if payload.Data[0].Summary.VarianceQuantity != -2 {
+		t.Fatalf("variance = %d, want -2", payload.Data[0].Summary.VarianceQuantity)
+	}
+}
+
+func TestCloseEndOfDayReconciliationHandlerWritesAudit(t *testing.T) {
+	store := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
+	auditStore := audit.NewInMemoryLogStore()
+	service := inventoryapp.NewCloseEndOfDayReconciliation(store, auditStore)
+	body := bytes.NewBufferString(`{"exception_note":"variance accepted by lead"}`)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/warehouse/end-of-day-reconciliations/rec-hcm-260426-day/close",
+		body,
+	)
+	req.SetPathValue("reconciliation_id", "rec-hcm-260426-day")
+	req.Header.Set(response.HeaderRequestID, "req-close")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	closeEndOfDayReconciliationHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[endOfDayReconciliationResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.Status != "closed" {
+		t.Fatalf("status = %q, want closed", payload.Data.Status)
+	}
+	if payload.Data.AuditLogID == "" {
+		t.Fatal("audit log id is empty")
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "warehouse.shift.closed"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
 func TestAuditLogsHandlerReturnsFilteredRows(t *testing.T) {
 	log, err := audit.NewLog(audit.NewLogInput{
 		ID:         "audit-test",
