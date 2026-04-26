@@ -130,7 +130,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-10-01 | Return receiving skeleton | Returns skeleton | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
 | S0-10-02 | Return inspection UI template | Returns skeleton | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
-| S0-11-01 | External factory order skeleton | Subcontract manufacturing | BE Lead + FE Lead + Production/Ops Super User | P1 | Backlog | `docs/33_...` |
+| S0-11-01 | External factory order skeleton | Subcontract manufacturing | BE Lead + FE Lead + Production/Ops Super User | P1 | Review | `docs/33_...` |
 | S0-11-02 | Material transfer to factory skeleton | Subcontract manufacturing | BE Lead + FE Lead | P1 | Backlog | `docs/33_...` |
 | S0-11-03 | Subcontract UI template | Subcontract manufacturing | FE Lead + UI/UX | P1 | Backlog | `docs/39_...` |
 | S0-12-01 | Docker compose local | DevOps/CI/CD foundation | DevOps + Tech Leads | P0 | Done | `docs/18_...` + `docs/38_...` |
@@ -781,7 +781,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead + Production/Ops Super User
 **Priority:** P1
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
 
 Acceptance criteria:
@@ -790,6 +790,13 @@ Acceptance criteria:
 - Fields include factory, product, quantity, spec, sample required, expected delivery date, and deposit status.
 - Status model exists: Draft, Confirmed, MaterialTransferred, SampleApproved, InProduction, Delivered, QCReview, Accepted, Rejected, Closed.
 - Status change writes audit log.
+
+Current state:
+
+- Subcontract module exposes an external factory order skeleton at `/subcontract`.
+- Order creation captures factory, product, quantity, spec, sample required, expected delivery date, deposit status, and deposit amount.
+- Sprint 0 status model is implemented with visible workflow controls from Draft through Closed.
+- Status changes produce a `subcontract.order.status_changed` audit log preview with before/after status.
 
 ### S0-11-02 Material Transfer To Factory Skeleton
 
