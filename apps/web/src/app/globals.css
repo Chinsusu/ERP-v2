@@ -283,6 +283,13 @@ textarea {
   width: 100%;
 }
 
+.erp-button--compact {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: var(--erp-font-size-table);
+  line-height: var(--erp-line-height-table);
+}
+
 .erp-sr-only {
   position: absolute;
   width: 1px;
@@ -600,8 +607,73 @@ textarea {
   border-radius: var(--erp-radius);
 }
 
+.erp-warehouse-context {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  background: var(--erp-border-soft);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-warehouse-context-item {
+  display: grid;
+  gap: 2px;
+  min-height: 58px;
+  padding: 10px 12px;
+  background: var(--erp-surface);
+}
+
+.erp-warehouse-context-item span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-warehouse-context-item strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-table);
+  line-height: var(--erp-line-height-table);
+}
+
 .erp-warehouse-kpis {
-  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  grid-template-columns: repeat(7, minmax(112px, 1fr));
+}
+
+.erp-warehouse-kpi-button {
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.erp-warehouse-kpi-button:hover,
+.erp-warehouse-kpi-button:focus-visible,
+.erp-warehouse-kpi-button.is-active {
+  background: var(--erp-surface-selected);
+  border-color: var(--erp-red);
+}
+
+.erp-warehouse-kpi-button:focus-visible {
+  outline: 2px solid rgba(213, 12, 45, 0.2);
+  outline-offset: 2px;
+}
+
+.erp-warehouse-kpi-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.erp-warehouse-kpi-action {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
 }
 
 .erp-warehouse-ops {
@@ -649,6 +721,24 @@ textarea {
 .erp-warehouse-task-link {
   color: var(--erp-red);
   font-weight: var(--erp-font-weight-semibold);
+}
+
+.erp-warehouse-task-type {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.erp-warehouse-task-type strong,
+.erp-warehouse-task-type small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.erp-warehouse-task-type small {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
 }
 
 .erp-shift-closing-panel {
@@ -1573,6 +1663,7 @@ textarea {
   .erp-stock-toolbar,
   .erp-audit-toolbar,
   .erp-audit-kpis,
+  .erp-warehouse-context,
   .erp-warehouse-toolbar,
   .erp-warehouse-kpis,
   .erp-warehouse-ops,

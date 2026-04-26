@@ -5,6 +5,7 @@ import {
   getWarehouseDailyBoard,
   prototypeEndOfDayReconciliations,
   prototypeWarehouseDailyTasks,
+  sortWarehouseTasksByRisk,
   summarizeReconciliationLines,
   reconciliationStatusTone,
   summarizeWarehouseDailyBoard,
@@ -40,6 +41,21 @@ describe("warehouseDailyBoardService", () => {
         }
       ]
     });
+  });
+
+  it("prioritizes mismatch and P0 work queues before routine tasks", () => {
+    expect(sortWarehouseTasksByRisk(prototypeWarehouseDailyTasks).slice(0, 2)).toMatchObject([
+      {
+        reference: "VAR-260426-003",
+        status: "mismatch",
+        priority: "P0"
+      },
+      {
+        reference: "VAR-260426-HN-001",
+        status: "mismatch",
+        priority: "P0"
+      }
+    ]);
   });
 
   it("maps operational status to UI tones", () => {
