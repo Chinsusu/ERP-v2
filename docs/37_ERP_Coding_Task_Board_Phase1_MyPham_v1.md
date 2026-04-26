@@ -124,7 +124,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-07-02 | Available stock calculation prototype | Stock ledger prototype | BE Lead + FE Lead | P0 | Done | `docs/33_...` |
 | S0-08-01 | Warehouse daily board skeleton | Warehouse daily board | FE Lead + BA + Warehouse Super User | P0 | Done | `docs/33_...` + `docs/39_...` |
 | S0-08-02 | End-of-day reconciliation skeleton | Warehouse daily board | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
-| S0-08-03 | Warehouse Daily Board UI template | Warehouse daily board | FE Lead + UI/UX | P0 | Review | `docs/39_...` |
+| S0-08-03 | Warehouse Daily Board UI template | Warehouse daily board | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-09-01 | Carrier manifest skeleton | Shipping handover scan | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` |
 | S0-09-02 | Scan verify endpoint/UI | Shipping handover scan | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
 | S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
@@ -617,7 +617,7 @@ Evidence:
 
 **Owner:** FE Lead + UI/UX
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -631,6 +631,12 @@ Current state:
 
 - Warehouse Daily Board exposes shift context, actionable queue counters, scan station, exception lane, visible closing panel, and dense task board.
 - P0/stock-variance work is sorted ahead of routine warehouse tasks.
+- Implementation and promotion are merged.
+
+Evidence:
+
+- PR #83: Warehouse Daily Board UI template merged to `develop`.
+- PR #84: Warehouse Daily Board UI template promoted to `main`.
 
 ### S0-09-01 Carrier Manifest Skeleton
 
@@ -902,9 +908,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-08-03` - Warehouse Daily Board UI template.
-2. `S0-09-01` - Carrier manifest skeleton.
-3. `S0-09-02` - Scan verify endpoint/UI.
-4. `S0-09-03` - Shipping handover scan UI template.
+1. `S0-09-01` - Carrier manifest skeleton.
+2. `S0-09-02` - Scan verify endpoint/UI.
+3. `S0-09-03` - Shipping handover scan UI template.
+4. `S0-10-01` - Return receiving skeleton.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
