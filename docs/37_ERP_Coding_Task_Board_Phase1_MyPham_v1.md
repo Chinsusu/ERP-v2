@@ -132,7 +132,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-10-02 | Return inspection UI template | Returns skeleton | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-11-01 | External factory order skeleton | Subcontract manufacturing | BE Lead + FE Lead + Production/Ops Super User | P1 | Done | `docs/33_...` |
 | S0-11-02 | Material transfer to factory skeleton | Subcontract manufacturing | BE Lead + FE Lead | P1 | Done | `docs/33_...` |
-| S0-11-03 | Subcontract UI template | Subcontract manufacturing | FE Lead + UI/UX | P1 | Backlog | `docs/39_...` |
+| S0-11-03 | Subcontract UI template | Subcontract manufacturing | FE Lead + UI/UX | P1 | Review | `docs/39_...` |
 | S0-12-01 | Docker compose local | DevOps/CI/CD foundation | DevOps + Tech Leads | P0 | Done | `docs/18_...` + `docs/38_...` |
 | S0-12-02 | CI pipeline | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
 | S0-12-04 | Automated PR review gate and auto-merge | DevOps/CI/CD foundation | DevOps + Tech Lead | P0 | Done | `docs/18_...` + `docs/38_...` |
@@ -835,7 +835,7 @@ Evidence:
 
 **Owner:** FE Lead + UI/UX
 **Priority:** P1
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -844,6 +844,13 @@ Acceptance criteria:
 - List/detail pages support external factory status.
 - Sample approval and factory claim blocks exist.
 - Critical status and SLA are visible.
+
+Current state:
+
+- Subcontract page includes list filters for search, factory, product, status, and ETA.
+- Detail view shows external factory status, timeline, and business tabs for transfer, sample, claim, payment, and audit.
+- Sample approval block shows pass/fail samples with reviewer, file placeholder, and notes.
+- Factory claim block shows severity, open status, response deadline, and SLA chip.
 
 ### S0-12-01 Docker Compose Local
 

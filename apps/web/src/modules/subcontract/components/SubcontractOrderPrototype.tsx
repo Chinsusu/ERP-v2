@@ -19,7 +19,6 @@ import {
   formatSubcontractOrderStatus,
   prototypeSubcontractOrders,
   subcontractDepositStatusOptions,
-  subcontractDepositStatusTone,
   subcontractFactoryOptions,
   subcontractOrderStatusOptions,
   subcontractOrderStatusTone,
@@ -28,6 +27,7 @@ import {
 } from "../services/subcontractOrderService";
 import type {
   SubcontractDepositStatus,
+  SubcontractFinalPaymentStatus,
   SubcontractMaterialTransfer,
   SubcontractOrder,
   SubcontractOrderStatus
@@ -43,6 +43,12 @@ const orderColumns: DataTableColumn<SubcontractOrder>[] = [
         <small>{row.factoryName}</small>
       </span>
     ),
+    width: "190px"
+  },
+  {
+    key: "factory",
+    header: "Factory",
+    render: (row) => row.factoryName,
     width: "190px"
   },
   {
@@ -64,42 +70,90 @@ const orderColumns: DataTableColumn<SubcontractOrder>[] = [
     width: "110px"
   },
   {
-    key: "spec",
-    header: "Spec",
-    render: (row) => row.specVersion,
-    width: "180px"
-  },
-  {
-    key: "sample",
-    header: "Sample",
-    render: (row) => (row.sampleRequired ? "Required" : "Not required"),
-    width: "130px"
-  },
-  {
-    key: "expected",
-    header: "Expected",
-    render: (row) => row.expectedDeliveryDate,
-    width: "130px"
-  },
-  {
-    key: "deposit",
-    header: "Deposit",
-    render: (row) => (
-      <StatusChip tone={subcontractDepositStatusTone(row.depositStatus)}>
-        {formatSubcontractDepositStatus(row.depositStatus)}
-      </StatusChip>
-    ),
-    width: "140px"
-  },
-  {
     key: "status",
     header: "Status",
     render: (row) => (
       <StatusChip tone={subcontractOrderStatusTone(row.status)}>{formatSubcontractOrderStatus(row.status)}</StatusChip>
     ),
     width: "170px"
+  },
+  {
+    key: "eta",
+    header: "ETA",
+    render: (row) => row.expectedDeliveryDate,
+    width: "130px"
+  },
+  {
+    key: "qc",
+    header: "QC",
+    render: (row) => <StatusChip tone={subcontractQcTone(row)}>{subcontractQcLabel(row)}</StatusChip>,
+    width: "150px"
+  },
+  {
+    key: "payment",
+    header: "Payment",
+    render: (row) => formatFinalPaymentStatus(row.finalPaymentStatus),
+    width: "140px"
+  },
+  {
+    key: "action",
+    header: "Action",
+    render: () => <span className="erp-button erp-button--secondary erp-button--compact">Open</span>,
+    width: "110px"
   }
 ];
+
+const subcontractTimelineSteps = [
+  "Order",
+  "Deposit",
+  "Transfer",
+  "Sample",
+  "Mass production",
+  "Inbound",
+  "QC",
+  "Close"
+];
+
+const subcontractDetailTabs = [
+  "Overview",
+  "Transfer",
+  "Sample approval",
+  "Mass production",
+  "Inbound & QC",
+  "Factory claim",
+  "Payment"
+];
+
+const prototypeSampleApprovals = [
+  {
+    sampleNo: "M01",
+    receivedAt: "2026-04-14",
+    reviewer: "QA A",
+    result: "Fail",
+    fileLabel: "photo-m01",
+    note: "Scent is not within approved range"
+  },
+  {
+    sampleNo: "M02",
+    receivedAt: "2026-04-16",
+    reviewer: "QA A",
+    result: "Pass",
+    fileLabel: "photo-m02",
+    note: "Approved retained sample"
+  }
+] as const;
+
+const prototypeFactoryClaims = [
+  {
+    issueType: "Packaging scuff",
+    affectedQty: 120,
+    detectedAt: "2026-04-26",
+    responseDeadline: "2026-04-30",
+    severity: "P1",
+    status: "Open",
+    slaLabel: "4 days"
+  }
+] as const;
 
 export function SubcontractOrderPrototype() {
   const [factoryId, setFactoryId] = useState(subcontractFactoryOptions[0].id);
@@ -112,6 +166,11 @@ export function SubcontractOrderPrototype() {
   const [depositAmount, setDepositAmount] = useState("5000000");
   const [orders, setOrders] = useState<SubcontractOrder[]>(prototypeSubcontractOrders);
   const [selectedOrderId, setSelectedOrderId] = useState(prototypeSubcontractOrders[0]?.id ?? "");
+  const [search, setSearch] = useState("");
+  const [factoryFilter, setFactoryFilter] = useState("all");
+  const [productFilter, setProductFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<SubcontractOrderStatus | "all">("all");
+  const [etaFilter, setEtaFilter] = useState("");
   const [feedback, setFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
   const [lastAudit, setLastAudit] = useState<AuditLogItem | null>(null);
   const [sourceWarehouseId, setSourceWarehouseId] = useState<string>(subcontractTransferWarehouseOptions[0].value);
@@ -120,6 +179,35 @@ export function SubcontractOrderPrototype() {
   const [transferFeedback, setTransferFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
   const summary = useMemo(() => summarizeSubcontractOrders(orders), [orders]);
   const transferSummary = useMemo(() => summarizeSubcontractMaterialTransfers(transfers), [transfers]);
+  const displayedOrders = useMemo(
+    () =>
+      orders.filter((order) => {
+        const searchValue = search.trim().toLowerCase();
+        if (
+          searchValue &&
+          ![order.orderNo, order.factoryName, order.productName, order.sku].some((value) =>
+            value.toLowerCase().includes(searchValue)
+          )
+        ) {
+          return false;
+        }
+        if (factoryFilter !== "all" && order.factoryId !== factoryFilter) {
+          return false;
+        }
+        if (productFilter !== "all" && order.productId !== productFilter) {
+          return false;
+        }
+        if (statusFilter !== "all" && order.status !== statusFilter) {
+          return false;
+        }
+        if (etaFilter && order.expectedDeliveryDate !== etaFilter) {
+          return false;
+        }
+
+        return true;
+      }),
+    [etaFilter, factoryFilter, orders, productFilter, search, statusFilter]
+  );
   const selectedOrder = orders.find((order) => order.id === selectedOrderId) ?? orders[0] ?? null;
   const latestTransfer = transfers[0] ?? null;
 
@@ -234,6 +322,60 @@ export function SubcontractOrderPrototype() {
           </a>
         </div>
       </header>
+
+      <section className="erp-subcontract-list-toolbar" aria-label="Subcontract order filters">
+        <label className="erp-field">
+          <span>Search</span>
+          <input
+            className="erp-input"
+            type="search"
+            value={search}
+            placeholder="SUB-260426-0001 / factory / SKU"
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
+        <label className="erp-field">
+          <span>Factory</span>
+          <select className="erp-input" value={factoryFilter} onChange={(event) => setFactoryFilter(event.target.value)}>
+            <option value="all">All factories</option>
+            {subcontractFactoryOptions.map((factory) => (
+              <option key={factory.id} value={factory.id}>
+                {factory.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="erp-field">
+          <span>Product</span>
+          <select className="erp-input" value={productFilter} onChange={(event) => setProductFilter(event.target.value)}>
+            <option value="all">All products</option>
+            {subcontractProductOptions.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="erp-field">
+          <span>Status</span>
+          <select
+            className="erp-input"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as SubcontractOrderStatus | "all")}
+          >
+            <option value="all">All statuses</option>
+            {subcontractOrderStatusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="erp-field">
+          <span>ETA</span>
+          <input className="erp-input" type="date" value={etaFilter} onChange={(event) => setEtaFilter(event.target.value)} />
+        </label>
+      </section>
 
       <section className="erp-kpi-grid erp-subcontract-kpis">
         <SubcontractKPI label="Total orders" value={summary.total} tone="info" />
@@ -370,6 +512,26 @@ export function SubcontractOrderPrototype() {
                 />
               </div>
 
+              <div className="erp-subcontract-timeline" aria-label="Subcontract manufacturing timeline">
+                {subcontractTimelineSteps.map((step, index) => (
+                  <span
+                    className="erp-subcontract-timeline-step"
+                    data-active={index <= timelineIndexForStatus(selectedOrder.status) ? "true" : "false"}
+                    key={step}
+                  >
+                    {step}
+                  </span>
+                ))}
+              </div>
+
+              <div className="erp-subcontract-tabs" aria-label="Subcontract detail tabs">
+                {subcontractDetailTabs.map((tab, index) => (
+                  <button className="erp-subcontract-tab" data-active={index === 0 ? "true" : "false"} key={tab} type="button">
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
               <div className="erp-subcontract-status-grid" aria-label="Subcontract order status model">
                 {subcontractOrderStatusOptions.map((option, index) => (
                   <button
@@ -490,6 +652,57 @@ export function SubcontractOrderPrototype() {
         </div>
       </section>
 
+      <section className="erp-subcontract-quality-grid">
+        <div className="erp-card erp-card--padded erp-subcontract-card">
+          <div className="erp-section-header">
+            <h2 className="erp-section-title">Sample approval</h2>
+            <StatusChip tone="success">Sample approved</StatusChip>
+          </div>
+          <div className="erp-subcontract-sample-list">
+            {prototypeSampleApprovals.map((sample) => (
+              <div className="erp-subcontract-sample-item" key={sample.sampleNo}>
+                <strong>{sample.sampleNo}</strong>
+                <span>{sample.receivedAt}</span>
+                <span>{sample.reviewer}</span>
+                <StatusChip tone={sample.result === "Pass" ? "success" : "danger"}>{sample.result}</StatusChip>
+                <span>{sample.fileLabel}</span>
+                <span>{sample.note}</span>
+              </div>
+            ))}
+          </div>
+          <div className="erp-subcontract-actions">
+            <button className="erp-button erp-button--secondary" type="button">
+              Approve sample
+            </button>
+          </div>
+        </div>
+
+        <div className="erp-card erp-card--padded erp-subcontract-card">
+          <div className="erp-section-header">
+            <h2 className="erp-section-title">Factory claim</h2>
+            <StatusChip tone="danger">P1 open</StatusChip>
+          </div>
+          <div className="erp-subcontract-claim-list">
+            {prototypeFactoryClaims.map((claim) => (
+              <div className="erp-subcontract-claim-item" key={`${claim.issueType}-${claim.detectedAt}`}>
+                <strong>{claim.issueType}</strong>
+                <span>{formatQuantity(claim.affectedQty)} affected</span>
+                <span>Detected {claim.detectedAt}</span>
+                <span>Deadline {claim.responseDeadline}</span>
+                <StatusChip tone="danger">{claim.severity}</StatusChip>
+                <StatusChip tone="warning">{claim.status}</StatusChip>
+                <StatusChip tone="warning">SLA {claim.slaLabel}</StatusChip>
+              </div>
+            ))}
+          </div>
+          <div className="erp-subcontract-actions">
+            <button className="erp-button erp-button--danger" type="button">
+              Create claim
+            </button>
+          </div>
+        </div>
+      </section>
+
       <section className="erp-card erp-card--padded erp-subcontract-audit-card">
         <div className="erp-section-header">
           <h2 className="erp-section-title">Status audit</h2>
@@ -512,9 +725,9 @@ export function SubcontractOrderPrototype() {
       <section className="erp-card erp-card--padded erp-module-table-card" id="subcontract-orders">
         <div className="erp-section-header">
           <h2 className="erp-section-title">External factory orders</h2>
-          <StatusChip tone={orders.length === 0 ? "warning" : "info"}>{orders.length} rows</StatusChip>
+          <StatusChip tone={displayedOrders.length === 0 ? "warning" : "info"}>{displayedOrders.length} rows</StatusChip>
         </div>
-        <DataTable columns={orderColumns} rows={orders} getRowKey={(row) => row.id} />
+        <DataTable columns={orderColumns} rows={displayedOrders} getRowKey={(row) => row.id} />
       </section>
     </section>
   );
@@ -545,4 +758,71 @@ function formatQuantity(value: number) {
 
 function formatMoney(value: number) {
   return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value)} VND`;
+}
+
+function subcontractQcLabel(order: SubcontractOrder) {
+  if (order.status === "ACCEPTED" || order.status === "CLOSED") {
+    return "QC pass";
+  }
+  if (order.status === "REJECTED") {
+    return "Claim hold";
+  }
+  if (order.status === "QC_REVIEW") {
+    return "QC review";
+  }
+  if (order.sampleRequired) {
+    return "Sample pending";
+  }
+
+  return "Not required";
+}
+
+function subcontractQcTone(order: SubcontractOrder): StatusTone {
+  if (order.status === "ACCEPTED" || order.status === "CLOSED") {
+    return "success";
+  }
+  if (order.status === "REJECTED") {
+    return "danger";
+  }
+  if (order.status === "QC_REVIEW" || order.sampleRequired) {
+    return "warning";
+  }
+
+  return "normal";
+}
+
+function formatFinalPaymentStatus(status: SubcontractFinalPaymentStatus) {
+  switch (status) {
+    case "released":
+      return "Released";
+    case "hold":
+      return "Hold";
+    case "pending":
+    default:
+      return "Pending";
+  }
+}
+
+function timelineIndexForStatus(status: SubcontractOrderStatus) {
+  switch (status) {
+    case "DRAFT":
+      return 0;
+    case "CONFIRMED":
+      return 1;
+    case "MATERIAL_TRANSFERRED":
+      return 2;
+    case "SAMPLE_APPROVED":
+      return 3;
+    case "IN_PRODUCTION":
+      return 4;
+    case "DELIVERED":
+      return 5;
+    case "QC_REVIEW":
+    case "ACCEPTED":
+    case "REJECTED":
+      return 6;
+    case "CLOSED":
+    default:
+      return 7;
+  }
 }
