@@ -112,7 +112,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | Done | `docs/15_...` + `docs/39_...` |
 | S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
-| S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
+| S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Review | `docs/39_...` |
 | S0-04-01 | PostgreSQL migration setup | Database foundation | BE Lead + DevOps | P0 | In Progress | `docs/17_...` |
 | S0-04-02 | Base tables | Database foundation | BE Lead | P0 | Done | `docs/17_...` |
 | S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | Done | `docs/16_...` |
@@ -326,7 +326,7 @@ Evidence:
 
 **Owner:** FE Lead + UI/UX
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -339,6 +339,13 @@ Acceptance criteria:
 - Modal/drawer/popover template.
 - Empty/loading/error state template.
 - Audit log and attachment panel templates.
+
+Current state:
+
+- Shared page template components cover page header, filter bar, table page, form page, detail page, modal, drawer, popover, audit log panel, and attachment panel.
+- Existing AppShell remains the app shell template.
+- Empty/loading/error state templates are covered by shared design-system state components.
+- Implementation PR is ready for review.
 
 ### S0-04-01 PostgreSQL Migration Setup
 
