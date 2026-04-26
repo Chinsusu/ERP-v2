@@ -994,12 +994,44 @@ textarea {
   align-items: start;
 }
 
+.erp-returns-inspection-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.05fr);
+  gap: 12px;
+  align-items: start;
+}
+
 .erp-returns-receiving-card,
-.erp-returns-result-card {
+.erp-returns-result-card,
+.erp-returns-inspection-card {
   min-width: 0;
 }
 
+.erp-returns-inspection-result {
+  grid-column: 1 / -1;
+}
+
+.erp-returns-inspection-lookup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.erp-returns-order-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
 .erp-returns-disposition-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.erp-returns-condition-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(120px, 1fr));
   gap: 8px;
@@ -1015,10 +1047,45 @@ textarea {
   cursor: pointer;
 }
 
+.erp-returns-condition-option {
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--erp-text);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius);
+  cursor: pointer;
+}
+
 .erp-returns-disposition-option[data-active="true"] {
   color: var(--erp-red);
   background: var(--erp-red-bg);
   border-color: var(--erp-red);
+}
+
+.erp-returns-condition-option[data-active="true"] {
+  color: var(--erp-info);
+  background: var(--erp-info-bg);
+  border-color: var(--erp-info);
+}
+
+.erp-returns-inspection-subheader {
+  margin-top: 14px;
+}
+
+.erp-returns-note-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(220px, 1fr);
+  gap: 12px;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.erp-returns-textarea {
+  min-height: 72px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  resize: vertical;
 }
 
 .erp-returns-scan-primary {
@@ -2076,7 +2143,12 @@ textarea {
   .erp-returns-toolbar,
   .erp-returns-kpis,
   .erp-returns-receiving-grid,
+  .erp-returns-inspection-grid,
+  .erp-returns-inspection-lookup,
   .erp-returns-disposition-options,
+  .erp-returns-condition-options,
+  .erp-returns-note-grid,
+  .erp-returns-order-grid,
   .erp-returns-result-grid,
   .erp-stock-kpis {
     grid-template-columns: 1fr;

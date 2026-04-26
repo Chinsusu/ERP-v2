@@ -13,6 +13,7 @@ import {
   returnWarehouseOptions
 } from "../services/returnReceivingService";
 import type { ReturnDisposition, ReturnReceipt, ReturnReceiptQuery, ReturnSource } from "../types";
+import { ReturnInspectionPanel } from "./ReturnInspectionPanel";
 
 const receiptColumns: DataTableColumn<ReturnReceipt>[] = [
   {
@@ -160,6 +161,9 @@ export function ReturnReceivingPrototype() {
           <a className="erp-button erp-button--secondary" href="#return-receiving">
             Receive
           </a>
+          <a className="erp-button erp-button--secondary" href="#return-inspection">
+            Inspect
+          </a>
           <a className="erp-button erp-button--primary" href="#return-receipts">
             Receipts
           </a>
@@ -287,6 +291,8 @@ export function ReturnReceivingPrototype() {
           )}
         </div>
       </section>
+
+      <ReturnInspectionPanel receipts={displayedReceipts} />
 
       <section className="erp-card erp-card--padded erp-module-table-card" id="return-receipts">
         <div className="erp-section-header">
