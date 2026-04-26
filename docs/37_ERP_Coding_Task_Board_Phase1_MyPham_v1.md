@@ -115,7 +115,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-04-01 | PostgreSQL migration setup | Database foundation | BE Lead + DevOps | P0 | In Progress | `docs/17_...` |
 | S0-04-02 | Base tables | Database foundation | BE Lead | P0 | Done | `docs/17_...` |
-| S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | Review | `docs/16_...` |
+| S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | Done | `docs/16_...` |
 | S0-05-02 | API codegen integration | API contract foundation | FE Lead + BE Lead | P0 | In Progress | `docs/16_...` + `docs/15_...` |
 | S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Done | `docs/19_...` |
 | S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
@@ -390,7 +390,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -404,9 +404,9 @@ Acceptance criteria:
 
 Current state:
 
-- OpenAPI base contract is under PR review.
+- Done via PR #51 and PR #52.
 - Health, auth, inventory, pagination, and master data sample endpoints are represented.
-- Frontend client generation dry run is pending GitHub OpenAPI CI.
+- OpenAPI lint and frontend client generation dry run pass in GitHub CI.
 
 ### S0-05-02 API Codegen Integration
 
@@ -819,6 +819,7 @@ Acceptance criteria:
 | S0-03-02 | PR #38, PR #39; reusable DataTable, FormSection, StatusChip, modal, drawer, toast, state, and scan components |
 | S0-07-01 | PR #42, PR #43; stock movement transaction store, balance delta updates, immutable ledger path, adjustment audit logging |
 | S0-07-02 | PR #46, PR #47, PR #48; available stock calculator, inventory API endpoint, OpenAPI contract, and Inventory UI prototype |
+| S0-05-01 | PR #51, PR #52; OpenAPI base contract with pagination schema, auth/health coverage, master data sample endpoints, and client generation dry run |
 
 ---
 
@@ -838,9 +839,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-05-01` - OpenAPI base file.
-2. `S0-05-02` - API codegen integration.
-3. `S0-06-03` - Audit log base.
-4. `S0-08-01` - Warehouse daily board skeleton.
+1. `S0-05-02` - API codegen integration.
+2. `S0-06-03` - Audit log base.
+3. `S0-08-01` - Warehouse daily board skeleton.
+4. `S0-03-04` - UI page templates foundation.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
