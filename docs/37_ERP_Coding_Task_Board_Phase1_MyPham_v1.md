@@ -118,7 +118,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | In Progress | `docs/16_...` |
 | S0-05-02 | API codegen integration | API contract foundation | FE Lead + BE Lead | P0 | In Progress | `docs/16_...` + `docs/15_...` |
 | S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Done | `docs/19_...` |
-| S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Review | `docs/04_...` + `docs/19_...` |
+| S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
 | S0-06-03 | Audit log base | Auth, RBAC, audit | BE Lead + FE Lead | P0 | In Progress | `docs/19_...` |
 | S0-07-01 | Stock movement write path | Stock ledger prototype | BE Lead | P0 | In Progress | `docs/17_...` + `docs/33_...` |
 | S0-07-02 | Available stock calculation prototype | Stock ledger prototype | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` |
@@ -445,7 +445,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead + BA
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/04_ERP_Permission_Approval_Matrix_Phase1_My_Pham_v1.md`, `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -457,7 +457,13 @@ Acceptance criteria:
 
 Current state:
 
-- RBAC role catalog, backend permission middleware, protected role catalog endpoint, and frontend menu/action permission filtering are in review.
+- RBAC role catalog, backend permission middleware, protected role catalog endpoint, and frontend menu/action permission filtering are merged to `main`.
+
+Evidence:
+
+- PR #33: RBAC skeleton merged to `develop`.
+- PR #34: RBAC Go format fix merged to `develop`.
+- PR #35: RBAC skeleton promoted to `main`.
 
 ### S0-06-03 Audit Log Base
 
@@ -795,6 +801,7 @@ Acceptance criteria:
 | S0-03-01 | PR #21, PR #22; protected ERP app shell, permission menu, module placeholders |
 | S0-04-02 | PR #25, PR #26; Phase 1 base tables, FK/check constraints, migration apply/rollback CI |
 | S0-06-01 | PR #29, PR #30; mock login, protected API, frontend mock session, OpenAPI contract |
+| S0-06-02 | PR #33, PR #34, PR #35; role catalog, API permission middleware, frontend menu/action permission filtering |
 
 ---
 
@@ -814,9 +821,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-06-02` - RBAC skeleton.
-2. `S0-03-02` - Core UI components.
-3. `S0-07-01` - Database-backed stock movement write path.
-4. `S0-05-01` - OpenAPI base file.
+1. `S0-03-02` - Core UI components.
+2. `S0-07-01` - Database-backed stock movement write path.
+3. `S0-05-01` - OpenAPI base file.
+4. `S0-05-02` - API codegen integration.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
