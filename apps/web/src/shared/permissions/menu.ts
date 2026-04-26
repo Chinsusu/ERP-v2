@@ -16,6 +16,7 @@ export type PermissionKey =
   | "purchase:view"
   | "qc:view"
   | "production:view"
+  | "subcontract:view"
   | "sales:view"
   | "shipping:view"
   | "returns:view"
@@ -70,6 +71,7 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "purchase:view",
     "qc:view",
     "production:view",
+    "subcontract:view",
     "sales:view",
     "shipping:view",
     "returns:view",
@@ -104,6 +106,7 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "inventory:view",
     "qc:view",
     "production:view",
+    "subcontract:view",
     "returns:view",
     "reports:view",
     "record:create"
@@ -122,6 +125,7 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "inventory:view",
     "qc:view",
     "production:view",
+    "subcontract:view",
     "reports:view",
     "record:create"
   ]
@@ -143,6 +147,7 @@ export const appMenuGroups: AppMenuGroup[] = [
       { label: "Purchase", href: "/purchase", code: "PU", permission: "purchase:view" },
       { label: "QC", href: "/qc", code: "QC", permission: "qc:view" },
       { label: "Production", href: "/production", code: "PD", permission: "production:view" },
+      { label: "Subcontract", href: "/subcontract", code: "SUB", permission: "subcontract:view" },
       { label: "Sales Orders", href: "/sales", code: "SO", permission: "sales:view" },
       { label: "Shipping", href: "/shipping", code: "SH", permission: "shipping:view" },
       { label: "Returns", href: "/returns", code: "RT", permission: "returns:view" }
