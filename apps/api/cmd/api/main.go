@@ -11,6 +11,8 @@ import (
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
+	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
+	returnsdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
 	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
 	shippingdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
@@ -196,6 +198,59 @@ type carrierManifestScanResponse struct {
 	AuditLogID         string                           `json:"audit_log_id,omitempty"`
 }
 
+type returnReceiptLineResponse struct {
+	ID          string `json:"id"`
+	SKU         string `json:"sku"`
+	ProductName string `json:"product_name"`
+	Quantity    int    `json:"quantity"`
+	Condition   string `json:"condition"`
+}
+
+type returnStockMovementResponse struct {
+	ID                string `json:"id"`
+	MovementType      string `json:"movement_type"`
+	SKU               string `json:"sku"`
+	WarehouseID       string `json:"warehouse_id"`
+	Quantity          int    `json:"quantity"`
+	TargetStockStatus string `json:"target_stock_status"`
+	SourceDocID       string `json:"source_doc_id"`
+}
+
+type returnReceiptResponse struct {
+	ID                string                       `json:"id"`
+	ReceiptNo         string                       `json:"receipt_no"`
+	WarehouseID       string                       `json:"warehouse_id"`
+	WarehouseCode     string                       `json:"warehouse_code"`
+	Source            string                       `json:"source"`
+	ReceivedBy        string                       `json:"received_by"`
+	ReceivedAt        string                       `json:"received_at"`
+	PackageCondition  string                       `json:"package_condition"`
+	Status            string                       `json:"status"`
+	Disposition       string                       `json:"disposition"`
+	TargetLocation    string                       `json:"target_location"`
+	OriginalOrderNo   string                       `json:"original_order_no,omitempty"`
+	TrackingNo        string                       `json:"tracking_no,omitempty"`
+	ReturnCode        string                       `json:"return_code,omitempty"`
+	ScanCode          string                       `json:"scan_code"`
+	CustomerName      string                       `json:"customer_name"`
+	UnknownCase       bool                         `json:"unknown_case"`
+	Lines             []returnReceiptLineResponse  `json:"lines"`
+	StockMovement     *returnStockMovementResponse `json:"stock_movement,omitempty"`
+	InvestigationNote string                       `json:"investigation_note,omitempty"`
+	AuditLogID        string                       `json:"audit_log_id,omitempty"`
+	CreatedAt         string                       `json:"created_at"`
+}
+
+type receiveReturnRequest struct {
+	WarehouseID       string `json:"warehouse_id"`
+	WarehouseCode     string `json:"warehouse_code"`
+	Source            string `json:"source"`
+	Code              string `json:"code"`
+	PackageCondition  string `json:"package_condition"`
+	Disposition       string `json:"disposition"`
+	InvestigationNote string `json:"investigation_note"`
+}
+
 type stockMovementRequest struct {
 	MovementID   string  `json:"movementId"`
 	SKU          string  `json:"sku"`
@@ -240,6 +295,9 @@ func main() {
 	createCarrierManifest := shippingapp.NewCreateCarrierManifest(carrierManifestStore, auditLogStore)
 	addShipmentToCarrierManifest := shippingapp.NewAddShipmentToCarrierManifest(carrierManifestStore, auditLogStore)
 	verifyCarrierManifestScan := shippingapp.NewVerifyCarrierManifestScan(carrierManifestStore, auditLogStore)
+	returnReceiptStore := returnsapp.NewPrototypeReturnReceiptStore()
+	listReturnReceipts := returnsapp.NewListReturnReceipts(returnReceiptStore)
+	receiveReturn := returnsapp.NewReceiveReturn(returnReceiptStore, auditLogStore)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
@@ -311,6 +369,13 @@ func main() {
 			authConfig,
 			auth.PermissionShippingView,
 			http.HandlerFunc(verifyCarrierManifestScanHandler(verifyCarrierManifestScan)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/returns/receipts",
+		auth.RequireBearerToken(
+			authConfig,
+			http.HandlerFunc(returnReceiptsHandler(listReturnReceipts, receiveReturn)),
 		),
 	)
 
@@ -789,6 +854,86 @@ func verifyCarrierManifestScanHandler(service shippingapp.VerifyCarrierManifestS
 	}
 }
 
+func returnReceiptsHandler(
+	listService returnsapp.ListReturnReceipts,
+	receiveService returnsapp.ReceiveReturn,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionReturnsView) {
+				writePermissionDenied(w, r, auth.PermissionReturnsView)
+				return
+			}
+			filter := returnsdomain.NewReturnReceiptFilter(
+				r.URL.Query().Get("warehouse_id"),
+				returnsdomain.ReturnReceiptStatus(r.URL.Query().Get("status")),
+			)
+			receipts, err := listService.Execute(r.Context(), filter)
+			if err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusConflict,
+					response.ErrorCodeConflict,
+					"Return receipts could not be loaded",
+					nil,
+				)
+				return
+			}
+
+			payload := make([]returnReceiptResponse, 0, len(receipts))
+			for _, receipt := range receipts {
+				payload = append(payload, newReturnReceiptResponse(receipt, ""))
+			}
+			response.WriteSuccess(w, r, http.StatusOK, payload)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			var payload receiveReturnRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid return receiving payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := receiveService.Execute(r.Context(), returnsapp.ReceiveReturnInput{
+				WarehouseID:       payload.WarehouseID,
+				WarehouseCode:     payload.WarehouseCode,
+				Source:            payload.Source,
+				ScanCode:          payload.Code,
+				PackageCondition:  payload.PackageCondition,
+				Disposition:       payload.Disposition,
+				InvestigationNote: payload.InvestigationNote,
+				ActorID:           principal.UserID,
+				RequestID:         response.RequestID(r),
+			})
+			if err != nil {
+				writeReturnReceiptError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusCreated, newReturnReceiptResponse(result.Receipt, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
 func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) availableStockResponse {
 	return availableStockResponse{
 		WarehouseID:    snapshot.WarehouseID,
@@ -941,6 +1086,54 @@ func newCarrierManifestScanResponse(result shippingapp.CarrierManifestScanResult
 	return payload
 }
 
+func newReturnReceiptResponse(receipt returnsdomain.ReturnReceipt, auditLogID string) returnReceiptResponse {
+	payload := returnReceiptResponse{
+		ID:                receipt.ID,
+		ReceiptNo:         receipt.ReceiptNo,
+		WarehouseID:       receipt.WarehouseID,
+		WarehouseCode:     receipt.WarehouseCode,
+		Source:            string(receipt.Source),
+		ReceivedBy:        receipt.ReceivedBy,
+		ReceivedAt:        receipt.ReceivedAt.UTC().Format(time.RFC3339),
+		PackageCondition:  receipt.PackageCondition,
+		Status:            string(receipt.Status),
+		Disposition:       string(receipt.Disposition),
+		TargetLocation:    receipt.TargetLocation,
+		OriginalOrderNo:   receipt.OriginalOrderNo,
+		TrackingNo:        receipt.TrackingNo,
+		ReturnCode:        receipt.ReturnCode,
+		ScanCode:          receipt.ScanCode,
+		CustomerName:      receipt.CustomerName,
+		UnknownCase:       receipt.UnknownCase,
+		Lines:             make([]returnReceiptLineResponse, 0, len(receipt.Lines)),
+		InvestigationNote: receipt.InvestigationNote,
+		AuditLogID:        auditLogID,
+		CreatedAt:         receipt.CreatedAt.UTC().Format(time.RFC3339),
+	}
+	for _, line := range receipt.Lines {
+		payload.Lines = append(payload.Lines, returnReceiptLineResponse{
+			ID:          line.ID,
+			SKU:         line.SKU,
+			ProductName: line.ProductName,
+			Quantity:    line.Quantity,
+			Condition:   line.Condition,
+		})
+	}
+	if receipt.StockMovement != nil {
+		payload.StockMovement = &returnStockMovementResponse{
+			ID:                receipt.StockMovement.ID,
+			MovementType:      receipt.StockMovement.MovementType,
+			SKU:               receipt.StockMovement.SKU,
+			WarehouseID:       receipt.StockMovement.WarehouseID,
+			Quantity:          receipt.StockMovement.Quantity,
+			TargetStockStatus: receipt.StockMovement.TargetStockStatus,
+			SourceDocID:       receipt.StockMovement.SourceDocID,
+		}
+	}
+
+	return payload
+}
+
 func writeCloseReconciliationError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, inventoryapp.ErrEndOfDayReconciliationNotFound):
@@ -1012,6 +1205,40 @@ func writeCarrierManifestError(w http.ResponseWriter, r *http.Request, err error
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier manifest is already completed", nil)
 	default:
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier manifest request could not be processed", nil)
+	}
+}
+
+func writeReturnReceiptError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, returnsdomain.ErrReturnReceiptScanCodeRequired):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Return scan code is required",
+			map[string]any{"required": "code"},
+		)
+	case errors.Is(err, returnsdomain.ErrReturnReceiptInvalidDisposition):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Return disposition is invalid",
+			map[string]any{"allowed": "reusable, not_reusable, needs_inspection"},
+		)
+	case errors.Is(err, returnsdomain.ErrReturnReceiptRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Invalid return receiving payload",
+			map[string]any{"required": "warehouse_id"},
+		)
+	default:
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Return receipt could not be processed", nil)
 	}
 }
 

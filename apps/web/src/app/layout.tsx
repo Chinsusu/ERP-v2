@@ -6,7 +6,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ERP Platform",
-  description: "Cosmetics ERP Phase 1"
+  description: "Cosmetics ERP Phase 1",
+  icons: {
+    icon: "/icon.svg"
+  }
 };
 
 export default function RootLayout({

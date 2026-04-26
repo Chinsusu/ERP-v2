@@ -493,6 +493,62 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /returns/receipts:
+    get:
+      summary: List return receipts
+      operationId: listReturnReceipts
+      tags:
+        - returns
+      parameters:
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ReturnReceiptStatus"
+      responses:
+        "200":
+          description: Return receipt rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnReceiptListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    post:
+      summary: Receive a returned order, tracking code, or unknown return case
+      operationId: receiveReturn
+      tags:
+        - returns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiveReturnRequest"
+      responses:
+        "201":
+          description: Return receipt created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnReceiptSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   responses:
     BadRequest:
@@ -1290,6 +1346,181 @@ components:
         reason:
           type: string
         owner:
+          type: string
+    ReturnReceiptStatus:
+      type: string
+      enum:
+        - pending_inspection
+    ReturnSource:
+      type: string
+      enum:
+        - SHIPPER
+        - CARRIER
+        - CUSTOMER
+        - MARKETPLACE
+        - UNKNOWN
+    ReturnDisposition:
+      type: string
+      enum:
+        - reusable
+        - not_reusable
+        - needs_inspection
+    ReturnReceiptListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ReturnReceipt"
+    ReturnReceiptSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ReturnReceipt"
+    ReceiveReturnRequest:
+      type: object
+      required:
+        - warehouse_id
+        - code
+        - disposition
+      properties:
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        source:
+          $ref: "#/components/schemas/ReturnSource"
+        code:
+          type: string
+        package_condition:
+          type: string
+        disposition:
+          $ref: "#/components/schemas/ReturnDisposition"
+        investigation_note:
+          type: string
+    ReturnReceipt:
+      type: object
+      required:
+        - id
+        - receipt_no
+        - warehouse_id
+        - warehouse_code
+        - source
+        - received_by
+        - received_at
+        - package_condition
+        - status
+        - disposition
+        - target_location
+        - scan_code
+        - customer_name
+        - unknown_case
+        - lines
+        - created_at
+      properties:
+        id:
+          type: string
+        receipt_no:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        source:
+          $ref: "#/components/schemas/ReturnSource"
+        received_by:
+          type: string
+        received_at:
+          type: string
+          format: date-time
+        package_condition:
+          type: string
+        status:
+          $ref: "#/components/schemas/ReturnReceiptStatus"
+        disposition:
+          $ref: "#/components/schemas/ReturnDisposition"
+        target_location:
+          type: string
+        original_order_no:
+          type: string
+        tracking_no:
+          type: string
+        return_code:
+          type: string
+        scan_code:
+          type: string
+        customer_name:
+          type: string
+        unknown_case:
+          type: boolean
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnReceiptLine"
+        stock_movement:
+          $ref: "#/components/schemas/ReturnStockMovement"
+        investigation_note:
+          type: string
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    ReturnReceiptLine:
+      type: object
+      required:
+        - id
+        - sku
+        - product_name
+        - quantity
+        - condition
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        product_name:
+          type: string
+        quantity:
+          type: integer
+        condition:
+          type: string
+    ReturnStockMovement:
+      type: object
+      required:
+        - id
+        - movement_type
+        - sku
+        - warehouse_id
+        - quantity
+        - target_stock_status
+        - source_doc_id
+      properties:
+        id:
+          type: string
+        movement_type:
+          type: string
+          enum:
+            - RETURN_RECEIPT
+        sku:
+          type: string
+        warehouse_id:
+          type: string
+        quantity:
+          type: integer
+        target_stock_status:
+          type: string
+          enum:
+            - return_pending
+        source_doc_id:
           type: string
     CarrierManifestStatus:
       type: string
