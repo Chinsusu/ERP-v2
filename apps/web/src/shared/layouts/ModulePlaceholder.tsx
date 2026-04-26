@@ -1,4 +1,7 @@
+"use client";
+
 import type { MockUser } from "@/shared/auth/mockSession";
+import { DataTable, StatusChip, type DataTableColumn } from "@/shared/design-system/components";
 import { getVisibleActions, moduleActions, type AppMenuItem } from "@/shared/permissions/menu";
 
 type ModulePlaceholderProps = {
@@ -12,7 +15,32 @@ const kpis = [
   { label: "Blocked", value: "0", status: "normal", chip: "Clear" }
 ] as const;
 
-const rows = ["New receipts", "Exception review", "Daily checkpoint"];
+type WorkQueueRow = {
+  queue: string;
+  owner: string;
+  status: "Ready" | "Review" | "Blocked";
+};
+
+const rows: WorkQueueRow[] = [
+  { queue: "New receipts", owner: "Ops", status: "Ready" },
+  { queue: "Exception review", owner: "Lead", status: "Review" },
+  { queue: "Daily checkpoint", owner: "Ops", status: "Ready" }
+];
+
+const columns: DataTableColumn<WorkQueueRow>[] = [
+  { key: "queue", header: "Queue", render: (row) => row.queue },
+  { key: "owner", header: "Owner", render: (row) => row.owner, width: "140px" },
+  {
+    key: "status",
+    header: "Status",
+    render: (row) => (
+      <StatusChip tone={row.status === "Blocked" ? "danger" : row.status === "Review" ? "warning" : "success"}>
+        {row.status}
+      </StatusChip>
+    ),
+    width: "140px"
+  }
+];
 
 export function ModulePlaceholder({ item, user }: ModulePlaceholderProps) {
   const actions = getVisibleActions(user, moduleActions);
@@ -52,22 +80,9 @@ export function ModulePlaceholder({ item, user }: ModulePlaceholderProps) {
       <section className="erp-card erp-card--padded erp-module-table-card">
         <div className="erp-section-header">
           <h2 className="erp-section-title">Work queue</h2>
-          <span className="erp-status-chip erp-status-chip--normal">Mock</span>
+          <StatusChip>Mock</StatusChip>
         </div>
-        <div className="erp-module-table" role="table" aria-label={`${item.label} work queue`}>
-          <div className="erp-module-table-row erp-module-table-row--head" role="row">
-            <span role="columnheader">Queue</span>
-            <span role="columnheader">Owner</span>
-            <span role="columnheader">Status</span>
-          </div>
-          {rows.map((row) => (
-            <div className="erp-module-table-row" role="row" key={row}>
-              <span role="cell">{row}</span>
-              <span role="cell">Ops</span>
-              <span role="cell">Ready</span>
-            </div>
-          ))}
-        </div>
+        <DataTable columns={columns} rows={rows} getRowKey={(row) => row.queue} />
       </section>
     </section>
   );
