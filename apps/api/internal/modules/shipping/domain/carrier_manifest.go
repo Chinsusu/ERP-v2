@@ -20,6 +20,18 @@ var ErrManifestRequiredField = errors.New("carrier manifest required field is mi
 var ErrManifestDuplicateShipment = errors.New("shipment already exists in carrier manifest")
 var ErrManifestShipmentNotPacked = errors.New("shipment must be packed before adding to carrier manifest")
 var ErrManifestAlreadyCompleted = errors.New("carrier manifest is already completed")
+var ErrManifestScanCodeRequired = errors.New("manifest scan code is required")
+var ErrManifestScanNotFound = errors.New("manifest scan code was not found")
+var ErrManifestScanInvalidState = errors.New("manifest cannot accept scan in current state")
+var ErrManifestScanDuplicate = errors.New("manifest line is already scanned")
+
+type CarrierManifestScanResultCode string
+
+const ScanResultMatched CarrierManifestScanResultCode = "MATCHED"
+const ScanResultNotFound CarrierManifestScanResultCode = "NOT_FOUND"
+const ScanResultInvalidState CarrierManifestScanResultCode = "INVALID_STATE"
+const ScanResultManifestMismatch CarrierManifestScanResultCode = "MANIFEST_MISMATCH"
+const ScanResultDuplicate CarrierManifestScanResultCode = "DUPLICATE_SCAN"
 
 type CarrierManifest struct {
 	ID            string
@@ -177,6 +189,66 @@ func (m CarrierManifest) AddShipment(shipment PackedShipment) (CarrierManifest, 
 	}
 
 	return next, nil
+}
+
+func (m CarrierManifest) MarkLineScanned(code string) (CarrierManifest, CarrierManifestLine, error) {
+	normalizedCode := NormalizeManifestScanCode(code)
+	if normalizedCode == "" {
+		return CarrierManifest{}, CarrierManifestLine{}, ErrManifestScanCodeRequired
+	}
+	if m.Status != ManifestStatusReady && m.Status != ManifestStatusScanning {
+		return CarrierManifest{}, CarrierManifestLine{}, ErrManifestScanInvalidState
+	}
+
+	lineIndex, line, ok := m.FindLineByScanCode(normalizedCode)
+	if !ok {
+		return CarrierManifest{}, CarrierManifestLine{}, ErrManifestScanNotFound
+	}
+	if line.Scanned {
+		return CarrierManifest{}, line, ErrManifestScanDuplicate
+	}
+
+	next := m.Clone()
+	next.Lines[lineIndex].Scanned = true
+	if next.Status == ManifestStatusReady {
+		next.Status = ManifestStatusScanning
+	}
+
+	return next, next.Lines[lineIndex], nil
+}
+
+func (m CarrierManifest) FindLineByScanCode(code string) (int, CarrierManifestLine, bool) {
+	normalizedCode := NormalizeManifestScanCode(code)
+	if normalizedCode == "" {
+		return -1, CarrierManifestLine{}, false
+	}
+
+	for index, line := range m.Lines {
+		if line.MatchesScanCode(normalizedCode) {
+			return index, line, true
+		}
+	}
+
+	return -1, CarrierManifestLine{}, false
+}
+
+func (line CarrierManifestLine) MatchesScanCode(code string) bool {
+	normalizedCode := NormalizeManifestScanCode(code)
+	if normalizedCode == "" {
+		return false
+	}
+
+	for _, candidate := range []string{line.OrderNo, line.TrackingNo, line.ShipmentID, line.PackageCode} {
+		if NormalizeManifestScanCode(candidate) == normalizedCode {
+			return true
+		}
+	}
+
+	return false
+}
+
+func NormalizeManifestScanCode(code string) string {
+	return strings.ToUpper(strings.TrimSpace(code))
 }
 
 func (m CarrierManifest) Summary() CarrierManifestSummary {

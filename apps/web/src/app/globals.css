@@ -799,6 +799,50 @@ textarea {
   margin-top: 12px;
 }
 
+.erp-shipping-scan-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: var(--erp-bg-muted);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-shipping-scan-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.erp-shipping-scan-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.erp-shipping-scan-list li {
+  display: grid;
+  grid-template-columns: minmax(112px, auto) minmax(120px, 1fr) minmax(140px, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 6px 0;
+  border-top: 1px solid var(--erp-border-soft);
+  font-size: var(--erp-font-size-table);
+}
+
+.erp-shipping-scan-list strong,
+.erp-shipping-scan-list span {
+  overflow-wrap: anywhere;
+}
+
+.erp-shipping-scan-list span {
+  color: var(--erp-text-secondary);
+}
+
 .erp-shift-closing-panel {
   display: grid;
   gap: 14px;
@@ -1731,6 +1775,7 @@ textarea {
   .erp-shipping-kpis,
   .erp-shipping-detail-grid,
   .erp-shipping-add-box,
+  .erp-shipping-scan-list li,
   .erp-stock-kpis {
     grid-template-columns: 1fr;
   }

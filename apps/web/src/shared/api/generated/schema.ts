@@ -260,6 +260,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shipping/manifests/{manifest_id}/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify a carrier manifest scan */
+        post: operations["verifyCarrierManifestScan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -567,6 +584,44 @@ export interface components {
         };
         AddShipmentToCarrierManifestRequest: {
             shipment_id: string;
+        };
+        VerifyCarrierManifestScanRequest: {
+            code: string;
+            station_id?: string;
+        };
+        /** @enum {string} */
+        CarrierManifestScanResultCode: "MATCHED" | "NOT_FOUND" | "INVALID_STATE" | "MANIFEST_MISMATCH" | "DUPLICATE_SCAN";
+        CarrierManifestScanSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CarrierManifestScanResult"];
+        };
+        CarrierManifestScanResult: {
+            result_code: components["schemas"]["CarrierManifestScanResultCode"];
+            /** @enum {string} */
+            severity: "success" | "warning" | "danger";
+            message: string;
+            expected_manifest_id?: string;
+            line?: components["schemas"]["CarrierManifestLine"];
+            scan_event: components["schemas"]["CarrierManifestScanEvent"];
+            manifest: components["schemas"]["CarrierManifest"];
+            audit_log_id?: string;
+        };
+        CarrierManifestScanEvent: {
+            id: string;
+            manifest_id: string;
+            expected_manifest_id?: string;
+            code: string;
+            result_code: components["schemas"]["CarrierManifestScanResultCode"];
+            severity: string;
+            message: string;
+            shipment_id?: string;
+            order_no?: string;
+            tracking_no?: string;
+            actor_id: string;
+            station_id: string;
+            warehouse_id: string;
+            carrier_code: string;
+            /** Format: date-time */
+            created_at: string;
         };
         CarrierManifest: {
             id: string;
@@ -1121,6 +1176,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CarrierManifestSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    verifyCarrierManifestScan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                manifest_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyCarrierManifestScanRequest"];
+            };
+        };
+        responses: {
+            /** @description Carrier manifest scan result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarrierManifestScanSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];

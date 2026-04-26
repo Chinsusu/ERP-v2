@@ -1,18 +1,26 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { DataTable, StatusChip, type DataTableColumn } from "@/shared/design-system/components";
+import { DataTable, ScanInput, StatusChip, type DataTableColumn, type ToastMessage } from "@/shared/design-system/components";
 import { useCarrierManifests } from "../hooks/useCarrierManifests";
 import {
   addShipmentToManifest,
+  carrierManifestScanSeverityTone,
   carrierManifestStatusOptions,
   carrierManifestStatusTone,
   carrierOptions,
   createCarrierManifest,
   defaultCarrierManifestDate,
-  manifestWarehouseOptions
+  manifestWarehouseOptions,
+  verifyCarrierManifestScan
 } from "../services/carrierManifestService";
-import type { CarrierManifest, CarrierManifestLine, CarrierManifestQuery, CarrierManifestStatus } from "../types";
+import type {
+  CarrierManifest,
+  CarrierManifestLine,
+  CarrierManifestQuery,
+  CarrierManifestScanResult,
+  CarrierManifestStatus
+} from "../types";
 
 const manifestColumns: DataTableColumn<CarrierManifest>[] = [
   {
@@ -90,6 +98,9 @@ export function CarrierManifestPrototype() {
   const [selectedManifestId, setSelectedManifestId] = useState("manifest-hcm-ghn-morning");
   const [shipmentId, setShipmentId] = useState("ship-hcm-260426-004");
   const [feedback, setFeedback] = useState("");
+  const [scanResult, setScanResult] = useState<CarrierManifestScanResult | null>(null);
+  const [recentScans, setRecentScans] = useState<CarrierManifestScanResult[]>([]);
+  const [scanBusy, setScanBusy] = useState(false);
   const [localManifests, setLocalManifests] = useState<CarrierManifest[]>([]);
   const query = useMemo<CarrierManifestQuery>(
     () => ({
@@ -117,6 +128,14 @@ export function CarrierManifestPrototype() {
     }),
     { expected: 0, scanned: 0, missing: 0 }
   );
+  const scanFeedback: ToastMessage | undefined = scanResult
+    ? {
+        id: scanResult.scanEvent.id,
+        title: `${scanResult.resultCode}: ${scanResult.scanEvent.code}`,
+        description: scanResult.message,
+        tone: carrierManifestScanSeverityTone(scanResult.severity)
+      }
+    : undefined;
 
   async function handleCreateManifest() {
     const warehouseOption = manifestWarehouseOptions.find((option) => option.value === (warehouseId || "wh-hcm"));
@@ -140,6 +159,31 @@ export function CarrierManifestPrototype() {
     const updated = await addShipmentToManifest(selectedManifest.id, shipmentId.trim());
     setLocalManifests((current) => [updated, ...current.filter((manifest) => manifest.id !== updated.id)]);
     setFeedback(`Added ${shipmentId.trim()} to ${updated.id}`);
+  }
+
+  async function handleVerifyScan(code: string) {
+    if (!selectedManifest || scanBusy) {
+      return;
+    }
+
+    setScanBusy(true);
+    try {
+      const result = await verifyCarrierManifestScan(
+        {
+          manifestId: selectedManifest.id,
+          code,
+          stationId: `${selectedManifest.warehouseCode.toLowerCase()}-${selectedManifest.stagingZone}`
+        },
+        displayedManifests
+      );
+      setLocalManifests((current) => [result.manifest, ...current.filter((manifest) => manifest.id !== result.manifest.id)]);
+      setSelectedManifestId(result.manifest.id);
+      setScanResult(result);
+      setRecentScans((current) => [result, ...current].slice(0, 6));
+      setFeedback(`${result.resultCode}: ${result.message}`);
+    } finally {
+      setScanBusy(false);
+    }
   }
 
   return (
@@ -233,6 +277,29 @@ export function CarrierManifestPrototype() {
               ))}
             </select>
           </label>
+          <div className="erp-shipping-scan-panel">
+            <ScanInput
+              label="Scan order or tracking"
+              placeholder="SO-260426-003 / GHN260426003"
+              feedback={scanFeedback}
+              onScan={handleVerifyScan}
+            />
+            <div className="erp-shipping-scan-meta">
+              <StatusChip tone={scanBusy ? "info" : "normal"}>{scanBusy ? "Scanning" : selectedManifest?.stagingZone ?? "No zone"}</StatusChip>
+              {scanResult ? <StatusChip tone={carrierManifestScanSeverityTone(scanResult.severity)}>{scanResult.resultCode}</StatusChip> : null}
+            </div>
+            {recentScans.length > 0 ? (
+              <ol className="erp-shipping-scan-list" aria-label="Recent manifest scans">
+                {recentScans.map((scan) => (
+                  <li key={scan.scanEvent.id}>
+                    <StatusChip tone={carrierManifestScanSeverityTone(scan.severity)}>{scan.resultCode}</StatusChip>
+                    <strong>{scan.scanEvent.code}</strong>
+                    <span>{scan.line?.orderNo ?? scan.expectedManifestId ?? scan.message}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
+          </div>
           <div className="erp-shipping-add-box">
             <label className="erp-field">
               <span>Shipment ID</span>

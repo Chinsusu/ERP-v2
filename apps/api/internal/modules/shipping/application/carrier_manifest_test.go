@@ -90,3 +90,76 @@ func TestAddShipmentToCarrierManifestUpdatesCountsAndAudit(t *testing.T) {
 		t.Fatalf("audit logs = %d, want 1", len(logs))
 	}
 }
+
+func TestVerifyCarrierManifestScanMarksExpectedLineAndRecordsEvent(t *testing.T) {
+	store := NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	service := NewVerifyCarrierManifestScan(store, auditStore)
+
+	result, err := service.Execute(context.Background(), VerifyCarrierManifestScanInput{
+		ManifestID: "manifest-hcm-ghn-morning",
+		Code:       "GHN260426003",
+		StationID:  "dock-a",
+		ActorID:    "user-handover-operator",
+		RequestID:  "req-scan-match",
+	})
+	if err != nil {
+		t.Fatalf("verify scan: %v", err)
+	}
+	if result.Code != domain.ScanResultMatched {
+		t.Fatalf("result code = %q, want matched", result.Code)
+	}
+	if got := result.Manifest.Summary(); got.ExpectedCount != 3 || got.ScannedCount != 3 || got.MissingCount != 0 {
+		t.Fatalf("summary = %+v, want 3 expected, 3 scanned, 0 missing", got)
+	}
+
+	events, err := store.ListScanEvents(context.Background(), "manifest-hcm-ghn-morning")
+	if err != nil {
+		t.Fatalf("list events: %v", err)
+	}
+	if len(events) != 1 || events[0].ResultCode != domain.ScanResultMatched {
+		t.Fatalf("scan events = %+v, want one matched event", events)
+	}
+
+	logs, err := auditStore.List(context.Background(), audit.Query{Action: "shipping.manifest.scan_recorded"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestVerifyCarrierManifestScanReturnsClearWarningCodes(t *testing.T) {
+	store := NewPrototypeCarrierManifestStore()
+	service := NewVerifyCarrierManifestScan(store, audit.NewInMemoryLogStore())
+
+	cases := []struct {
+		name string
+		code string
+		want domain.CarrierManifestScanResultCode
+	}{
+		{name: "duplicate", code: "GHN260426001", want: domain.ScanResultDuplicate},
+		{name: "wrong manifest", code: "VTP260426011", want: domain.ScanResultManifestMismatch},
+		{name: "unpacked", code: "GHN260426099", want: domain.ScanResultInvalidState},
+		{name: "unknown", code: "UNKNOWN-CODE", want: domain.ScanResultNotFound},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := service.Execute(context.Background(), VerifyCarrierManifestScanInput{
+				ManifestID: "manifest-hcm-ghn-morning",
+				Code:       tc.code,
+				StationID:  "dock-a",
+				ActorID:    "user-handover-operator",
+				RequestID:  "req-scan-warning",
+			})
+			if err != nil {
+				t.Fatalf("verify scan: %v", err)
+			}
+			if result.Code != tc.want {
+				t.Fatalf("result code = %q, want %q", result.Code, tc.want)
+			}
+		})
+	}
+}
