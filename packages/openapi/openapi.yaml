@@ -458,6 +458,41 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /shipping/manifests/{manifest_id}/scan:
+    post:
+      summary: Verify a carrier manifest scan
+      operationId: verifyCarrierManifestScan
+      tags:
+        - shipping
+      parameters:
+        - name: manifest_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyCarrierManifestScanRequest"
+      responses:
+        "200":
+          description: Carrier manifest scan result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarrierManifestScanSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   responses:
     BadRequest:
@@ -1317,6 +1352,107 @@ components:
       properties:
         shipment_id:
           type: string
+    VerifyCarrierManifestScanRequest:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+        station_id:
+          type: string
+    CarrierManifestScanResultCode:
+      type: string
+      enum:
+        - MATCHED
+        - NOT_FOUND
+        - INVALID_STATE
+        - MANIFEST_MISMATCH
+        - DUPLICATE_SCAN
+    CarrierManifestScanSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/CarrierManifestScanResult"
+    CarrierManifestScanResult:
+      type: object
+      required:
+        - result_code
+        - severity
+        - message
+        - scan_event
+        - manifest
+      properties:
+        result_code:
+          $ref: "#/components/schemas/CarrierManifestScanResultCode"
+        severity:
+          type: string
+          enum:
+            - success
+            - warning
+            - danger
+        message:
+          type: string
+        expected_manifest_id:
+          type: string
+        line:
+          $ref: "#/components/schemas/CarrierManifestLine"
+        scan_event:
+          $ref: "#/components/schemas/CarrierManifestScanEvent"
+        manifest:
+          $ref: "#/components/schemas/CarrierManifest"
+        audit_log_id:
+          type: string
+    CarrierManifestScanEvent:
+      type: object
+      required:
+        - id
+        - manifest_id
+        - code
+        - result_code
+        - severity
+        - message
+        - actor_id
+        - station_id
+        - warehouse_id
+        - carrier_code
+        - created_at
+      properties:
+        id:
+          type: string
+        manifest_id:
+          type: string
+        expected_manifest_id:
+          type: string
+        code:
+          type: string
+        result_code:
+          $ref: "#/components/schemas/CarrierManifestScanResultCode"
+        severity:
+          type: string
+        message:
+          type: string
+        shipment_id:
+          type: string
+        order_no:
+          type: string
+        tracking_no:
+          type: string
+        actor_id:
+          type: string
+        station_id:
+          type: string
+        warehouse_id:
+          type: string
+        carrier_code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
     CarrierManifest:
       type: object
       required:

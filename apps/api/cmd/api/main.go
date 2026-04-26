@@ -162,6 +162,40 @@ type addShipmentToManifestRequest struct {
 	ShipmentID string `json:"shipment_id"`
 }
 
+type verifyCarrierManifestScanRequest struct {
+	Code      string `json:"code"`
+	StationID string `json:"station_id"`
+}
+
+type carrierManifestScanEventResponse struct {
+	ID                 string `json:"id"`
+	ManifestID         string `json:"manifest_id"`
+	ExpectedManifestID string `json:"expected_manifest_id,omitempty"`
+	Code               string `json:"code"`
+	ResultCode         string `json:"result_code"`
+	Severity           string `json:"severity"`
+	Message            string `json:"message"`
+	ShipmentID         string `json:"shipment_id,omitempty"`
+	OrderNo            string `json:"order_no,omitempty"`
+	TrackingNo         string `json:"tracking_no,omitempty"`
+	ActorID            string `json:"actor_id"`
+	StationID          string `json:"station_id"`
+	WarehouseID        string `json:"warehouse_id"`
+	CarrierCode        string `json:"carrier_code"`
+	CreatedAt          string `json:"created_at"`
+}
+
+type carrierManifestScanResponse struct {
+	ResultCode         string                           `json:"result_code"`
+	Severity           string                           `json:"severity"`
+	Message            string                           `json:"message"`
+	ExpectedManifestID string                           `json:"expected_manifest_id,omitempty"`
+	Line               *carrierManifestLineResponse     `json:"line,omitempty"`
+	ScanEvent          carrierManifestScanEventResponse `json:"scan_event"`
+	Manifest           carrierManifestResponse          `json:"manifest"`
+	AuditLogID         string                           `json:"audit_log_id,omitempty"`
+}
+
 type stockMovementRequest struct {
 	MovementID   string  `json:"movementId"`
 	SKU          string  `json:"sku"`
@@ -205,6 +239,7 @@ func main() {
 	listCarrierManifests := shippingapp.NewListCarrierManifests(carrierManifestStore)
 	createCarrierManifest := shippingapp.NewCreateCarrierManifest(carrierManifestStore, auditLogStore)
 	addShipmentToCarrierManifest := shippingapp.NewAddShipmentToCarrierManifest(carrierManifestStore, auditLogStore)
+	verifyCarrierManifestScan := shippingapp.NewVerifyCarrierManifestScan(carrierManifestStore, auditLogStore)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
@@ -268,6 +303,14 @@ func main() {
 			authConfig,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(addShipmentToCarrierManifestHandler(addShipmentToCarrierManifest)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/shipping/manifests/{manifest_id}/scan",
+		auth.RequireBearerPermission(
+			authConfig,
+			auth.PermissionShippingView,
+			http.HandlerFunc(verifyCarrierManifestScanHandler(verifyCarrierManifestScan)),
 		),
 	)
 
@@ -705,6 +748,47 @@ func addShipmentToCarrierManifestHandler(service shippingapp.AddShipmentToCarrie
 	}
 }
 
+func verifyCarrierManifestScanHandler(service shippingapp.VerifyCarrierManifestScan) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		var payload verifyCarrierManifestScanRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid carrier manifest scan payload",
+				nil,
+			)
+			return
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		result, err := service.Execute(r.Context(), shippingapp.VerifyCarrierManifestScanInput{
+			ManifestID: r.PathValue("manifest_id"),
+			Code:       payload.Code,
+			StationID:  payload.StationID,
+			ActorID:    principal.UserID,
+			RequestID:  response.RequestID(r),
+		})
+		if err != nil {
+			writeCarrierManifestError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newCarrierManifestScanResponse(result))
+	}
+}
+
 func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) availableStockResponse {
 	return availableStockResponse{
 		WarehouseID:    snapshot.WarehouseID,
@@ -816,6 +900,47 @@ func newCarrierManifestResponse(manifest shippingdomain.CarrierManifest, auditLo
 	return payload
 }
 
+func newCarrierManifestScanResponse(result shippingapp.CarrierManifestScanResult) carrierManifestScanResponse {
+	payload := carrierManifestScanResponse{
+		ResultCode:         string(result.Code),
+		Severity:           result.Severity,
+		Message:            result.Message,
+		ExpectedManifestID: result.ExpectedManifestID,
+		ScanEvent: carrierManifestScanEventResponse{
+			ID:                 result.Event.ID,
+			ManifestID:         result.Event.ManifestID,
+			ExpectedManifestID: result.Event.ExpectedManifestID,
+			Code:               result.Event.Code,
+			ResultCode:         string(result.Event.ResultCode),
+			Severity:           result.Event.Severity,
+			Message:            result.Event.Message,
+			ShipmentID:         result.Event.ShipmentID,
+			OrderNo:            result.Event.OrderNo,
+			TrackingNo:         result.Event.TrackingNo,
+			ActorID:            result.Event.ActorID,
+			StationID:          result.Event.StationID,
+			WarehouseID:        result.Event.WarehouseID,
+			CarrierCode:        result.Event.CarrierCode,
+			CreatedAt:          result.Event.CreatedAt.UTC().Format(time.RFC3339),
+		},
+		Manifest:   newCarrierManifestResponse(result.Manifest, ""),
+		AuditLogID: result.AuditLogID,
+	}
+	if result.Line != nil {
+		payload.Line = &carrierManifestLineResponse{
+			ID:          result.Line.ID,
+			ShipmentID:  result.Line.ShipmentID,
+			OrderNo:     result.Line.OrderNo,
+			TrackingNo:  result.Line.TrackingNo,
+			PackageCode: result.Line.PackageCode,
+			StagingZone: result.Line.StagingZone,
+			Scanned:     result.Line.Scanned,
+		}
+	}
+
+	return payload
+}
+
 func writeCloseReconciliationError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, inventoryapp.ErrEndOfDayReconciliationNotFound):
@@ -869,6 +994,15 @@ func writeCarrierManifestError(w http.ResponseWriter, r *http.Request, err error
 			response.ErrorCodeValidation,
 			"Invalid carrier manifest payload",
 			map[string]any{"required": "carrier_code, warehouse_id, and date"},
+		)
+	case errors.Is(err, shippingdomain.ErrManifestScanCodeRequired):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Scan code is required",
+			map[string]any{"required": "code"},
 		)
 	case errors.Is(err, shippingdomain.ErrManifestShipmentNotPacked):
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Shipment must be packed before adding to manifest", nil)
