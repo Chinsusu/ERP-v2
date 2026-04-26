@@ -127,7 +127,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-08-03 | Warehouse Daily Board UI template | Warehouse daily board | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-09-01 | Carrier manifest skeleton | Shipping handover scan | BE Lead + FE Lead | P0 | Done | `docs/33_...` |
 | S0-09-02 | Scan verify endpoint/UI | Shipping handover scan | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
-| S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Review | `docs/39_...` |
+| S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-10-01 | Return receiving skeleton | Returns skeleton | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
 | S0-10-02 | Return inspection UI template | Returns skeleton | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-11-01 | External factory order skeleton | Subcontract manufacturing | BE Lead + FE Lead + Production/Ops Super User | P1 | Backlog | `docs/33_...` |
@@ -697,7 +697,7 @@ Evidence:
 
 **Owner:** FE Lead + UI/UX
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -713,6 +713,12 @@ Current state:
 - Scan feedback uses success/warning/danger border states and keeps failed scan codes selected for fast retry.
 - Missing/exception queue shows missing order rows with find/report actions.
 - Confirm handover action is disabled until all expected lines are scanned.
+- Implementation and promotion are merged.
+
+Evidence:
+
+- PR #95: Shipping handover scan UI template merged to `develop`.
+- PR #96: Shipping handover scan UI template promoted to `main`.
 
 ### S0-10-01 Return Receiving Skeleton
 
@@ -939,9 +945,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-09-03` - Shipping handover scan UI template.
-2. `S0-10-01` - Return receiving skeleton.
-3. `S0-10-02` - Return inspection UI template.
-4. `S0-11-01` - External factory order skeleton.
+1. `S0-10-01` - Return receiving skeleton.
+2. `S0-10-02` - Return inspection UI template.
+3. `S0-11-01` - External factory order skeleton.
+4. `S0-11-02` - Material transfer to factory skeleton.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
