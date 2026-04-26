@@ -1,13 +1,30 @@
+import type { components, paths } from "./generated/schema";
+
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
 
-export type ApiErrorCode =
-  | "VALIDATION_ERROR"
-  | "UNAUTHORIZED"
-  | "FORBIDDEN"
-  | "NOT_FOUND"
-  | "CONFLICT"
-  | "INSUFFICIENT_STOCK"
-  | "INVALID_STATE";
+export type ApiErrorCode = components["schemas"]["ErrorCode"];
+
+type GetOperation<Path extends keyof paths> = paths[Path] extends { get: infer Operation } ? Operation : never;
+
+export type ApiGetPath = {
+  [Path in keyof paths]: GetOperation<Path> extends never ? never : Path;
+}[keyof paths];
+
+type JsonSuccessResponse<Operation> = Operation extends {
+  responses: { 200: { content: { "application/json": infer Response } } };
+}
+  ? Response
+  : never;
+
+type ApiSuccessData<Response> = Response extends { data: infer Data } ? Data : never;
+
+type QueryParameters<Operation> = Operation extends { parameters: { query?: infer Query } } ? Query : never;
+
+export type ApiGetResponse<Path extends ApiGetPath> = ApiSuccessData<JsonSuccessResponse<GetOperation<Path>>>;
+
+export type ApiGetQuery<Path extends ApiGetPath> = [QueryParameters<GetOperation<Path>>] extends [never]
+  ? undefined
+  : QueryParameters<GetOperation<Path>>;
 
 export type ApiSuccessResponse<T> = {
   success: true;
@@ -15,14 +32,7 @@ export type ApiSuccessResponse<T> = {
   request_id: string;
 };
 
-export type ApiErrorResponse = {
-  error: {
-    code: ApiErrorCode;
-    message: string;
-    details?: Record<string, unknown>;
-    request_id: string;
-  };
-};
+export type ApiErrorResponse = components["schemas"]["ErrorResponse"];
 
 export class ApiError extends Error {
   readonly status: number;
@@ -40,23 +50,27 @@ export class ApiError extends Error {
   }
 }
 
-export type ApiRequestOptions = {
+export type ApiRequestOptions<Path extends ApiGetPath> = {
   accessToken?: string;
+  query?: ApiGetQuery<Path>;
 };
 
-export async function apiGet<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, {
+export async function apiGet<Path extends ApiGetPath>(
+  path: Path,
+  options: ApiRequestOptions<Path> = {}
+): Promise<ApiGetResponse<Path>> {
+  const response = await fetch(`${baseUrl}${path}${queryString(options.query)}`, {
     headers: authHeaders(options)
   });
   if (!response.ok) {
     throw await createApiError(response);
   }
 
-  const payload = (await response.json()) as ApiSuccessResponse<T>;
+  const payload = (await response.json()) as ApiSuccessResponse<ApiGetResponse<Path>>;
   return payload.data;
 }
 
-function authHeaders(options: ApiRequestOptions) {
+function authHeaders(options: { accessToken?: string }) {
   if (!options.accessToken) {
     return undefined;
   }
@@ -64,6 +78,22 @@ function authHeaders(options: ApiRequestOptions) {
   return {
     Authorization: `Bearer ${options.accessToken}`
   };
+}
+
+function queryString(query: unknown) {
+  if (!query || typeof query !== "object") {
+    return "";
+  }
+
+  const params = new URLSearchParams();
+  Object.entries(query as Record<string, boolean | number | string | null | undefined>).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  const value = params.toString();
+  return value ? `?${value}` : "";
 }
 
 async function createApiError(response: Response): Promise<Error> {

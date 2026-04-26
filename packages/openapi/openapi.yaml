@@ -828,7 +828,7 @@ components:
           type: boolean
           example: true
         data:
-          type: object
+          description: Endpoint-specific response payload.
         request_id:
           type: string
           example: req_lq7z2t9c
