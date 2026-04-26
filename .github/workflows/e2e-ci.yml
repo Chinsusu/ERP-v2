@@ -6,6 +6,8 @@ on:
       - "apps/api/**"
       - "apps/web/**"
       - "packages/openapi/**"
+      - "docs/qa/**"
+      - "tools/seed/smoke/**"
       - ".github/workflows/e2e-ci.yml"
 
 jobs:
@@ -13,5 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: E2E placeholder
-        run: echo "Playwright smoke tests will be added after Sprint 0 app shell is wired."
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install web dependencies
+        run: pnpm install --filter web --frozen-lockfile=false
+      - name: API smoke
+        working-directory: apps/api
+        run: go test ./cmd/api -run TestSprint0APISmokePack -count=1
+      - name: Frontend smoke
+        run: pnpm --filter web test -- src/modules/smoke/sprint0Smoke.test.ts

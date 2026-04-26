@@ -7,6 +7,7 @@
     "web:build": "pnpm --filter web build",
     "web:test": "pnpm --filter web test",
     "web:lint": "pnpm --filter web lint",
+    "smoke:test": "cd apps/api && go test ./cmd/api -run TestSprint0APISmokePack -count=1 && cd ../.. && pnpm --filter web test -- src/modules/smoke/sprint0Smoke.test.ts",
     "openapi:validate": "pnpm --package=@redocly/cli dlx redocly lint packages/openapi/openapi.yaml",
     "openapi:generate": "pnpm dlx openapi-typescript packages/openapi/openapi.yaml -o apps/web/src/shared/api/generated/schema.ts"
   }

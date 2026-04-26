@@ -1,0 +1,77 @@
+{
+  "environment": "dev-or-staging",
+  "users": [
+    {
+      "email": "admin@example.local",
+      "password": "local-only-mock-password",
+      "role": "ERP_ADMIN"
+    },
+    {
+      "email": "warehouse_lead@example.local",
+      "role": "WAREHOUSE_LEAD"
+    },
+    {
+      "email": "warehouse_staff@example.local",
+      "role": "WAREHOUSE_STAFF"
+    }
+  ],
+  "master_data": {
+    "warehouses": [
+      {
+        "id": "wh-hcm",
+        "code": "HCM",
+        "name": "HCM Main Warehouse"
+      }
+    ],
+    "skus": [
+      {
+        "sku": "SERUM-30ML",
+        "name": "Hydrating Serum 30ml",
+        "uom": "bottle"
+      }
+    ],
+    "batches": [
+      {
+        "batch_no": "SMOKE-SERUM-260426",
+        "sku": "SERUM-30ML",
+        "qc_status": "passed"
+      }
+    ],
+    "suppliers": [
+      {
+        "id": "sup-smoke-packaging",
+        "name": "Smoke Packaging Supplier"
+      }
+    ],
+    "factories": [
+      {
+        "id": "factory-smoke-gmp",
+        "name": "Smoke GMP Factory"
+      }
+    ],
+    "customers": [
+      {
+        "id": "cus-smoke-retail",
+        "name": "Smoke Retail Customer"
+      }
+    ]
+  },
+  "stock_movement": {
+    "movementId": "mov-smoke-adjust",
+    "sku": "serum-30ml",
+    "warehouseId": "wh-hcm",
+    "movementType": "ADJUST",
+    "quantity": 8,
+    "reason": "smoke cycle count"
+  },
+  "shipping_manifest": {
+    "manifest_id": "manifest-hcm-ghn-morning",
+    "carrier_code": "GHN",
+    "warehouse_id": "wh-hcm",
+    "date": "2026-04-26",
+    "success_scan_code": "GHN260426003",
+    "duplicate_scan_code": "GHN260426001",
+    "wrong_manifest_code": "VTP260426011",
+    "unknown_scan_code": "UNKNOWN-CODE"
+  }
+}
