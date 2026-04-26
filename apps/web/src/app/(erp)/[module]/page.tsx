@@ -20,5 +20,5 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
     notFound();
   }
 
-  return <ModulePlaceholder item={item} />;
+  return <ModulePlaceholder item={item} user={session.user} />;
 }

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import type { PermissionKey, RoleKey } from "@/shared/permissions/menu";
+import { getPermissionsForRole, type PermissionKey, type RoleKey } from "@/shared/permissions/menu";
 
 const mockAuthCookieName = "erp_mock_session";
 
@@ -26,22 +26,7 @@ export const mockUser: MockUser = {
   name: "ERP Admin",
   email: "admin@example.local",
   role: "ERP_ADMIN",
-  permissions: [
-    "dashboard:view",
-    "warehouse:view",
-    "inventory:view",
-    "purchase:view",
-    "qc:view",
-    "production:view",
-    "sales:view",
-    "shipping:view",
-    "returns:view",
-    "master-data:view",
-    "approvals:view",
-    "audit-log:view",
-    "reports:view",
-    "settings:view"
-  ]
+  permissions: getPermissionsForRole("ERP_ADMIN")
 };
 
 export async function getMockSession(): Promise<MockSession> {

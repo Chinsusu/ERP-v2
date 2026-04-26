@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { MockUser } from "@/shared/auth/mockSession";
-import { getVisibleMenuGroups } from "@/shared/permissions/menu";
+import { getVisibleActions, getVisibleMenuGroups, topbarActions } from "@/shared/permissions/menu";
 
 type AppShellProps = {
   children: ReactNode;
@@ -18,6 +18,7 @@ function isActivePath(pathname: string, href: string) {
 export function AppShell({ children, user }: AppShellProps) {
   const pathname = usePathname();
   const groups = getVisibleMenuGroups(user);
+  const actions = getVisibleActions(user, topbarActions);
 
   return (
     <div className="erp-shell">
@@ -39,15 +40,15 @@ export function AppShell({ children, user }: AppShellProps) {
         </label>
 
         <div className="erp-topbar-actions" aria-label="Quick actions">
-          <button className="erp-button erp-button--primary" type="button">
-            Quick create
-          </button>
-          <button className="erp-button erp-button--secondary" type="button">
-            Alerts
-          </button>
-          <button className="erp-button erp-button--secondary" type="button">
-            Docs
-          </button>
+          {actions.map((action) => (
+            <button
+              className={`erp-button erp-button--${action.variant}`}
+              key={action.label}
+              type="button"
+            >
+              {action.label}
+            </button>
+          ))}
           <div className="erp-user-badge" aria-label={`Signed in as ${user.name}`}>
             <span className="erp-user-avatar" aria-hidden="true">
               {user.name.slice(0, 2).toUpperCase()}
