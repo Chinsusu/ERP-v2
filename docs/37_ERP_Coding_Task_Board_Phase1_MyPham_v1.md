@@ -123,7 +123,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-07-01 | Stock movement write path | Stock ledger prototype | BE Lead | P0 | Done | `docs/17_...` + `docs/33_...` |
 | S0-07-02 | Available stock calculation prototype | Stock ledger prototype | BE Lead + FE Lead | P0 | Done | `docs/33_...` |
 | S0-08-01 | Warehouse daily board skeleton | Warehouse daily board | FE Lead + BA + Warehouse Super User | P0 | Done | `docs/33_...` + `docs/39_...` |
-| S0-08-02 | End-of-day reconciliation skeleton | Warehouse daily board | BE Lead + FE Lead + Warehouse Super User | P0 | Review | `docs/33_...` |
+| S0-08-02 | End-of-day reconciliation skeleton | Warehouse daily board | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
 | S0-08-03 | Warehouse Daily Board UI template | Warehouse daily board | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-09-01 | Carrier manifest skeleton | Shipping handover scan | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` |
 | S0-09-02 | Scan verify endpoint/UI | Shipping handover scan | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
@@ -590,7 +590,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead + Warehouse Super User
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
 
 Acceptance criteria:
@@ -606,6 +606,12 @@ Current state:
 - Backend prototype exposes end-of-day reconciliation sessions and close action.
 - Closing action records an audit log with variance and checklist summary.
 - Warehouse Daily Board includes a shift closing panel with checklist and system-versus-counted quantities.
+- Implementation and promotion are merged.
+
+Evidence:
+
+- PR #79: End-of-day reconciliation skeleton merged to `develop`.
+- PR #80: End-of-day reconciliation skeleton promoted to `main`.
 
 ### S0-08-03 Warehouse Daily Board UI Template
 
@@ -891,9 +897,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-08-02` - End-of-day reconciliation skeleton.
-2. `S0-08-03` - Warehouse Daily Board UI template.
-3. `S0-09-01` - Carrier manifest skeleton.
-4. `S0-09-02` - Scan verify endpoint/UI.
+1. `S0-08-03` - Warehouse Daily Board UI template.
+2. `S0-09-01` - Carrier manifest skeleton.
+3. `S0-09-02` - Scan verify endpoint/UI.
+4. `S0-09-03` - Shipping handover scan UI template.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
