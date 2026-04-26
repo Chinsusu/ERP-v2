@@ -12,7 +12,7 @@ export default function WarehouseDailyBoard() {
   const { items, loading } = useWarehouseDailyBoard();
 
   return (
-    <main className="erp-page">
+    <section className="erp-module-page">
       <header className="erp-page-header">
         <div>
           <h1 className="erp-page-title">Warehouse Daily Board</h1>
@@ -33,6 +33,6 @@ export default function WarehouseDailyBoard() {
           ))}
         </section>
       )}
-    </main>
+    </section>
   );
 }
