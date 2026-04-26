@@ -110,7 +110,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-02-02 | Module structure base | Backend Go foundation | BE Lead + Architect | P0 | In Progress | `docs/13_...` + `docs/38_...` |
 | S0-02-03 | Error model and API response standard | Backend Go foundation | BE Lead + FE Lead | P0 | Done | `docs/16_...` |
 | S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | Done | `docs/15_...` + `docs/39_...` |
-| S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Review | `docs/39_...` |
+| S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-04-01 | PostgreSQL migration setup | Database foundation | BE Lead + DevOps | P0 | In Progress | `docs/17_...` |
@@ -279,7 +279,7 @@ Evidence:
 
 **Owner:** FE Lead + UI/UX
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -295,7 +295,12 @@ Acceptance criteria:
 
 Current state:
 
-- Core reusable UI components are in review under `apps/web/src/shared/design-system`.
+- Core reusable UI components are merged to `main` under `apps/web/src/shared/design-system`.
+
+Evidence:
+
+- PR #38: core UI components merged to `develop`.
+- PR #39: core UI components promoted to `main`.
 
 ### S0-03-03 Industrial Minimal ERP UI Tokens
 
@@ -806,6 +811,7 @@ Acceptance criteria:
 | S0-04-02 | PR #25, PR #26; Phase 1 base tables, FK/check constraints, migration apply/rollback CI |
 | S0-06-01 | PR #29, PR #30; mock login, protected API, frontend mock session, OpenAPI contract |
 | S0-06-02 | PR #33, PR #34, PR #35; role catalog, API permission middleware, frontend menu/action permission filtering |
+| S0-03-02 | PR #38, PR #39; reusable DataTable, FormSection, StatusChip, modal, drawer, toast, state, and scan components |
 
 ---
 
@@ -825,9 +831,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-03-02` - Core UI components.
-2. `S0-07-01` - Database-backed stock movement write path.
-3. `S0-05-01` - OpenAPI base file.
-4. `S0-05-02` - API codegen integration.
+1. `S0-07-01` - Database-backed stock movement write path.
+2. `S0-05-01` - OpenAPI base file.
+3. `S0-05-02` - API codegen integration.
+4. `S0-06-03` - Audit log base.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
