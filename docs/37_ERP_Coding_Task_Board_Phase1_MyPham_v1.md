@@ -122,7 +122,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-06-03 | Audit log base | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Done | `docs/19_...` |
 | S0-07-01 | Stock movement write path | Stock ledger prototype | BE Lead | P0 | Done | `docs/17_...` + `docs/33_...` |
 | S0-07-02 | Available stock calculation prototype | Stock ledger prototype | BE Lead + FE Lead | P0 | Done | `docs/33_...` |
-| S0-08-01 | Warehouse daily board skeleton | Warehouse daily board | FE Lead + BA + Warehouse Super User | P0 | Review | `docs/33_...` + `docs/39_...` |
+| S0-08-01 | Warehouse daily board skeleton | Warehouse daily board | FE Lead + BA + Warehouse Super User | P0 | Done | `docs/33_...` + `docs/39_...` |
 | S0-08-02 | End-of-day reconciliation skeleton | Warehouse daily board | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
 | S0-08-03 | Warehouse Daily Board UI template | Warehouse daily board | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-09-01 | Carrier manifest skeleton | Shipping handover scan | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` |
@@ -546,7 +546,7 @@ Current state:
 
 **Owner:** FE Lead + BA + Warehouse Super User
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`, `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -561,7 +561,12 @@ Current state:
 - Warehouse daily board skeleton has filters by warehouse, date, and status.
 - Counters cover waiting, picking, packed, handover, returns, and reconciliation mismatch.
 - Task rows link to order, shipment, return, and inventory prototypes.
-- Implementation PR is ready for review.
+- Implementation and promotion are merged.
+
+Evidence:
+
+- PR #63: Warehouse daily board skeleton merged to `develop`.
+- PR #64: Warehouse daily board skeleton promoted to `main`.
 
 ### S0-08-02 End Of Day Reconciliation Skeleton
 
@@ -827,9 +832,11 @@ Acceptance criteria:
 | S0-04-02 | PR #25, PR #26; Phase 1 base tables, FK/check constraints, migration apply/rollback CI |
 | S0-06-01 | PR #29, PR #30; mock login, protected API, frontend mock session, OpenAPI contract |
 | S0-06-02 | PR #33, PR #34, PR #35; role catalog, API permission middleware, frontend menu/action permission filtering |
+| S0-06-03 | PR #59, PR #60; audit package, protected audit API, audit screen prototype, and adjustment audit metadata |
 | S0-03-02 | PR #38, PR #39; reusable DataTable, FormSection, StatusChip, modal, drawer, toast, state, and scan components |
 | S0-07-01 | PR #42, PR #43; stock movement transaction store, balance delta updates, immutable ledger path, adjustment audit logging |
 | S0-07-02 | PR #46, PR #47, PR #48; available stock calculator, inventory API endpoint, OpenAPI contract, and Inventory UI prototype |
+| S0-08-01 | PR #63, PR #64; warehouse daily board skeleton, filters, counters, task links, scan station, and exception panel |
 | S0-05-01 | PR #51, PR #52; OpenAPI base contract with pagination schema, auth/health coverage, master data sample endpoints, and client generation dry run |
 | S0-05-02 | PR #55, PR #56; generated frontend OpenAPI schema, typed API wrapper, inventory service generated DTO integration, and CI web/OpenAPI gates |
 
@@ -851,9 +858,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-08-01` - Warehouse daily board skeleton.
-2. `S0-03-04` - UI page templates foundation.
-3. `S0-02-02` - Module structure base.
-4. `S0-12-01` - Docker compose local.
+1. `S0-03-04` - UI page templates foundation.
+2. `S0-02-02` - Module structure base.
+3. `S0-12-01` - Docker compose local.
+4. `S0-08-02` - End-of-day reconciliation skeleton.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
