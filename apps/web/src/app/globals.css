@@ -773,6 +773,125 @@ textarea {
   align-items: start;
 }
 
+.erp-shipping-handover-grid {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.15fr) minmax(360px, 0.85fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.erp-shipping-handover-card,
+.erp-shipping-exception-card {
+  min-width: 0;
+}
+
+.erp-shipping-handover-meta {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(120px, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+.erp-shipping-handover-metric {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-shipping-handover-metric span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+}
+
+.erp-shipping-handover-metric strong {
+  overflow-wrap: anywhere;
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-body);
+}
+
+.erp-shipping-scan-primary {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--erp-section-bg);
+  border: 2px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-shipping-scan-primary--success {
+  border-color: var(--erp-success);
+  background: var(--erp-success-bg);
+}
+
+.erp-shipping-scan-primary--warning {
+  border-color: var(--erp-warning);
+  background: var(--erp-warning-bg);
+}
+
+.erp-shipping-scan-primary--danger {
+  border-color: var(--erp-danger);
+  background: var(--erp-danger-bg);
+}
+
+.erp-shipping-scan-primary span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-table);
+}
+
+.erp-shipping-scan-primary input {
+  min-height: 56px;
+  padding: 0 16px;
+  color: var(--erp-text);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius);
+  font-size: 20px;
+  font-weight: 700;
+  outline: none;
+}
+
+.erp-shipping-scan-primary input:focus {
+  border-color: var(--erp-red);
+  box-shadow: 0 0 0 2px rgba(213, 12, 45, 0.14);
+}
+
+.erp-shipping-scan-primary small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-shipping-scan-primary small strong {
+  color: var(--erp-text);
+}
+
+.erp-shipping-scan-actions,
+.erp-shipping-missing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.erp-shipping-empty-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-table);
+}
+
 .erp-shipping-manifest-cell {
   display: grid;
   gap: 2px;
@@ -803,7 +922,7 @@ textarea {
   display: grid;
   gap: 10px;
   padding: 12px;
-  background: var(--erp-bg-muted);
+  background: var(--erp-section-bg);
   border: 1px solid var(--erp-border-soft);
   border-radius: var(--erp-radius);
 }
@@ -1773,11 +1892,23 @@ textarea {
   .erp-shift-closing-grid,
   .erp-shipping-toolbar,
   .erp-shipping-kpis,
+  .erp-shipping-handover-grid,
+  .erp-shipping-handover-meta,
   .erp-shipping-detail-grid,
   .erp-shipping-add-box,
   .erp-shipping-scan-list li,
   .erp-stock-kpis {
     grid-template-columns: 1fr;
+  }
+
+  .erp-shipping-scan-actions,
+  .erp-shipping-missing-actions {
+    align-items: stretch;
+  }
+
+  .erp-shipping-scan-actions .erp-button,
+  .erp-shipping-missing-actions .erp-button {
+    flex: 1 1 120px;
   }
 
   .erp-module-table {

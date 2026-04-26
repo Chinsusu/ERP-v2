@@ -127,7 +127,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-08-03 | Warehouse Daily Board UI template | Warehouse daily board | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-09-01 | Carrier manifest skeleton | Shipping handover scan | BE Lead + FE Lead | P0 | Done | `docs/33_...` |
 | S0-09-02 | Scan verify endpoint/UI | Shipping handover scan | BE Lead + FE Lead + Warehouse Super User | P0 | Done | `docs/33_...` |
-| S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
+| S0-09-03 | Shipping handover scan UI template | Shipping handover scan | FE Lead + UI/UX | P0 | Review | `docs/39_...` |
 | S0-10-01 | Return receiving skeleton | Returns skeleton | BE Lead + FE Lead + Warehouse Super User | P0 | Backlog | `docs/33_...` |
 | S0-10-02 | Return inspection UI template | Returns skeleton | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-11-01 | External factory order skeleton | Subcontract manufacturing | BE Lead + FE Lead + Production/Ops Super User | P1 | Backlog | `docs/33_...` |
@@ -697,7 +697,7 @@ Evidence:
 
 **Owner:** FE Lead + UI/UX
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -706,6 +706,13 @@ Acceptance criteria:
 - Scan input is primary and always focused where appropriate.
 - Success/error feedback is immediate.
 - Missing/exception state is visible.
+
+Current state:
+
+- Shipping page now exposes a dedicated carrier handover panel with manifest status, carrier, zone, owner, expected/scanned/missing counters, and primary scan input.
+- Scan feedback uses success/warning/danger border states and keeps failed scan codes selected for fast retry.
+- Missing/exception queue shows missing order rows with find/report actions.
+- Confirm handover action is disabled until all expected lines are scanned.
 
 ### S0-10-01 Return Receiving Skeleton
 
