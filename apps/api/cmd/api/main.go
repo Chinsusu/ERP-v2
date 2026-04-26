@@ -1,12 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/config"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
 
 type healthResponse struct {
@@ -32,10 +32,8 @@ func main() {
 	log.Fatal(server.ListenAndServe())
 }
 
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(healthResponse{
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	response.WriteSuccess(w, r, http.StatusOK, healthResponse{
 		Status:    "ok",
 		Service:   "api",
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
