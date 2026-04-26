@@ -118,7 +118,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-05-01 | OpenAPI base file | API contract foundation | BE Lead + FE Lead | P0 | In Progress | `docs/16_...` |
 | S0-05-02 | API codegen integration | API contract foundation | FE Lead + BE Lead | P0 | In Progress | `docs/16_...` + `docs/15_...` |
 | S0-06-01 | Auth skeleton | Auth, RBAC, audit | BE Lead + FE Lead | P0 | Done | `docs/19_...` |
-| S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Backlog | `docs/04_...` + `docs/19_...` |
+| S0-06-02 | RBAC skeleton | Auth, RBAC, audit | BE Lead + FE Lead + BA | P0 | Review | `docs/04_...` + `docs/19_...` |
 | S0-06-03 | Audit log base | Auth, RBAC, audit | BE Lead + FE Lead | P0 | In Progress | `docs/19_...` |
 | S0-07-01 | Stock movement write path | Stock ledger prototype | BE Lead | P0 | In Progress | `docs/17_...` + `docs/33_...` |
 | S0-07-02 | Available stock calculation prototype | Stock ledger prototype | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` |
@@ -445,7 +445,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead + BA
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/04_ERP_Permission_Approval_Matrix_Phase1_My_Pham_v1.md`, `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -454,6 +454,10 @@ Acceptance criteria:
 - API permission check exists.
 - Frontend hides menu/action by permission.
 - Permission denied returns standard `FORBIDDEN`.
+
+Current state:
+
+- RBAC role catalog, backend permission middleware, protected role catalog endpoint, and frontend menu/action permission filtering are in review.
 
 ### S0-06-03 Audit Log Base
 

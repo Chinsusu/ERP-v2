@@ -37,6 +37,12 @@ type userResponse struct {
 	Permissions []string `json:"permissions"`
 }
 
+type roleResponse struct {
+	Key         string   `json:"key"`
+	Name        string   `json:"name"`
+	Permissions []string `json:"permissions"`
+}
+
 func main() {
 	cfg := config.FromEnv()
 	authConfig := auth.MockConfig{
@@ -50,6 +56,10 @@ func main() {
 	mux.HandleFunc("/api/v1/health", healthHandler)
 	mux.HandleFunc("/api/v1/auth/mock-login", mockLoginHandler(authConfig))
 	mux.Handle("/api/v1/me", auth.RequireBearerToken(authConfig, http.HandlerFunc(meHandler)))
+	mux.Handle(
+		"/api/v1/rbac/roles",
+		auth.RequireBearerPermission(authConfig, auth.PermissionSettingsView, http.HandlerFunc(rbacRolesHandler)),
+	)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.AppPort,
@@ -126,7 +136,35 @@ func newUserResponse(principal auth.Principal) userResponse {
 		ID:          principal.UserID,
 		Email:       principal.Email,
 		Name:        principal.Name,
-		Role:        principal.Role,
-		Permissions: principal.Permissions,
+		Role:        string(principal.Role),
+		Permissions: permissionStrings(principal.Permissions),
 	}
+}
+
+func rbacRolesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		return
+	}
+
+	roles := auth.RoleCatalog()
+	payload := make([]roleResponse, 0, len(roles))
+	for _, role := range roles {
+		payload = append(payload, roleResponse{
+			Key:         string(role.Key),
+			Name:        role.Name,
+			Permissions: permissionStrings(role.Permissions),
+		})
+	}
+
+	response.WriteSuccess(w, r, http.StatusOK, payload)
+}
+
+func permissionStrings(permissions []auth.PermissionKey) []string {
+	values := make([]string, 0, len(permissions))
+	for _, permission := range permissions {
+		values = append(values, string(permission))
+	}
+
+	return values
 }

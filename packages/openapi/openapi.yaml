@@ -64,6 +64,23 @@ paths:
                 $ref: "#/components/schemas/MeSuccessResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /rbac/roles:
+    get:
+      summary: List RBAC role catalog
+      operationId: listRbacRoles
+      tags:
+        - auth
+      responses:
+        "200":
+          description: RBAC role catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RbacRoleCatalogSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /inventory/stock-movements:
     post:
       summary: Record stock movement
@@ -231,11 +248,72 @@ components:
         name:
           type: string
         role:
+          $ref: "#/components/schemas/RoleKey"
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PermissionKey"
+    RbacRoleCatalogSuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+        - request_id
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/RbacRole"
+        request_id:
+          type: string
+          example: req_lq7z2t9c
+    RbacRole:
+      type: object
+      required:
+        - key
+        - name
+        - permissions
+      properties:
+        key:
+          $ref: "#/components/schemas/RoleKey"
+        name:
           type: string
         permissions:
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/PermissionKey"
+    RoleKey:
+      type: string
+      enum:
+        - CEO
+        - ERP_ADMIN
+        - WAREHOUSE_STAFF
+        - WAREHOUSE_LEAD
+        - QA
+        - SALES_OPS
+        - PRODUCTION_OPS
+    PermissionKey:
+      type: string
+      enum:
+        - dashboard:view
+        - warehouse:view
+        - inventory:view
+        - purchase:view
+        - qc:view
+        - production:view
+        - sales:view
+        - shipping:view
+        - returns:view
+        - master-data:view
+        - approvals:view
+        - audit-log:view
+        - reports:view
+        - settings:view
+        - record:create
+        - record:export
     StockMovementRequest:
       type: object
       required:
