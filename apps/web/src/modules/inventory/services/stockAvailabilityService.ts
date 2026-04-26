@@ -1,17 +1,9 @@
 import { apiGet } from "../../../shared/api/client";
+import type { components, operations } from "../../../shared/api/generated/schema";
 import type { AvailableStockItem, AvailableStockQuery, AvailableStockSummary } from "../types";
 
-type AvailableStockApiItem = {
-  warehouse_id: string;
-  warehouse_code: string;
-  sku: string;
-  batch_id?: string;
-  batch_no?: string;
-  physical_stock: number;
-  reserved_stock: number;
-  hold_stock: number;
-  available_stock: number;
-};
+type AvailableStockApiItem = components["schemas"]["AvailableStockItem"];
+type AvailableStockApiQuery = operations["listAvailableStock"]["parameters"]["query"];
 
 const defaultAccessToken = "local-dev-access-token";
 
@@ -53,8 +45,9 @@ export const prototypeAvailableStock: AvailableStockItem[] = [
 
 export async function getAvailableStock(query: AvailableStockQuery = {}): Promise<AvailableStockItem[]> {
   try {
-    const items = await apiGet<AvailableStockApiItem[]>(`/inventory/available-stock${queryString(query)}`, {
-      accessToken: defaultAccessToken
+    const items = await apiGet("/inventory/available-stock", {
+      accessToken: defaultAccessToken,
+      query: toApiQuery(query)
     });
 
     return items.map(fromApiItem);
@@ -105,6 +98,14 @@ function fromApiItem(item: AvailableStockApiItem): AvailableStockItem {
   };
 }
 
+function toApiQuery(query: AvailableStockQuery): AvailableStockApiQuery {
+  return {
+    warehouse_id: query.warehouseId,
+    sku: query.sku,
+    batch_id: query.batchId
+  };
+}
+
 function filterPrototypeStock(query: AvailableStockQuery): AvailableStockItem[] {
   const normalizedSKU = query.sku?.trim().toUpperCase();
   return prototypeAvailableStock.filter((item) => {
@@ -120,20 +121,4 @@ function filterPrototypeStock(query: AvailableStockQuery): AvailableStockItem[] 
 
     return true;
   });
-}
-
-function queryString(query: AvailableStockQuery) {
-  const params = new URLSearchParams();
-  if (query.warehouseId) {
-    params.set("warehouse_id", query.warehouseId);
-  }
-  if (query.sku) {
-    params.set("sku", query.sku);
-  }
-  if (query.batchId) {
-    params.set("batch_id", query.batchId);
-  }
-
-  const value = params.toString();
-  return value ? `?${value}` : "";
 }

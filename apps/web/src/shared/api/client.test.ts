@@ -21,7 +21,7 @@ describe("apiGet", () => {
       )
     );
 
-    await expect(apiGet<{ status: string }>("/health")).resolves.toEqual({ status: "ok" });
+    await expect(apiGet("/health")).resolves.toEqual({ status: "ok" });
   });
 
   it("passes bearer tokens when provided", async () => {
@@ -37,7 +37,7 @@ describe("apiGet", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await apiGet<{ id: string }>("/me", { accessToken: "local-dev-access-token" });
+    await apiGet("/me", { accessToken: "local-dev-access-token" });
 
     expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/me", {
       headers: {
@@ -64,7 +64,7 @@ describe("apiGet", () => {
       )
     );
 
-    await expect(apiGet("/inventory/stock-movements")).rejects.toMatchObject({
+    await expect(apiGet("/inventory/available-stock")).rejects.toMatchObject({
       name: "ApiError",
       status: 400,
       code: "VALIDATION_ERROR",
@@ -72,5 +72,36 @@ describe("apiGet", () => {
       details: { field: "quantity" },
       requestId: "req-error"
     });
+  });
+
+  it("serializes typed query parameters from the generated OpenAPI contract", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: [],
+          request_id: "req-test"
+        }),
+        { status: 200 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiGet("/inventory/available-stock", {
+      accessToken: "local-dev-access-token",
+      query: {
+        warehouse_id: "wh-hcm",
+        sku: "SERUM-30ML"
+      }
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/inventory/available-stock?warehouse_id=wh-hcm&sku=SERUM-30ML",
+      {
+        headers: {
+          Authorization: "Bearer local-dev-access-token"
+        }
+      }
+    );
   });
 });
