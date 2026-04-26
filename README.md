@@ -66,7 +66,9 @@ Local URLs:
 3. Keep changes inside the official workspace structure.
 4. Run the relevant checks before opening a pull request.
 5. Open a pull request with `Primary Ref` and `Task Ref`.
-6. Merge only after CI passes and review requirements are satisfied.
+6. Let the automated PR review gate validate title, references, generated-code notes, and credential guardrails.
+7. Auto-merge is enabled for non-draft PRs unless the `no-auto-merge` label is set.
+8. Merge still happens only after required CI and review requirements are satisfied.
 
 ## Verification
 

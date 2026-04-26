@@ -2,7 +2,7 @@
 
 **Project:** ERP mỹ phẩm – Phase 1  
 **Document type:** Workspace / Repository Structure Standards  
-**Version:** v1.0  
+**Version:** v1.1
 **Language:** Vietnamese  
 **Primary audience:** Tech Lead, Backend Developer, Frontend Developer, DevOps, QA Automation, PM/BA  
 **Primary references:**
@@ -1499,6 +1499,45 @@ migration up again
 basic seed smoke test
 ```
 
+### 13.5. Automated PR review gate
+
+File:
+
+```text
+.github/workflows/pr-review-gate.yml
+```
+
+Required status check:
+
+```text
+required-review-gate
+```
+
+Gate rules:
+
+```text
+- PR title must follow [TASK-ID] Short description.
+- PR body must include Primary Ref and Task Ref.
+- PR body must declare Generated Code: regenerated when generated paths are touched.
+- Credential.txt and real env files must not be committed.
+```
+
+### 13.6. Auto-merge workflow
+
+File:
+
+```text
+.github/workflows/auto-merge.yml
+```
+
+Auto-merge rule:
+
+```text
+- Non-draft same-repo PRs targeting main or develop get auto-merge enabled.
+- Add label no-auto-merge when manual merge is required.
+- Auto-merge must not bypass required CI or required human review.
+```
+
 ---
 
 ## 14. Docs workspace standard
@@ -1872,6 +1911,7 @@ Ví dụ:
 ```text
 - [ ] Ref đúng tài liệu chính
 - [ ] Ref task trong file 37
+- [ ] Automated PR review gate passes
 - [ ] Không sửa generated code bằng tay
 - [ ] Không vi phạm module boundary
 - [ ] Có unit/integration test phù hợp
@@ -1881,6 +1921,20 @@ Ví dụ:
 - [ ] Có OpenAPI update nếu thay đổi API
 - [ ] Có UI state loading/error/empty nếu thay đổi frontend
 ```
+
+### 19.4. Auto-review and merge rule
+
+Every PR into `develop` or `main` must pass:
+
+```text
+- required-api
+- required-web
+- required-openapi
+- required-migration
+- required-review-gate
+```
+
+Auto-merge is enabled by default for non-draft same-repo PRs. It merges only after all required status checks pass and branch protection review requirements are satisfied. Use the `no-auto-merge` label when a PR needs manual merge control.
 
 ---
 
