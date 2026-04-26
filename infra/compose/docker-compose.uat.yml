@@ -1,0 +1,5 @@
+services:
+  api:
+    image: ghcr.io/chinsusu/erp-v2-api:uat
+    env_file:
+      - ../../.env.example

@@ -1,0 +1,43 @@
+name: web-ci
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "fix/**"
+      - "hotfix/**"
+    paths:
+      - "apps/web/**"
+      - "packages/openapi/**"
+      - "packages/shared-types/**"
+      - ".github/workflows/web-ci.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/openapi/**"
+      - "packages/shared-types/**"
+      - ".github/workflows/web-ci.yml"
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: pnpm install --filter web --frozen-lockfile=false
+      - name: Typecheck
+        run: pnpm --filter web typecheck
+      - name: Lint
+        run: pnpm --filter web lint
+      - name: Test
+        run: pnpm --filter web test
+      - name: Build
+        run: pnpm --filter web build
