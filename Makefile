@@ -1,9 +1,14 @@
-.PHONY: help local-up local-down api-dev worker-dev web-dev api-test web-test api-lint web-lint migrate-up migrate-down seed-local openapi-generate openapi-validate ci-check
+COMPOSE = docker compose -f infra/compose/docker-compose.local.yml
+MIGRATE_DSN = postgres://erp:erp@postgres:5432/erp?sslmode=disable
+
+.PHONY: help local-up local-down local-reset local-logs api-dev worker-dev web-dev api-test web-test api-lint web-lint migrate-up migrate-down seed-local openapi-generate openapi-validate ci-check
 
 help:
 	@echo "ERP Platform commands"
 	@echo "  local-up           Start local services"
 	@echo "  local-down         Stop local services"
+	@echo "  local-reset        Reset local data, run migrations, and seed data"
+	@echo "  local-logs         Tail local service logs"
 	@echo "  api-dev            Run Go API"
 	@echo "  worker-dev         Run Go worker"
 	@echo "  web-dev            Run Next.js web app"
@@ -19,10 +24,20 @@ help:
 	@echo "  ci-check           Run required local checks"
 
 local-up:
-	docker compose -f infra/compose/docker-compose.local.yml up -d
+	$(COMPOSE) up -d postgres redis minio minio-init mailhog api worker web
 
 local-down:
-	docker compose -f infra/compose/docker-compose.local.yml down
+	$(COMPOSE) down --remove-orphans
+
+local-reset:
+	$(COMPOSE) down -v --remove-orphans
+	$(COMPOSE) up -d postgres redis minio minio-init mailhog
+	$(COMPOSE) --profile tools run --rm migrate
+	$(COMPOSE) --profile tools run --rm seed
+	$(COMPOSE) up -d api worker web
+
+local-logs:
+	$(COMPOSE) logs -f --tail=100
 
 api-dev:
 	cd apps/api && go run ./cmd/api
@@ -46,13 +61,13 @@ web-lint:
 	pnpm --filter web lint
 
 migrate-up:
-	cd apps/api && ./scripts/migrate.sh up
+	$(COMPOSE) --profile tools run --rm migrate
 
 migrate-down:
-	cd apps/api && ./scripts/migrate.sh down
+	$(COMPOSE) --profile tools run --rm migrate -path /migrations -database "$(MIGRATE_DSN)" down 1
 
 seed-local:
-	cd apps/api && ./scripts/seed.sh local
+	$(COMPOSE) --profile tools run --rm seed
 
 openapi-generate:
 	pnpm dlx openapi-typescript packages/openapi/openapi.yaml -o apps/web/src/shared/api/generated/schema.ts
