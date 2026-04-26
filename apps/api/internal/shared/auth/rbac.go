@@ -52,13 +52,13 @@ var roleOrder = []RoleKey{
 }
 
 var roleDisplayNames = map[RoleKey]string{
-	RoleCEO:           "CEO",
-	RoleERPAdmin:      "ERP Admin",
+	RoleCEO:            "CEO",
+	RoleERPAdmin:       "ERP Admin",
 	RoleWarehouseStaff: "Warehouse Staff",
-	RoleWarehouseLead: "Warehouse Lead",
-	RoleQA:            "QA",
-	RoleSalesOps:      "Sales Ops",
-	RoleProductionOps: "Production Ops",
+	RoleWarehouseLead:  "Warehouse Lead",
+	RoleQA:             "QA",
+	RoleSalesOps:       "Sales Ops",
+	RoleProductionOps:  "Production Ops",
 }
 
 var rolePermissions = map[RoleKey][]PermissionKey{
