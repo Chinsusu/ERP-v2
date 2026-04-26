@@ -108,7 +108,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-01-02 | Setup issue/story board | Project foundation | PM + BA | P0 | In Progress | `docs/34_...` |
 | S0-02-01 | Go backend skeleton | Backend Go foundation | BE Lead | P0 | In Progress | `docs/11_...` + `docs/12_...` |
 | S0-02-02 | Module structure base | Backend Go foundation | BE Lead + Architect | P0 | In Progress | `docs/13_...` + `docs/38_...` |
-| S0-02-03 | Error model and API response standard | Backend Go foundation | BE Lead + FE Lead | P0 | Backlog | `docs/16_...` |
+| S0-02-03 | Error model and API response standard | Backend Go foundation | BE Lead + FE Lead | P0 | Review | `docs/16_...` |
 | S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | In Progress | `docs/15_...` + `docs/39_...` |
 | S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
@@ -231,7 +231,7 @@ Current state:
 
 **Owner:** BE Lead + FE Lead
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:

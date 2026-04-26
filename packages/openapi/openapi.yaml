@@ -22,7 +22,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthResponse"
+                $ref: "#/components/schemas/HealthSuccessResponse"
         "404":
           $ref: "#/components/responses/NotFound"
   /inventory/stock-movements:
@@ -46,10 +46,28 @@ paths:
                 $ref: "#/components/schemas/SuccessResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   responses:
     BadRequest:
       description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication is required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Permission is denied
       content:
         application/json:
           schema:
@@ -60,12 +78,37 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Request conflicts with current business state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    ErrorCode:
+      type: string
+      enum:
+        - VALIDATION_ERROR
+        - UNAUTHORIZED
+        - FORBIDDEN
+        - NOT_FOUND
+        - CONFLICT
+        - INSUFFICIENT_STOCK
+        - INVALID_STATE
+    HealthSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/HealthResponse"
     HealthResponse:
       type: object
       required:
@@ -114,10 +157,17 @@ components:
       type: object
       required:
         - success
+        - data
+        - request_id
       properties:
         success:
           type: boolean
           example: true
+        data:
+          type: object
+        request_id:
+          type: string
+          example: req_lq7z2t9c
     ErrorResponse:
       type: object
       required:
@@ -128,10 +178,16 @@ components:
           required:
             - code
             - message
+            - request_id
           properties:
             code:
-              type: string
-              example: VALIDATION_ERROR
+              $ref: "#/components/schemas/ErrorCode"
             message:
               type: string
               example: Invalid request
+            details:
+              type: object
+              additionalProperties: true
+            request_id:
+              type: string
+              example: req_lq7z2t9c
