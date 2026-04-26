@@ -10,13 +10,14 @@ Generated Code: n/a
 
 ## Merge Policy
 
-Auto-merge is enabled after required checks and review pass unless the PR has the `no-auto-merge` label.
+GitHub auto-review and auto-merge are disabled.
+The implementer must self-review the diff, run the relevant checks, record validation evidence, and merge manually.
 
 ## Checklist
 
 - [ ] Ref dung tai lieu chinh
 - [ ] Ref task trong file 37
-- [ ] Automated PR review gate passes
+- [ ] Self-review diff and guardrails completed
 - [ ] Khong sua generated code bang tay
 - [ ] Khong vi pham module boundary
 - [ ] Co unit/integration test phu hop
