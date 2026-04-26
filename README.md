@@ -86,9 +86,9 @@ Local test data:
 3. Keep changes inside the official workspace structure.
 4. Run the relevant checks before opening a pull request.
 5. Open a pull request with `Primary Ref` and `Task Ref`.
-6. Let the automated PR review gate validate title, references, generated-code notes, and credential guardrails.
-7. Auto-merge is enabled for non-draft PRs unless the `no-auto-merge` label is set.
-8. Merge still happens only after required CI and review requirements are satisfied.
+6. Self-review the full diff for title/reference quality, generated-code notes, credential guardrails, tests, and docs.
+7. Merge manually only after validation evidence is recorded.
+8. Promote manually from `develop` to `main`; do not rely on GitHub auto-review or auto-merge.
 
 ## Verification
 
