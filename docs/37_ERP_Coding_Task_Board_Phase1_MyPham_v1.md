@@ -109,7 +109,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-02-01 | Go backend skeleton | Backend Go foundation | BE Lead | P0 | In Progress | `docs/11_...` + `docs/12_...` |
 | S0-02-02 | Module structure base | Backend Go foundation | BE Lead + Architect | P0 | In Progress | `docs/13_...` + `docs/38_...` |
 | S0-02-03 | Error model and API response standard | Backend Go foundation | BE Lead + FE Lead | P0 | Done | `docs/16_...` |
-| S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | Review | `docs/15_...` + `docs/39_...` |
+| S0-03-01 | Next.js app shell | Frontend foundation | FE Lead | P0 | Done | `docs/15_...` + `docs/39_...` |
 | S0-03-02 | Core UI components | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
 | S0-03-03 | Industrial Minimal ERP UI tokens | Frontend foundation | FE Lead + UI/UX | P0 | Done | `docs/39_...` |
 | S0-03-04 | UI page templates foundation | Frontend foundation | FE Lead + UI/UX | P0 | Backlog | `docs/39_...` |
@@ -135,7 +135,7 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-11-03 | Subcontract UI template | Subcontract manufacturing | FE Lead + UI/UX | P1 | Backlog | `docs/39_...` |
 | S0-12-01 | Docker compose local | DevOps/CI/CD foundation | DevOps + Tech Leads | P0 | In Progress | `docs/18_...` + `docs/38_...` |
 | S0-12-02 | CI pipeline | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
-| S0-12-04 | Automated PR review gate and auto-merge | DevOps/CI/CD foundation | DevOps + Tech Lead | P0 | In Progress | `docs/18_...` + `docs/38_...` |
+| S0-12-04 | Automated PR review gate and auto-merge | DevOps/CI/CD foundation | DevOps + Tech Lead | P0 | Done | `docs/18_...` + `docs/38_...` |
 | S0-12-03 | Dev/Staging deployment skeleton | DevOps/CI/CD foundation | DevOps | P0 | Backlog | `docs/18_...` |
 | S0-13-01 | Smoke test pack | QA foundation | QA Lead | P0 | Backlog | `docs/24_...` |
 | S0-13-02 | Sprint 0 demo script | QA foundation | QA Lead + BA + PO | P0 | Backlog | `docs/34_...` |
@@ -251,7 +251,7 @@ Evidence:
 
 **Owner:** FE Lead
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/15_ERP_Frontend_Architecture_React_NextJS_Phase1_MyPham_v1.md`, `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -268,7 +268,12 @@ Current state:
 - Next.js skeleton exists.
 - Login page skeleton exists.
 - Warehouse board placeholder exists.
-- Real app shell, sidebar, header, protected route, and permission menu are in review.
+- Real app shell, sidebar, header, protected route, permission menu, and module placeholders are merged to `main`.
+
+Evidence:
+
+- PR #21: App shell into `develop`.
+- PR #22: App shell promoted to `main`.
 
 ### S0-03-02 Core UI Components
 
@@ -692,7 +697,7 @@ Evidence:
 
 **Owner:** DevOps + Tech Lead
 **Priority:** P0
-**Status:** In Progress
+**Status:** Done
 **Primary Ref:** `docs/18_ERP_DevOps_CICD_Environment_Standards_Phase1_MyPham_v1.md`, `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -702,6 +707,11 @@ Acceptance criteria:
 - Auto-merge is enabled for non-draft same-repo PRs unless the `no-auto-merge` label is set.
 - Auto-merge does not bypass required CI or human review requirements.
 - PR template and README document the flow.
+
+Evidence:
+
+- PR #13, PR #14, PR #16, PR #19, PR #20: review gate and auto-merge workflow fixes.
+- PR #21 and PR #22: review gate and auto-merge verified on real feature and promote PRs.
 
 ### S0-12-03 Dev Staging Deployment Skeleton
 
@@ -757,6 +767,8 @@ Acceptance criteria:
 | S0-12-02 | PR #3, PR #4, PR #5, PR #6; `required-ci` pass on `main` |
 | S0-02-03 | PR #9, PR #12; API response standard, shared error envelope, parsing tests |
 | S0-03-03 | PR #15, PR #17; CSS variables, Ant Design theme, token tests |
+| S0-12-04 | PR #13, PR #14, PR #16, PR #19, PR #20, PR #21, PR #22; review gate and auto-merge flow |
+| S0-03-01 | PR #21, PR #22; protected ERP app shell, permission menu, module placeholders |
 
 ---
 
@@ -776,9 +788,9 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S0-03-01` - Complete real app shell from file 39.
-2. `S0-04-02` - Add base tables needed by auth/RBAC/audit/stock.
-3. `S0-06-01` - Auth skeleton.
+1. `S0-04-02` - Add base tables needed by auth/RBAC/audit/stock.
+2. `S0-06-01` - Auth skeleton.
+3. `S0-03-02` - Core UI components.
 4. `S0-07-01` - Database-backed stock movement write path.
 
 These unlock later inventory, shipping, returns, and subcontract workflows.
