@@ -1,11 +1,11 @@
 # 40_ERP_Unit_Currency_Number_Format_Standards_Phase1_MyPham_v1
 
-**Dự án:** ERP Web Phase 1 - Công ty mỹ phẩm  
-**Tài liệu:** Unit / Currency / Number Format Standards  
-**Phiên bản:** v1.0  
-**Trạng thái:** Approved Baseline  
-**Ngôn ngữ tài liệu:** Vietnamese  
-**Áp dụng cho:** Backend Go, Frontend Next.js, PostgreSQL, OpenAPI, Data Migration, QA/UAT, Report/Export  
+**Dự án:** ERP Web Phase 1 - Công ty mỹ phẩm
+**Tài liệu:** Unit / Currency / Number Format Standards
+**Phiên bản:** v1.0
+**Trạng thái:** Approved Baseline
+**Ngôn ngữ tài liệu:** Vietnamese
+**Áp dụng cho:** Backend Go, Frontend Next.js, PostgreSQL, OpenAPI, Data Migration, QA/UAT, Report/Export
 
 ---
 
