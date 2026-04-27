@@ -75,6 +75,7 @@ Local URLs:
 Local test data:
 
 - Mock login: `admin@example.local` / `local-only-mock-password`
+- Local auth session: access token expires after 8 hours; refresh token and policy endpoints are available at `/api/v1/auth/refresh` and `/api/v1/auth/policy`.
 - Seeded users: `admin@example.local`, `warehouse_user@example.local`, `sales_user@example.local`
 - Seeded warehouses: `warehouse_main`, `warehouse_return`
 - Seeded SKUs: `FG-LIP-001`, `FG-SER-001`, `FG-CRM-001`, `FG-SUN-001`, `PKG-BOX-001`

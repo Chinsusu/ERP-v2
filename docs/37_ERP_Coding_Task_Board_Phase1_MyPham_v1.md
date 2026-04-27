@@ -149,7 +149,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 
 | Task ID | Title | Epic | Owner | Priority | Status | Primary Ref |
 | --- | --- | --- | --- | --- | --- | --- |
-| S1-01-01 | Auth session and password policy v1 | Auth/RBAC hardening | BE Lead + FE Lead | P0 | Ready | `docs/19_...` + `docs/34_...` |
+| S1-01-01 | Auth session and password policy v1 | Auth/RBAC hardening | BE Lead + FE Lead | P0 | Done | `docs/19_...` + `docs/34_...` |
 | S1-01-02 | RBAC enforcement and permission matrix v1 | Auth/RBAC hardening | BE Lead + FE Lead + BA | P0 | Backlog | `docs/04_...` + `docs/19_...` |
 | S1-02-01 | Item and SKU master data CRUD v1 | Master Data | BE Lead + FE Lead + MDA | P0 | Backlog | `docs/05_...` + `docs/16_...` |
 | S1-02-02 | Warehouse and location master data CRUD v1 | Master Data | BE Lead + FE Lead + Warehouse | P0 | Backlog | `docs/05_...` + `docs/17_...` |
@@ -1041,7 +1041,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead
 **Priority:** P0
-**Status:** Ready
+**Status:** Done
 **Primary Ref:** `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`, `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1051,6 +1051,20 @@ Acceptance criteria:
 - Password policy covers minimum length, lockout or retry limit, and local development defaults.
 - Protected API and protected frontend routes use the same session state.
 - Authentication events are audit-ready and do not expose secrets in logs.
+
+Current state:
+
+- Backend local session manager issues access and refresh tokens with expiry.
+- `/api/v1/auth/login`, `/api/v1/auth/mock-login`, `/api/v1/auth/refresh`, and `/api/v1/auth/policy` are documented in OpenAPI.
+- Password policy requires minimum length, a letter, a number or symbol, and blocks common passwords.
+- Login lockout applies after repeated failed attempts.
+- Protected backend routes validate issued session tokens while keeping the local static token seeded for existing smoke flows.
+- Frontend login validates the same local credential policy and stores an expiring HTTP-only session cookie.
+
+Evidence:
+
+- Self-review completed on implementation diff.
+- Validation passed: API tests, API vet, frontend typecheck, frontend tests, frontend build, OpenAPI validate, generated OpenAPI schema, and Sprint 0 smoke pack.
 
 ### S1-01-02 RBAC Enforcement And Permission Matrix V1
 
@@ -1242,6 +1256,7 @@ Acceptance criteria:
 | S0-05-01 | PR #51, PR #52; OpenAPI base contract with pagination schema, auth/health coverage, master data sample endpoints, and client generation dry run |
 | S0-05-02 | PR #55, PR #56; generated frontend OpenAPI schema, typed API wrapper, inventory service generated DTO integration, and CI web/OpenAPI gates |
 | S0-13-02 | PR #127, PR #128; Sprint 0 demo script, cosmetics sample data path, success/failure scan cases, stock movement, available stock, and audit evidence |
+| S1-01-01 | Manual merge; auth session manager, refresh/policy endpoints, password policy, lockout, frontend expiring session cookie, OpenAPI update, and auth tests |
 
 ---
 
@@ -1261,6 +1276,6 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-01-01` - Auth session and password policy v1.
+1. `S1-01-02` - RBAC enforcement and permission matrix v1.
 
-This unlocks RBAC hardening, master data CRUD, inventory ledger v1, and warehouse receiving v1.
+This unlocks master data CRUD, inventory ledger v1, and warehouse receiving v1.

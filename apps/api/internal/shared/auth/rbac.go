@@ -174,6 +174,10 @@ func RequireBearerPermission(cfg MockConfig, permission PermissionKey, next http
 	return RequireBearerToken(cfg, RequirePermission(permission, next))
 }
 
+func RequireSessionPermission(sessions *SessionManager, permission PermissionKey, next http.Handler) http.Handler {
+	return RequireSessionToken(sessions, RequirePermission(permission, next))
+}
+
 func RequirePermission(permission PermissionKey, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := PrincipalFromContext(r.Context())

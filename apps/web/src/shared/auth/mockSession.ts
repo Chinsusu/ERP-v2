@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { getPermissionsForRole, type PermissionKey, type RoleKey } from "@/shared/permissions/menu";
+import { localAuthPolicy, validateLocalCredentials } from "./sessionPolicy";
 
 const mockAuthCookieName = "erp_mock_session";
 
@@ -14,6 +15,8 @@ export type MockUser = {
 export type MockSession =
   | {
       isAuthenticated: true;
+      accessToken: string;
+      expiresAt: string;
       user: MockUser;
     }
   | {
@@ -34,20 +37,55 @@ export async function getMockSession(): Promise<MockSession> {
   const cookieSession = cookieStore.get(mockAuthCookieName)?.value;
   const forcedSignedOut = process.env.NEXT_PUBLIC_MOCK_AUTH_STATE === "signed-out";
 
-  if (forcedSignedOut && cookieSession !== "authenticated") {
+  if (forcedSignedOut && !cookieSession) {
     return { isAuthenticated: false, user: null };
   }
 
-  return { isAuthenticated: true, user: mockUser };
+  const payload = parseSessionCookie(cookieSession);
+  if (!payload || Date.parse(payload.expiresAt) <= Date.now()) {
+    return { isAuthenticated: false, user: null };
+  }
+
+  return {
+    isAuthenticated: true,
+    accessToken: payload.accessToken,
+    expiresAt: payload.expiresAt,
+    user: mockUser
+  };
 }
 
-export async function signInMockUser() {
+export async function signInMockUser(email: string, password: string) {
+  const validation = validateLocalCredentials(email, password);
+  if (!validation.ok) {
+    return validation;
+  }
+
+  const expiresAt = new Date(Date.now() + localAuthPolicy.accessTokenMaxAgeSeconds * 1000).toISOString();
+  const accessToken = process.env.NEXT_PUBLIC_MOCK_ACCESS_TOKEN || "local-dev-access-token";
   const cookieStore = await cookies();
-  cookieStore.set(mockAuthCookieName, "authenticated", {
+  cookieStore.set(mockAuthCookieName, encodeURIComponent(JSON.stringify({ accessToken, expiresAt })), {
     httpOnly: true,
-    maxAge: 60 * 60 * 8,
+    maxAge: localAuthPolicy.accessTokenMaxAgeSeconds,
     path: "/",
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production"
   });
+
+  return { ok: true } as const;
+}
+
+function parseSessionCookie(value: string | undefined): { accessToken: string; expiresAt: string } | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(decodeURIComponent(value)) as Partial<{ accessToken: string; expiresAt: string }>;
+    if (!parsed.accessToken || !parsed.expiresAt) {
+      return null;
+    }
+    return { accessToken: parsed.accessToken, expiresAt: parsed.expiresAt };
+  } catch {
+    return null;
+  }
 }
