@@ -1144,13 +1144,20 @@ export interface components {
         AvailableStockItem: {
             warehouse_id: string;
             warehouse_code: string;
+            location_id?: string;
+            location_code?: string;
             sku: string;
             batch_id?: string;
             batch_no?: string;
-            physical_stock: number;
-            reserved_stock: number;
-            hold_stock: number;
-            available_stock: number;
+            base_uom_code: components["schemas"]["UOMCode"];
+            physical_qty: components["schemas"]["Quantity"];
+            reserved_qty: components["schemas"]["Quantity"];
+            qc_hold_qty: components["schemas"]["Quantity"];
+            damaged_qty: components["schemas"]["Quantity"];
+            return_pending_qty: components["schemas"]["Quantity"];
+            blocked_qty: components["schemas"]["Quantity"];
+            hold_qty: components["schemas"]["Quantity"];
+            available_qty: components["schemas"]["Quantity"];
         };
         /** @enum {string} */
         EndOfDayReconciliationStatus: "open" | "in_review" | "closed";
@@ -2429,6 +2436,7 @@ export interface operations {
         parameters: {
             query?: {
                 warehouse_id?: string;
+                location_id?: string;
                 sku?: string;
                 batch_id?: string;
             };

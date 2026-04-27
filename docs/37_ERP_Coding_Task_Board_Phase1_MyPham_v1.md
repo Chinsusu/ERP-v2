@@ -159,7 +159,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | S1-02-02 | Warehouse and location master data CRUD v1 | Master Data | BE Lead + FE Lead + Warehouse | P0 | Done | `docs/05_...` + `docs/17_...` |
 | S1-02-03 | Supplier and customer master data CRUD v1 | Master Data | BE Lead + FE Lead + Purchasing + Sales | P0 | Done | `docs/05_...` |
 | S1-03-01 | Inventory stock ledger persistence v1 | Inventory Stock Ledger | BE Lead | P0 | Done | `docs/17_...` + `docs/33_...` + `docs/40_...` |
-| S1-03-02 | Available and reserved stock service v1 | Inventory Stock Ledger | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` + `docs/16_...` |
+| S1-03-02 | Available and reserved stock service v1 | Inventory Stock Ledger | BE Lead + FE Lead | P0 | Done | `docs/33_...` + `docs/16_...` + `docs/40_...` |
 | S1-04-01 | Batch and QC status base model | Batch/QC | BE Lead + QA | P0 | Backlog | `docs/05_...` + `docs/17_...` |
 | S1-04-02 | QC status transition and audit path | Batch/QC | BE Lead + QA + Internal Control | P1 | Backlog | `docs/19_...` + `docs/33_...` |
 | S1-05-01 | Warehouse receiving backend v1 | Warehouse Receiving | BE Lead + Warehouse | P0 | Backlog | `docs/33_...` + `docs/16_...` |
@@ -1276,8 +1276,8 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead
 **Priority:** P0
-**Status:** Backlog
-**Primary Ref:** `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`, `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
+**Status:** Done
+**Primary Ref:** `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`, `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`, `docs/40_ERP_Unit_Currency_Number_Format_Standards_Phase1_MyPham_v1.md`, `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
 
@@ -1286,6 +1286,20 @@ Acceptance criteria:
 - API response is OpenAPI-documented and generated frontend types are updated.
 - UI shows available, reserved, blocked, and QC hold quantities without visual ambiguity.
 - Tests cover zero stock, negative prevention, QC hold, and reservation behavior.
+
+Current state:
+
+- Available stock domain/service now uses decimal quantity values, base UOM, warehouse/location/SKU/batch grouping, and a non-negative available quantity calculation.
+- Available formula separates `physical_qty`, `reserved_qty`, `qc_hold_qty`, `damaged_qty`, `return_pending_qty`, `blocked_qty`, `hold_qty`, and `available_qty`.
+- API response returns quantity fields as string decimals and supports `warehouse_id`, `location_id`, `sku`, and `batch_id` filters.
+- OpenAPI contract and generated frontend schema were updated for decimal quantity fields and base UOM.
+- Inventory UI shows location, base-UOM quantities, QC hold, blocked, reserved, physical, and available buckets with Vietnamese-style decimal formatting.
+- Dev seed stock ledger/balance rows now match the `000004` decimal/base-UOM columns.
+
+Evidence:
+
+- Local checks: API tests, API vet, frontend typecheck, frontend tests, frontend build, OpenAPI generate, OpenAPI validate, Sprint 0 smoke pack, browser Inventory smoke check, API endpoint smoke check, and `git diff --check`.
+- Local migration apply/rollback was not executed because this workstation has no Docker or PostgreSQL client; GitHub migration CI remains the authoritative DB execution gate.
 
 ### S1-04-01 Batch And QC Status Base Model
 
@@ -1415,8 +1429,8 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-03-02` - Available and reserved stock service v1.
-2. `S1-04-01` - Batch and QC status base model.
-3. `S1-05-01` - Warehouse receiving backend v1.
+1. `S1-04-01` - Batch and QC status base model.
+2. `S1-05-01` - Warehouse receiving backend v1.
+3. `S1-05-02` - Warehouse receiving UI v1.
 
-The stock ledger foundation now stores decimal base-UOM movement data, so the next inventory tasks can calculate availability from persisted balance fields instead of prototype counts.
+The stock ledger foundation now stores decimal base-UOM movement data and the available stock service exposes the Phase 1 quantity buckets, so the next inventory tasks should add batch/QC state transitions and receiving workflows.

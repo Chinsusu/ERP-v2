@@ -91,6 +91,32 @@ func MultiplyQuantityByFactor(quantity Decimal, factor Decimal) (Decimal, error)
 	return scaledProductToDecimal(product, QuantityScale*2, QuantityScale, quantityPrecision)
 }
 
+func AddQuantity(left Decimal, right Decimal) (Decimal, error) {
+	leftValue, err := scaledInt(left.String(), QuantityScale)
+	if err != nil {
+		return "", err
+	}
+	rightValue, err := scaledInt(right.String(), QuantityScale)
+	if err != nil {
+		return "", err
+	}
+
+	return scaledIntToDecimal(leftValue.Add(leftValue, rightValue), QuantityScale, quantityPrecision)
+}
+
+func SubtractQuantity(left Decimal, right Decimal) (Decimal, error) {
+	leftValue, err := scaledInt(left.String(), QuantityScale)
+	if err != nil {
+		return "", err
+	}
+	rightValue, err := scaledInt(right.String(), QuantityScale)
+	if err != nil {
+		return "", err
+	}
+
+	return scaledIntToDecimal(leftValue.Sub(leftValue, rightValue), QuantityScale, quantityPrecision)
+}
+
 func MustMoneyAmount(value string) Decimal {
 	return must(ParseMoneyAmount(value))
 }
@@ -385,6 +411,10 @@ func scaledProductToDecimal(product *big.Int, productScale int, targetScale int,
 	}
 
 	return parts.toDecimal(precision, targetScale)
+}
+
+func scaledIntToDecimal(value *big.Int, scale int, precision int) (Decimal, error) {
+	return scaledProductToDecimal(value, scale, scale, precision)
 }
 
 func must(value Decimal, err error) Decimal {
