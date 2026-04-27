@@ -228,7 +228,7 @@ func TestAccessLogMiddlewareWritesRequestSummary(t *testing.T) {
 
 func TestAvailableStockHandlerReturnsFilteredRows(t *testing.T) {
 	service := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/inventory/available-stock?warehouse_id=wh-hn&sku=toner-100ml", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/inventory/available-stock?warehouse_id=wh-hn&location_id=bin-hn-r01&sku=toner-100ml", nil)
 	req.Header.Set(response.HeaderRequestID, "req-stock")
 	rec := httptest.NewRecorder()
 
@@ -247,8 +247,8 @@ func TestAvailableStockHandlerReturnsFilteredRows(t *testing.T) {
 	}
 
 	got := payload.Data[0]
-	if got.WarehouseID != "wh-hn" || got.SKU != "TONER-100ML" || got.AvailableStock != 65 {
-		t.Fatalf("available stock row = %+v, want HN TONER-100ML available 65", got)
+	if got.WarehouseID != "wh-hn" || got.LocationID != "bin-hn-r01" || got.SKU != "TONER-100ML" || got.AvailableQty != "65.000000" {
+		t.Fatalf("available stock row = %+v, want HN TONER-100ML available 65.000000", got)
 	}
 }
 

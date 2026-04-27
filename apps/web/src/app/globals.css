@@ -582,7 +582,7 @@ textarea {
 
 .erp-stock-toolbar {
   display: grid;
-  grid-template-columns: minmax(180px, 240px) minmax(220px, 320px);
+  grid-template-columns: minmax(180px, 240px) minmax(180px, 240px) minmax(220px, 320px);
   gap: 12px;
   align-items: end;
   padding: 12px;
@@ -592,7 +592,7 @@ textarea {
 }
 
 .erp-stock-kpis {
-  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
 .erp-audit-page {

@@ -284,15 +284,22 @@ type changeCustomerStatusRequest struct {
 }
 
 type availableStockResponse struct {
-	WarehouseID    string `json:"warehouse_id"`
-	WarehouseCode  string `json:"warehouse_code"`
-	SKU            string `json:"sku"`
-	BatchID        string `json:"batch_id,omitempty"`
-	BatchNo        string `json:"batch_no,omitempty"`
-	PhysicalStock  int64  `json:"physical_stock"`
-	ReservedStock  int64  `json:"reserved_stock"`
-	HoldStock      int64  `json:"hold_stock"`
-	AvailableStock int64  `json:"available_stock"`
+	WarehouseID      string `json:"warehouse_id"`
+	WarehouseCode    string `json:"warehouse_code"`
+	LocationID       string `json:"location_id,omitempty"`
+	LocationCode     string `json:"location_code,omitempty"`
+	SKU              string `json:"sku"`
+	BatchID          string `json:"batch_id,omitempty"`
+	BatchNo          string `json:"batch_no,omitempty"`
+	BaseUOMCode      string `json:"base_uom_code"`
+	PhysicalQty      string `json:"physical_qty"`
+	ReservedQty      string `json:"reserved_qty"`
+	QCHoldQty        string `json:"qc_hold_qty"`
+	DamagedQty       string `json:"damaged_qty"`
+	ReturnPendingQty string `json:"return_pending_qty"`
+	BlockedQty       string `json:"blocked_qty"`
+	HoldQty          string `json:"hold_qty"`
+	AvailableQty     string `json:"available_qty"`
 }
 
 type endOfDayReconciliationSummaryResponse struct {
@@ -2108,6 +2115,7 @@ func availableStockHandler(service inventoryapp.ListAvailableStock) http.Handler
 
 		filter := domain.NewAvailableStockFilter(
 			r.URL.Query().Get("warehouse_id"),
+			r.URL.Query().Get("location_id"),
 			r.URL.Query().Get("sku"),
 			r.URL.Query().Get("batch_id"),
 		)
@@ -2460,15 +2468,22 @@ func returnReceiptsHandler(
 
 func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) availableStockResponse {
 	return availableStockResponse{
-		WarehouseID:    snapshot.WarehouseID,
-		WarehouseCode:  snapshot.WarehouseCode,
-		SKU:            snapshot.SKU,
-		BatchID:        snapshot.BatchID,
-		BatchNo:        snapshot.BatchNo,
-		PhysicalStock:  snapshot.PhysicalStock,
-		ReservedStock:  snapshot.ReservedStock,
-		HoldStock:      snapshot.HoldStock,
-		AvailableStock: snapshot.AvailableStock,
+		WarehouseID:      snapshot.WarehouseID,
+		WarehouseCode:    snapshot.WarehouseCode,
+		LocationID:       snapshot.LocationID,
+		LocationCode:     snapshot.LocationCode,
+		SKU:              snapshot.SKU,
+		BatchID:          snapshot.BatchID,
+		BatchNo:          snapshot.BatchNo,
+		BaseUOMCode:      snapshot.BaseUOMCode.String(),
+		PhysicalQty:      snapshot.PhysicalQty.String(),
+		ReservedQty:      snapshot.ReservedQty.String(),
+		QCHoldQty:        snapshot.QCHoldQty.String(),
+		DamagedQty:       snapshot.DamagedQty.String(),
+		ReturnPendingQty: snapshot.ReturnPendingQty.String(),
+		BlockedQty:       snapshot.BlockedQty.String(),
+		HoldQty:          snapshot.HoldQty.String(),
+		AvailableQty:     snapshot.AvailableQty.String(),
 	}
 }
 

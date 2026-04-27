@@ -22,14 +22,14 @@ func TestListAvailableStockCalculatesPrototypeRows(t *testing.T) {
 	if !ok {
 		t.Fatal("SERUM-30ML snapshot not found")
 	}
-	if serum.AvailableStock != 110 {
-		t.Fatalf("SERUM-30ML available stock = %d, want 110", serum.AvailableStock)
+	if serum.AvailableQty != "110.000000" {
+		t.Fatalf("SERUM-30ML available qty = %q, want 110.000000", serum.AvailableQty)
 	}
 }
 
-func TestListAvailableStockFiltersByWarehouseSKUAndBatch(t *testing.T) {
+func TestListAvailableStockFiltersByWarehouseLocationSKUAndBatch(t *testing.T) {
 	useCase := NewListAvailableStock(NewPrototypeStockAvailabilityStore())
-	filter := domain.NewAvailableStockFilter("wh-hn", "toner-100ml", "batch-toner-2604c")
+	filter := domain.NewAvailableStockFilter("wh-hn", "bin-hn-r01", "toner-100ml", "batch-toner-2604c")
 
 	snapshots, err := useCase.Execute(context.Background(), filter)
 	if err != nil {
@@ -40,11 +40,11 @@ func TestListAvailableStockFiltersByWarehouseSKUAndBatch(t *testing.T) {
 	}
 
 	got := snapshots[0]
-	if got.WarehouseID != "wh-hn" || got.SKU != "TONER-100ML" || got.BatchID != "batch-toner-2604c" {
+	if got.WarehouseID != "wh-hn" || got.LocationID != "bin-hn-r01" || got.SKU != "TONER-100ML" || got.BatchID != "batch-toner-2604c" {
 		t.Fatalf("snapshot = %+v, want filtered HN toner batch", got)
 	}
-	if got.PhysicalStock != 90 || got.ReservedStock != 20 || got.HoldStock != 5 || got.AvailableStock != 65 {
-		t.Fatalf("snapshot quantities = %+v, want physical 90 reserved 20 hold 5 available 65", got)
+	if got.PhysicalQty != "90.000000" || got.ReservedQty != "20.000000" || got.BlockedQty != "5.000000" || got.AvailableQty != "65.000000" {
+		t.Fatalf("snapshot quantities = %+v, want physical 90 reserved 20 blocked 5 available 65", got)
 	}
 }
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { DataTable, StatusChip, type DataTableColumn } from "@/shared/design-system/components";
 import { useAvailableStock } from "../hooks/useAvailableStock";
-import { availabilityTone } from "../services/stockAvailabilityService";
+import { availabilityTone, formatQuantity } from "../services/stockAvailabilityService";
 import type { AvailableStockItem, AvailableStockQuery } from "../types";
 
 const warehouseOptions = [
@@ -17,7 +17,13 @@ const columns: DataTableColumn<AvailableStockItem>[] = [
     key: "warehouse",
     header: "Warehouse",
     render: (row) => row.warehouseCode,
-    width: "120px"
+    width: "110px"
+  },
+  {
+    key: "location",
+    header: "Location",
+    render: (row) => row.locationCode ?? "-",
+    width: "110px"
   },
   {
     key: "sku",
@@ -34,30 +40,37 @@ const columns: DataTableColumn<AvailableStockItem>[] = [
   {
     key: "physical",
     header: "Physical",
-    render: (row) => formatQuantity(row.physicalStock),
+    render: (row) => formatQuantity(row.physicalQty, row.baseUomCode),
     align: "right",
-    width: "120px"
+    width: "130px"
   },
   {
     key: "reserved",
     header: "Reserved",
-    render: (row) => formatQuantity(row.reservedStock),
+    render: (row) => formatQuantity(row.reservedQty, row.baseUomCode),
     align: "right",
-    width: "120px"
+    width: "130px"
   },
   {
-    key: "hold",
-    header: "Hold",
-    render: (row) => formatQuantity(row.holdStock),
+    key: "qcHold",
+    header: "QC Hold",
+    render: (row) => formatQuantity(row.qcHoldQty, row.baseUomCode),
     align: "right",
-    width: "120px"
+    width: "130px"
+  },
+  {
+    key: "blocked",
+    header: "Blocked",
+    render: (row) => formatQuantity(row.blockedQty, row.baseUomCode),
+    align: "right",
+    width: "130px"
   },
   {
     key: "available",
     header: "Available",
-    render: (row) => formatQuantity(row.availableStock),
+    render: (row) => formatQuantity(row.availableQty, row.baseUomCode),
     align: "right",
-    width: "120px"
+    width: "130px"
   },
   {
     key: "state",
@@ -69,13 +82,15 @@ const columns: DataTableColumn<AvailableStockItem>[] = [
 
 export function AvailableStockPrototype() {
   const [warehouseId, setWarehouseId] = useState("");
+  const [locationId, setLocationId] = useState("");
   const [sku, setSKU] = useState("");
   const query = useMemo<AvailableStockQuery>(
     () => ({
       warehouseId: warehouseId || undefined,
+      locationId: locationId || undefined,
       sku: sku || undefined
     }),
-    [warehouseId, sku]
+    [locationId, warehouseId, sku]
   );
   const { items, loading, summary } = useAvailableStock(query);
 
@@ -101,6 +116,16 @@ export function AvailableStockPrototype() {
           </select>
         </label>
         <label className="erp-field">
+          <span>Location</span>
+          <input
+            className="erp-input"
+            type="search"
+            value={locationId}
+            placeholder="bin-hcm-a01"
+            onChange={(event) => setLocationId(event.target.value)}
+          />
+        </label>
+        <label className="erp-field">
           <span>SKU</span>
           <input
             className="erp-input"
@@ -113,10 +138,11 @@ export function AvailableStockPrototype() {
       </section>
 
       <section className="erp-kpi-grid erp-stock-kpis">
-        <StockKPI label="Physical" value={summary.physicalStock} tone="normal" />
-        <StockKPI label="Reserved" value={summary.reservedStock} tone="warning" />
-        <StockKPI label="Hold" value={summary.holdStock} tone="danger" />
-        <StockKPI label="Available" value={summary.availableStock} tone="success" />
+        <StockKPI label="Physical" value={summary.physicalQty} uomCode={summary.baseUomCode} tone="normal" />
+        <StockKPI label="Reserved" value={summary.reservedQty} uomCode={summary.baseUomCode} tone="warning" />
+        <StockKPI label="QC Hold" value={summary.qcHoldQty} uomCode={summary.baseUomCode} tone="danger" />
+        <StockKPI label="Blocked" value={summary.blockedQty} uomCode={summary.baseUomCode} tone="danger" />
+        <StockKPI label="Available" value={summary.availableQty} uomCode={summary.baseUomCode} tone="success" />
       </section>
 
       <section className="erp-card erp-card--padded erp-module-table-card">
@@ -124,32 +150,46 @@ export function AvailableStockPrototype() {
           <h2 className="erp-section-title">Available stock</h2>
           <StatusChip tone={items.length === 0 ? "warning" : "info"}>{items.length} rows</StatusChip>
         </div>
-        <DataTable columns={columns} rows={items} getRowKey={(row) => `${row.warehouseId}:${row.sku}:${row.batchId}`} loading={loading} />
+        <DataTable
+          columns={columns}
+          rows={items}
+          getRowKey={(row) => `${row.warehouseId}:${row.locationId ?? "-"}:${row.sku}:${row.batchId ?? "-"}:${row.baseUomCode}`}
+          loading={loading}
+        />
       </section>
     </section>
   );
 }
 
-function StockKPI({ label, value, tone }: { label: string; value: number; tone: "normal" | "success" | "warning" | "danger" }) {
+function StockKPI({
+  label,
+  value,
+  uomCode,
+  tone
+}: {
+  label: string;
+  value: string;
+  uomCode?: string;
+  tone: "normal" | "success" | "warning" | "danger";
+}) {
   return (
     <article className="erp-card erp-card--padded erp-kpi-card">
       <div className="erp-kpi-label">{label}</div>
-      <strong className="erp-kpi-value">{formatQuantity(value)}</strong>
+      <strong className="erp-kpi-value">{formatQuantity(value, uomCode)}</strong>
       <StatusChip tone={tone}>{label}</StatusChip>
     </article>
   );
 }
 
-function formatQuantity(value: number) {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
-}
-
 function statusLabel(item: AvailableStockItem) {
-  if (item.availableStock <= 0) {
+  if (item.availableQty === "0.000000") {
     return "Blocked";
   }
-  if (item.holdStock > 0) {
-    return "Hold";
+  if (item.qcHoldQty !== "0.000000") {
+    return "QC Hold";
+  }
+  if (item.blockedQty !== "0.000000") {
+    return "Blocked";
   }
 
   return "Available";
