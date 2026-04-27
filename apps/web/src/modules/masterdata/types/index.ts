@@ -6,6 +6,10 @@ export type WarehouseStatus = components["schemas"]["WarehouseStatus"];
 export type WarehouseType = components["schemas"]["WarehouseType"];
 export type WarehouseLocationStatus = components["schemas"]["LocationStatus"];
 export type WarehouseLocationType = components["schemas"]["LocationType"];
+export type SupplierStatus = components["schemas"]["SupplierStatus"];
+export type SupplierGroup = components["schemas"]["SupplierGroup"];
+export type CustomerStatus = components["schemas"]["CustomerStatus"];
+export type CustomerType = components["schemas"]["CustomerType"];
 
 export type ProductMasterDataItem = {
   id: string;
@@ -145,4 +149,99 @@ export type WarehouseLocationMasterDataSummary = {
   activeWarehouses: number;
   activeLocations: number;
   receivingLocations: number;
+};
+
+export type SupplierMasterDataItem = {
+  id: string;
+  supplierCode: string;
+  supplierName: string;
+  supplierGroup: SupplierGroup;
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  taxCode?: string;
+  address?: string;
+  paymentTerms?: string;
+  leadTimeDays?: number;
+  moq?: number;
+  qualityScore?: number;
+  deliveryScore?: number;
+  status: SupplierStatus;
+  createdAt: string;
+  updatedAt: string;
+  auditLogId?: string;
+};
+
+export type SupplierMasterDataInput = {
+  supplierCode: string;
+  supplierName: string;
+  supplierGroup: SupplierGroup;
+  contactName: string;
+  phone: string;
+  email: string;
+  taxCode: string;
+  address: string;
+  paymentTerms: string;
+  leadTimeDays: number;
+  moq: number;
+  qualityScore: number;
+  deliveryScore: number;
+  status: SupplierStatus;
+};
+
+export type SupplierMasterDataQuery = {
+  search?: string;
+  status?: SupplierStatus | "";
+  supplierGroup?: SupplierGroup | "";
+};
+
+export type CustomerMasterDataItem = {
+  id: string;
+  customerCode: string;
+  customerName: string;
+  customerType: CustomerType;
+  channelCode?: string;
+  priceListCode?: string;
+  discountGroup?: string;
+  creditLimit?: number;
+  paymentTerms?: string;
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  taxCode?: string;
+  address?: string;
+  status: CustomerStatus;
+  createdAt: string;
+  updatedAt: string;
+  auditLogId?: string;
+};
+
+export type CustomerMasterDataInput = {
+  customerCode: string;
+  customerName: string;
+  customerType: CustomerType;
+  channelCode: string;
+  priceListCode: string;
+  discountGroup: string;
+  creditLimit: number;
+  paymentTerms: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  taxCode: string;
+  address: string;
+  status: CustomerStatus;
+};
+
+export type CustomerMasterDataQuery = {
+  search?: string;
+  status?: CustomerStatus | "";
+  customerType?: CustomerType | "";
+};
+
+export type PartyMasterDataSummary = {
+  suppliers: number;
+  activeSuppliers: number;
+  customers: number;
+  activeCustomers: number;
 };

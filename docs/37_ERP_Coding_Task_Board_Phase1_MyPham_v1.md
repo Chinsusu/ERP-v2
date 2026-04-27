@@ -153,7 +153,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | S1-01-02 | RBAC enforcement and permission matrix v1 | Auth/RBAC hardening | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
 | S1-02-01 | Item and SKU master data CRUD v1 | Master Data | BE Lead + FE Lead + MDA | P0 | Done | `docs/05_...` + `docs/16_...` |
 | S1-02-02 | Warehouse and location master data CRUD v1 | Master Data | BE Lead + FE Lead + Warehouse | P0 | Done | `docs/05_...` + `docs/17_...` |
-| S1-02-03 | Supplier and customer master data CRUD v1 | Master Data | BE Lead + FE Lead + Purchasing + Sales | P0 | Backlog | `docs/05_...` |
+| S1-02-03 | Supplier and customer master data CRUD v1 | Master Data | BE Lead + FE Lead + Purchasing + Sales | P0 | Done | `docs/05_...` |
 | S1-03-01 | Inventory stock ledger persistence v1 | Inventory Stock Ledger | BE Lead | P0 | Backlog | `docs/17_...` + `docs/33_...` |
 | S1-03-02 | Available and reserved stock service v1 | Inventory Stock Ledger | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` + `docs/16_...` |
 | S1-04-01 | Batch and QC status base model | Batch/QC | BE Lead + QA | P0 | Backlog | `docs/05_...` + `docs/17_...` |
@@ -1150,7 +1150,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead + Purchasing + Sales
 **Priority:** P0
-**Status:** Backlog
+**Status:** Done
 **Primary Ref:** `docs/05_ERP_Data_Dictionary_Master_Data_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1160,6 +1160,14 @@ Acceptance criteria:
 - Duplicate code and invalid status transitions are blocked.
 - UI supports search/filter and compact operational list views.
 - Audit metadata is captured for create/update/status changes.
+
+Evidence:
+
+- Manual merge completed after self-review.
+- API supplier/customer CRUD and status routes implemented with duplicate code, invalid type/group/status, invalid transition, non-negative metric/credit, and audit log guards.
+- OpenAPI contract and generated frontend schema updated.
+- `/master-data` UI includes supplier/customer tab with list, detail, create, update, status change, filters, contact, tax, address, payment, score, channel, price list, and credit fields.
+- Validation passed: API tests, API vet, frontend typecheck, frontend tests, frontend build, OpenAPI validate, generated OpenAPI schema, and Sprint 0 smoke pack.
 
 ### S1-03-01 Inventory Stock Ledger Persistence V1
 
@@ -1295,6 +1303,7 @@ Acceptance criteria:
 | S1-01-02 | Manual merge; RBAC permission catalog endpoint, subcontract permission alignment, backend/frontend catalog drift tests, OpenAPI update |
 | S1-02-01 | Manual merge; item/SKU master data CRUD/status API, duplicate code guards, audit logs, OpenAPI/generated types, and `/master-data` UI states |
 | S1-02-02 | Manual merge; warehouse/location CRUD/status API, location warehouse validation, inactive location guard, OpenAPI/generated types, and `/master-data` warehouse/location UI states |
+| S1-02-03 | Manual merge; supplier/customer CRUD/status API, duplicate code and invalid transition guards, audit logs, OpenAPI/generated types, and `/master-data` supplier/customer UI states |
 
 ---
 
@@ -1314,6 +1323,6 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-02-02` - Warehouse and location master data CRUD v1.
+1. `S1-03-01` - Inventory stock ledger persistence v1.
 
-This unlocks stock ledger v1, batch/QC, warehouse receiving v1, and reliable warehouse daily board integration.
+This starts the persistence layer needed by available/reserved stock, batch/QC, warehouse receiving, and reliable warehouse daily board integration.

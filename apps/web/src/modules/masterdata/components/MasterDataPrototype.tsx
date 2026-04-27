@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { StatusChip } from "@/shared/design-system/components";
 import { ProductMasterDataPrototype } from "./ProductMasterDataPrototype";
+import { SupplierCustomerMasterDataPrototype } from "./SupplierCustomerMasterDataPrototype";
 import { WarehouseLocationMasterDataPrototype } from "./WarehouseLocationMasterDataPrototype";
 
-type MasterDataView = "products" | "warehouses";
+type MasterDataView = "products" | "warehouses" | "parties";
 
 const masterDataViews: { label: string; value: MasterDataView }[] = [
   { label: "Items / SKU", value: "products" },
-  { label: "Warehouses / Locations", value: "warehouses" }
+  { label: "Warehouses / Locations", value: "warehouses" },
+  { label: "Suppliers / Customers", value: "parties" }
 ];
 
 export function MasterDataPrototype() {
@@ -21,9 +23,9 @@ export function MasterDataPrototype() {
         <div>
           <p className="erp-module-eyebrow">MD</p>
           <h1 className="erp-page-title">Master Data</h1>
-          <p className="erp-page-description">Operational master data for SKU, warehouse, location, and inventory setup</p>
+          <p className="erp-page-description">Operational master data for SKU, warehouse, location, supplier, and customer setup</p>
         </div>
-        <StatusChip tone="info">{view === "products" ? "Item setup" : "Warehouse setup"}</StatusChip>
+        <StatusChip tone="info">{viewLabel(view)}</StatusChip>
       </header>
 
       <nav className="erp-masterdata-tabs" aria-label="Master data sections">
@@ -40,7 +42,22 @@ export function MasterDataPrototype() {
         ))}
       </nav>
 
-      {view === "products" ? <ProductMasterDataPrototype embedded /> : <WarehouseLocationMasterDataPrototype embedded />}
+      {view === "products" ? <ProductMasterDataPrototype embedded /> : null}
+      {view === "warehouses" ? <WarehouseLocationMasterDataPrototype embedded /> : null}
+      {view === "parties" ? <SupplierCustomerMasterDataPrototype embedded /> : null}
     </section>
   );
+}
+
+function viewLabel(view: MasterDataView) {
+  switch (view) {
+    case "products":
+      return "Item setup";
+    case "warehouses":
+      return "Warehouse setup";
+    case "parties":
+      return "Party setup";
+    default:
+      return "Master data";
+  }
 }
