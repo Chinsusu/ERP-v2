@@ -617,6 +617,35 @@ textarea {
   border-radius: var(--erp-radius);
 }
 
+.erp-masterdata-toolbar--wide {
+  grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(150px, 210px));
+}
+
+.erp-masterdata-tabs {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px;
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-masterdata-tab {
+  min-height: 32px;
+  padding: 0 12px;
+  color: var(--erp-text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--erp-radius-sm);
+  cursor: pointer;
+}
+
+.erp-masterdata-tab[data-active="true"] {
+  color: var(--erp-text);
+  background: var(--erp-surface-selected);
+  box-shadow: inset 0 0 0 1px rgba(213, 12, 45, 0.2);
+}
+
 .erp-masterdata-kpis {
   grid-template-columns: repeat(4, minmax(140px, 1fr));
 }
@@ -630,6 +659,10 @@ textarea {
 
 .erp-masterdata-list-card {
   min-width: 0;
+}
+
+.erp-masterdata-inline-filter {
+  margin-bottom: 12px;
 }
 
 .erp-masterdata-product-cell {

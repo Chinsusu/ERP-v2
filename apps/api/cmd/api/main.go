@@ -131,6 +131,73 @@ type changeProductStatusRequest struct {
 	Status string `json:"status"`
 }
 
+type warehouseResponse struct {
+	ID              string `json:"id"`
+	WarehouseCode   string `json:"warehouse_code"`
+	WarehouseName   string `json:"warehouse_name"`
+	WarehouseType   string `json:"warehouse_type"`
+	SiteCode        string `json:"site_code"`
+	Address         string `json:"address,omitempty"`
+	AllowSaleIssue  bool   `json:"allow_sale_issue"`
+	AllowProdIssue  bool   `json:"allow_prod_issue"`
+	AllowQuarantine bool   `json:"allow_quarantine"`
+	Status          string `json:"status"`
+	CreatedAt       string `json:"created_at"`
+	UpdatedAt       string `json:"updated_at"`
+	AuditLogID      string `json:"audit_log_id,omitempty"`
+}
+
+type warehouseRequest struct {
+	WarehouseCode   string `json:"warehouse_code"`
+	WarehouseName   string `json:"warehouse_name"`
+	WarehouseType   string `json:"warehouse_type"`
+	SiteCode        string `json:"site_code"`
+	Address         string `json:"address"`
+	AllowSaleIssue  bool   `json:"allow_sale_issue"`
+	AllowProdIssue  bool   `json:"allow_prod_issue"`
+	AllowQuarantine bool   `json:"allow_quarantine"`
+	Status          string `json:"status"`
+}
+
+type changeWarehouseStatusRequest struct {
+	Status string `json:"status"`
+}
+
+type warehouseLocationResponse struct {
+	ID            string `json:"id"`
+	WarehouseID   string `json:"warehouse_id"`
+	WarehouseCode string `json:"warehouse_code"`
+	LocationCode  string `json:"location_code"`
+	LocationName  string `json:"location_name"`
+	LocationType  string `json:"location_type"`
+	ZoneCode      string `json:"zone_code,omitempty"`
+	AllowReceive  bool   `json:"allow_receive"`
+	AllowPick     bool   `json:"allow_pick"`
+	AllowStore    bool   `json:"allow_store"`
+	IsDefault     bool   `json:"is_default"`
+	Status        string `json:"status"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+	AuditLogID    string `json:"audit_log_id,omitempty"`
+}
+
+type warehouseLocationRequest struct {
+	WarehouseID  string `json:"warehouse_id"`
+	LocationCode string `json:"location_code"`
+	LocationName string `json:"location_name"`
+	LocationType string `json:"location_type"`
+	ZoneCode     string `json:"zone_code"`
+	AllowReceive bool   `json:"allow_receive"`
+	AllowPick    bool   `json:"allow_pick"`
+	AllowStore   bool   `json:"allow_store"`
+	IsDefault    bool   `json:"is_default"`
+	Status       string `json:"status"`
+}
+
+type changeWarehouseLocationStatusRequest struct {
+	Status string `json:"status"`
+}
+
 type availableStockResponse struct {
 	WarehouseID    string `json:"warehouse_id"`
 	WarehouseCode  string `json:"warehouse_code"`
@@ -367,6 +434,7 @@ func main() {
 	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
 	auditLogStore := audit.NewPrototypeLogStore()
 	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
+	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
 	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	listEndOfDayReconciliations := inventoryapp.NewListEndOfDayReconciliations(reconciliationStore)
 	closeEndOfDayReconciliation := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditLogStore)
@@ -425,6 +493,50 @@ func main() {
 			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(changeProductStatusHandler(itemCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/warehouses",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(warehousesHandler(warehouseCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/warehouses/{warehouse_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(warehouseDetailHandler(warehouseCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/warehouses/{warehouse_id}/status",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(changeWarehouseStatusHandler(warehouseCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/warehouse-locations",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(warehouseLocationsHandler(warehouseCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/warehouse-locations/{location_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(warehouseLocationDetailHandler(warehouseCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/warehouse-locations/{location_id}/status",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(changeWarehouseLocationStatusHandler(warehouseCatalog)),
 		),
 	)
 	mux.Handle(
@@ -1031,6 +1143,375 @@ func changeProductStatusHandler(catalog *masterdataapp.ItemCatalog) http.Handler
 		}
 
 		response.WriteSuccess(w, r, http.StatusOK, newProductResponse(result.Item, result.AuditLogID))
+	}
+}
+
+func warehousesHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+				writePermissionDenied(w, r, auth.PermissionMasterDataView)
+				return
+			}
+			filter := masterdatadomain.NewWarehouseFilter(
+				r.URL.Query().Get("q"),
+				masterdatadomain.WarehouseStatus(r.URL.Query().Get("status")),
+				masterdatadomain.WarehouseType(r.URL.Query().Get("warehouse_type")),
+				queryInt(r, "page"),
+				queryInt(r, "page_size"),
+			)
+			warehouses, pagination, err := catalog.ListWarehouses(r.Context(), filter)
+			if err != nil {
+				writeWarehouseError(w, r, err)
+				return
+			}
+
+			payload := make([]warehouseResponse, 0, len(warehouses))
+			for _, warehouse := range warehouses {
+				payload = append(payload, newWarehouseResponse(warehouse, ""))
+			}
+			response.WritePaginatedSuccess(w, r, http.StatusOK, payload, pagination)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload warehouseRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid warehouse master data payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.CreateWarehouse(r.Context(), masterdataapp.CreateWarehouseInput{
+				Code:            payload.WarehouseCode,
+				Name:            payload.WarehouseName,
+				Type:            payload.WarehouseType,
+				SiteCode:        payload.SiteCode,
+				Address:         payload.Address,
+				AllowSaleIssue:  payload.AllowSaleIssue,
+				AllowProdIssue:  payload.AllowProdIssue,
+				AllowQuarantine: payload.AllowQuarantine,
+				Status:          payload.Status,
+				ActorID:         principal.UserID,
+				RequestID:       response.RequestID(r),
+			})
+			if err != nil {
+				writeWarehouseError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusCreated, newWarehouseResponse(result.Warehouse, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func warehouseDetailHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+				writePermissionDenied(w, r, auth.PermissionMasterDataView)
+				return
+			}
+			warehouse, err := catalog.GetWarehouse(r.Context(), r.PathValue("warehouse_id"))
+			if err != nil {
+				writeWarehouseError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusOK, newWarehouseResponse(warehouse, ""))
+		case http.MethodPatch:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload warehouseRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid warehouse master data payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.UpdateWarehouse(r.Context(), masterdataapp.UpdateWarehouseInput{
+				ID:              r.PathValue("warehouse_id"),
+				Code:            payload.WarehouseCode,
+				Name:            payload.WarehouseName,
+				Type:            payload.WarehouseType,
+				SiteCode:        payload.SiteCode,
+				Address:         payload.Address,
+				AllowSaleIssue:  payload.AllowSaleIssue,
+				AllowProdIssue:  payload.AllowProdIssue,
+				AllowQuarantine: payload.AllowQuarantine,
+				Status:          payload.Status,
+				ActorID:         principal.UserID,
+				RequestID:       response.RequestID(r),
+			})
+			if err != nil {
+				writeWarehouseError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusOK, newWarehouseResponse(result.Warehouse, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func changeWarehouseStatusHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload changeWarehouseStatusRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid warehouse status payload",
+				nil,
+			)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		result, err := catalog.ChangeWarehouseStatus(r.Context(), masterdataapp.ChangeWarehouseStatusInput{
+			ID:        r.PathValue("warehouse_id"),
+			Status:    payload.Status,
+			ActorID:   principal.UserID,
+			RequestID: response.RequestID(r),
+		})
+		if err != nil {
+			writeWarehouseError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newWarehouseResponse(result.Warehouse, result.AuditLogID))
+	}
+}
+
+func warehouseLocationsHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+				writePermissionDenied(w, r, auth.PermissionMasterDataView)
+				return
+			}
+			filter := masterdatadomain.NewLocationFilter(
+				r.URL.Query().Get("q"),
+				r.URL.Query().Get("warehouse_id"),
+				masterdatadomain.LocationStatus(r.URL.Query().Get("status")),
+				masterdatadomain.LocationType(r.URL.Query().Get("location_type")),
+				queryInt(r, "page"),
+				queryInt(r, "page_size"),
+			)
+			locations, pagination, err := catalog.ListLocations(r.Context(), filter)
+			if err != nil {
+				writeWarehouseError(w, r, err)
+				return
+			}
+
+			payload := make([]warehouseLocationResponse, 0, len(locations))
+			for _, location := range locations {
+				payload = append(payload, newWarehouseLocationResponse(location, ""))
+			}
+			response.WritePaginatedSuccess(w, r, http.StatusOK, payload, pagination)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload warehouseLocationRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid warehouse location payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.CreateLocation(r.Context(), masterdataapp.CreateLocationInput{
+				WarehouseID:  payload.WarehouseID,
+				Code:         payload.LocationCode,
+				Name:         payload.LocationName,
+				Type:         payload.LocationType,
+				ZoneCode:     payload.ZoneCode,
+				AllowReceive: payload.AllowReceive,
+				AllowPick:    payload.AllowPick,
+				AllowStore:   payload.AllowStore,
+				IsDefault:    payload.IsDefault,
+				Status:       payload.Status,
+				ActorID:      principal.UserID,
+				RequestID:    response.RequestID(r),
+			})
+			if err != nil {
+				writeWarehouseError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusCreated, newWarehouseLocationResponse(result.Location, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func warehouseLocationDetailHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+				writePermissionDenied(w, r, auth.PermissionMasterDataView)
+				return
+			}
+			location, err := catalog.GetLocation(r.Context(), r.PathValue("location_id"))
+			if err != nil {
+				writeWarehouseError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusOK, newWarehouseLocationResponse(location, ""))
+		case http.MethodPatch:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload warehouseLocationRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid warehouse location payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.UpdateLocation(r.Context(), masterdataapp.UpdateLocationInput{
+				ID:           r.PathValue("location_id"),
+				WarehouseID:  payload.WarehouseID,
+				Code:         payload.LocationCode,
+				Name:         payload.LocationName,
+				Type:         payload.LocationType,
+				ZoneCode:     payload.ZoneCode,
+				AllowReceive: payload.AllowReceive,
+				AllowPick:    payload.AllowPick,
+				AllowStore:   payload.AllowStore,
+				IsDefault:    payload.IsDefault,
+				Status:       payload.Status,
+				ActorID:      principal.UserID,
+				RequestID:    response.RequestID(r),
+			})
+			if err != nil {
+				writeWarehouseError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusOK, newWarehouseLocationResponse(result.Location, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func changeWarehouseLocationStatusHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload changeWarehouseLocationStatusRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid warehouse location status payload",
+				nil,
+			)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		result, err := catalog.ChangeLocationStatus(r.Context(), masterdataapp.ChangeLocationStatusInput{
+			ID:        r.PathValue("location_id"),
+			Status:    payload.Status,
+			ActorID:   principal.UserID,
+			RequestID: response.RequestID(r),
+		})
+		if err != nil {
+			writeWarehouseError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newWarehouseLocationResponse(result.Location, result.AuditLogID))
 	}
 }
 
@@ -1833,6 +2314,114 @@ func writeProductError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 }
 
+func writeWarehouseError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, masterdataapp.ErrWarehouseNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Warehouse master data was not found", nil)
+	case errors.Is(err, masterdataapp.ErrLocationNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Warehouse location was not found", nil)
+	case errors.Is(err, masterdataapp.ErrDuplicateWarehouseCode):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Warehouse code already exists",
+			map[string]any{"field": "warehouse_code"},
+		)
+	case errors.Is(err, masterdataapp.ErrDuplicateLocationCode):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Location code already exists for this warehouse",
+			map[string]any{"field": "location_code"},
+		)
+	case errors.Is(err, masterdataapp.ErrInvalidLocationWarehouse):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Warehouse location references an invalid warehouse",
+			map[string]any{"field": "warehouse_id"},
+		)
+	case errors.Is(err, masterdataapp.ErrInactiveLocation):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Inactive warehouse location cannot be edited except by reactivating it",
+			map[string]any{"field": "status"},
+		)
+	case errors.Is(err, masterdatadomain.ErrWarehouseRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Warehouse master data is missing required fields",
+			map[string]any{"required": "warehouse_code, warehouse_name, warehouse_type, and site_code"},
+		)
+	case errors.Is(err, masterdatadomain.ErrWarehouseInvalidType):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Warehouse type is invalid",
+			map[string]any{"allowed": "raw_material, packaging, semi_finished, finished_good, quarantine, sample, defect, retail_store"},
+		)
+	case errors.Is(err, masterdatadomain.ErrWarehouseInvalidStatus):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Warehouse status is invalid",
+			map[string]any{"allowed": "active, inactive"},
+		)
+	case errors.Is(err, masterdatadomain.ErrLocationRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Warehouse location is missing required fields",
+			map[string]any{"required": "warehouse_id, location_code, location_name, and location_type"},
+		)
+	case errors.Is(err, masterdatadomain.ErrLocationInvalidType):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Warehouse location type is invalid",
+			map[string]any{"allowed": "receiving, qc_hold, storage, pick, pack, handover, return, lab, scrap"},
+		)
+	case errors.Is(err, masterdatadomain.ErrLocationInvalidStatus):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Warehouse location status is invalid",
+			map[string]any{"allowed": "active, inactive"},
+		)
+	default:
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Warehouse master data request could not be processed",
+			nil,
+		)
+	}
+}
+
 func writePermissionDenied(w http.ResponseWriter, r *http.Request, permission auth.PermissionKey) {
 	response.WriteError(
 		w,
@@ -1870,6 +2459,44 @@ func newProductResponse(item masterdatadomain.Item, auditLogID string) productRe
 		CreatedAt:        item.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:        item.UpdatedAt.Format(time.RFC3339),
 		AuditLogID:       auditLogID,
+	}
+}
+
+func newWarehouseResponse(warehouse masterdatadomain.Warehouse, auditLogID string) warehouseResponse {
+	return warehouseResponse{
+		ID:              warehouse.ID,
+		WarehouseCode:   warehouse.Code,
+		WarehouseName:   warehouse.Name,
+		WarehouseType:   string(warehouse.Type),
+		SiteCode:        warehouse.SiteCode,
+		Address:         warehouse.Address,
+		AllowSaleIssue:  warehouse.AllowSaleIssue,
+		AllowProdIssue:  warehouse.AllowProdIssue,
+		AllowQuarantine: warehouse.AllowQuarantine,
+		Status:          string(warehouse.Status),
+		CreatedAt:       warehouse.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       warehouse.UpdatedAt.Format(time.RFC3339),
+		AuditLogID:      auditLogID,
+	}
+}
+
+func newWarehouseLocationResponse(location masterdatadomain.Location, auditLogID string) warehouseLocationResponse {
+	return warehouseLocationResponse{
+		ID:            location.ID,
+		WarehouseID:   location.WarehouseID,
+		WarehouseCode: location.WarehouseCode,
+		LocationCode:  location.Code,
+		LocationName:  location.Name,
+		LocationType:  string(location.Type),
+		ZoneCode:      location.ZoneCode,
+		AllowReceive:  location.AllowReceive,
+		AllowPick:     location.AllowPick,
+		AllowStore:    location.AllowStore,
+		IsDefault:     location.IsDefault,
+		Status:        string(location.Status),
+		CreatedAt:     location.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     location.UpdatedAt.Format(time.RFC3339),
+		AuditLogID:    auditLogID,
 	}
 }
 
