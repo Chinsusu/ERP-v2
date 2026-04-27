@@ -378,6 +378,104 @@ func TestBatchQCTransitionsHandlerChangesStatusAndListsHistory(t *testing.T) {
 	}
 }
 
+func TestGoodsReceiptsHandlerCreatesAndPostsReceipt(t *testing.T) {
+	service, auditStore := newTestGoodsReceiptService()
+	principal := auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)
+	body := bytes.NewBufferString(`{
+		"id": "grn-api-test",
+		"receipt_no": "GRN-260427-API",
+		"warehouse_id": "wh-hcm-fg",
+		"location_id": "loc-hcm-fg-recv-01",
+		"reference_doc_type": "purchase_order",
+		"reference_doc_id": "PO-260427-API",
+		"lines": [
+			{
+				"id": "line-api-test",
+				"batch_id": "batch-cream-2603b",
+				"quantity": "6",
+				"base_uom_code": "EA"
+			}
+		]
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/goods-receipts", body)
+	req.Header.Set(response.HeaderRequestID, "req-goods-receipt-create")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), principal))
+	rec := httptest.NewRecorder()
+
+	goodsReceiptsHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+	var createPayload response.SuccessEnvelope[warehouseReceivingResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&createPayload); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+	if createPayload.Data.Status != "draft" || createPayload.Data.Lines[0].SKU != "CREAM-50G" {
+		t.Fatalf("create payload = %+v, want hydrated draft cream receipt", createPayload.Data)
+	}
+
+	for _, step := range []struct {
+		name    string
+		handler http.HandlerFunc
+	}{
+		{name: "submit", handler: submitGoodsReceiptHandler(service)},
+		{name: "inspect", handler: markGoodsReceiptInspectReadyHandler(service)},
+		{name: "post", handler: postGoodsReceiptHandler(service)},
+	} {
+		actionReq := httptest.NewRequest(http.MethodPost, "/api/v1/goods-receipts/grn-api-test/"+step.name, nil)
+		actionReq.SetPathValue("receipt_id", "grn-api-test")
+		actionReq = actionReq.WithContext(auth.WithPrincipal(actionReq.Context(), principal))
+		actionRec := httptest.NewRecorder()
+
+		step.handler.ServeHTTP(actionRec, actionReq)
+
+		if actionRec.Code != http.StatusOK {
+			t.Fatalf("%s status = %d, want %d: %s", step.name, actionRec.Code, http.StatusOK, actionRec.Body.String())
+		}
+		if step.name != "post" {
+			continue
+		}
+		var postPayload response.SuccessEnvelope[warehouseReceivingResponse]
+		if err := json.NewDecoder(actionRec.Body).Decode(&postPayload); err != nil {
+			t.Fatalf("decode post response: %v", err)
+		}
+		if postPayload.Data.Status != "posted" || len(postPayload.Data.StockMovements) != 1 {
+			t.Fatalf("post payload = %+v, want posted with one stock movement", postPayload.Data)
+		}
+	}
+
+	logs, err := auditStore.List(context.Background(), audit.Query{Action: "inventory.receiving.posted"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("posted audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestPostGoodsReceiptHandlerRequiresRecordCreate(t *testing.T) {
+	service, _ := newTestGoodsReceiptService()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/goods-receipts/grn-hcm-260427-inspect/post", nil)
+	req.SetPathValue("receipt_id", "grn-hcm-260427-inspect")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseStaff)))
+	rec := httptest.NewRecorder()
+
+	postGoodsReceiptHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
 func TestEndOfDayReconciliationsHandlerReturnsFilteredRows(t *testing.T) {
 	store := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	service := inventoryapp.NewListEndOfDayReconciliations(store)
@@ -1440,4 +1538,17 @@ func TestStockMovementHandlerWritesAuditForAdjustment(t *testing.T) {
 	if got.AfterData["movement_qty"] != "8.000000" || got.AfterData["base_uom_code"] != "PCS" || got.AfterData["source_uom_code"] != "CARTON" {
 		t.Fatalf("audit after data = %+v, want decimal/base/source UOM metadata", got.AfterData)
 	}
+}
+
+func newTestGoodsReceiptService() (inventoryapp.WarehouseReceivingService, *audit.InMemoryLogStore) {
+	auditStore := audit.NewInMemoryLogStore()
+	service := inventoryapp.NewWarehouseReceivingService(
+		inventoryapp.NewPrototypeWarehouseReceivingStore(),
+		masterdataapp.NewPrototypeWarehouseLocationCatalog(auditStore),
+		inventoryapp.NewPrototypeBatchCatalog(auditStore),
+		inventoryapp.NewInMemoryStockMovementStore(),
+		auditStore,
+	)
+
+	return service, auditStore
 }

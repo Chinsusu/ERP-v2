@@ -508,6 +508,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/goods-receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List warehouse goods receipts */
+        get: operations["listGoodsReceipts"];
+        put?: never;
+        /** Create a warehouse goods receipt draft */
+        post: operations["createGoodsReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/goods-receipts/{receipt_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get warehouse goods receipt detail */
+        get: operations["getGoodsReceipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/goods-receipts/{receipt_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a warehouse goods receipt draft */
+        post: operations["submitGoodsReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/goods-receipts/{receipt_id}/inspect-ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a submitted warehouse goods receipt as inspection-ready */
+        post: operations["markGoodsReceiptInspectReady"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/goods-receipts/{receipt_id}/post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post an inspection-ready warehouse goods receipt to stock movements */
+        post: operations["postGoodsReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/warehouse/end-of-day-reconciliations": {
         parameters: {
             query?: never;
@@ -1277,6 +1363,96 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /** @enum {string} */
+        GoodsReceiptStatus: "draft" | "submitted" | "inspect_ready" | "posted";
+        GoodsReceiptListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["GoodsReceipt"][];
+        };
+        GoodsReceiptSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["GoodsReceipt"];
+        };
+        CreateGoodsReceiptRequest: {
+            id?: string;
+            org_id?: string;
+            receipt_no?: string;
+            warehouse_id: string;
+            location_id: string;
+            /** @example purchase_order */
+            reference_doc_type: string;
+            /** @example PO-260427-0001 */
+            reference_doc_id: string;
+            supplier_id?: string;
+            lines: components["schemas"]["CreateGoodsReceiptLineRequest"][];
+        };
+        CreateGoodsReceiptLineRequest: {
+            id?: string;
+            item_id?: string;
+            sku?: string;
+            item_name?: string;
+            batch_id?: string;
+            batch_no?: string;
+            quantity: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            qc_status?: components["schemas"]["BatchQCStatus"];
+        };
+        GoodsReceipt: {
+            id: string;
+            org_id: string;
+            receipt_no: string;
+            warehouse_id: string;
+            warehouse_code: string;
+            location_id: string;
+            location_code: string;
+            reference_doc_type: string;
+            reference_doc_id: string;
+            supplier_id?: string;
+            status: components["schemas"]["GoodsReceiptStatus"];
+            lines: components["schemas"]["GoodsReceiptLine"][];
+            stock_movements?: components["schemas"]["GoodsReceiptStockMovement"][];
+            created_by: string;
+            submitted_by?: string;
+            inspect_ready_by?: string;
+            posted_by?: string;
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            /** Format: date-time */
+            inspect_ready_at?: string;
+            /** Format: date-time */
+            posted_at?: string;
+        };
+        GoodsReceiptLine: {
+            id: string;
+            item_id: string;
+            sku: string;
+            item_name?: string;
+            batch_id?: string;
+            batch_no?: string;
+            warehouse_id: string;
+            location_id: string;
+            quantity: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            qc_status?: components["schemas"]["BatchQCStatus"];
+        };
+        GoodsReceiptStockMovement: {
+            movement_no: string;
+            /** @enum {string} */
+            movement_type: "purchase_receipt";
+            item_id: string;
+            batch_id: string;
+            warehouse_id: string;
+            location_id: string;
+            quantity: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            /** @enum {string} */
+            stock_status: "available" | "qc_hold";
+            source_doc_id: string;
+            source_doc_line_id: string;
         };
         /** @enum {string} */
         EndOfDayReconciliationStatus: "open" | "in_review" | "closed";
@@ -2677,6 +2853,165 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BatchQCTransitionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listGoodsReceipts: {
+        parameters: {
+            query?: {
+                warehouse_id?: string;
+                status?: components["schemas"]["GoodsReceiptStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse goods receipt rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoodsReceiptListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createGoodsReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGoodsReceiptRequest"];
+            };
+        };
+        responses: {
+            /** @description Warehouse goods receipt draft created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoodsReceiptSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getGoodsReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse goods receipt detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoodsReceiptSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    submitGoodsReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse goods receipt submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoodsReceiptSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    markGoodsReceiptInspectReady: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse goods receipt marked inspection-ready */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoodsReceiptSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    postGoodsReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse goods receipt posted and stock movements recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoodsReceiptSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];
