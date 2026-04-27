@@ -164,7 +164,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | S1-04-02 | QC status transition and audit path | Batch/QC | BE Lead + QA + Internal Control | P1 | Done | `docs/19_...` + `docs/33_...` |
 | S1-05-01 | Warehouse receiving backend v1 | Warehouse Receiving | BE Lead + Warehouse | P0 | Done | `docs/33_...` + `docs/16_...` |
 | S1-05-02 | Warehouse receiving UI v1 | Warehouse Receiving | FE Lead + Warehouse + UI/UX | P0 | Done | `docs/39_...` |
-| S1-06-01 | Warehouse daily board data integration v1 | Warehouse Daily Board | FE Lead + BE Lead + Warehouse | P1 | Backlog | `docs/33_...` + `docs/39_...` |
+| S1-06-01 | Warehouse daily board data integration v1 | Warehouse Daily Board | FE Lead + BE Lead + Warehouse | P1 | Done | `docs/33_...` + `docs/39_...` |
 
 ---
 
@@ -1427,7 +1427,7 @@ Evidence:
 
 **Owner:** FE Lead + BE Lead + Warehouse
 **Priority:** P1
-**Status:** Backlog
+**Status:** Done
 **Primary Ref:** `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`, `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1437,6 +1437,20 @@ Acceptance criteria:
 - UI remains dense, scan-friendly, and operational rather than marketing-style.
 - Filters support shift/date/warehouse/status.
 - Tests cover empty board, active shift, exception, and mixed workload states.
+
+Current state:
+
+- Warehouse Daily Board composes work queues from available module data instead of relying only on static seed rows.
+- Sources now include order queue seed tasks, goods receipts, posted QC-hold stock movements, carrier manifests, return receipts, and end-of-day reconciliation variance lines.
+- Board query supports warehouse, date, shift, and queue/status filters.
+- Task rows show source and source field evidence so counters can be traced back to originating records.
+- Counter source fields are documented in the frontend service and rendered as a compact source strip in the UI.
+
+Evidence:
+
+- Task branch: `codex/s1-06-01-warehouse-daily-board-data-integration`.
+- Targeted service tests cover empty board, active shift with P0 exception, source-field evidence, mixed receiving/shipping/return/stock/reconciliation workload, status filters, and close-shift guard.
+- Frontend typecheck and broader checks are run before merge for this task.
 
 ---
 
@@ -1474,6 +1488,7 @@ Acceptance criteria:
 | S1-03-01 | PR #134; decimal base-UOM stock movement domain/store, stock ledger/balance migration 000004, source conversion fields, OpenAPI/generated schema, and inbound/outbound/adjustment/rollback tests |
 | S1-05-01 | Manual merge; goods receipt backend state path, receive-enabled location validation, batch/QC posting guard, audited stock movement recording without direct balance updates, OpenAPI/generated schema, and receiving tests |
 | S1-05-02 | Manual merge; `/receiving` UI, menu route, goods receipt filters/KPIs/table/detail/actions, post confirmation, API-backed service with prototype fallback, and receiving service tests |
+| S1-06-01 | Manual merge; Warehouse Daily Board source integration from receiving, stock movement, shipping, returns, reconciliation, shift filter, source-field evidence, and mixed workload tests |
 
 ---
 
@@ -1493,6 +1508,6 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-06-01` - Warehouse daily board data integration v1.
+1. No remaining Sprint 1 task is listed in this board. Define the next Sprint 1 extension or Sprint 2 backlog before continuing implementation.
 
-The stock ledger foundation now stores decimal base-UOM movement data, available stock exposes Phase 1 quantity buckets, batch/QC status changes are permissioned and audited, and receiving now has backend plus UI coverage. The next task should feed these operational signals into the warehouse daily board.
+The stock ledger foundation now stores decimal base-UOM movement data, available stock exposes Phase 1 quantity buckets, batch/QC status changes are permissioned and audited, receiving now has backend plus UI coverage, and the Warehouse Daily Board now composes available operational signals into shift queues.

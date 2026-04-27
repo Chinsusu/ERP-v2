@@ -12,11 +12,13 @@ import {
 import { useWarehouseDailyBoard } from "../hooks/useWarehouseDailyBoard";
 import { ShiftClosingPanel } from "./ShiftClosingPanel";
 import {
+  defaultWarehouseDailyBoardShiftCode,
   defaultWarehouseDailyBoardDate,
+  warehouseShiftOptions,
   warehouseOptions,
   warehouseTaskTone
 } from "../services/warehouseDailyBoardService";
-import type { WarehouseDailyBoardQuery, WarehouseDailyTask, WarehouseDailyTaskStatus } from "../types";
+import type { WarehouseDailyBoardQuery, WarehouseDailyShiftCode, WarehouseDailyTask, WarehouseDailyTaskStatus } from "../types";
 
 type QueueFilter = "" | WarehouseDailyTaskStatus | "overdue";
 
@@ -60,6 +62,17 @@ const columns: DataTableColumn<WarehouseDailyTask>[] = [
     width: "130px"
   },
   {
+    key: "source",
+    header: "Source",
+    render: (row) => (
+      <span className="erp-warehouse-source-cell">
+        <strong>{sourceLabel(row.source)}</strong>
+        <small>{row.sourceField}</small>
+      </span>
+    ),
+    width: "170px"
+  },
+  {
     key: "owner",
     header: "Owner",
     render: (row) => row.owner,
@@ -86,14 +99,16 @@ const columns: DataTableColumn<WarehouseDailyTask>[] = [
 export default function WarehouseDailyBoard() {
   const [warehouseId, setWarehouseId] = useState("");
   const [date, setDate] = useState(defaultWarehouseDailyBoardDate);
+  const [shiftCode, setShiftCode] = useState<WarehouseDailyShiftCode>(defaultWarehouseDailyBoardShiftCode);
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("");
   const [scanFeedback, setScanFeedback] = useState<ToastMessage | undefined>();
   const query = useMemo<WarehouseDailyBoardQuery>(
     () => ({
       warehouseId: warehouseId || undefined,
-      date
+      date,
+      shiftCode
     }),
-    [date, warehouseId]
+    [date, shiftCode, warehouseId]
   );
   const { board, loading } = useWarehouseDailyBoard(query);
   const allTasks = board?.tasks ?? [];
@@ -144,7 +159,7 @@ export default function WarehouseDailyBoard() {
 
       <section className="erp-warehouse-context" aria-label="Warehouse shift context">
         <WarehouseContext label="Date" value={formatBoardDate(date)} />
-        <WarehouseContext label="Shift" value="Day" />
+        <WarehouseContext label="Shift" value={shiftLabel(shiftCode)} />
         <WarehouseContext label="Warehouse" value={board?.warehouseCode ?? selectedWarehouseLabel} />
         <WarehouseContext label="Owner" value={board?.owner ?? "Warehouse Lead"} />
         <WarehouseContext label="Shift status" value={statusLabel(board?.shiftStatus ?? "open")} />
@@ -164,6 +179,20 @@ export default function WarehouseDailyBoard() {
         <label className="erp-field">
           <span>Date</span>
           <input className="erp-input" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Shift</span>
+          <select
+            className="erp-input"
+            value={shiftCode}
+            onChange={(event) => setShiftCode(event.target.value as WarehouseDailyShiftCode)}
+          >
+            {warehouseShiftOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="erp-field">
           <span>Queue</span>
@@ -192,6 +221,15 @@ export default function WarehouseDailyBoard() {
             value={card.value}
             onSelect={() => setQueueFilter(card.key)}
           />
+        ))}
+      </section>
+
+      <section className="erp-warehouse-source-strip" aria-label="Counter source fields">
+        {(board?.sourceFields ?? []).map((source) => (
+          <span className="erp-warehouse-source-item" key={source.counter}>
+            <strong>{source.label}</strong>
+            <small>{source.fields.join(" / ")}</small>
+          </span>
         ))}
       </section>
 
@@ -240,7 +278,7 @@ export default function WarehouseDailyBoard() {
       </section>
 
       <div id="shift-closing">
-        <ShiftClosingPanel query={{ warehouseId: warehouseId || undefined, date }} />
+        <ShiftClosingPanel query={{ warehouseId: warehouseId || undefined, date, shiftCode }} />
       </div>
 
       <section className="erp-card erp-card--padded erp-module-table-card">
@@ -317,6 +355,28 @@ function filterTasksByQueue(tasks: WarehouseDailyTask[], queueFilter: QueueFilte
 
 function queueLabel(queueFilter: QueueFilter) {
   return queueOptions.find((option) => option.value === queueFilter)?.label ?? "All active queues";
+}
+
+function sourceLabel(source: WarehouseDailyTask["source"]) {
+  switch (source) {
+    case "receiving":
+      return "Receiving";
+    case "shipping":
+      return "Shipping";
+    case "returns":
+      return "Returns";
+    case "stock_movement":
+      return "Stock movement";
+    case "reconciliation":
+      return "Reconciliation";
+    case "order_queue":
+    default:
+      return "Order queue";
+  }
+}
+
+function shiftLabel(shiftCode: WarehouseDailyShiftCode) {
+  return warehouseShiftOptions.find((option) => option.value === shiftCode)?.label ?? shiftCode;
 }
 
 function taskTypeLabel(status: WarehouseDailyTaskStatus) {
