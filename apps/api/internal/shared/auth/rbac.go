@@ -24,6 +24,7 @@ const PermissionInventoryView PermissionKey = "inventory:view"
 const PermissionPurchaseView PermissionKey = "purchase:view"
 const PermissionQCView PermissionKey = "qc:view"
 const PermissionProductionView PermissionKey = "production:view"
+const PermissionSubcontractView PermissionKey = "subcontract:view"
 const PermissionSalesView PermissionKey = "sales:view"
 const PermissionShippingView PermissionKey = "shipping:view"
 const PermissionReturnsView PermissionKey = "returns:view"
@@ -41,6 +42,12 @@ type RoleDefinition struct {
 	Permissions []PermissionKey
 }
 
+type PermissionDefinition struct {
+	Key   PermissionKey
+	Name  string
+	Group string
+}
+
 var roleOrder = []RoleKey{
 	RoleCEO,
 	RoleERPAdmin,
@@ -49,6 +56,26 @@ var roleOrder = []RoleKey{
 	RoleQA,
 	RoleSalesOps,
 	RoleProductionOps,
+}
+
+var permissionCatalog = []PermissionDefinition{
+	{Key: PermissionDashboardView, Name: "Dashboard", Group: "overview"},
+	{Key: PermissionWarehouseView, Name: "Warehouse", Group: "operations"},
+	{Key: PermissionInventoryView, Name: "Inventory", Group: "operations"},
+	{Key: PermissionPurchaseView, Name: "Purchase", Group: "operations"},
+	{Key: PermissionQCView, Name: "QC", Group: "operations"},
+	{Key: PermissionProductionView, Name: "Production", Group: "operations"},
+	{Key: PermissionSubcontractView, Name: "Subcontract", Group: "operations"},
+	{Key: PermissionSalesView, Name: "Sales", Group: "operations"},
+	{Key: PermissionShippingView, Name: "Shipping", Group: "operations"},
+	{Key: PermissionReturnsView, Name: "Returns", Group: "operations"},
+	{Key: PermissionMasterDataView, Name: "Master Data", Group: "data"},
+	{Key: PermissionApprovalsView, Name: "Approvals", Group: "control"},
+	{Key: PermissionAuditLogView, Name: "Audit Log", Group: "control"},
+	{Key: PermissionReportsView, Name: "Reports", Group: "control"},
+	{Key: PermissionSettingsView, Name: "Settings", Group: "control"},
+	{Key: PermissionRecordCreate, Name: "Create Record", Group: "action"},
+	{Key: PermissionRecordExport, Name: "Export Record", Group: "action"},
 }
 
 var roleDisplayNames = map[RoleKey]string{
@@ -76,6 +103,7 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionPurchaseView,
 		PermissionQCView,
 		PermissionProductionView,
+		PermissionSubcontractView,
 		PermissionSalesView,
 		PermissionShippingView,
 		PermissionReturnsView,
@@ -110,6 +138,7 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionInventoryView,
 		PermissionQCView,
 		PermissionProductionView,
+		PermissionSubcontractView,
 		PermissionReturnsView,
 		PermissionReportsView,
 		PermissionRecordCreate,
@@ -128,9 +157,16 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionInventoryView,
 		PermissionQCView,
 		PermissionProductionView,
+		PermissionSubcontractView,
 		PermissionReportsView,
 		PermissionRecordCreate,
 	},
+}
+
+func PermissionCatalog() []PermissionDefinition {
+	permissions := make([]PermissionDefinition, len(permissionCatalog))
+	copy(permissions, permissionCatalog)
+	return permissions
 }
 
 func RoleCatalog() []RoleDefinition {

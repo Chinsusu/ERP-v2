@@ -46,6 +46,12 @@ export type AppAction = {
   variant: "primary" | "secondary";
 };
 
+export type PermissionDefinition = {
+  key: PermissionKey;
+  label: string;
+  group: "overview" | "operations" | "data" | "control" | "action";
+};
+
 export const roleKeys: RoleKey[] = [
   "CEO",
   "ERP_ADMIN",
@@ -54,6 +60,26 @@ export const roleKeys: RoleKey[] = [
   "QA",
   "SALES_OPS",
   "PRODUCTION_OPS"
+];
+
+export const permissionCatalog: PermissionDefinition[] = [
+  { key: "dashboard:view", label: "Dashboard", group: "overview" },
+  { key: "warehouse:view", label: "Warehouse", group: "operations" },
+  { key: "inventory:view", label: "Inventory", group: "operations" },
+  { key: "purchase:view", label: "Purchase", group: "operations" },
+  { key: "qc:view", label: "QC", group: "operations" },
+  { key: "production:view", label: "Production", group: "operations" },
+  { key: "subcontract:view", label: "Subcontract", group: "operations" },
+  { key: "sales:view", label: "Sales", group: "operations" },
+  { key: "shipping:view", label: "Shipping", group: "operations" },
+  { key: "returns:view", label: "Returns", group: "operations" },
+  { key: "master-data:view", label: "Master Data", group: "data" },
+  { key: "approvals:view", label: "Approvals", group: "control" },
+  { key: "audit-log:view", label: "Audit Log", group: "control" },
+  { key: "reports:view", label: "Reports", group: "control" },
+  { key: "settings:view", label: "Settings", group: "control" },
+  { key: "record:create", label: "Create Record", group: "action" },
+  { key: "record:export", label: "Export Record", group: "action" }
 ];
 
 export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
