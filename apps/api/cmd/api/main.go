@@ -70,6 +70,12 @@ type roleResponse struct {
 	Permissions []string `json:"permissions"`
 }
 
+type permissionResponse struct {
+	Key   string `json:"key"`
+	Name  string `json:"name"`
+	Group string `json:"group"`
+}
+
 type availableStockResponse struct {
 	WarehouseID    string `json:"warehouse_id"`
 	WarehouseCode  string `json:"warehouse_code"`
@@ -330,6 +336,10 @@ func main() {
 	mux.Handle(
 		"/api/v1/rbac/roles",
 		auth.RequireSessionPermission(authSessions, auth.PermissionSettingsView, http.HandlerFunc(rbacRolesHandler)),
+	)
+	mux.Handle(
+		"/api/v1/rbac/permissions",
+		auth.RequireSessionPermission(authSessions, auth.PermissionSettingsView, http.HandlerFunc(rbacPermissionsHandler)),
 	)
 	mux.Handle(
 		"/api/v1/audit-logs",
@@ -674,6 +684,25 @@ func rbacRolesHandler(w http.ResponseWriter, r *http.Request) {
 			Key:         string(role.Key),
 			Name:        role.Name,
 			Permissions: permissionStrings(role.Permissions),
+		})
+	}
+
+	response.WriteSuccess(w, r, http.StatusOK, payload)
+}
+
+func rbacPermissionsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		return
+	}
+
+	permissions := auth.PermissionCatalog()
+	payload := make([]permissionResponse, 0, len(permissions))
+	for _, permission := range permissions {
+		payload = append(payload, permissionResponse{
+			Key:   string(permission.Key),
+			Name:  permission.Name,
+			Group: permission.Group,
 		})
 	}
 

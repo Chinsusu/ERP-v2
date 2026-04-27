@@ -5,6 +5,7 @@ import {
   getVisibleActions,
   getVisibleMenuGroups,
   moduleActions,
+  permissionCatalog,
   roleKeys,
   rolePermissions
 } from "./menu";
@@ -50,6 +51,24 @@ describe("permission menu", () => {
     expect(labels).not.toContain("Settings");
     expect(labels).not.toContain("Audit Log");
     expect(labels).not.toContain("Subcontract");
+  });
+
+  it("keeps role permissions inside the shared permission catalog", () => {
+    const knownPermissions = new Set(permissionCatalog.map((permission) => permission.key));
+
+    for (const permissions of Object.values(rolePermissions)) {
+      for (const permission of permissions) {
+        expect(knownPermissions.has(permission), permission).toBe(true);
+      }
+    }
+  });
+
+  it("defines subcontract as an operations permission", () => {
+    expect(permissionCatalog).toContainEqual({
+      key: "subcontract:view",
+      label: "Subcontract",
+      group: "operations"
+    });
   });
 
   it("shows subcontract operations only to users with subcontract access", () => {

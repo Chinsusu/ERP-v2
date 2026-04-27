@@ -145,6 +145,23 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /rbac/permissions:
+    get:
+      summary: List RBAC permission catalog
+      operationId: listRbacPermissions
+      tags:
+        - auth
+      responses:
+        "200":
+          description: RBAC permission catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RbacPermissionCatalogSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /audit-logs:
     get:
       summary: List immutable audit logs
@@ -881,6 +898,42 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PermissionKey"
+    RbacPermissionCatalogSuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+        - request_id
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/RbacPermission"
+        request_id:
+          type: string
+          example: req_lq7z2t9c
+    RbacPermission:
+      type: object
+      required:
+        - key
+        - name
+        - group
+      properties:
+        key:
+          $ref: "#/components/schemas/PermissionKey"
+        name:
+          type: string
+        group:
+          type: string
+          enum:
+            - overview
+            - operations
+            - data
+            - control
+            - action
     AuditLogSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
@@ -948,6 +1001,7 @@ components:
         - purchase:view
         - qc:view
         - production:view
+        - subcontract:view
         - sales:view
         - shipping:view
         - returns:view

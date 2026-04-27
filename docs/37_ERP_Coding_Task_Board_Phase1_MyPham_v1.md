@@ -150,7 +150,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | Task ID | Title | Epic | Owner | Priority | Status | Primary Ref |
 | --- | --- | --- | --- | --- | --- | --- |
 | S1-01-01 | Auth session and password policy v1 | Auth/RBAC hardening | BE Lead + FE Lead | P0 | Done | `docs/19_...` + `docs/34_...` |
-| S1-01-02 | RBAC enforcement and permission matrix v1 | Auth/RBAC hardening | BE Lead + FE Lead + BA | P0 | Backlog | `docs/04_...` + `docs/19_...` |
+| S1-01-02 | RBAC enforcement and permission matrix v1 | Auth/RBAC hardening | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
 | S1-02-01 | Item and SKU master data CRUD v1 | Master Data | BE Lead + FE Lead + MDA | P0 | Backlog | `docs/05_...` + `docs/16_...` |
 | S1-02-02 | Warehouse and location master data CRUD v1 | Master Data | BE Lead + FE Lead + Warehouse | P0 | Backlog | `docs/05_...` + `docs/17_...` |
 | S1-02-03 | Supplier and customer master data CRUD v1 | Master Data | BE Lead + FE Lead + Purchasing + Sales | P0 | Backlog | `docs/05_...` |
@@ -1070,8 +1070,8 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead + BA
 **Priority:** P0
-**Status:** Backlog
-**Primary Ref:** `docs/04_ERP_Permission_Approval_Matrix_Phase1_MyPham_v1.md`, `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`
+**Status:** Done
+**Primary Ref:** `docs/04_ERP_Permission_Approval_Matrix_Phase1_My_Pham_v1.md`, `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
 
@@ -1080,6 +1080,19 @@ Acceptance criteria:
 - Frontend hides or disables actions using the same permission key names.
 - Permission denial response uses the standard API error envelope.
 - Tests cover at least one allowed and one denied path per protected module group.
+
+Current state:
+
+- Backend permission catalog now includes all Phase 1 module/menu permission keys, including `subcontract:view`.
+- `/api/v1/rbac/permissions` exposes the permission catalog behind `settings:view`.
+- Backend role permissions are tested against the known catalog to block unknown keys.
+- Frontend permission catalog uses the same key names as backend/OpenAPI.
+- Frontend tests verify role permissions stay inside the shared catalog and subcontract remains an operations permission.
+
+Evidence:
+
+- Self-review completed on implementation diff.
+- Validation passed: API tests, API vet, frontend typecheck, frontend tests, OpenAPI validate, generated OpenAPI schema, and Sprint 0 smoke pack.
 
 ### S1-02-01 Item And SKU Master Data CRUD V1
 
@@ -1257,6 +1270,7 @@ Acceptance criteria:
 | S0-05-02 | PR #55, PR #56; generated frontend OpenAPI schema, typed API wrapper, inventory service generated DTO integration, and CI web/OpenAPI gates |
 | S0-13-02 | PR #127, PR #128; Sprint 0 demo script, cosmetics sample data path, success/failure scan cases, stock movement, available stock, and audit evidence |
 | S1-01-01 | Manual merge; auth session manager, refresh/policy endpoints, password policy, lockout, frontend expiring session cookie, OpenAPI update, and auth tests |
+| S1-01-02 | Manual merge; RBAC permission catalog endpoint, subcontract permission alignment, backend/frontend catalog drift tests, OpenAPI update |
 
 ---
 
@@ -1276,6 +1290,6 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-01-02` - RBAC enforcement and permission matrix v1.
+1. `S1-02-01` - Item and SKU master data CRUD v1.
 
-This unlocks master data CRUD, inventory ledger v1, and warehouse receiving v1.
+This unlocks warehouse/location master data, stock ledger v1, batch/QC, and warehouse receiving v1.
