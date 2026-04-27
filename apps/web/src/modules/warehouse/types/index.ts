@@ -2,22 +2,36 @@ export type WarehouseDailyTaskStatus = "waiting" | "picking" | "packed" | "hando
 
 export type WarehouseDailyTaskPriority = "P0" | "P1" | "P2";
 
+export type WarehouseDailyShiftCode = "day" | "night";
+
+export type WarehouseDailyTaskSource =
+  | "order_queue"
+  | "receiving"
+  | "shipping"
+  | "returns"
+  | "stock_movement"
+  | "reconciliation";
+
 export type WarehouseDailyTask = {
   id: string;
   reference: string;
   title: string;
   warehouseId: string;
   warehouseCode: string;
+  shiftCode: WarehouseDailyShiftCode;
   status: WarehouseDailyTaskStatus;
   priority: WarehouseDailyTaskPriority;
   owner: string;
   dueAt: string;
   href: string;
+  source: WarehouseDailyTaskSource;
+  sourceField: string;
 };
 
 export type WarehouseDailyBoardQuery = {
   warehouseId?: string;
   date?: string;
+  shiftCode?: WarehouseDailyShiftCode;
   status?: WarehouseDailyTaskStatus;
 };
 
@@ -31,13 +45,21 @@ export type WarehouseDailyBoardSummary = {
   overdue: number;
 };
 
+export type WarehouseDailyBoardCounterSource = {
+  counter: keyof WarehouseDailyBoardSummary;
+  label: string;
+  fields: string[];
+};
+
 export type WarehouseDailyBoardData = {
   warehouseId: string;
   warehouseCode: string;
   date: string;
+  shiftCode: WarehouseDailyShiftCode;
   shiftStatus: "open" | "closing" | "closed";
   owner: string;
   summary: WarehouseDailyBoardSummary;
+  sourceFields: WarehouseDailyBoardCounterSource[];
   tasks: WarehouseDailyTask[];
 };
 
@@ -92,5 +114,6 @@ export type EndOfDayReconciliation = {
 export type EndOfDayReconciliationQuery = {
   warehouseId?: string;
   date?: string;
+  shiftCode?: WarehouseDailyShiftCode;
   status?: EndOfDayReconciliationStatus;
 };
