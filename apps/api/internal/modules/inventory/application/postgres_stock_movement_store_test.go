@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -40,13 +41,21 @@ func TestPostgresStockMovementStoreRecordsLedgerBalanceAndAdjustmentAudit(t *tes
 		t.Fatalf("ledger write query mutates posted rows: %s", runner.calls[0].query)
 	}
 
+	ledgerArgs := runner.calls[0].args
+	if argString(ledgerArgs[10]) != "10.000000" || ledgerArgs[11] != "PCS" || argString(ledgerArgs[14]) != "1.000000" {
+		t.Fatalf("ledger quantity/uom args = %v, want base PCS movement with factor 1", ledgerArgs[10:15])
+	}
 	balanceArgs := runner.calls[2].args
-	if balanceArgs[6] != int64(-10) || balanceArgs[8] != int64(-10) {
-		t.Fatalf("balance deltas = on_hand %v available %v, want -10 -10", balanceArgs[6], balanceArgs[8])
+	if balanceArgs[6] != "PCS" || argString(balanceArgs[7]) != "-10.000000" || argString(balanceArgs[9]) != "-10.000000" {
+		t.Fatalf("balance deltas = base %v on_hand %v available %v, want PCS -10 -10", balanceArgs[6], balanceArgs[7], balanceArgs[9])
+	}
+	auditArgs := runner.calls[3].args
+	if auditArgs[2] != "inventory.stock_movement.adjusted" || argString(auditArgs[7]) != "10.000000" || auditArgs[8] != "PCS" {
+		t.Fatalf("audit args = %v, want adjusted movement metadata", auditArgs)
 	}
 }
 
-func TestPostgresStockMovementStoreSkipsAuditForNonAdjustment(t *testing.T) {
+func TestPostgresStockMovementStoreRecordsInboundAuditAndPositiveBalanceDelta(t *testing.T) {
 	runner := &capturingTransactionRunner{}
 	store := newPostgresStockMovementStoreWithRunner(runner)
 	movement, err := newTestMovement(domain.MovementPurchaseReceipt)
@@ -58,13 +67,58 @@ func TestPostgresStockMovementStoreSkipsAuditForNonAdjustment(t *testing.T) {
 		t.Fatalf("record: %v", err)
 	}
 
-	if len(runner.calls) != 3 {
-		t.Fatalf("exec calls = %d, want 3", len(runner.calls))
+	if len(runner.calls) != 4 {
+		t.Fatalf("exec calls = %d, want 4", len(runner.calls))
 	}
-	for _, call := range runner.calls {
-		if strings.Contains(call.query, "audit.audit_logs") {
-			t.Fatal("non-adjustment movement wrote audit log")
-		}
+	balanceArgs := runner.calls[2].args
+	if argString(balanceArgs[7]) != "10.000000" || argString(balanceArgs[9]) != "10.000000" {
+		t.Fatalf("balance deltas = on_hand %v available %v, want 10 10", balanceArgs[7], balanceArgs[9])
+	}
+	auditArgs := runner.calls[3].args
+	if auditArgs[2] != "inventory.stock_movement.recorded" {
+		t.Fatalf("audit action = %v, want recorded", auditArgs[2])
+	}
+}
+
+func TestPostgresStockMovementStorePersistsSourceConversionFields(t *testing.T) {
+	runner := &capturingTransactionRunner{}
+	store := newPostgresStockMovementStoreWithRunner(runner)
+	movement, err := newTestMovement(domain.MovementPurchaseReceipt, func(input *domain.NewStockMovementInput) {
+		input.Quantity = "96.000000"
+		input.BaseUOMCode = "PCS"
+		input.SourceQuantity = "2.000000"
+		input.SourceUOMCode = "CARTON"
+		input.ConversionFactor = "48.000000"
+	})
+	if err != nil {
+		t.Fatalf("new movement: %v", err)
+	}
+
+	if err := store.Record(context.Background(), movement); err != nil {
+		t.Fatalf("record: %v", err)
+	}
+
+	ledgerArgs := runner.calls[0].args
+	if argString(ledgerArgs[10]) != "96.000000" || ledgerArgs[11] != "PCS" || argString(ledgerArgs[12]) != "2.000000" || ledgerArgs[13] != "CARTON" || argString(ledgerArgs[14]) != "48.000000" {
+		t.Fatalf("ledger conversion args = %v, want 96 PCS from 2 CARTON by factor 48", ledgerArgs[10:15])
+	}
+}
+
+func TestPostgresStockMovementStoreRecordsOutboundNegativeBalanceDelta(t *testing.T) {
+	runner := &capturingTransactionRunner{}
+	store := newPostgresStockMovementStoreWithRunner(runner)
+	movement, err := newTestMovement(domain.MovementSalesIssue)
+	if err != nil {
+		t.Fatalf("new movement: %v", err)
+	}
+
+	if err := store.Record(context.Background(), movement); err != nil {
+		t.Fatalf("record: %v", err)
+	}
+
+	balanceArgs := runner.calls[2].args
+	if argString(balanceArgs[7]) != "-10.000000" || argString(balanceArgs[9]) != "-10.000000" {
+		t.Fatalf("balance deltas = on_hand %v available %v, want -10 -10", balanceArgs[7], balanceArgs[9])
 	}
 }
 
@@ -137,4 +191,8 @@ func assertQueryContains(t *testing.T, query string, want string) {
 	if !strings.Contains(query, want) {
 		t.Fatalf("query %q does not contain %q", query, want)
 	}
+}
+
+func argString(value any) string {
+	return fmt.Sprint(value)
 }

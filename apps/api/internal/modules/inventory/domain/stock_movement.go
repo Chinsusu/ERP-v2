@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
 
 type MovementType string
@@ -51,55 +53,63 @@ const (
 )
 
 type StockMovement struct {
-	MovementNo      string
-	MovementType    MovementType
-	OrgID           string
-	ItemID          string
-	BatchID         string
-	WarehouseID     string
-	BinID           string
-	UnitID          string
-	Quantity        int64
-	StockStatus     StockStatus
-	SourceDocType   string
-	SourceDocID     string
-	SourceDocLineID string
-	Reason          string
-	CreatedBy       string
-	MovementAt      time.Time
-	CreatedAt       time.Time
+	MovementNo       string
+	MovementType     MovementType
+	OrgID            string
+	ItemID           string
+	BatchID          string
+	WarehouseID      string
+	BinID            string
+	UnitID           string
+	Quantity         decimal.Decimal
+	BaseUOMCode      decimal.UOMCode
+	SourceQuantity   decimal.Decimal
+	SourceUOMCode    decimal.UOMCode
+	ConversionFactor decimal.Decimal
+	StockStatus      StockStatus
+	SourceDocType    string
+	SourceDocID      string
+	SourceDocLineID  string
+	Reason           string
+	CreatedBy        string
+	MovementAt       time.Time
+	CreatedAt        time.Time
 }
 
 type NewStockMovementInput struct {
-	MovementNo      string
-	MovementType    MovementType
-	OrgID           string
-	ItemID          string
-	BatchID         string
-	WarehouseID     string
-	BinID           string
-	UnitID          string
-	Quantity        int64
-	StockStatus     StockStatus
-	SourceDocType   string
-	SourceDocID     string
-	SourceDocLineID string
-	Reason          string
-	CreatedBy       string
-	MovementAt      time.Time
+	MovementNo       string
+	MovementType     MovementType
+	OrgID            string
+	ItemID           string
+	BatchID          string
+	WarehouseID      string
+	BinID            string
+	UnitID           string
+	Quantity         decimal.Decimal
+	BaseUOMCode      string
+	SourceQuantity   decimal.Decimal
+	SourceUOMCode    string
+	ConversionFactor decimal.Decimal
+	StockStatus      StockStatus
+	SourceDocType    string
+	SourceDocID      string
+	SourceDocLineID  string
+	Reason           string
+	CreatedBy        string
+	MovementAt       time.Time
 }
 
 type BalanceDelta struct {
-	OnHand    int64
-	Reserved  int64
-	Available int64
+	OnHand    decimal.Decimal
+	Reserved  decimal.Decimal
+	Available decimal.Decimal
 }
 
 type movementEffect struct {
 	direction  Direction
-	onHand     int64
-	reserved   int64
-	available  int64
+	onHand     int
+	reserved   int
+	available  int
 	adjustment bool
 }
 
@@ -158,25 +168,61 @@ func NewStockMovement(input NewStockMovementInput) (StockMovement, error) {
 	if stockStatus == "" {
 		stockStatus = StockStatusAvailable
 	}
+	quantity, err := decimal.ParseQuantity(input.Quantity.String())
+	if err != nil {
+		return StockMovement{}, err
+	}
+	baseUOMCode, err := decimal.NormalizeUOMCode(input.BaseUOMCode)
+	if err != nil {
+		return StockMovement{}, err
+	}
+	sourceQuantity := input.SourceQuantity
+	if strings.TrimSpace(sourceQuantity.String()) == "" {
+		sourceQuantity = quantity
+	}
+	sourceQuantity, err = decimal.ParseQuantity(sourceQuantity.String())
+	if err != nil {
+		return StockMovement{}, err
+	}
+	sourceUOMCode := strings.TrimSpace(input.SourceUOMCode)
+	if sourceUOMCode == "" {
+		sourceUOMCode = baseUOMCode.String()
+	}
+	normalizedSourceUOMCode, err := decimal.NormalizeUOMCode(sourceUOMCode)
+	if err != nil {
+		return StockMovement{}, err
+	}
+	conversionFactor := input.ConversionFactor
+	if strings.TrimSpace(conversionFactor.String()) == "" {
+		conversionFactor = decimal.MustQuantity("1")
+	}
+	conversionFactor, err = decimal.ParseQuantity(conversionFactor.String())
+	if err != nil {
+		return StockMovement{}, err
+	}
 
 	movement := StockMovement{
-		MovementNo:      strings.TrimSpace(input.MovementNo),
-		MovementType:    movementType,
-		OrgID:           strings.TrimSpace(input.OrgID),
-		ItemID:          strings.TrimSpace(input.ItemID),
-		BatchID:         strings.TrimSpace(input.BatchID),
-		WarehouseID:     strings.TrimSpace(input.WarehouseID),
-		BinID:           strings.TrimSpace(input.BinID),
-		UnitID:          strings.TrimSpace(input.UnitID),
-		Quantity:        input.Quantity,
-		StockStatus:     stockStatus,
-		SourceDocType:   strings.TrimSpace(input.SourceDocType),
-		SourceDocID:     strings.TrimSpace(input.SourceDocID),
-		SourceDocLineID: strings.TrimSpace(input.SourceDocLineID),
-		Reason:          strings.TrimSpace(input.Reason),
-		CreatedBy:       strings.TrimSpace(input.CreatedBy),
-		MovementAt:      movementAt.UTC(),
-		CreatedAt:       now,
+		MovementNo:       strings.TrimSpace(input.MovementNo),
+		MovementType:     movementType,
+		OrgID:            strings.TrimSpace(input.OrgID),
+		ItemID:           strings.TrimSpace(input.ItemID),
+		BatchID:          strings.TrimSpace(input.BatchID),
+		WarehouseID:      strings.TrimSpace(input.WarehouseID),
+		BinID:            strings.TrimSpace(input.BinID),
+		UnitID:           strings.TrimSpace(input.UnitID),
+		Quantity:         quantity,
+		BaseUOMCode:      baseUOMCode,
+		SourceQuantity:   sourceQuantity,
+		SourceUOMCode:    normalizedSourceUOMCode,
+		ConversionFactor: conversionFactor,
+		StockStatus:      stockStatus,
+		SourceDocType:    strings.TrimSpace(input.SourceDocType),
+		SourceDocID:      strings.TrimSpace(input.SourceDocID),
+		SourceDocLineID:  strings.TrimSpace(input.SourceDocLineID),
+		Reason:           strings.TrimSpace(input.Reason),
+		CreatedBy:        strings.TrimSpace(input.CreatedBy),
+		MovementAt:       movementAt.UTC(),
+		CreatedAt:        now,
 	}
 
 	if err := movement.Validate(); err != nil {
@@ -206,11 +252,23 @@ func (m StockMovement) Validate() error {
 	if m.WarehouseID == "" {
 		return errors.New("warehouse id is required")
 	}
-	if m.UnitID == "" {
-		return errors.New("unit id is required")
-	}
-	if m.Quantity <= 0 {
+	quantity, err := decimal.ParseQuantity(m.Quantity.String())
+	if err != nil || quantity.IsNegative() || quantity.IsZero() {
 		return errors.New("quantity must be positive")
+	}
+	if _, err := decimal.NormalizeUOMCode(m.BaseUOMCode.String()); err != nil {
+		return errors.New("base uom code is required")
+	}
+	sourceQuantity, err := decimal.ParseQuantity(m.SourceQuantity.String())
+	if err != nil || sourceQuantity.IsNegative() || sourceQuantity.IsZero() {
+		return errors.New("source quantity must be positive")
+	}
+	if _, err := decimal.NormalizeUOMCode(m.SourceUOMCode.String()); err != nil {
+		return errors.New("source uom code is required")
+	}
+	conversionFactor, err := decimal.ParseQuantity(m.ConversionFactor.String())
+	if err != nil || conversionFactor.IsNegative() || conversionFactor.IsZero() {
+		return errors.New("conversion factor must be positive")
 	}
 	if _, ok := stockStatuses[m.StockStatus]; !ok {
 		return fmt.Errorf("stock status %q is not supported", m.StockStatus)
@@ -247,13 +305,24 @@ func (m StockMovement) BalanceDelta() (BalanceDelta, error) {
 	}
 
 	return BalanceDelta{
-		OnHand:    effect.onHand * m.Quantity,
-		Reserved:  effect.reserved * m.Quantity,
-		Available: effect.available * m.Quantity,
+		OnHand:    signedQuantity(m.Quantity, effect.onHand),
+		Reserved:  signedQuantity(m.Quantity, effect.reserved),
+		Available: signedQuantity(m.Quantity, effect.available),
 	}, nil
 }
 
 func (m StockMovement) IsAdjustment() bool {
 	effect, ok := movementEffects[m.MovementType]
 	return ok && effect.adjustment
+}
+
+func signedQuantity(quantity decimal.Decimal, sign int) decimal.Decimal {
+	switch sign {
+	case -1:
+		return decimal.Decimal("-" + strings.TrimPrefix(quantity.String(), "-"))
+	case 1:
+		return decimal.Decimal(strings.TrimPrefix(quantity.String(), "+"))
+	default:
+		return decimal.MustQuantity("0")
+	}
 }

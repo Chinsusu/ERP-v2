@@ -58,10 +58,8 @@ func (s PostgresStockMovementStore) Record(ctx context.Context, movement domain.
 		if err := upsertStockBalance(ctx, exec, movement, delta); err != nil {
 			return err
 		}
-		if movement.IsAdjustment() {
-			if err := insertAdjustmentAudit(ctx, exec, movement, direction, delta); err != nil {
-				return err
-			}
+		if err := insertStockMovementAudit(ctx, exec, movement, direction, delta); err != nil {
+			return err
 		}
 
 		return nil
@@ -127,7 +125,11 @@ INSERT INTO inventory.stock_ledger (
   warehouse_id,
   bin_id,
   unit_id,
-  quantity,
+  movement_qty,
+  base_uom_code,
+  source_qty,
+  source_uom_code,
+  conversion_factor,
   stock_status,
   source_doc_type,
   source_doc_id,
@@ -136,7 +138,8 @@ INSERT INTO inventory.stock_ledger (
   created_by
 ) VALUES (
   $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-  $11, $12, $13, $14, $15, $16, $17
+  $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+  $21
 )`
 
 const setStockBalanceWriteContextSQL = `SET LOCAL erp.allow_stock_balance_write = 'on'`
@@ -149,15 +152,18 @@ INSERT INTO inventory.stock_balances (
   warehouse_id,
   bin_id,
   stock_status,
+  base_uom_code,
   qty_on_hand,
   qty_reserved,
   qty_available,
   updated_by
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+  $11
 )
-ON CONFLICT (org_id, item_id, batch_id, warehouse_id, bin_id, stock_status)
+ON CONFLICT ON CONSTRAINT uq_stock_balances_key
 DO UPDATE SET
+  base_uom_code = EXCLUDED.base_uom_code,
   qty_on_hand = inventory.stock_balances.qty_on_hand + EXCLUDED.qty_on_hand,
   qty_reserved = inventory.stock_balances.qty_reserved + EXCLUDED.qty_reserved,
   qty_available = inventory.stock_balances.qty_available + EXCLUDED.qty_available,
@@ -165,7 +171,7 @@ DO UPDATE SET
   updated_by = EXCLUDED.updated_by,
   version = inventory.stock_balances.version + 1`
 
-const insertAdjustmentAuditSQL = `
+const insertStockMovementAuditSQL = `
 INSERT INTO audit.audit_logs (
   org_id,
   actor_id,
@@ -177,24 +183,28 @@ INSERT INTO audit.audit_logs (
 ) VALUES (
   $1,
   $2,
-  'inventory.stock_movement.adjusted',
+  $3,
   'inventory.stock_movement',
-  $12,
+  $4,
   jsonb_build_object(
-    'movement_no', $3,
-    'movement_type', $4,
-    'direction', $5,
-    'quantity', $6,
-    'stock_status', $7,
-    'delta_on_hand', $8,
-    'delta_reserved', $9,
-    'delta_available', $10
+    'movement_no', $5,
+    'movement_type', $6,
+    'direction', $7,
+    'movement_qty', $8,
+    'base_uom_code', $9,
+    'source_qty', $10,
+    'source_uom_code', $11,
+    'conversion_factor', $12,
+    'stock_status', $13,
+    'delta_on_hand', $14,
+    'delta_reserved', $15,
+    'delta_available', $16
   ),
   jsonb_build_object(
-    'source_doc_type', $11,
-    'source_doc_id', $12,
-    'source_doc_line_id', $13,
-    'reason', $14
+    'source_doc_type', $17,
+    'source_doc_id', $18,
+    'source_doc_line_id', $19,
+    'reason', $20
   )
 )`
 
@@ -216,8 +226,12 @@ func insertStockLedger(
 		nullableUUID(movement.BatchID),
 		movement.WarehouseID,
 		nullableUUID(movement.BinID),
-		movement.UnitID,
+		nullableUUID(movement.UnitID),
 		movement.Quantity,
+		movement.BaseUOMCode.String(),
+		movement.SourceQuantity,
+		movement.SourceUOMCode.String(),
+		movement.ConversionFactor,
 		string(movement.StockStatus),
 		movement.SourceDocType,
 		movement.SourceDocID,
@@ -255,6 +269,7 @@ func upsertStockBalance(
 		movement.WarehouseID,
 		nullableUUID(movement.BinID),
 		string(movement.StockStatus),
+		movement.BaseUOMCode.String(),
 		delta.OnHand,
 		delta.Reserved,
 		delta.Available,
@@ -267,7 +282,7 @@ func upsertStockBalance(
 	return nil
 }
 
-func insertAdjustmentAudit(
+func insertStockMovementAudit(
 	ctx context.Context,
 	exec statementExecutor,
 	movement domain.StockMovement,
@@ -276,13 +291,19 @@ func insertAdjustmentAudit(
 ) error {
 	err := exec.Exec(
 		ctx,
-		insertAdjustmentAuditSQL,
+		insertStockMovementAuditSQL,
 		movement.OrgID,
 		movement.CreatedBy,
+		stockMovementAuditAction(movement),
+		movement.SourceDocID,
 		movement.MovementNo,
 		string(movement.MovementType),
 		string(direction),
 		movement.Quantity,
+		movement.BaseUOMCode.String(),
+		movement.SourceQuantity,
+		movement.SourceUOMCode.String(),
+		movement.ConversionFactor,
 		string(movement.StockStatus),
 		delta.OnHand,
 		delta.Reserved,
@@ -293,10 +314,18 @@ func insertAdjustmentAudit(
 		movement.Reason,
 	)
 	if err != nil {
-		return fmt.Errorf("insert stock movement adjustment audit: %w", err)
+		return fmt.Errorf("insert stock movement audit: %w", err)
 	}
 
 	return nil
+}
+
+func stockMovementAuditAction(movement domain.StockMovement) string {
+	if movement.IsAdjustment() {
+		return "inventory.stock_movement.adjusted"
+	}
+
+	return "inventory.stock_movement.recorded"
 }
 
 func movementTime(value time.Time) time.Time {

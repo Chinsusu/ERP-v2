@@ -98,6 +98,7 @@ func TestSprint0APISmokePack(t *testing.T) {
 			"warehouseId": "wh-hcm",
 			"movementType": "ADJUST",
 			"quantity": "8.000000",
+			"baseUomCode": "PCS",
 			"reason": "smoke cycle count"
 		}`)
 		req := smokeRequestAsRole(
