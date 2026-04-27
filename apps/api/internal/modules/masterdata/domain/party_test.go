@@ -17,9 +17,9 @@ func TestNewSupplierNormalizesAndFiltersFields(t *testing.T) {
 		Address:       "Binh Duong",
 		PaymentTerms:  " net30 ",
 		LeadTimeDays:  12,
-		MOQ:           50,
-		QualityScore:  94,
-		DeliveryScore: 91,
+		MOQ:           "50",
+		QualityScore:  "94",
+		DeliveryScore: "91",
 		Status:        SupplierStatusActive,
 	})
 	if err != nil {
@@ -73,7 +73,7 @@ func TestNewCustomerNormalizesAndFiltersFields(t *testing.T) {
 		ChannelCode:   " b2b ",
 		PriceListCode: " pl-b2b-2026 ",
 		DiscountGroup: " tier_1 ",
-		CreditLimit:   500000000,
+		CreditLimit:   "500000000",
 		PaymentTerms:  " net30 ",
 		Email:         " Orders@MinhAnh.Example ",
 		TaxCode:       " 0315678001 ",

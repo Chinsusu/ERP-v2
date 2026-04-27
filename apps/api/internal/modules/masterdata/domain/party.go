@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
 
 var ErrSupplierRequiredField = errors.New("supplier required field is missing")
@@ -60,9 +62,9 @@ type Supplier struct {
 	Address       string
 	PaymentTerms  string
 	LeadTimeDays  int
-	MOQ           float64
-	QualityScore  float64
-	DeliveryScore float64
+	MOQ           decimal.Decimal
+	QualityScore  decimal.Decimal
+	DeliveryScore decimal.Decimal
 	Status        SupplierStatus
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
@@ -80,9 +82,9 @@ type NewSupplierInput struct {
 	Address       string
 	PaymentTerms  string
 	LeadTimeDays  int
-	MOQ           float64
-	QualityScore  float64
-	DeliveryScore float64
+	MOQ           decimal.Decimal
+	QualityScore  decimal.Decimal
+	DeliveryScore decimal.Decimal
 	Status        SupplierStatus
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
@@ -99,9 +101,9 @@ type UpdateSupplierInput struct {
 	Address       string
 	PaymentTerms  string
 	LeadTimeDays  int
-	MOQ           float64
-	QualityScore  float64
-	DeliveryScore float64
+	MOQ           decimal.Decimal
+	QualityScore  decimal.Decimal
+	DeliveryScore decimal.Decimal
 	Status        SupplierStatus
 	UpdatedAt     time.Time
 }
@@ -122,7 +124,7 @@ type Customer struct {
 	ChannelCode   string
 	PriceListCode string
 	DiscountGroup string
-	CreditLimit   float64
+	CreditLimit   decimal.Decimal
 	PaymentTerms  string
 	ContactName   string
 	Phone         string
@@ -142,7 +144,7 @@ type NewCustomerInput struct {
 	ChannelCode   string
 	PriceListCode string
 	DiscountGroup string
-	CreditLimit   float64
+	CreditLimit   decimal.Decimal
 	PaymentTerms  string
 	ContactName   string
 	Phone         string
@@ -161,7 +163,7 @@ type UpdateCustomerInput struct {
 	ChannelCode   string
 	PriceListCode string
 	DiscountGroup string
-	CreditLimit   float64
+	CreditLimit   decimal.Decimal
 	PaymentTerms  string
 	ContactName   string
 	Phone         string
@@ -194,6 +196,19 @@ func NewSupplier(input NewSupplierInput) (Supplier, error) {
 		status = SupplierStatusDraft
 	}
 
+	moq, err := decimal.ParseQuantity(input.MOQ.String())
+	if err != nil {
+		return Supplier{}, ErrSupplierInvalidMetric
+	}
+	qualityScore, err := decimal.ParseRate(input.QualityScore.String())
+	if err != nil {
+		return Supplier{}, ErrSupplierInvalidMetric
+	}
+	deliveryScore, err := decimal.ParseRate(input.DeliveryScore.String())
+	if err != nil {
+		return Supplier{}, ErrSupplierInvalidMetric
+	}
+
 	supplier := Supplier{
 		ID:            strings.TrimSpace(input.ID),
 		Code:          NormalizePartyCode(input.Code),
@@ -206,9 +221,9 @@ func NewSupplier(input NewSupplierInput) (Supplier, error) {
 		Address:       strings.TrimSpace(input.Address),
 		PaymentTerms:  NormalizePartyCode(input.PaymentTerms),
 		LeadTimeDays:  input.LeadTimeDays,
-		MOQ:           input.MOQ,
-		QualityScore:  input.QualityScore,
-		DeliveryScore: input.DeliveryScore,
+		MOQ:           moq,
+		QualityScore:  qualityScore,
+		DeliveryScore: deliveryScore,
 		Status:        status,
 		CreatedAt:     createdAt.UTC(),
 		UpdatedAt:     updatedAt.UTC(),
@@ -233,6 +248,19 @@ func (s Supplier) Update(input UpdateSupplierInput) (Supplier, error) {
 		return Supplier{}, ErrSupplierInvalidStatusTransition
 	}
 
+	moq, err := decimal.ParseQuantity(input.MOQ.String())
+	if err != nil {
+		return Supplier{}, ErrSupplierInvalidMetric
+	}
+	qualityScore, err := decimal.ParseRate(input.QualityScore.String())
+	if err != nil {
+		return Supplier{}, ErrSupplierInvalidMetric
+	}
+	deliveryScore, err := decimal.ParseRate(input.DeliveryScore.String())
+	if err != nil {
+		return Supplier{}, ErrSupplierInvalidMetric
+	}
+
 	updated := s.Clone()
 	updated.Code = NormalizePartyCode(input.Code)
 	updated.Name = strings.TrimSpace(input.Name)
@@ -244,9 +272,9 @@ func (s Supplier) Update(input UpdateSupplierInput) (Supplier, error) {
 	updated.Address = strings.TrimSpace(input.Address)
 	updated.PaymentTerms = NormalizePartyCode(input.PaymentTerms)
 	updated.LeadTimeDays = input.LeadTimeDays
-	updated.MOQ = input.MOQ
-	updated.QualityScore = input.QualityScore
-	updated.DeliveryScore = input.DeliveryScore
+	updated.MOQ = moq
+	updated.QualityScore = qualityScore
+	updated.DeliveryScore = deliveryScore
 	updated.Status = status
 	updated.UpdatedAt = updatedAt.UTC()
 	if err := updated.Validate(); err != nil {
@@ -287,7 +315,7 @@ func (s Supplier) Validate() error {
 	if !IsValidSupplierStatus(s.Status) {
 		return ErrSupplierInvalidStatus
 	}
-	if s.LeadTimeDays < 0 || s.MOQ < 0 || s.QualityScore < 0 || s.DeliveryScore < 0 {
+	if s.LeadTimeDays < 0 || s.MOQ.IsNegative() || s.QualityScore.IsNegative() || s.DeliveryScore.IsNegative() {
 		return ErrSupplierInvalidMetric
 	}
 
@@ -312,6 +340,11 @@ func NewCustomer(input NewCustomerInput) (Customer, error) {
 		status = CustomerStatusDraft
 	}
 
+	creditLimit, err := decimal.ParseMoneyAmount(input.CreditLimit.String())
+	if err != nil {
+		return Customer{}, ErrCustomerInvalidCreditLimit
+	}
+
 	customer := Customer{
 		ID:            strings.TrimSpace(input.ID),
 		Code:          NormalizePartyCode(input.Code),
@@ -320,7 +353,7 @@ func NewCustomer(input NewCustomerInput) (Customer, error) {
 		ChannelCode:   NormalizePartyCode(input.ChannelCode),
 		PriceListCode: NormalizePartyCode(input.PriceListCode),
 		DiscountGroup: strings.TrimSpace(input.DiscountGroup),
-		CreditLimit:   input.CreditLimit,
+		CreditLimit:   creditLimit,
 		PaymentTerms:  NormalizePartyCode(input.PaymentTerms),
 		ContactName:   strings.TrimSpace(input.ContactName),
 		Phone:         strings.TrimSpace(input.Phone),
@@ -351,6 +384,11 @@ func (c Customer) Update(input UpdateCustomerInput) (Customer, error) {
 		return Customer{}, ErrCustomerInvalidStatusTransition
 	}
 
+	creditLimit, err := decimal.ParseMoneyAmount(input.CreditLimit.String())
+	if err != nil {
+		return Customer{}, ErrCustomerInvalidCreditLimit
+	}
+
 	updated := c.Clone()
 	updated.Code = NormalizePartyCode(input.Code)
 	updated.Name = strings.TrimSpace(input.Name)
@@ -358,7 +396,7 @@ func (c Customer) Update(input UpdateCustomerInput) (Customer, error) {
 	updated.ChannelCode = NormalizePartyCode(input.ChannelCode)
 	updated.PriceListCode = NormalizePartyCode(input.PriceListCode)
 	updated.DiscountGroup = strings.TrimSpace(input.DiscountGroup)
-	updated.CreditLimit = input.CreditLimit
+	updated.CreditLimit = creditLimit
 	updated.PaymentTerms = NormalizePartyCode(input.PaymentTerms)
 	updated.ContactName = strings.TrimSpace(input.ContactName)
 	updated.Phone = strings.TrimSpace(input.Phone)
@@ -405,7 +443,7 @@ func (c Customer) Validate() error {
 	if !IsValidCustomerStatus(c.Status) {
 		return ErrCustomerInvalidStatus
 	}
-	if c.CreditLimit < 0 {
+	if c.CreditLimit.IsNegative() {
 		return ErrCustomerInvalidCreditLimit
 	}
 

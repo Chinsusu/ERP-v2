@@ -10,6 +10,7 @@ import (
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
 
@@ -37,9 +38,9 @@ type CreateSupplierInput struct {
 	Address       string
 	PaymentTerms  string
 	LeadTimeDays  int
-	MOQ           float64
-	QualityScore  float64
-	DeliveryScore float64
+	MOQ           decimal.Decimal
+	QualityScore  decimal.Decimal
+	DeliveryScore decimal.Decimal
 	Status        string
 	ActorID       string
 	RequestID     string
@@ -57,9 +58,9 @@ type UpdateSupplierInput struct {
 	Address       string
 	PaymentTerms  string
 	LeadTimeDays  int
-	MOQ           float64
-	QualityScore  float64
-	DeliveryScore float64
+	MOQ           decimal.Decimal
+	QualityScore  decimal.Decimal
+	DeliveryScore decimal.Decimal
 	Status        string
 	ActorID       string
 	RequestID     string
@@ -79,7 +80,7 @@ type CreateCustomerInput struct {
 	ChannelCode   string
 	PriceListCode string
 	DiscountGroup string
-	CreditLimit   float64
+	CreditLimit   decimal.Decimal
 	PaymentTerms  string
 	ContactName   string
 	Phone         string
@@ -99,7 +100,7 @@ type UpdateCustomerInput struct {
 	ChannelCode   string
 	PriceListCode string
 	DiscountGroup string
-	CreditLimit   float64
+	CreditLimit   decimal.Decimal
 	PaymentTerms  string
 	ContactName   string
 	Phone         string
@@ -740,9 +741,9 @@ func prototypeSuppliers() []domain.Supplier {
 			Address:       "Binh Duong raw material hub",
 			PaymentTerms:  "NET30",
 			LeadTimeDays:  12,
-			MOQ:           50,
-			QualityScore:  94,
-			DeliveryScore: 91,
+			MOQ:           decimal.MustQuantity("50"),
+			QualityScore:  decimal.MustRate("94"),
+			DeliveryScore: decimal.MustRate("91"),
 			Status:        domain.SupplierStatusActive,
 			CreatedAt:     baseTime,
 			UpdatedAt:     baseTime,
@@ -759,9 +760,9 @@ func prototypeSuppliers() []domain.Supplier {
 			Address:       "Long An packaging park",
 			PaymentTerms:  "NET45",
 			LeadTimeDays:  8,
-			MOQ:           1000,
-			QualityScore:  89,
-			DeliveryScore: 88,
+			MOQ:           decimal.MustQuantity("1000"),
+			QualityScore:  decimal.MustRate("89"),
+			DeliveryScore: decimal.MustRate("88"),
 			Status:        domain.SupplierStatusActive,
 			CreatedAt:     baseTime.Add(10 * time.Minute),
 			UpdatedAt:     baseTime.Add(10 * time.Minute),
@@ -778,8 +779,8 @@ func prototypeSuppliers() []domain.Supplier {
 			Address:       "Ho Chi Minh logistics center",
 			PaymentTerms:  "NET15",
 			LeadTimeDays:  2,
-			QualityScore:  87,
-			DeliveryScore: 93,
+			QualityScore:  decimal.MustRate("87"),
+			DeliveryScore: decimal.MustRate("93"),
 			Status:        domain.SupplierStatusActive,
 			CreatedAt:     baseTime.Add(20 * time.Minute),
 			UpdatedAt:     baseTime.Add(20 * time.Minute),
@@ -796,9 +797,9 @@ func prototypeSuppliers() []domain.Supplier {
 			Address:       "Dong Nai outsource site",
 			PaymentTerms:  "NET30",
 			LeadTimeDays:  15,
-			MOQ:           500,
-			QualityScore:  82,
-			DeliveryScore: 80,
+			MOQ:           decimal.MustQuantity("500"),
+			QualityScore:  decimal.MustRate("82"),
+			DeliveryScore: decimal.MustRate("80"),
 			Status:        domain.SupplierStatusInactive,
 			CreatedAt:     baseTime.Add(30 * time.Minute),
 			UpdatedAt:     baseTime.Add(30 * time.Minute),
@@ -825,7 +826,7 @@ func prototypeCustomers() []domain.Customer {
 			ChannelCode:   "B2B",
 			PriceListCode: "PL-B2B-2026",
 			DiscountGroup: "tier_1",
-			CreditLimit:   500000000,
+			CreditLimit:   decimal.MustMoneyAmount("500000000"),
 			PaymentTerms:  "NET30",
 			ContactName:   "Do Minh Anh",
 			Phone:         "+84909888111",
@@ -844,7 +845,7 @@ func prototypeCustomers() []domain.Customer {
 			ChannelCode:   "DEALER",
 			PriceListCode: "PL-DEALER-2026",
 			DiscountGroup: "tier_2",
-			CreditLimit:   150000000,
+			CreditLimit:   decimal.MustMoneyAmount("150000000"),
 			PaymentTerms:  "NET15",
 			ContactName:   "Nguyen Linh Chi",
 			Phone:         "+84909888222",
@@ -863,7 +864,7 @@ func prototypeCustomers() []domain.Customer {
 			ChannelCode:   "MP",
 			PriceListCode: "PL-MP-2026",
 			DiscountGroup: "marketplace",
-			CreditLimit:   0,
+			CreditLimit:   decimal.MustMoneyAmount("0"),
 			PaymentTerms:  "PREPAID",
 			ContactName:   "Marketplace Ops",
 			Phone:         "+84909888333",
@@ -882,7 +883,7 @@ func prototypeCustomers() []domain.Customer {
 			ChannelCode:   "INT",
 			PriceListCode: "PL-INT-2026",
 			DiscountGroup: "internal",
-			CreditLimit:   0,
+			CreditLimit:   decimal.MustMoneyAmount("0"),
 			PaymentTerms:  "INTERNAL",
 			ContactName:   "Store Lead",
 			Phone:         "+84909888444",

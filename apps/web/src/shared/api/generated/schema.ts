@@ -689,6 +689,33 @@ export interface components {
             /** @example 13 */
             total_pages: number;
         };
+        /**
+         * @description Decimal string for VND money amounts, stored as numeric(18,2).
+         * @example 1250000.00
+         */
+        MoneyAmount: string;
+        /**
+         * @description Decimal string for unit cost values, stored as numeric(18,6).
+         * @example 64000.000000
+         */
+        UnitCostAmount: string;
+        /**
+         * @description Decimal string for quantities, stored as numeric(18,6).
+         * @example 10.500000
+         */
+        Quantity: string;
+        /**
+         * @description Decimal string for rates or percentages, stored as numeric(9,4).
+         * @example 10.0000
+         */
+        Rate: string;
+        /**
+         * @default VND
+         * @example VND
+         */
+        CurrencyCode: string;
+        /** @example PCS */
+        UOMCode: string;
         /** @enum {string} */
         MasterDataStatus: "draft" | "active" | "inactive" | "obsolete";
         /** @enum {string} */
@@ -734,14 +761,10 @@ export interface components {
             item_group?: string;
             /** @example MYH */
             brand_code?: string;
-            /** @example EA */
-            uom_code: string;
-            /** @example EA */
-            uom_base: string;
-            /** @example EA */
-            uom_purchase?: string;
-            /** @example EA */
-            uom_issue?: string;
+            uom_code: components["schemas"]["UOMCode"];
+            uom_base: components["schemas"]["UOMCode"];
+            uom_purchase?: components["schemas"]["UOMCode"];
+            uom_issue?: components["schemas"]["UOMCode"];
             /** @example true */
             lot_controlled: boolean;
             /** @example true */
@@ -751,8 +774,7 @@ export interface components {
             /** @example true */
             qc_required: boolean;
             status: components["schemas"]["MasterDataStatus"];
-            /** @example 64000 */
-            standard_cost?: number;
+            standard_cost?: components["schemas"]["UnitCostAmount"];
             /** @example true */
             is_sellable: boolean;
             /** @example false */
@@ -780,12 +802,9 @@ export interface components {
             item_group?: string;
             /** @example MYH */
             brand_code?: string;
-            /** @example EA */
-            uom_base: string;
-            /** @example EA */
-            uom_purchase?: string;
-            /** @example EA */
-            uom_issue?: string;
+            uom_base: components["schemas"]["UOMCode"];
+            uom_purchase?: components["schemas"]["UOMCode"];
+            uom_issue?: components["schemas"]["UOMCode"];
             /** @default false */
             lot_controlled: boolean;
             /** @default false */
@@ -794,7 +813,7 @@ export interface components {
             /** @default false */
             qc_required: boolean;
             status?: components["schemas"]["MasterDataStatus"];
-            standard_cost?: number;
+            standard_cost?: components["schemas"]["UnitCostAmount"];
             /** @default false */
             is_sellable: boolean;
             /** @default false */
@@ -843,12 +862,9 @@ export interface components {
             payment_terms?: string;
             /** @example 12 */
             lead_time_days?: number;
-            /** @example 50 */
-            moq?: number;
-            /** @example 94 */
-            quality_score?: number;
-            /** @example 91 */
-            delivery_score?: number;
+            moq?: components["schemas"]["Quantity"];
+            quality_score?: components["schemas"]["Rate"];
+            delivery_score?: components["schemas"]["Rate"];
             status: components["schemas"]["SupplierStatus"];
             /** Format: date-time */
             created_at: string;
@@ -880,12 +896,9 @@ export interface components {
             payment_terms?: string;
             /** @default 0 */
             lead_time_days: number;
-            /** @default 0 */
-            moq: number;
-            /** @default 0 */
-            quality_score: number;
-            /** @default 0 */
-            delivery_score: number;
+            moq?: components["schemas"]["Quantity"];
+            quality_score?: components["schemas"]["Rate"];
+            delivery_score?: components["schemas"]["Rate"];
             status?: components["schemas"]["SupplierStatus"];
         };
         UpdateSupplierRequest: components["schemas"]["CreateSupplierRequest"];
@@ -917,8 +930,7 @@ export interface components {
             price_list_code?: string;
             /** @example tier_1 */
             discount_group?: string;
-            /** @example 500000000 */
-            credit_limit?: number;
+            credit_limit?: components["schemas"]["MoneyAmount"];
             /** @example NET30 */
             payment_terms?: string;
             /** @example Do Minh Anh */
@@ -954,8 +966,7 @@ export interface components {
             price_list_code?: string;
             /** @example tier_2 */
             discount_group?: string;
-            /** @default 0 */
-            credit_limit: number;
+            credit_limit?: components["schemas"]["MoneyAmount"];
             /** @example NET15 */
             payment_terms?: string;
             /** @example Tran Ha Noi */
@@ -1107,7 +1118,7 @@ export interface components {
             warehouseId: string;
             /** @enum {string} */
             movementType: "RECEIVE" | "ISSUE" | "TRANSFER_IN" | "ADJUST";
-            quantity: number;
+            quantity: components["schemas"]["Quantity"];
             reason: string;
         };
         StockMovementSuccessResponse: components["schemas"]["SuccessResponse"] & {

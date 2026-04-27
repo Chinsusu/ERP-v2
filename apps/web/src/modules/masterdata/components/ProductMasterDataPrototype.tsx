@@ -3,6 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import {
   DataTable,
+  DecimalInput,
   DetailDrawer,
   EmptyState,
   ErrorState,
@@ -12,6 +13,7 @@ import {
   type DataTableColumn,
   type ToastMessage
 } from "@/shared/design-system/components";
+import { decimalScales } from "@/shared/format/numberFormat";
 import { useProductMasterData } from "../hooks/useProductMasterData";
 import {
   emptyProductInput,
@@ -291,7 +293,7 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
               <TextField label="Purchase UOM" value={form.uomPurchase} onChange={(value) => updateForm({ uomPurchase: value.toUpperCase() })} />
               <TextField label="Issue UOM" value={form.uomIssue} onChange={(value) => updateForm({ uomIssue: value.toUpperCase() })} />
               <NumberField label="Shelf life days" value={form.shelfLifeDays} onChange={(value) => updateForm({ shelfLifeDays: value })} />
-              <NumberField label="Standard cost" value={form.standardCost} onChange={(value) => updateForm({ standardCost: value })} />
+              <DecimalInput label="Standard cost" scale={decimalScales.unitCost} suffix="VND" value={form.standardCost} onChange={(value) => updateForm({ standardCost: value })} />
               <TextField label="Spec version" value={form.specVersion} onChange={(value) => updateForm({ specVersion: value })} />
             </div>
             <div className="erp-masterdata-toggle-grid">
