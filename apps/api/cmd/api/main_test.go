@@ -1006,6 +1006,273 @@ func TestWarehouseLocationsHandlerBlocksInvalidWarehouseAndInactiveLocation(t *t
 	}
 }
 
+func TestSuppliersHandlerCreatesBlocksDuplicateAndWritesAudit(t *testing.T) {
+	auditStore := audit.NewInMemoryLogStore()
+	catalog := masterdataapp.NewPrototypePartyCatalog(auditStore)
+	body := bytes.NewBufferString(`{
+		"supplier_code": "SUP-SVC-LAB",
+		"supplier_name": "Lab Services Partner",
+		"supplier_group": "service",
+		"contact_name": "Nguyen Lab",
+		"email": "Lab@Partner.Example",
+		"tax_code": "0319999001",
+		"address": "Ho Chi Minh lab site",
+		"payment_terms": "NET15",
+		"lead_time_days": 5,
+		"quality_score": 90,
+		"delivery_score": 92,
+		"status": "draft"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/suppliers", body)
+	req.Header.Set(response.HeaderRequestID, "req-supplier-create")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleERPAdmin)))
+	rec := httptest.NewRecorder()
+
+	suppliersHandler(catalog).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[supplierResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.SupplierCode != "SUP-SVC-LAB" || payload.Data.Email != "lab@partner.example" || payload.Data.AuditLogID == "" {
+		t.Fatalf("supplier = %+v, want normalized supplier with audit id", payload.Data)
+	}
+
+	duplicate := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/suppliers",
+		bytes.NewBufferString(`{"supplier_code":"SUP-SVC-LAB","supplier_name":"Duplicate","supplier_group":"service","status":"active"}`),
+	).WithContext(req.Context())
+	duplicateRec := httptest.NewRecorder()
+	suppliersHandler(catalog).ServeHTTP(duplicateRec, duplicate)
+	if duplicateRec.Code != http.StatusConflict {
+		t.Fatalf("duplicate status = %d, want %d: %s", duplicateRec.Code, http.StatusConflict, duplicateRec.Body.String())
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "masterdata.supplier.created"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestSupplierDetailHandlerUpdatesAndStatusChange(t *testing.T) {
+	auditStore := audit.NewInMemoryLogStore()
+	catalog := masterdataapp.NewPrototypePartyCatalog(auditStore)
+	principalContext := auth.WithPrincipal(context.Background(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleERPAdmin))
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/suppliers/sup-rm-bioactive", nil).WithContext(principalContext)
+	getReq.SetPathValue("supplier_id", "sup-rm-bioactive")
+	getRec := httptest.NewRecorder()
+	supplierDetailHandler(catalog).ServeHTTP(getRec, getReq)
+	if getRec.Code != http.StatusOK {
+		t.Fatalf("get status = %d, want %d: %s", getRec.Code, http.StatusOK, getRec.Body.String())
+	}
+
+	updateBody := bytes.NewBufferString(`{
+		"supplier_code": "SUP-RM-BIO",
+		"supplier_name": "BioActive Raw Materials v2",
+		"supplier_group": "raw_material",
+		"contact_name": "Nguyen Van An",
+		"email": "purchasing@bioactive.example",
+		"tax_code": "0312345001",
+		"address": "Binh Duong",
+		"payment_terms": "NET45",
+		"lead_time_days": 10,
+		"moq": 60,
+		"quality_score": 95,
+		"delivery_score": 92,
+		"status": "active"
+	}`)
+	updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/suppliers/sup-rm-bioactive", updateBody).WithContext(principalContext)
+	updateReq.SetPathValue("supplier_id", "sup-rm-bioactive")
+	updateReq.Header.Set(response.HeaderRequestID, "req-supplier-update")
+	updateRec := httptest.NewRecorder()
+
+	supplierDetailHandler(catalog).ServeHTTP(updateRec, updateReq)
+
+	if updateRec.Code != http.StatusOK {
+		t.Fatalf("update status = %d, want %d: %s", updateRec.Code, http.StatusOK, updateRec.Body.String())
+	}
+	var updatePayload response.SuccessEnvelope[supplierResponse]
+	if err := json.NewDecoder(updateRec.Body).Decode(&updatePayload); err != nil {
+		t.Fatalf("decode update response: %v", err)
+	}
+	if updatePayload.Data.SupplierName != "BioActive Raw Materials v2" || updatePayload.Data.AuditLogID == "" {
+		t.Fatalf("updated supplier = %+v, want changed name with audit", updatePayload.Data)
+	}
+
+	statusReq := httptest.NewRequest(
+		http.MethodPatch,
+		"/api/v1/suppliers/sup-rm-bioactive/status",
+		bytes.NewBufferString(`{"status":"inactive"}`),
+	).WithContext(principalContext)
+	statusReq.SetPathValue("supplier_id", "sup-rm-bioactive")
+	statusReq.Header.Set(response.HeaderRequestID, "req-supplier-status")
+	statusRec := httptest.NewRecorder()
+
+	changeSupplierStatusHandler(catalog).ServeHTTP(statusRec, statusReq)
+
+	if statusRec.Code != http.StatusOK {
+		t.Fatalf("status change = %d, want %d: %s", statusRec.Code, http.StatusOK, statusRec.Body.String())
+	}
+	var statusPayload response.SuccessEnvelope[supplierResponse]
+	if err := json.NewDecoder(statusRec.Body).Decode(&statusPayload); err != nil {
+		t.Fatalf("decode status response: %v", err)
+	}
+	if statusPayload.Data.Status != "inactive" || statusPayload.Data.AuditLogID == "" {
+		t.Fatalf("status supplier = %+v, want inactive with audit", statusPayload.Data)
+	}
+}
+
+func TestCustomersHandlerCreatesBlocksDuplicateAndWritesAudit(t *testing.T) {
+	auditStore := audit.NewInMemoryLogStore()
+	catalog := masterdataapp.NewPrototypePartyCatalog(auditStore)
+	body := bytes.NewBufferString(`{
+		"customer_code": "CUS-DL-HANOI",
+		"customer_name": "Ha Noi Dealer",
+		"customer_type": "dealer",
+		"channel_code": "dealer",
+		"price_list_code": "pl-dealer-2026",
+		"discount_group": "tier_2",
+		"credit_limit": 200000000,
+		"payment_terms": "NET15",
+		"contact_name": "Tran Ha Noi",
+		"email": "Buyer@HaNoiDealer.Example",
+		"tax_code": "0319999002",
+		"address": "Ha Noi",
+		"status": "draft"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/customers", body)
+	req.Header.Set(response.HeaderRequestID, "req-customer-create")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleERPAdmin)))
+	rec := httptest.NewRecorder()
+
+	customersHandler(catalog).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[customerResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.CustomerCode != "CUS-DL-HANOI" || payload.Data.ChannelCode != "DEALER" || payload.Data.AuditLogID == "" {
+		t.Fatalf("customer = %+v, want normalized customer with audit id", payload.Data)
+	}
+
+	duplicate := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/customers",
+		bytes.NewBufferString(`{"customer_code":"CUS-DL-HANOI","customer_name":"Duplicate","customer_type":"dealer","status":"active"}`),
+	).WithContext(req.Context())
+	duplicateRec := httptest.NewRecorder()
+	customersHandler(catalog).ServeHTTP(duplicateRec, duplicate)
+	if duplicateRec.Code != http.StatusConflict {
+		t.Fatalf("duplicate status = %d, want %d: %s", duplicateRec.Code, http.StatusConflict, duplicateRec.Body.String())
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "masterdata.customer.created"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestCustomerDetailHandlerUpdatesAndStatusChange(t *testing.T) {
+	auditStore := audit.NewInMemoryLogStore()
+	catalog := masterdataapp.NewPrototypePartyCatalog(auditStore)
+	principalContext := auth.WithPrincipal(context.Background(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleERPAdmin))
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/customers/cus-dl-minh-anh", nil).WithContext(principalContext)
+	getReq.SetPathValue("customer_id", "cus-dl-minh-anh")
+	getRec := httptest.NewRecorder()
+	customerDetailHandler(catalog).ServeHTTP(getRec, getReq)
+	if getRec.Code != http.StatusOK {
+		t.Fatalf("get status = %d, want %d: %s", getRec.Code, http.StatusOK, getRec.Body.String())
+	}
+
+	updateBody := bytes.NewBufferString(`{
+		"customer_code": "CUS-DL-MINHANH",
+		"customer_name": "Minh Anh Distributor v2",
+		"customer_type": "distributor",
+		"channel_code": "B2B",
+		"price_list_code": "PL-B2B-2026",
+		"discount_group": "tier_1",
+		"credit_limit": 550000000,
+		"payment_terms": "NET30",
+		"contact_name": "Do Minh Anh",
+		"email": "orders@minhanh.example",
+		"tax_code": "0315678001",
+		"address": "District 7, Ho Chi Minh City",
+		"status": "active"
+	}`)
+	updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/customers/cus-dl-minh-anh", updateBody).WithContext(principalContext)
+	updateReq.SetPathValue("customer_id", "cus-dl-minh-anh")
+	updateReq.Header.Set(response.HeaderRequestID, "req-customer-update")
+	updateRec := httptest.NewRecorder()
+
+	customerDetailHandler(catalog).ServeHTTP(updateRec, updateReq)
+
+	if updateRec.Code != http.StatusOK {
+		t.Fatalf("update status = %d, want %d: %s", updateRec.Code, http.StatusOK, updateRec.Body.String())
+	}
+	var updatePayload response.SuccessEnvelope[customerResponse]
+	if err := json.NewDecoder(updateRec.Body).Decode(&updatePayload); err != nil {
+		t.Fatalf("decode update response: %v", err)
+	}
+	if updatePayload.Data.CustomerName != "Minh Anh Distributor v2" || updatePayload.Data.AuditLogID == "" {
+		t.Fatalf("updated customer = %+v, want changed name with audit", updatePayload.Data)
+	}
+
+	statusReq := httptest.NewRequest(
+		http.MethodPatch,
+		"/api/v1/customers/cus-dl-minh-anh/status",
+		bytes.NewBufferString(`{"status":"inactive"}`),
+	).WithContext(principalContext)
+	statusReq.SetPathValue("customer_id", "cus-dl-minh-anh")
+	statusReq.Header.Set(response.HeaderRequestID, "req-customer-status")
+	statusRec := httptest.NewRecorder()
+
+	changeCustomerStatusHandler(catalog).ServeHTTP(statusRec, statusReq)
+
+	if statusRec.Code != http.StatusOK {
+		t.Fatalf("status change = %d, want %d: %s", statusRec.Code, http.StatusOK, statusRec.Body.String())
+	}
+	var statusPayload response.SuccessEnvelope[customerResponse]
+	if err := json.NewDecoder(statusRec.Body).Decode(&statusPayload); err != nil {
+		t.Fatalf("decode status response: %v", err)
+	}
+	if statusPayload.Data.Status != "inactive" || statusPayload.Data.AuditLogID == "" {
+		t.Fatalf("status customer = %+v, want inactive with audit", statusPayload.Data)
+	}
+}
+
 func TestStockMovementHandlerWritesAuditForAdjustment(t *testing.T) {
 	store := audit.NewInMemoryLogStore()
 	body := bytes.NewBufferString(`{

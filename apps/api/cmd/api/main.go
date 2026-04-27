@@ -198,6 +198,90 @@ type changeWarehouseLocationStatusRequest struct {
 	Status string `json:"status"`
 }
 
+type supplierResponse struct {
+	ID            string  `json:"id"`
+	SupplierCode  string  `json:"supplier_code"`
+	SupplierName  string  `json:"supplier_name"`
+	SupplierGroup string  `json:"supplier_group"`
+	ContactName   string  `json:"contact_name,omitempty"`
+	Phone         string  `json:"phone,omitempty"`
+	Email         string  `json:"email,omitempty"`
+	TaxCode       string  `json:"tax_code,omitempty"`
+	Address       string  `json:"address,omitempty"`
+	PaymentTerms  string  `json:"payment_terms,omitempty"`
+	LeadTimeDays  int     `json:"lead_time_days,omitempty"`
+	MOQ           float64 `json:"moq,omitempty"`
+	QualityScore  float64 `json:"quality_score,omitempty"`
+	DeliveryScore float64 `json:"delivery_score,omitempty"`
+	Status        string  `json:"status"`
+	CreatedAt     string  `json:"created_at"`
+	UpdatedAt     string  `json:"updated_at"`
+	AuditLogID    string  `json:"audit_log_id,omitempty"`
+}
+
+type supplierRequest struct {
+	SupplierCode  string  `json:"supplier_code"`
+	SupplierName  string  `json:"supplier_name"`
+	SupplierGroup string  `json:"supplier_group"`
+	ContactName   string  `json:"contact_name"`
+	Phone         string  `json:"phone"`
+	Email         string  `json:"email"`
+	TaxCode       string  `json:"tax_code"`
+	Address       string  `json:"address"`
+	PaymentTerms  string  `json:"payment_terms"`
+	LeadTimeDays  int     `json:"lead_time_days"`
+	MOQ           float64 `json:"moq"`
+	QualityScore  float64 `json:"quality_score"`
+	DeliveryScore float64 `json:"delivery_score"`
+	Status        string  `json:"status"`
+}
+
+type changeSupplierStatusRequest struct {
+	Status string `json:"status"`
+}
+
+type customerResponse struct {
+	ID            string  `json:"id"`
+	CustomerCode  string  `json:"customer_code"`
+	CustomerName  string  `json:"customer_name"`
+	CustomerType  string  `json:"customer_type"`
+	ChannelCode   string  `json:"channel_code,omitempty"`
+	PriceListCode string  `json:"price_list_code,omitempty"`
+	DiscountGroup string  `json:"discount_group,omitempty"`
+	CreditLimit   float64 `json:"credit_limit,omitempty"`
+	PaymentTerms  string  `json:"payment_terms,omitempty"`
+	ContactName   string  `json:"contact_name,omitempty"`
+	Phone         string  `json:"phone,omitempty"`
+	Email         string  `json:"email,omitempty"`
+	TaxCode       string  `json:"tax_code,omitempty"`
+	Address       string  `json:"address,omitempty"`
+	Status        string  `json:"status"`
+	CreatedAt     string  `json:"created_at"`
+	UpdatedAt     string  `json:"updated_at"`
+	AuditLogID    string  `json:"audit_log_id,omitempty"`
+}
+
+type customerRequest struct {
+	CustomerCode  string  `json:"customer_code"`
+	CustomerName  string  `json:"customer_name"`
+	CustomerType  string  `json:"customer_type"`
+	ChannelCode   string  `json:"channel_code"`
+	PriceListCode string  `json:"price_list_code"`
+	DiscountGroup string  `json:"discount_group"`
+	CreditLimit   float64 `json:"credit_limit"`
+	PaymentTerms  string  `json:"payment_terms"`
+	ContactName   string  `json:"contact_name"`
+	Phone         string  `json:"phone"`
+	Email         string  `json:"email"`
+	TaxCode       string  `json:"tax_code"`
+	Address       string  `json:"address"`
+	Status        string  `json:"status"`
+}
+
+type changeCustomerStatusRequest struct {
+	Status string `json:"status"`
+}
+
 type availableStockResponse struct {
 	WarehouseID    string `json:"warehouse_id"`
 	WarehouseCode  string `json:"warehouse_code"`
@@ -435,6 +519,7 @@ func main() {
 	auditLogStore := audit.NewPrototypeLogStore()
 	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
 	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
+	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditLogStore)
 	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	listEndOfDayReconciliations := inventoryapp.NewListEndOfDayReconciliations(reconciliationStore)
 	closeEndOfDayReconciliation := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditLogStore)
@@ -537,6 +622,50 @@ func main() {
 			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(changeWarehouseLocationStatusHandler(warehouseCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/suppliers",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(suppliersHandler(partyCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/suppliers/{supplier_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(supplierDetailHandler(partyCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/suppliers/{supplier_id}/status",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(changeSupplierStatusHandler(partyCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/customers",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(customersHandler(partyCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/customers/{customer_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(customerDetailHandler(partyCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/customers/{customer_id}/status",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(changeCustomerStatusHandler(partyCatalog)),
 		),
 	)
 	mux.Handle(
@@ -1515,6 +1644,392 @@ func changeWarehouseLocationStatusHandler(catalog *masterdataapp.WarehouseLocati
 	}
 }
 
+func suppliersHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+				writePermissionDenied(w, r, auth.PermissionMasterDataView)
+				return
+			}
+			filter := masterdatadomain.NewSupplierFilter(
+				r.URL.Query().Get("q"),
+				masterdatadomain.SupplierStatus(r.URL.Query().Get("status")),
+				masterdatadomain.SupplierGroup(r.URL.Query().Get("supplier_group")),
+				queryInt(r, "page"),
+				queryInt(r, "page_size"),
+			)
+			suppliers, pagination, err := catalog.ListSuppliers(r.Context(), filter)
+			if err != nil {
+				writePartyError(w, r, err)
+				return
+			}
+
+			payload := make([]supplierResponse, 0, len(suppliers))
+			for _, supplier := range suppliers {
+				payload = append(payload, newSupplierResponse(supplier, ""))
+			}
+			response.WritePaginatedSuccess(w, r, http.StatusOK, payload, pagination)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload supplierRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid supplier master data payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.CreateSupplier(r.Context(), masterdataapp.CreateSupplierInput{
+				Code:          payload.SupplierCode,
+				Name:          payload.SupplierName,
+				Group:         payload.SupplierGroup,
+				ContactName:   payload.ContactName,
+				Phone:         payload.Phone,
+				Email:         payload.Email,
+				TaxCode:       payload.TaxCode,
+				Address:       payload.Address,
+				PaymentTerms:  payload.PaymentTerms,
+				LeadTimeDays:  payload.LeadTimeDays,
+				MOQ:           payload.MOQ,
+				QualityScore:  payload.QualityScore,
+				DeliveryScore: payload.DeliveryScore,
+				Status:        payload.Status,
+				ActorID:       principal.UserID,
+				RequestID:     response.RequestID(r),
+			})
+			if err != nil {
+				writePartyError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusCreated, newSupplierResponse(result.Supplier, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func supplierDetailHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+				writePermissionDenied(w, r, auth.PermissionMasterDataView)
+				return
+			}
+			supplier, err := catalog.GetSupplier(r.Context(), r.PathValue("supplier_id"))
+			if err != nil {
+				writePartyError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusOK, newSupplierResponse(supplier, ""))
+		case http.MethodPatch:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload supplierRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid supplier master data payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.UpdateSupplier(r.Context(), masterdataapp.UpdateSupplierInput{
+				ID:            r.PathValue("supplier_id"),
+				Code:          payload.SupplierCode,
+				Name:          payload.SupplierName,
+				Group:         payload.SupplierGroup,
+				ContactName:   payload.ContactName,
+				Phone:         payload.Phone,
+				Email:         payload.Email,
+				TaxCode:       payload.TaxCode,
+				Address:       payload.Address,
+				PaymentTerms:  payload.PaymentTerms,
+				LeadTimeDays:  payload.LeadTimeDays,
+				MOQ:           payload.MOQ,
+				QualityScore:  payload.QualityScore,
+				DeliveryScore: payload.DeliveryScore,
+				Status:        payload.Status,
+				ActorID:       principal.UserID,
+				RequestID:     response.RequestID(r),
+			})
+			if err != nil {
+				writePartyError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusOK, newSupplierResponse(result.Supplier, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func changeSupplierStatusHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload changeSupplierStatusRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid supplier status payload",
+				nil,
+			)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		result, err := catalog.ChangeSupplierStatus(r.Context(), masterdataapp.ChangeSupplierStatusInput{
+			ID:        r.PathValue("supplier_id"),
+			Status:    payload.Status,
+			ActorID:   principal.UserID,
+			RequestID: response.RequestID(r),
+		})
+		if err != nil {
+			writePartyError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newSupplierResponse(result.Supplier, result.AuditLogID))
+	}
+}
+
+func customersHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+				writePermissionDenied(w, r, auth.PermissionMasterDataView)
+				return
+			}
+			filter := masterdatadomain.NewCustomerFilter(
+				r.URL.Query().Get("q"),
+				masterdatadomain.CustomerStatus(r.URL.Query().Get("status")),
+				masterdatadomain.CustomerType(r.URL.Query().Get("customer_type")),
+				queryInt(r, "page"),
+				queryInt(r, "page_size"),
+			)
+			customers, pagination, err := catalog.ListCustomers(r.Context(), filter)
+			if err != nil {
+				writePartyError(w, r, err)
+				return
+			}
+
+			payload := make([]customerResponse, 0, len(customers))
+			for _, customer := range customers {
+				payload = append(payload, newCustomerResponse(customer, ""))
+			}
+			response.WritePaginatedSuccess(w, r, http.StatusOK, payload, pagination)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload customerRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid customer master data payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.CreateCustomer(r.Context(), masterdataapp.CreateCustomerInput{
+				Code:          payload.CustomerCode,
+				Name:          payload.CustomerName,
+				Type:          payload.CustomerType,
+				ChannelCode:   payload.ChannelCode,
+				PriceListCode: payload.PriceListCode,
+				DiscountGroup: payload.DiscountGroup,
+				CreditLimit:   payload.CreditLimit,
+				PaymentTerms:  payload.PaymentTerms,
+				ContactName:   payload.ContactName,
+				Phone:         payload.Phone,
+				Email:         payload.Email,
+				TaxCode:       payload.TaxCode,
+				Address:       payload.Address,
+				Status:        payload.Status,
+				ActorID:       principal.UserID,
+				RequestID:     response.RequestID(r),
+			})
+			if err != nil {
+				writePartyError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusCreated, newCustomerResponse(result.Customer, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func customerDetailHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+				writePermissionDenied(w, r, auth.PermissionMasterDataView)
+				return
+			}
+			customer, err := catalog.GetCustomer(r.Context(), r.PathValue("customer_id"))
+			if err != nil {
+				writePartyError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusOK, newCustomerResponse(customer, ""))
+		case http.MethodPatch:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload customerRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid customer master data payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.UpdateCustomer(r.Context(), masterdataapp.UpdateCustomerInput{
+				ID:            r.PathValue("customer_id"),
+				Code:          payload.CustomerCode,
+				Name:          payload.CustomerName,
+				Type:          payload.CustomerType,
+				ChannelCode:   payload.ChannelCode,
+				PriceListCode: payload.PriceListCode,
+				DiscountGroup: payload.DiscountGroup,
+				CreditLimit:   payload.CreditLimit,
+				PaymentTerms:  payload.PaymentTerms,
+				ContactName:   payload.ContactName,
+				Phone:         payload.Phone,
+				Email:         payload.Email,
+				TaxCode:       payload.TaxCode,
+				Address:       payload.Address,
+				Status:        payload.Status,
+				ActorID:       principal.UserID,
+				RequestID:     response.RequestID(r),
+			})
+			if err != nil {
+				writePartyError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusOK, newCustomerResponse(result.Customer, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func changeCustomerStatusHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload changeCustomerStatusRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid customer status payload",
+				nil,
+			)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		result, err := catalog.ChangeCustomerStatus(r.Context(), masterdataapp.ChangeCustomerStatusInput{
+			ID:        r.PathValue("customer_id"),
+			Status:    payload.Status,
+			ActorID:   principal.UserID,
+			RequestID: response.RequestID(r),
+		})
+		if err != nil {
+			writePartyError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newCustomerResponse(result.Customer, result.AuditLogID))
+	}
+}
+
 func stockMovementHandler(store audit.LogStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -2422,6 +2937,132 @@ func writeWarehouseError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 }
 
+func writePartyError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, masterdataapp.ErrSupplierNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Supplier master data was not found", nil)
+	case errors.Is(err, masterdataapp.ErrCustomerNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Customer master data was not found", nil)
+	case errors.Is(err, masterdataapp.ErrDuplicateSupplierCode):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Supplier code already exists",
+			map[string]any{"field": "supplier_code"},
+		)
+	case errors.Is(err, masterdataapp.ErrDuplicateCustomerCode):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Customer code already exists",
+			map[string]any{"field": "customer_code"},
+		)
+	case errors.Is(err, masterdatadomain.ErrSupplierRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Supplier master data is missing required fields",
+			map[string]any{"required": "supplier_code, supplier_name, and supplier_group"},
+		)
+	case errors.Is(err, masterdatadomain.ErrSupplierInvalidGroup):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Supplier group is invalid",
+			map[string]any{"allowed": "raw_material, packaging, service, logistics, outsource"},
+		)
+	case errors.Is(err, masterdatadomain.ErrSupplierInvalidStatus):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Supplier status is invalid",
+			map[string]any{"allowed": "draft, active, inactive, blacklisted"},
+		)
+	case errors.Is(err, masterdatadomain.ErrSupplierInvalidMetric):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Supplier metrics cannot be negative",
+			map[string]any{"fields": "lead_time_days, moq, quality_score, delivery_score"},
+		)
+	case errors.Is(err, masterdatadomain.ErrSupplierInvalidStatusTransition):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Supplier status transition is invalid",
+			map[string]any{"field": "status"},
+		)
+	case errors.Is(err, masterdatadomain.ErrCustomerRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Customer master data is missing required fields",
+			map[string]any{"required": "customer_code, customer_name, and customer_type"},
+		)
+	case errors.Is(err, masterdatadomain.ErrCustomerInvalidType):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Customer type is invalid",
+			map[string]any{"allowed": "distributor, dealer, retail_customer, marketplace, internal_store"},
+		)
+	case errors.Is(err, masterdatadomain.ErrCustomerInvalidStatus):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Customer status is invalid",
+			map[string]any{"allowed": "draft, active, inactive, blocked"},
+		)
+	case errors.Is(err, masterdatadomain.ErrCustomerInvalidCreditLimit):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Customer credit limit cannot be negative",
+			map[string]any{"field": "credit_limit"},
+		)
+	case errors.Is(err, masterdatadomain.ErrCustomerInvalidStatusTransition):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Customer status transition is invalid",
+			map[string]any{"field": "status"},
+		)
+	default:
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Party master data request could not be processed",
+			nil,
+		)
+	}
+}
+
 func writePermissionDenied(w http.ResponseWriter, r *http.Request, permission auth.PermissionKey) {
 	response.WriteError(
 		w,
@@ -2496,6 +3137,52 @@ func newWarehouseLocationResponse(location masterdatadomain.Location, auditLogID
 		Status:        string(location.Status),
 		CreatedAt:     location.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     location.UpdatedAt.Format(time.RFC3339),
+		AuditLogID:    auditLogID,
+	}
+}
+
+func newSupplierResponse(supplier masterdatadomain.Supplier, auditLogID string) supplierResponse {
+	return supplierResponse{
+		ID:            supplier.ID,
+		SupplierCode:  supplier.Code,
+		SupplierName:  supplier.Name,
+		SupplierGroup: string(supplier.Group),
+		ContactName:   supplier.ContactName,
+		Phone:         supplier.Phone,
+		Email:         supplier.Email,
+		TaxCode:       supplier.TaxCode,
+		Address:       supplier.Address,
+		PaymentTerms:  supplier.PaymentTerms,
+		LeadTimeDays:  supplier.LeadTimeDays,
+		MOQ:           supplier.MOQ,
+		QualityScore:  supplier.QualityScore,
+		DeliveryScore: supplier.DeliveryScore,
+		Status:        string(supplier.Status),
+		CreatedAt:     supplier.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     supplier.UpdatedAt.Format(time.RFC3339),
+		AuditLogID:    auditLogID,
+	}
+}
+
+func newCustomerResponse(customer masterdatadomain.Customer, auditLogID string) customerResponse {
+	return customerResponse{
+		ID:            customer.ID,
+		CustomerCode:  customer.Code,
+		CustomerName:  customer.Name,
+		CustomerType:  string(customer.Type),
+		ChannelCode:   customer.ChannelCode,
+		PriceListCode: customer.PriceListCode,
+		DiscountGroup: customer.DiscountGroup,
+		CreditLimit:   customer.CreditLimit,
+		PaymentTerms:  customer.PaymentTerms,
+		ContactName:   customer.ContactName,
+		Phone:         customer.Phone,
+		Email:         customer.Email,
+		TaxCode:       customer.TaxCode,
+		Address:       customer.Address,
+		Status:        string(customer.Status),
+		CreatedAt:     customer.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     customer.UpdatedAt.Format(time.RFC3339),
 		AuditLogID:    auditLogID,
 	}
 }
