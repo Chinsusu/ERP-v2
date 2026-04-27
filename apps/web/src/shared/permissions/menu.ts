@@ -173,6 +173,7 @@ export const appMenuGroups: AppMenuGroup[] = [
     label: "Operations",
     items: [
       { label: "Warehouse Daily Board", href: "/warehouse", code: "WH", permission: "warehouse:view" },
+      { label: "Receiving", href: "/receiving", code: "RC", permission: "warehouse:view" },
       { label: "Inventory", href: "/inventory", code: "IV", permission: "inventory:view" },
       { label: "Purchase", href: "/purchase", code: "PU", permission: "purchase:view" },
       { label: "QC", href: "/qc", code: "QC", permission: "qc:view" },
