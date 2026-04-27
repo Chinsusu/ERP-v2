@@ -13,13 +13,14 @@ const HeaderRequestID = "X-Request-ID"
 type ErrorCode string
 
 const (
-	ErrorCodeValidation        ErrorCode = "VALIDATION_ERROR"
-	ErrorCodeUnauthorized      ErrorCode = "UNAUTHORIZED"
-	ErrorCodeForbidden         ErrorCode = "FORBIDDEN"
-	ErrorCodeNotFound          ErrorCode = "NOT_FOUND"
-	ErrorCodeConflict          ErrorCode = "CONFLICT"
-	ErrorCodeInsufficientStock ErrorCode = "INSUFFICIENT_STOCK"
-	ErrorCodeInvalidState      ErrorCode = "INVALID_STATE"
+	ErrorCodeValidation            ErrorCode = "VALIDATION_ERROR"
+	ErrorCodeUnauthorized          ErrorCode = "UNAUTHORIZED"
+	ErrorCodeForbidden             ErrorCode = "FORBIDDEN"
+	ErrorCodeNotFound              ErrorCode = "NOT_FOUND"
+	ErrorCodeConflict              ErrorCode = "CONFLICT"
+	ErrorCodeInsufficientStock     ErrorCode = "INSUFFICIENT_STOCK"
+	ErrorCodeUOMConversionNotFound ErrorCode = "UOM_CONVERSION_NOT_FOUND"
+	ErrorCodeInvalidState          ErrorCode = "INVALID_STATE"
 )
 
 type SuccessEnvelope[T any] struct {
