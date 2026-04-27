@@ -150,7 +150,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 
 | Task ID | Title | Epic | Owner | Priority | Status | Primary Ref |
 | --- | --- | --- | --- | --- | --- | --- |
-| S1-00-01 | Unit currency number format baseline | Cross-cutting standards | Tech Lead + BE Lead + FE Lead + QA | P0 | Review | `docs/40_...` |
+| S1-00-01 | Unit currency number format baseline | Cross-cutting standards | Tech Lead + BE Lead + FE Lead + QA | P0 | Done | `docs/40_...` |
 | S1-00-02 | Decimal money quantity rate foundation v1 | Cross-cutting standards | BE Lead + FE Lead | P0 | Backlog | `docs/40_...` + `docs/16_...` |
 | S1-00-03 | UOM master and conversion foundation v1 | Cross-cutting standards | BE Lead + Master Data Admin | P0 | Backlog | `docs/40_...` + `docs/05_...` + `docs/17_...` |
 | S1-01-01 | Auth session and password policy v1 | Auth/RBAC hardening | BE Lead + FE Lead | P0 | Done | `docs/19_...` + `docs/34_...` |
@@ -1102,7 +1102,7 @@ Evidence:
 
 **Owner:** Tech Lead + BE Lead + FE Lead + QA
 **Priority:** P0
-**Status:** Review
+**Status:** Done
 **Primary Ref:** `docs/40_ERP_Unit_Currency_Number_Format_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1114,7 +1114,7 @@ Acceptance criteria:
 
 Evidence:
 
-- PR pending.
+- PR #131: unit, currency, number, and UOM baseline into `develop`.
 - Local check: `git diff --check`.
 
 ### S1-00-02 Decimal Money Quantity Rate Foundation V1
@@ -1360,6 +1360,7 @@ Acceptance criteria:
 | S1-02-01 | Manual merge; item/SKU master data CRUD/status API, duplicate code guards, audit logs, OpenAPI/generated types, and `/master-data` UI states |
 | S1-02-02 | Manual merge; warehouse/location CRUD/status API, location warehouse validation, inactive location guard, OpenAPI/generated types, and `/master-data` warehouse/location UI states |
 | S1-02-03 | Manual merge; supplier/customer CRUD/status API, duplicate code and invalid transition guards, audit logs, OpenAPI/generated types, and `/master-data` supplier/customer UI states |
+| S1-00-01 | PR #131; file 40 tracked as approved baseline; Sprint 1 decimal/UOM foundation tasks added before stock ledger persistence |
 
 ---
 
