@@ -367,7 +367,16 @@ paths:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PageSizeParam"
         - $ref: "#/components/parameters/SearchParam"
-        - $ref: "#/components/parameters/MasterDataStatusParam"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SupplierStatus"
+        - name: supplier_group
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SupplierGroup"
       responses:
         "200":
           description: Supplier master data list
@@ -381,6 +390,126 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create supplier master data
+      operationId: createSupplier
+      tags:
+        - master-data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierRequest"
+      responses:
+        "201":
+          description: Supplier master data created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /suppliers/{supplier_id}:
+    get:
+      summary: Get supplier master data detail
+      operationId: getSupplier
+      tags:
+        - master-data
+      parameters:
+        - name: supplier_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier master data detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update supplier master data
+      operationId: updateSupplier
+      tags:
+        - master-data
+      parameters:
+        - name: supplier_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSupplierRequest"
+      responses:
+        "200":
+          description: Supplier master data updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /suppliers/{supplier_id}/status:
+    patch:
+      summary: Change supplier master data status
+      operationId: changeSupplierStatus
+      tags:
+        - master-data
+      parameters:
+        - name: supplier_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeSupplierStatusRequest"
+      responses:
+        "200":
+          description: Supplier master data status changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /customers:
     get:
       summary: List customer master data
@@ -391,7 +520,16 @@ paths:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PageSizeParam"
         - $ref: "#/components/parameters/SearchParam"
-        - $ref: "#/components/parameters/MasterDataStatusParam"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/CustomerStatus"
+        - name: customer_type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/CustomerType"
       responses:
         "200":
           description: Customer master data list
@@ -405,6 +543,126 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create customer master data
+      operationId: createCustomer
+      tags:
+        - master-data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerRequest"
+      responses:
+        "201":
+          description: Customer master data created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /customers/{customer_id}:
+    get:
+      summary: Get customer master data detail
+      operationId: getCustomer
+      tags:
+        - master-data
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Customer master data detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update customer master data
+      operationId: updateCustomer
+      tags:
+        - master-data
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCustomerRequest"
+      responses:
+        "200":
+          description: Customer master data updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /customers/{customer_id}/status:
+    patch:
+      summary: Change customer master data status
+      operationId: changeCustomerStatus
+      tags:
+        - master-data
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeCustomerStatusRequest"
+      responses:
+        "200":
+          description: Customer master data status changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /warehouses:
     get:
       summary: List warehouse master data
@@ -1452,6 +1710,36 @@ components:
         - active
         - inactive
         - obsolete
+    SupplierStatus:
+      type: string
+      enum:
+        - draft
+        - active
+        - inactive
+        - blacklisted
+    SupplierGroup:
+      type: string
+      enum:
+        - raw_material
+        - packaging
+        - service
+        - logistics
+        - outsource
+    CustomerStatus:
+      type: string
+      enum:
+        - draft
+        - active
+        - inactive
+        - blocked
+    CustomerType:
+      type: string
+      enum:
+        - distributor
+        - dealer
+        - retail_customer
+        - marketplace
+        - internal_store
     ItemType:
       type: string
       enum:
@@ -1707,6 +1995,15 @@ components:
         request_id:
           type: string
           example: req_lq7z2t9c
+    SupplierSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SupplierListItem"
     SupplierListItem:
       type: object
       required:
@@ -1715,32 +2012,128 @@ components:
         - supplier_name
         - supplier_group
         - status
+        - created_at
+        - updated_at
       properties:
         id:
           type: string
-          example: sup_01HXABCDEF
+          example: sup-rm-bioactive
         supplier_code:
           type: string
-          example: SUP-RM-0021
+          example: SUP-RM-BIO
         supplier_name:
           type: string
-          example: Nguyen Lieu A Trading
+          example: BioActive Raw Materials
         supplier_group:
-          type: string
-          enum:
-            - raw_material
-            - packaging
-            - service
-            - logistics
-            - outsource
+          $ref: "#/components/schemas/SupplierGroup"
         contact_name:
           type: string
-          example: Nguyen Van A
+          example: Nguyen Van An
+        phone:
+          type: string
+          example: "+84901234501"
+        email:
+          type: string
+          format: email
+          example: purchasing@bioactive.example
+        tax_code:
+          type: string
+          example: "0312345001"
+        address:
+          type: string
+          example: Binh Duong raw material hub
         payment_terms:
           type: string
-          example: 30D
+          example: NET30
+        lead_time_days:
+          type: integer
+          minimum: 0
+          example: 12
+        moq:
+          type: number
+          minimum: 0
+          example: 50
+        quality_score:
+          type: number
+          minimum: 0
+          example: 94
+        delivery_score:
+          type: number
+          minimum: 0
+          example: 91
         status:
-          $ref: "#/components/schemas/MasterDataStatus"
+          $ref: "#/components/schemas/SupplierStatus"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        audit_log_id:
+          type: string
+          example: audit_1777280400000000000
+    CreateSupplierRequest:
+      type: object
+      required:
+        - supplier_code
+        - supplier_name
+        - supplier_group
+      properties:
+        supplier_code:
+          type: string
+          example: SUP-SVC-LAB
+        supplier_name:
+          type: string
+          example: Lab Services Partner
+        supplier_group:
+          $ref: "#/components/schemas/SupplierGroup"
+        contact_name:
+          type: string
+          example: Nguyen Lab
+        phone:
+          type: string
+          example: "+84901234509"
+        email:
+          type: string
+          format: email
+          example: lab@partner.example
+        tax_code:
+          type: string
+          example: "0319999001"
+        address:
+          type: string
+          example: Ho Chi Minh lab site
+        payment_terms:
+          type: string
+          example: NET15
+        lead_time_days:
+          type: integer
+          minimum: 0
+          default: 0
+        moq:
+          type: number
+          minimum: 0
+          default: 0
+        quality_score:
+          type: number
+          minimum: 0
+          default: 0
+        delivery_score:
+          type: number
+          minimum: 0
+          default: 0
+        status:
+          $ref: "#/components/schemas/SupplierStatus"
+    UpdateSupplierRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateSupplierRequest"
+    ChangeSupplierStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/SupplierStatus"
     CustomerListSuccessResponse:
       type: object
       required:
@@ -1761,6 +2154,15 @@ components:
         request_id:
           type: string
           example: req_lq7z2t9c
+    CustomerSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/CustomerListItem"
     CustomerListItem:
       type: object
       required:
@@ -1769,32 +2171,122 @@ components:
         - customer_name
         - customer_type
         - status
+        - created_at
+        - updated_at
       properties:
         id:
           type: string
-          example: cus_01HXABCDEF
+          example: cus-dl-minh-anh
         customer_code:
           type: string
-          example: CUS-DL-0009
+          example: CUS-DL-MINHANH
         customer_name:
           type: string
-          example: Dai Ly Minh Anh
+          example: Minh Anh Distributor
         customer_type:
-          type: string
-          enum:
-            - distributor
-            - dealer
-            - retail_customer
-            - marketplace
-            - internal_store
+          $ref: "#/components/schemas/CustomerType"
         channel_code:
           type: string
           example: B2B
         price_list_code:
           type: string
           example: PL-B2B-2026
+        discount_group:
+          type: string
+          example: tier_1
+        credit_limit:
+          type: number
+          minimum: 0
+          example: 500000000
+        payment_terms:
+          type: string
+          example: NET30
+        contact_name:
+          type: string
+          example: Do Minh Anh
+        phone:
+          type: string
+          example: "+84909888111"
+        email:
+          type: string
+          format: email
+          example: orders@minhanh.example
+        tax_code:
+          type: string
+          example: "0315678001"
+        address:
+          type: string
+          example: District 7, Ho Chi Minh City
         status:
-          $ref: "#/components/schemas/MasterDataStatus"
+          $ref: "#/components/schemas/CustomerStatus"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        audit_log_id:
+          type: string
+          example: audit_1777280400000000000
+    CreateCustomerRequest:
+      type: object
+      required:
+        - customer_code
+        - customer_name
+        - customer_type
+      properties:
+        customer_code:
+          type: string
+          example: CUS-DL-HANOI
+        customer_name:
+          type: string
+          example: Ha Noi Dealer
+        customer_type:
+          $ref: "#/components/schemas/CustomerType"
+        channel_code:
+          type: string
+          example: DEALER
+        price_list_code:
+          type: string
+          example: PL-DEALER-2026
+        discount_group:
+          type: string
+          example: tier_2
+        credit_limit:
+          type: number
+          minimum: 0
+          default: 0
+        payment_terms:
+          type: string
+          example: NET15
+        contact_name:
+          type: string
+          example: Tran Ha Noi
+        phone:
+          type: string
+          example: "+84909888999"
+        email:
+          type: string
+          format: email
+          example: buyer@hanoidealer.example
+        tax_code:
+          type: string
+          example: "0319999002"
+        address:
+          type: string
+          example: Ha Noi
+        status:
+          $ref: "#/components/schemas/CustomerStatus"
+    UpdateCustomerRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateCustomerRequest"
+    ChangeCustomerStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/CustomerStatus"
     WarehouseListSuccessResponse:
       type: object
       required:

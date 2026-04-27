@@ -220,11 +220,47 @@ export interface paths {
         /** List supplier master data */
         get: operations["listSuppliers"];
         put?: never;
-        post?: never;
+        /** Create supplier master data */
+        post: operations["createSupplier"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/suppliers/{supplier_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get supplier master data detail */
+        get: operations["getSupplier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update supplier master data */
+        patch: operations["updateSupplier"];
+        trace?: never;
+    };
+    "/suppliers/{supplier_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change supplier master data status */
+        patch: operations["changeSupplierStatus"];
         trace?: never;
     };
     "/customers": {
@@ -237,11 +273,47 @@ export interface paths {
         /** List customer master data */
         get: operations["listCustomers"];
         put?: never;
-        post?: never;
+        /** Create customer master data */
+        post: operations["createCustomer"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/customers/{customer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get customer master data detail */
+        get: operations["getCustomer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update customer master data */
+        patch: operations["updateCustomer"];
+        trace?: never;
+    };
+    "/customers/{customer_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change customer master data status */
+        patch: operations["changeCustomerStatus"];
         trace?: never;
     };
     "/warehouses": {
@@ -620,6 +692,14 @@ export interface components {
         /** @enum {string} */
         MasterDataStatus: "draft" | "active" | "inactive" | "obsolete";
         /** @enum {string} */
+        SupplierStatus: "draft" | "active" | "inactive" | "blacklisted";
+        /** @enum {string} */
+        SupplierGroup: "raw_material" | "packaging" | "service" | "logistics" | "outsource";
+        /** @enum {string} */
+        CustomerStatus: "draft" | "active" | "inactive" | "blocked";
+        /** @enum {string} */
+        CustomerType: "distributor" | "dealer" | "retail_customer" | "marketplace" | "internal_store";
+        /** @enum {string} */
         ItemType: "raw_material" | "packaging" | "semi_finished" | "finished_good" | "service";
         /** @enum {string} */
         WarehouseStatus: "active" | "inactive";
@@ -735,20 +815,82 @@ export interface components {
             /** @example req_lq7z2t9c */
             request_id: string;
         };
+        SupplierSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SupplierListItem"];
+        };
         SupplierListItem: {
-            /** @example sup_01HXABCDEF */
+            /** @example sup-rm-bioactive */
             id: string;
-            /** @example SUP-RM-0021 */
+            /** @example SUP-RM-BIO */
             supplier_code: string;
-            /** @example Nguyen Lieu A Trading */
+            /** @example BioActive Raw Materials */
             supplier_name: string;
-            /** @enum {string} */
-            supplier_group: "raw_material" | "packaging" | "service" | "logistics" | "outsource";
-            /** @example Nguyen Van A */
+            supplier_group: components["schemas"]["SupplierGroup"];
+            /** @example Nguyen Van An */
             contact_name?: string;
-            /** @example 30D */
+            /** @example +84901234501 */
+            phone?: string;
+            /**
+             * Format: email
+             * @example purchasing@bioactive.example
+             */
+            email?: string;
+            /** @example 0312345001 */
+            tax_code?: string;
+            /** @example Binh Duong raw material hub */
+            address?: string;
+            /** @example NET30 */
             payment_terms?: string;
-            status: components["schemas"]["MasterDataStatus"];
+            /** @example 12 */
+            lead_time_days?: number;
+            /** @example 50 */
+            moq?: number;
+            /** @example 94 */
+            quality_score?: number;
+            /** @example 91 */
+            delivery_score?: number;
+            status: components["schemas"]["SupplierStatus"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @example audit_1777280400000000000 */
+            audit_log_id?: string;
+        };
+        CreateSupplierRequest: {
+            /** @example SUP-SVC-LAB */
+            supplier_code: string;
+            /** @example Lab Services Partner */
+            supplier_name: string;
+            supplier_group: components["schemas"]["SupplierGroup"];
+            /** @example Nguyen Lab */
+            contact_name?: string;
+            /** @example +84901234509 */
+            phone?: string;
+            /**
+             * Format: email
+             * @example lab@partner.example
+             */
+            email?: string;
+            /** @example 0319999001 */
+            tax_code?: string;
+            /** @example Ho Chi Minh lab site */
+            address?: string;
+            /** @example NET15 */
+            payment_terms?: string;
+            /** @default 0 */
+            lead_time_days: number;
+            /** @default 0 */
+            moq: number;
+            /** @default 0 */
+            quality_score: number;
+            /** @default 0 */
+            delivery_score: number;
+            status?: components["schemas"]["SupplierStatus"];
+        };
+        UpdateSupplierRequest: components["schemas"]["CreateSupplierRequest"];
+        ChangeSupplierStatusRequest: {
+            status: components["schemas"]["SupplierStatus"];
         };
         CustomerListSuccessResponse: {
             /** @example true */
@@ -758,20 +900,82 @@ export interface components {
             /** @example req_lq7z2t9c */
             request_id: string;
         };
+        CustomerSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CustomerListItem"];
+        };
         CustomerListItem: {
-            /** @example cus_01HXABCDEF */
+            /** @example cus-dl-minh-anh */
             id: string;
-            /** @example CUS-DL-0009 */
+            /** @example CUS-DL-MINHANH */
             customer_code: string;
-            /** @example Dai Ly Minh Anh */
+            /** @example Minh Anh Distributor */
             customer_name: string;
-            /** @enum {string} */
-            customer_type: "distributor" | "dealer" | "retail_customer" | "marketplace" | "internal_store";
+            customer_type: components["schemas"]["CustomerType"];
             /** @example B2B */
             channel_code?: string;
             /** @example PL-B2B-2026 */
             price_list_code?: string;
-            status: components["schemas"]["MasterDataStatus"];
+            /** @example tier_1 */
+            discount_group?: string;
+            /** @example 500000000 */
+            credit_limit?: number;
+            /** @example NET30 */
+            payment_terms?: string;
+            /** @example Do Minh Anh */
+            contact_name?: string;
+            /** @example +84909888111 */
+            phone?: string;
+            /**
+             * Format: email
+             * @example orders@minhanh.example
+             */
+            email?: string;
+            /** @example 0315678001 */
+            tax_code?: string;
+            /** @example District 7, Ho Chi Minh City */
+            address?: string;
+            status: components["schemas"]["CustomerStatus"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @example audit_1777280400000000000 */
+            audit_log_id?: string;
+        };
+        CreateCustomerRequest: {
+            /** @example CUS-DL-HANOI */
+            customer_code: string;
+            /** @example Ha Noi Dealer */
+            customer_name: string;
+            customer_type: components["schemas"]["CustomerType"];
+            /** @example DEALER */
+            channel_code?: string;
+            /** @example PL-DEALER-2026 */
+            price_list_code?: string;
+            /** @example tier_2 */
+            discount_group?: string;
+            /** @default 0 */
+            credit_limit: number;
+            /** @example NET15 */
+            payment_terms?: string;
+            /** @example Tran Ha Noi */
+            contact_name?: string;
+            /** @example +84909888999 */
+            phone?: string;
+            /**
+             * Format: email
+             * @example buyer@hanoidealer.example
+             */
+            email?: string;
+            /** @example 0319999002 */
+            tax_code?: string;
+            /** @example Ha Noi */
+            address?: string;
+            status?: components["schemas"]["CustomerStatus"];
+        };
+        UpdateCustomerRequest: components["schemas"]["CreateCustomerRequest"];
+        ChangeCustomerStatusRequest: {
+            status: components["schemas"]["CustomerStatus"];
         };
         WarehouseListSuccessResponse: {
             /** @example true */
@@ -1595,8 +1799,8 @@ export interface operations {
                 page_size?: components["parameters"]["PageSizeParam"];
                 /** @description Quick search term for code, name, phone, or other whitelisted fields. */
                 q?: components["parameters"]["SearchParam"];
-                /** @description Filter by master data lifecycle status. */
-                status?: components["parameters"]["MasterDataStatusParam"];
+                status?: components["schemas"]["SupplierStatus"];
+                supplier_group?: components["schemas"]["SupplierGroup"];
             };
             header?: never;
             path?: never;
@@ -1618,6 +1822,121 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    createSupplier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupplierRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier master data created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getSupplier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supplier master data detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateSupplier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSupplierRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier master data updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    changeSupplierStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeSupplierStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier master data status changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     listCustomers: {
         parameters: {
             query?: {
@@ -1627,8 +1946,8 @@ export interface operations {
                 page_size?: components["parameters"]["PageSizeParam"];
                 /** @description Quick search term for code, name, phone, or other whitelisted fields. */
                 q?: components["parameters"]["SearchParam"];
-                /** @description Filter by master data lifecycle status. */
-                status?: components["parameters"]["MasterDataStatusParam"];
+                status?: components["schemas"]["CustomerStatus"];
+                customer_type?: components["schemas"]["CustomerType"];
             };
             header?: never;
             path?: never;
@@ -1648,6 +1967,121 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    createCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerRequest"];
+            };
+        };
+        responses: {
+            /** @description Customer master data created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Customer master data detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomerRequest"];
+            };
+        };
+        responses: {
+            /** @description Customer master data updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    changeCustomerStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeCustomerStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Customer master data status changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     listWarehouses: {
