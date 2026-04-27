@@ -33,10 +33,27 @@ type loginRequest struct {
 }
 
 type loginResponse struct {
-	AccessToken string       `json:"access_token"`
-	TokenType   string       `json:"token_type"`
-	ExpiresIn   int          `json:"expires_in"`
-	User        userResponse `json:"user"`
+	AccessToken      string       `json:"access_token"`
+	RefreshToken     string       `json:"refresh_token"`
+	TokenType        string       `json:"token_type"`
+	ExpiresIn        int          `json:"expires_in"`
+	RefreshExpiresIn int          `json:"refresh_expires_in"`
+	ExpiresAt        string       `json:"expires_at"`
+	User             userResponse `json:"user"`
+}
+
+type refreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type authPolicyResponse struct {
+	PasswordMinLength              int  `json:"password_min_length"`
+	PasswordRequiresLetter         bool `json:"password_requires_letter"`
+	PasswordRequiresNumberOrSymbol bool `json:"password_requires_number_or_symbol"`
+	CommonPasswordsBlocked         bool `json:"common_passwords_blocked"`
+	MaxFailedAttempts              int  `json:"max_failed_attempts"`
+	LockoutWindowSeconds           int  `json:"lockout_window_seconds"`
+	LockoutDurationSeconds         int  `json:"lockout_duration_seconds"`
 }
 
 type userResponse struct {
@@ -285,6 +302,7 @@ func main() {
 		Password:    cfg.AuthMockPassword,
 		AccessToken: cfg.AuthMockAccessToken,
 	}
+	authSessions := auth.NewSessionManager(authConfig, time.Now)
 	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
 	auditLogStore := audit.NewPrototypeLogStore()
 	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
@@ -304,79 +322,82 @@ func main() {
 	mux.HandleFunc("/readyz", readinessHandler)
 	mux.HandleFunc("/api/v1/health", healthHandler)
 	mux.HandleFunc("/api/v1/ready", readinessHandler)
-	mux.HandleFunc("/api/v1/auth/mock-login", mockLoginHandler(authConfig))
-	mux.Handle("/api/v1/me", auth.RequireBearerToken(authConfig, http.HandlerFunc(meHandler)))
+	mux.HandleFunc("/api/v1/auth/login", loginHandler(authSessions, auditLogStore))
+	mux.HandleFunc("/api/v1/auth/mock-login", loginHandler(authSessions, auditLogStore))
+	mux.HandleFunc("/api/v1/auth/refresh", refreshHandler(authSessions, auditLogStore))
+	mux.HandleFunc("/api/v1/auth/policy", authPolicyHandler(authSessions))
+	mux.Handle("/api/v1/me", auth.RequireSessionToken(authSessions, http.HandlerFunc(meHandler)))
 	mux.Handle(
 		"/api/v1/rbac/roles",
-		auth.RequireBearerPermission(authConfig, auth.PermissionSettingsView, http.HandlerFunc(rbacRolesHandler)),
+		auth.RequireSessionPermission(authSessions, auth.PermissionSettingsView, http.HandlerFunc(rbacRolesHandler)),
 	)
 	mux.Handle(
 		"/api/v1/audit-logs",
-		auth.RequireBearerPermission(
-			authConfig,
+		auth.RequireSessionPermission(
+			authSessions,
 			auth.PermissionAuditLogView,
 			http.HandlerFunc(auditLogsHandler(auditLogStore)),
 		),
 	)
 	mux.Handle(
 		"/api/v1/inventory/stock-movements",
-		auth.RequireBearerPermission(
-			authConfig,
+		auth.RequireSessionPermission(
+			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(stockMovementHandler(auditLogStore)),
 		),
 	)
 	mux.Handle(
 		"/api/v1/inventory/available-stock",
-		auth.RequireBearerPermission(
-			authConfig,
+		auth.RequireSessionPermission(
+			authSessions,
 			auth.PermissionInventoryView,
 			http.HandlerFunc(availableStockHandler(availableStockService)),
 		),
 	)
 	mux.Handle(
 		"/api/v1/warehouse/end-of-day-reconciliations",
-		auth.RequireBearerPermission(
-			authConfig,
+		auth.RequireSessionPermission(
+			authSessions,
 			auth.PermissionWarehouseView,
 			http.HandlerFunc(endOfDayReconciliationsHandler(listEndOfDayReconciliations)),
 		),
 	)
 	mux.Handle(
 		"/api/v1/warehouse/end-of-day-reconciliations/{reconciliation_id}/close",
-		auth.RequireBearerPermission(
-			authConfig,
+		auth.RequireSessionPermission(
+			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(closeEndOfDayReconciliationHandler(closeEndOfDayReconciliation)),
 		),
 	)
 	mux.Handle(
 		"/api/v1/shipping/manifests",
-		auth.RequireBearerToken(
-			authConfig,
+		auth.RequireSessionToken(
+			authSessions,
 			http.HandlerFunc(carrierManifestsHandler(listCarrierManifests, createCarrierManifest)),
 		),
 	)
 	mux.Handle(
 		"/api/v1/shipping/manifests/{manifest_id}/shipments",
-		auth.RequireBearerPermission(
-			authConfig,
+		auth.RequireSessionPermission(
+			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(addShipmentToCarrierManifestHandler(addShipmentToCarrierManifest)),
 		),
 	)
 	mux.Handle(
 		"/api/v1/shipping/manifests/{manifest_id}/scan",
-		auth.RequireBearerPermission(
-			authConfig,
+		auth.RequireSessionPermission(
+			authSessions,
 			auth.PermissionShippingView,
 			http.HandlerFunc(verifyCarrierManifestScanHandler(verifyCarrierManifestScan)),
 		),
 	)
 	mux.Handle(
 		"/api/v1/returns/receipts",
-		auth.RequireBearerToken(
-			authConfig,
+		auth.RequireSessionToken(
+			authSessions,
 			http.HandlerFunc(returnReceiptsHandler(listReturnReceipts, receiveReturn)),
 		),
 	)
@@ -456,6 +477,10 @@ func accessLogMiddleware(next http.Handler, logger *log.Logger) http.Handler {
 }
 
 func mockLoginHandler(authConfig auth.MockConfig) http.HandlerFunc {
+	return loginHandler(auth.NewSessionManager(authConfig, time.Now))
+}
+
+func loginHandler(authSessions *auth.SessionManager, auditStores ...audit.LogStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
@@ -475,25 +500,144 @@ func mockLoginHandler(authConfig auth.MockConfig) http.HandlerFunc {
 			return
 		}
 
-		principal, ok := auth.ValidateMockLogin(authConfig, payload.Email, payload.Password)
+		session, failure, ok := authSessions.Login(payload.Email, payload.Password)
 		if !ok {
+			recordAuthAudit(r, firstAuditStore(auditStores), "anonymous", "auth.login_failed", payload.Email, map[string]any{
+				"reason": string(failure.Code),
+			})
+			details := map[string]any{"reason": string(failure.Code)}
+			if !failure.LockedUntil.IsZero() {
+				details["locked_until"] = failure.LockedUntil.Format(time.RFC3339)
+			}
 			response.WriteError(
 				w,
 				r,
 				http.StatusUnauthorized,
 				response.ErrorCodeUnauthorized,
-				"Invalid email or password",
+				failure.Message,
+				details,
+			)
+			return
+		}
+
+		recordAuthAudit(r, firstAuditStore(auditStores), session.Principal.UserID, "auth.login_succeeded", session.Principal.UserID, map[string]any{
+			"email": session.Principal.Email,
+			"role":  string(session.Principal.Role),
+		})
+		response.WriteSuccess(w, r, http.StatusOK, newLoginResponse(session, time.Now().UTC()))
+	}
+}
+
+func refreshHandler(authSessions *auth.SessionManager, auditStores ...audit.LogStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		var payload refreshRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid refresh payload",
 				nil,
 			)
 			return
 		}
 
-		response.WriteSuccess(w, r, http.StatusOK, loginResponse{
-			AccessToken: authConfig.AccessToken,
-			TokenType:   "Bearer",
-			ExpiresIn:   28800,
-			User:        newUserResponse(principal),
+		session, ok := authSessions.Refresh(payload.RefreshToken)
+		if !ok {
+			recordAuthAudit(r, firstAuditStore(auditStores), "anonymous", "auth.refresh_failed", "unknown", nil)
+			response.WriteError(
+				w,
+				r,
+				http.StatusUnauthorized,
+				response.ErrorCodeUnauthorized,
+				"Invalid or expired refresh token",
+				nil,
+			)
+			return
+		}
+
+		recordAuthAudit(r, firstAuditStore(auditStores), session.Principal.UserID, "auth.refresh_succeeded", session.Principal.UserID, map[string]any{
+			"email": session.Principal.Email,
+			"role":  string(session.Principal.Role),
 		})
+		response.WriteSuccess(w, r, http.StatusOK, newLoginResponse(session, time.Now().UTC()))
+	}
+}
+
+func authPolicyHandler(authSessions *auth.SessionManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		passwordPolicy := authSessions.PasswordPolicy()
+		lockoutPolicy := authSessions.LockoutPolicy()
+		response.WriteSuccess(w, r, http.StatusOK, authPolicyResponse{
+			PasswordMinLength:              passwordPolicy.MinLength,
+			PasswordRequiresLetter:         passwordPolicy.RequireLetter,
+			PasswordRequiresNumberOrSymbol: passwordPolicy.RequireNumberOrSymbol,
+			CommonPasswordsBlocked:         passwordPolicy.CommonPasswordsBlocked,
+			MaxFailedAttempts:              lockoutPolicy.MaxFailedAttempts,
+			LockoutWindowSeconds:           int(lockoutPolicy.Window.Seconds()),
+			LockoutDurationSeconds:         int(lockoutPolicy.Duration.Seconds()),
+		})
+	}
+}
+
+func firstAuditStore(stores []audit.LogStore) audit.LogStore {
+	if len(stores) == 0 {
+		return nil
+	}
+	return stores[0]
+}
+
+func recordAuthAudit(r *http.Request, store audit.LogStore, actorID string, action string, entityID string, metadata map[string]any) {
+	if store == nil {
+		return
+	}
+
+	log, err := audit.NewLog(audit.NewLogInput{
+		OrgID:      "org-my-pham",
+		ActorID:    actorID,
+		Action:     action,
+		EntityType: "auth.session",
+		EntityID:   strings.TrimSpace(entityID),
+		RequestID:  response.RequestID(r),
+		Metadata:   metadata,
+		CreatedAt:  time.Now().UTC(),
+	})
+	if err != nil {
+		return
+	}
+
+	_ = store.Record(r.Context(), log)
+}
+
+func newLoginResponse(session auth.Session, now time.Time) loginResponse {
+	expiresIn := int(session.AccessExpiresAt.Sub(now).Seconds())
+	if expiresIn < 0 {
+		expiresIn = 0
+	}
+	refreshExpiresIn := int(session.RefreshExpiresAt.Sub(now).Seconds())
+	if refreshExpiresIn < 0 {
+		refreshExpiresIn = 0
+	}
+
+	return loginResponse{
+		AccessToken:      session.AccessToken,
+		RefreshToken:     session.RefreshToken,
+		TokenType:        "Bearer",
+		ExpiresIn:        expiresIn,
+		RefreshExpiresIn: refreshExpiresIn,
+		ExpiresAt:        session.AccessExpiresAt.Format(time.RFC3339),
+		User:             newUserResponse(session.Principal),
 	}
 }
 

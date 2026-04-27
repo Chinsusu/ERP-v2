@@ -25,9 +25,33 @@ paths:
                 $ref: "#/components/schemas/HealthSuccessResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+  /auth/login:
+    post:
+      summary: Create an authenticated session
+      operationId: login
+      security: []
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+      responses:
+        "200":
+          description: Login accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthLoginSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /auth/mock-login:
     post:
-      summary: Create a controlled mock auth session
+      summary: Create a controlled local auth session
       operationId: mockLogin
       security: []
       tags:
@@ -40,7 +64,7 @@ paths:
               $ref: "#/components/schemas/AuthLoginRequest"
       responses:
         "200":
-          description: Mock login accepted
+          description: Local login accepted
           content:
             application/json:
               schema:
@@ -49,6 +73,46 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /auth/refresh:
+    post:
+      summary: Refresh an authenticated session
+      operationId: refreshAuthSession
+      security: []
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRefreshRequest"
+      responses:
+        "200":
+          description: Session refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthLoginSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /auth/policy:
+    get:
+      summary: Get authentication password and lockout policy
+      operationId: getAuthPolicy
+      security: []
+      tags:
+        - auth
+      responses:
+        "200":
+          description: Authentication policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthPolicySuccessResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /me:
     get:
       summary: Get current authenticated user
@@ -670,6 +734,13 @@ components:
         password:
           type: string
           format: password
+    AuthRefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
     AuthLoginSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
@@ -683,11 +754,16 @@ components:
       type: object
       required:
         - access_token
+        - refresh_token
         - token_type
         - expires_in
+        - refresh_expires_in
+        - expires_at
         - user
       properties:
         access_token:
+          type: string
+        refresh_token:
           type: string
         token_type:
           type: string
@@ -696,8 +772,52 @@ components:
         expires_in:
           type: integer
           minimum: 1
+        refresh_expires_in:
+          type: integer
+          minimum: 1
+        expires_at:
+          type: string
+          format: date-time
         user:
           $ref: "#/components/schemas/UserProfile"
+    AuthPolicySuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/AuthPolicyResponse"
+    AuthPolicyResponse:
+      type: object
+      required:
+        - password_min_length
+        - password_requires_letter
+        - password_requires_number_or_symbol
+        - common_passwords_blocked
+        - max_failed_attempts
+        - lockout_window_seconds
+        - lockout_duration_seconds
+      properties:
+        password_min_length:
+          type: integer
+          minimum: 1
+        password_requires_letter:
+          type: boolean
+        password_requires_number_or_symbol:
+          type: boolean
+        common_passwords_blocked:
+          type: boolean
+        max_failed_attempts:
+          type: integer
+          minimum: 1
+        lockout_window_seconds:
+          type: integer
+          minimum: 1
+        lockout_duration_seconds:
+          type: integer
+          minimum: 1
     MeSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"

@@ -71,6 +71,27 @@ func RequireBearerToken(cfg MockConfig, next http.Handler) http.Handler {
 	})
 }
 
+func RequireSessionToken(sessions *SessionManager, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := bearerToken(r.Header.Get(authorizationHeader))
+		principal, ok := sessions.AuthenticateAccessToken(token)
+		if token == "" || !ok {
+			response.WriteError(
+				w,
+				r,
+				http.StatusUnauthorized,
+				response.ErrorCodeUnauthorized,
+				"Authentication required",
+				nil,
+			)
+			return
+		}
+
+		ctx := WithPrincipal(r.Context(), principal)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 func WithPrincipal(ctx context.Context, principal Principal) context.Context {
 	return context.WithValue(ctx, principalContextKey{}, principal)
 }

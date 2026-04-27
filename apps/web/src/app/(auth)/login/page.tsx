@@ -1,10 +1,23 @@
 import { signInAction } from "./actions";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams?: Promise<{ error?: string }>;
+};
+
+const errorCopy: Record<string, string> = {
+  invalid_credentials: "Email or password is invalid.",
+  password_policy: "Password does not meet the active policy."
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const error = params?.error ? errorCopy[params.error] : null;
+
   return (
     <main className="erp-page erp-page--centered">
       <form action={signInAction} className="erp-card erp-form-card">
         <h1 className="erp-form-title">ERP Login</h1>
+        {error ? <p className="erp-form-error">{error}</p> : null}
         <label className="erp-field">
           Email
           <input
