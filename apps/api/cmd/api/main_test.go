@@ -264,6 +264,44 @@ func TestAvailableStockHandlerRejectsUnsupportedMethod(t *testing.T) {
 	}
 }
 
+func TestBatchesHandlerReturnsFilteredRows(t *testing.T) {
+	catalog := inventoryapp.NewPrototypeBatchCatalog()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/inventory/batches?sku=serum-30ml&qc_status=hold", nil)
+	req.Header.Set(response.HeaderRequestID, "req-batch")
+	rec := httptest.NewRecorder()
+
+	batchesHandler(catalog).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var payload response.SuccessEnvelope[[]batchResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(payload.Data) != 1 {
+		t.Fatalf("rows = %d, want 1", len(payload.Data))
+	}
+	got := payload.Data[0]
+	if got.ID != "batch-serum-2604a" || got.QCStatus != "hold" || got.ExpiryDate != "2027-04-01" {
+		t.Fatalf("batch row = %+v, want hold serum batch", got)
+	}
+}
+
+func TestBatchDetailHandlerReturnsNotFound(t *testing.T) {
+	catalog := inventoryapp.NewPrototypeBatchCatalog()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/inventory/batches/missing", nil)
+	req.SetPathValue("batch_id", "missing")
+	rec := httptest.NewRecorder()
+
+	batchDetailHandler(catalog).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
 func TestEndOfDayReconciliationsHandlerReturnsFilteredRows(t *testing.T) {
 	store := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	service := inventoryapp.NewListEndOfDayReconciliations(store)
