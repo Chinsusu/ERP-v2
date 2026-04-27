@@ -415,7 +415,16 @@ paths:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PageSizeParam"
         - $ref: "#/components/parameters/SearchParam"
-        - $ref: "#/components/parameters/MasterDataStatusParam"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/WarehouseStatus"
+        - name: warehouse_type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/WarehouseType"
       responses:
         "200":
           description: Warehouse master data list
@@ -429,6 +438,280 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create warehouse master data
+      operationId: createWarehouse
+      tags:
+        - master-data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWarehouseRequest"
+      responses:
+        "201":
+          description: Warehouse master data created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /warehouses/{warehouse_id}:
+    get:
+      summary: Get warehouse master data detail
+      operationId: getWarehouse
+      tags:
+        - master-data
+      parameters:
+        - name: warehouse_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Warehouse master data detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update warehouse master data
+      operationId: updateWarehouse
+      tags:
+        - master-data
+      parameters:
+        - name: warehouse_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWarehouseRequest"
+      responses:
+        "200":
+          description: Warehouse master data updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /warehouses/{warehouse_id}/status:
+    patch:
+      summary: Change warehouse master data status
+      operationId: changeWarehouseStatus
+      tags:
+        - master-data
+      parameters:
+        - name: warehouse_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeWarehouseStatusRequest"
+      responses:
+        "200":
+          description: Warehouse master data status changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /warehouse-locations:
+    get:
+      summary: List warehouse location master data
+      operationId: listWarehouseLocations
+      tags:
+        - master-data
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/LocationStatus"
+        - name: location_type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/LocationType"
+      responses:
+        "200":
+          description: Warehouse location master data list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseLocationListSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create warehouse location master data
+      operationId: createWarehouseLocation
+      tags:
+        - master-data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWarehouseLocationRequest"
+      responses:
+        "201":
+          description: Warehouse location master data created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseLocationSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /warehouse-locations/{location_id}:
+    get:
+      summary: Get warehouse location master data detail
+      operationId: getWarehouseLocation
+      tags:
+        - master-data
+      parameters:
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Warehouse location master data detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseLocationSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update warehouse location master data
+      operationId: updateWarehouseLocation
+      tags:
+        - master-data
+      parameters:
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWarehouseLocationRequest"
+      responses:
+        "200":
+          description: Warehouse location master data updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseLocationSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /warehouse-locations/{location_id}/status:
+    patch:
+      summary: Change warehouse location master data status
+      operationId: changeWarehouseLocationStatus
+      tags:
+        - master-data
+      parameters:
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeWarehouseLocationStatusRequest"
+      responses:
+        "200":
+          description: Warehouse location master data status changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseLocationSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /inventory/stock-movements:
     post:
       summary: Record stock movement
@@ -1177,6 +1460,39 @@ components:
         - semi_finished
         - finished_good
         - service
+    WarehouseStatus:
+      type: string
+      enum:
+        - active
+        - inactive
+    WarehouseType:
+      type: string
+      enum:
+        - raw_material
+        - packaging
+        - semi_finished
+        - finished_good
+        - quarantine
+        - sample
+        - defect
+        - retail_store
+    LocationStatus:
+      type: string
+      enum:
+        - active
+        - inactive
+    LocationType:
+      type: string
+      enum:
+        - receiving
+        - qc_hold
+        - storage
+        - pick
+        - pack
+        - handover
+        - return
+        - lab
+        - scrap
     ProductListSuccessResponse:
       type: object
       required:
@@ -1499,6 +1815,15 @@ components:
         request_id:
           type: string
           example: req_lq7z2t9c
+    WarehouseSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/WarehouseListItem"
     WarehouseListItem:
       type: object
       required:
@@ -1511,10 +1836,12 @@ components:
         - allow_prod_issue
         - allow_quarantine
         - status
+        - created_at
+        - updated_at
       properties:
         id:
           type: string
-          example: wh_01HXABCDEF
+          example: wh-hcm-fg
         warehouse_code:
           type: string
           example: WH-HCM-FG
@@ -1522,17 +1849,13 @@ components:
           type: string
           example: Finished Goods Warehouse HCM
         warehouse_type:
-          type: string
-          enum:
-            - raw_material
-            - packaging
-            - semi_finished
-            - finished_good
-            - quarantine
-            - retail_store
+          $ref: "#/components/schemas/WarehouseType"
         site_code:
           type: string
           example: HCM
+        address:
+          type: string
+          example: Ho Chi Minh distribution center
         allow_sale_issue:
           type: boolean
           example: true
@@ -1543,7 +1866,194 @@ components:
           type: boolean
           example: false
         status:
-          $ref: "#/components/schemas/MasterDataStatus"
+          $ref: "#/components/schemas/WarehouseStatus"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        audit_log_id:
+          type: string
+          example: audit_1777280400000000000
+    CreateWarehouseRequest:
+      type: object
+      required:
+        - warehouse_code
+        - warehouse_name
+        - warehouse_type
+        - site_code
+      properties:
+        warehouse_code:
+          type: string
+          example: WH-HN-FG
+        warehouse_name:
+          type: string
+          example: Finished Goods Warehouse HN
+        warehouse_type:
+          $ref: "#/components/schemas/WarehouseType"
+        site_code:
+          type: string
+          example: HN
+        address:
+          type: string
+          example: Ha Noi distribution center
+        allow_sale_issue:
+          type: boolean
+          default: false
+        allow_prod_issue:
+          type: boolean
+          default: false
+        allow_quarantine:
+          type: boolean
+          default: false
+        status:
+          $ref: "#/components/schemas/WarehouseStatus"
+    UpdateWarehouseRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateWarehouseRequest"
+    ChangeWarehouseStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/WarehouseStatus"
+    WarehouseLocationListSuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+        - request_id
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/WarehouseLocationListItem"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        request_id:
+          type: string
+          example: req_lq7z2t9c
+    WarehouseLocationSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/WarehouseLocationListItem"
+    WarehouseLocationListItem:
+      type: object
+      required:
+        - id
+        - warehouse_id
+        - warehouse_code
+        - location_code
+        - location_name
+        - location_type
+        - allow_receive
+        - allow_pick
+        - allow_store
+        - is_default
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          example: loc-hcm-fg-pick-a01
+        warehouse_id:
+          type: string
+          example: wh-hcm-fg
+        warehouse_code:
+          type: string
+          example: WH-HCM-FG
+        location_code:
+          type: string
+          example: FG-PICK-A01
+        location_name:
+          type: string
+          example: Finished Goods Pick A01
+        location_type:
+          $ref: "#/components/schemas/LocationType"
+        zone_code:
+          type: string
+          example: PICK
+        allow_receive:
+          type: boolean
+          example: false
+        allow_pick:
+          type: boolean
+          example: true
+        allow_store:
+          type: boolean
+          example: true
+        is_default:
+          type: boolean
+          example: false
+        status:
+          $ref: "#/components/schemas/LocationStatus"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        audit_log_id:
+          type: string
+          example: audit_1777280400000000000
+    CreateWarehouseLocationRequest:
+      type: object
+      required:
+        - warehouse_id
+        - location_code
+        - location_name
+        - location_type
+      properties:
+        warehouse_id:
+          type: string
+          example: wh-hcm-fg
+        location_code:
+          type: string
+          example: FG-PACK-02
+        location_name:
+          type: string
+          example: Packing Bay 02
+        location_type:
+          $ref: "#/components/schemas/LocationType"
+        zone_code:
+          type: string
+          example: PACK
+        allow_receive:
+          type: boolean
+          default: false
+        allow_pick:
+          type: boolean
+          default: false
+        allow_store:
+          type: boolean
+          default: true
+        is_default:
+          type: boolean
+          default: false
+        status:
+          $ref: "#/components/schemas/LocationStatus"
+    UpdateWarehouseLocationRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateWarehouseLocationRequest"
+    ChangeWarehouseLocationStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/LocationStatus"
     StockMovementRequest:
       type: object
       required:

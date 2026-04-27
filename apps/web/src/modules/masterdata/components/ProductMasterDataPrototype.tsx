@@ -27,7 +27,7 @@ import type { ProductMasterDataInput, ProductMasterDataItem, ProductMasterDataQu
 const allStatusOptions = [{ label: "All statuses", value: "" }, ...productStatusOptions] as const;
 const allTypeOptions = [{ label: "All item types", value: "" }, ...productTypeOptions] as const;
 
-export function ProductMasterDataPrototype() {
+export function ProductMasterDataPrototype({ embedded = false }: { embedded?: boolean }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ProductStatus | "">("");
   const [itemType, setItemType] = useState<ProductMasterDataQuery["itemType"]>("");
@@ -178,17 +178,8 @@ export function ProductMasterDataPrototype() {
     setToast([{ id: `${Date.now()}`, title, description, tone }]);
   }
 
-  return (
-    <section className="erp-module-page erp-masterdata-page">
-      <header className="erp-page-header">
-        <div>
-          <p className="erp-module-eyebrow">MD</p>
-          <h1 className="erp-page-title">Master Data</h1>
-          <p className="erp-page-description">Item and SKU catalog for cosmetic operations</p>
-        </div>
-        <StatusChip tone="info">{summary.total} SKUs</StatusChip>
-      </header>
-
+  const content = (
+    <>
       <section className="erp-masterdata-toolbar" aria-label="Master data filters">
         <label className="erp-field">
           <span>Search</span>
@@ -342,6 +333,24 @@ export function ProductMasterDataPrototype() {
         {selectedItem ? <ProductDetail item={selectedItem} /> : null}
       </DetailDrawer>
       <ToastStack messages={toast} />
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <section className="erp-module-page erp-masterdata-page">
+      <header className="erp-page-header">
+        <div>
+          <p className="erp-module-eyebrow">MD</p>
+          <h1 className="erp-page-title">Master Data</h1>
+          <p className="erp-page-description">Item and SKU catalog for cosmetic operations</p>
+        </div>
+        <StatusChip tone="info">{summary.total} SKUs</StatusChip>
+      </header>
+      {content}
     </section>
   );
 

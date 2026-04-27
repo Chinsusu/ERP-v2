@@ -882,6 +882,130 @@ func TestProductDetailHandlerUpdatesAndStatusChange(t *testing.T) {
 	}
 }
 
+func TestWarehousesHandlerCreatesBlocksDuplicateAndWritesAudit(t *testing.T) {
+	auditStore := audit.NewInMemoryLogStore()
+	catalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditStore)
+	body := bytes.NewBufferString(`{
+		"warehouse_code": "WH-HN-FG",
+		"warehouse_name": "Finished Goods Warehouse HN",
+		"warehouse_type": "finished_good",
+		"site_code": "HN",
+		"address": "Ha Noi distribution center",
+		"allow_sale_issue": true,
+		"allow_prod_issue": false,
+		"allow_quarantine": false,
+		"status": "active"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/warehouses", body)
+	req.Header.Set(response.HeaderRequestID, "req-warehouse-create")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleERPAdmin)))
+	rec := httptest.NewRecorder()
+
+	warehousesHandler(catalog).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[warehouseResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.WarehouseCode != "WH-HN-FG" || payload.Data.AuditLogID == "" {
+		t.Fatalf("warehouse = %+v, want normalized warehouse with audit id", payload.Data)
+	}
+
+	duplicate := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/warehouses",
+		bytes.NewBufferString(`{"warehouse_code":"WH-HN-FG","warehouse_name":"Duplicate","warehouse_type":"finished_good","site_code":"HN","status":"active"}`),
+	)
+	duplicate = duplicate.WithContext(req.Context())
+	duplicateRec := httptest.NewRecorder()
+	warehousesHandler(catalog).ServeHTTP(duplicateRec, duplicate)
+	if duplicateRec.Code != http.StatusConflict {
+		t.Fatalf("duplicate status = %d, want %d: %s", duplicateRec.Code, http.StatusConflict, duplicateRec.Body.String())
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "masterdata.warehouse.created"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestWarehouseLocationsHandlerBlocksInvalidWarehouseAndInactiveLocation(t *testing.T) {
+	auditStore := audit.NewInMemoryLogStore()
+	catalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditStore)
+	principalContext := auth.WithPrincipal(context.Background(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleERPAdmin))
+
+	invalidWarehouse := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/warehouse-locations",
+		bytes.NewBufferString(`{"warehouse_id":"missing-warehouse","location_code":"FG-PACK-02","location_name":"Packing Bay 02","location_type":"pack","zone_code":"PACK","allow_store":true,"status":"active"}`),
+	).WithContext(principalContext)
+	invalidRec := httptest.NewRecorder()
+	warehouseLocationsHandler(catalog).ServeHTTP(invalidRec, invalidWarehouse)
+	if invalidRec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid warehouse status = %d, want %d: %s", invalidRec.Code, http.StatusBadRequest, invalidRec.Body.String())
+	}
+
+	createReq := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/warehouse-locations",
+		bytes.NewBufferString(`{"warehouse_id":"wh-hcm-fg","location_code":"FG-PACK-02","location_name":"Packing Bay 02","location_type":"pack","zone_code":"PACK","allow_store":true,"status":"active"}`),
+	).WithContext(principalContext)
+	createReq.Header.Set(response.HeaderRequestID, "req-location-create")
+	createRec := httptest.NewRecorder()
+	warehouseLocationsHandler(catalog).ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, want %d: %s", createRec.Code, http.StatusCreated, createRec.Body.String())
+	}
+
+	var created response.SuccessEnvelope[warehouseLocationResponse]
+	if err := json.NewDecoder(createRec.Body).Decode(&created); err != nil {
+		t.Fatalf("decode created location: %v", err)
+	}
+
+	statusReq := httptest.NewRequest(
+		http.MethodPatch,
+		"/api/v1/warehouse-locations/"+created.Data.ID+"/status",
+		bytes.NewBufferString(`{"status":"inactive"}`),
+	).WithContext(principalContext)
+	statusReq.SetPathValue("location_id", created.Data.ID)
+	statusRec := httptest.NewRecorder()
+	changeWarehouseLocationStatusHandler(catalog).ServeHTTP(statusRec, statusReq)
+	if statusRec.Code != http.StatusOK {
+		t.Fatalf("status change = %d, want %d: %s", statusRec.Code, http.StatusOK, statusRec.Body.String())
+	}
+
+	activeReq := httptest.NewRequest(http.MethodGet, "/api/v1/warehouse-locations?warehouse_id=wh-hcm-fg&status=active", nil).WithContext(principalContext)
+	activeRec := httptest.NewRecorder()
+	warehouseLocationsHandler(catalog).ServeHTTP(activeRec, activeReq)
+	if activeRec.Code != http.StatusOK {
+		t.Fatalf("active list = %d, want %d: %s", activeRec.Code, http.StatusOK, activeRec.Body.String())
+	}
+	var activePayload response.PaginatedSuccessEnvelope[[]warehouseLocationResponse]
+	if err := json.NewDecoder(activeRec.Body).Decode(&activePayload); err != nil {
+		t.Fatalf("decode active locations: %v", err)
+	}
+	for _, location := range activePayload.Data {
+		if location.ID == created.Data.ID {
+			t.Fatalf("inactive location %q was returned in active list", location.ID)
+		}
+	}
+}
+
 func TestStockMovementHandlerWritesAuditForAdjustment(t *testing.T) {
 	store := audit.NewInMemoryLogStore()
 	body := bytes.NewBufferString(`{
