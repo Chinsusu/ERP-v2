@@ -254,11 +254,100 @@ export interface paths {
         /** List warehouse master data */
         get: operations["listWarehouses"];
         put?: never;
-        post?: never;
+        /** Create warehouse master data */
+        post: operations["createWarehouse"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/warehouses/{warehouse_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get warehouse master data detail */
+        get: operations["getWarehouse"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update warehouse master data */
+        patch: operations["updateWarehouse"];
+        trace?: never;
+    };
+    "/warehouses/{warehouse_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change warehouse master data status */
+        patch: operations["changeWarehouseStatus"];
+        trace?: never;
+    };
+    "/warehouse-locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List warehouse location master data */
+        get: operations["listWarehouseLocations"];
+        put?: never;
+        /** Create warehouse location master data */
+        post: operations["createWarehouseLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/warehouse-locations/{location_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get warehouse location master data detail */
+        get: operations["getWarehouseLocation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update warehouse location master data */
+        patch: operations["updateWarehouseLocation"];
+        trace?: never;
+    };
+    "/warehouse-locations/{location_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change warehouse location master data status */
+        patch: operations["changeWarehouseLocationStatus"];
         trace?: never;
     };
     "/inventory/stock-movements": {
@@ -532,6 +621,14 @@ export interface components {
         MasterDataStatus: "draft" | "active" | "inactive" | "obsolete";
         /** @enum {string} */
         ItemType: "raw_material" | "packaging" | "semi_finished" | "finished_good" | "service";
+        /** @enum {string} */
+        WarehouseStatus: "active" | "inactive";
+        /** @enum {string} */
+        WarehouseType: "raw_material" | "packaging" | "semi_finished" | "finished_good" | "quarantine" | "sample" | "defect" | "retail_store";
+        /** @enum {string} */
+        LocationStatus: "active" | "inactive";
+        /** @enum {string} */
+        LocationType: "receiving" | "qc_hold" | "storage" | "pick" | "pack" | "handover" | "return" | "lab" | "scrap";
         ProductListSuccessResponse: {
             /** @example true */
             success: boolean;
@@ -684,24 +781,121 @@ export interface components {
             /** @example req_lq7z2t9c */
             request_id: string;
         };
+        WarehouseSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["WarehouseListItem"];
+        };
         WarehouseListItem: {
-            /** @example wh_01HXABCDEF */
+            /** @example wh-hcm-fg */
             id: string;
             /** @example WH-HCM-FG */
             warehouse_code: string;
             /** @example Finished Goods Warehouse HCM */
             warehouse_name: string;
-            /** @enum {string} */
-            warehouse_type: "raw_material" | "packaging" | "semi_finished" | "finished_good" | "quarantine" | "retail_store";
+            warehouse_type: components["schemas"]["WarehouseType"];
             /** @example HCM */
             site_code: string;
+            /** @example Ho Chi Minh distribution center */
+            address?: string;
             /** @example true */
             allow_sale_issue: boolean;
             /** @example false */
             allow_prod_issue: boolean;
             /** @example false */
             allow_quarantine: boolean;
-            status: components["schemas"]["MasterDataStatus"];
+            status: components["schemas"]["WarehouseStatus"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @example audit_1777280400000000000 */
+            audit_log_id?: string;
+        };
+        CreateWarehouseRequest: {
+            /** @example WH-HN-FG */
+            warehouse_code: string;
+            /** @example Finished Goods Warehouse HN */
+            warehouse_name: string;
+            warehouse_type: components["schemas"]["WarehouseType"];
+            /** @example HN */
+            site_code: string;
+            /** @example Ha Noi distribution center */
+            address?: string;
+            /** @default false */
+            allow_sale_issue: boolean;
+            /** @default false */
+            allow_prod_issue: boolean;
+            /** @default false */
+            allow_quarantine: boolean;
+            status?: components["schemas"]["WarehouseStatus"];
+        };
+        UpdateWarehouseRequest: components["schemas"]["CreateWarehouseRequest"];
+        ChangeWarehouseStatusRequest: {
+            status: components["schemas"]["WarehouseStatus"];
+        };
+        WarehouseLocationListSuccessResponse: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["WarehouseLocationListItem"][];
+            pagination: components["schemas"]["Pagination"];
+            /** @example req_lq7z2t9c */
+            request_id: string;
+        };
+        WarehouseLocationSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["WarehouseLocationListItem"];
+        };
+        WarehouseLocationListItem: {
+            /** @example loc-hcm-fg-pick-a01 */
+            id: string;
+            /** @example wh-hcm-fg */
+            warehouse_id: string;
+            /** @example WH-HCM-FG */
+            warehouse_code: string;
+            /** @example FG-PICK-A01 */
+            location_code: string;
+            /** @example Finished Goods Pick A01 */
+            location_name: string;
+            location_type: components["schemas"]["LocationType"];
+            /** @example PICK */
+            zone_code?: string;
+            /** @example false */
+            allow_receive: boolean;
+            /** @example true */
+            allow_pick: boolean;
+            /** @example true */
+            allow_store: boolean;
+            /** @example false */
+            is_default: boolean;
+            status: components["schemas"]["LocationStatus"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @example audit_1777280400000000000 */
+            audit_log_id?: string;
+        };
+        CreateWarehouseLocationRequest: {
+            /** @example wh-hcm-fg */
+            warehouse_id: string;
+            /** @example FG-PACK-02 */
+            location_code: string;
+            /** @example Packing Bay 02 */
+            location_name: string;
+            location_type: components["schemas"]["LocationType"];
+            /** @example PACK */
+            zone_code?: string;
+            /** @default false */
+            allow_receive: boolean;
+            /** @default false */
+            allow_pick: boolean;
+            /** @default true */
+            allow_store: boolean;
+            /** @default false */
+            is_default: boolean;
+            status?: components["schemas"]["LocationStatus"];
+        };
+        UpdateWarehouseLocationRequest: components["schemas"]["CreateWarehouseLocationRequest"];
+        ChangeWarehouseLocationStatusRequest: {
+            status: components["schemas"]["LocationStatus"];
         };
         StockMovementRequest: {
             movementId: string;
@@ -1465,8 +1659,8 @@ export interface operations {
                 page_size?: components["parameters"]["PageSizeParam"];
                 /** @description Quick search term for code, name, phone, or other whitelisted fields. */
                 q?: components["parameters"]["SearchParam"];
-                /** @description Filter by master data lifecycle status. */
-                status?: components["parameters"]["MasterDataStatusParam"];
+                status?: components["schemas"]["WarehouseStatus"];
+                warehouse_type?: components["schemas"]["WarehouseType"];
             };
             header?: never;
             path?: never;
@@ -1486,6 +1680,267 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    createWarehouse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWarehouseRequest"];
+            };
+        };
+        responses: {
+            /** @description Warehouse master data created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getWarehouse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                warehouse_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse master data detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateWarehouse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                warehouse_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWarehouseRequest"];
+            };
+        };
+        responses: {
+            /** @description Warehouse master data updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    changeWarehouseStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                warehouse_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeWarehouseStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Warehouse master data status changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listWarehouseLocations: {
+        parameters: {
+            query?: {
+                /** @description Page number for page-based pagination. */
+                page?: components["parameters"]["PageParam"];
+                /** @description Number of records returned per page. */
+                page_size?: components["parameters"]["PageSizeParam"];
+                /** @description Quick search term for code, name, phone, or other whitelisted fields. */
+                q?: components["parameters"]["SearchParam"];
+                warehouse_id?: string;
+                status?: components["schemas"]["LocationStatus"];
+                location_type?: components["schemas"]["LocationType"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse location master data list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseLocationListSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createWarehouseLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWarehouseLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Warehouse location master data created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseLocationSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getWarehouseLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse location master data detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseLocationSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateWarehouseLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWarehouseLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Warehouse location master data updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseLocationSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    changeWarehouseLocationStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeWarehouseLocationStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Warehouse location master data status changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseLocationSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     recordStockMovement: {
