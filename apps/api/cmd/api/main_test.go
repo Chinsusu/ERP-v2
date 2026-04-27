@@ -1281,6 +1281,10 @@ func TestStockMovementHandlerWritesAuditForAdjustment(t *testing.T) {
 		"warehouseId": "wh-hcm",
 		"movementType": "ADJUST",
 		"quantity": "8.000000",
+		"baseUomCode": "PCS",
+		"sourceQuantity": "2.000000",
+		"sourceUomCode": "CARTON",
+		"conversionFactor": "4.000000",
 		"reason": "cycle count"
 	}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/inventory/stock-movements", body)
@@ -1297,6 +1301,13 @@ func TestStockMovementHandlerWritesAuditForAdjustment(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
 	}
+	var payload response.SuccessEnvelope[stockMovementResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode stock movement response: %v", err)
+	}
+	if payload.Data.MovementQuantity != "8.000000" || payload.Data.BaseUOMCode != "PCS" || payload.Data.SourceUOMCode != "CARTON" || payload.Data.ConversionFactor != "4.000000" {
+		t.Fatalf("stock movement response = %+v, want decimal/base/source UOM fields", payload.Data)
+	}
 
 	logs, err := store.List(req.Context(), audit.Query{EntityID: "mov-adjust-test"})
 	if err != nil {
@@ -1311,5 +1322,8 @@ func TestStockMovementHandlerWritesAuditForAdjustment(t *testing.T) {
 	}
 	if got.RequestID != "req-adjust" {
 		t.Fatalf("request id = %q, want req-adjust", got.RequestID)
+	}
+	if got.AfterData["movement_qty"] != "8.000000" || got.AfterData["base_uom_code"] != "PCS" || got.AfterData["source_uom_code"] != "CARTON" {
+		t.Fatalf("audit after data = %+v, want decimal/base/source UOM metadata", got.AfterData)
 	}
 }

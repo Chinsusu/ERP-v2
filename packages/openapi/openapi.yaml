@@ -2561,6 +2561,7 @@ components:
         - warehouseId
         - movementType
         - quantity
+        - baseUomCode
         - reason
       properties:
         movementId:
@@ -2578,6 +2579,14 @@ components:
             - ADJUST
         quantity:
           $ref: "#/components/schemas/Quantity"
+        baseUomCode:
+          $ref: "#/components/schemas/UOMCode"
+        sourceQuantity:
+          $ref: "#/components/schemas/Quantity"
+        sourceUomCode:
+          $ref: "#/components/schemas/UOMCode"
+        conversionFactor:
+          $ref: "#/components/schemas/Quantity"
         reason:
           type: string
     StockMovementSuccessResponse:
@@ -2594,6 +2603,11 @@ components:
       required:
         - movement_id
         - status
+        - movement_qty
+        - base_uom_code
+        - source_qty
+        - source_uom_code
+        - conversion_factor
       properties:
         movement_id:
           type: string
@@ -2601,6 +2615,16 @@ components:
           type: string
           enum:
             - recorded
+        movement_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        source_qty:
+          $ref: "#/components/schemas/Quantity"
+        source_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        conversion_factor:
+          $ref: "#/components/schemas/Quantity"
     AvailableStockSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"

@@ -1119,6 +1119,10 @@ export interface components {
             /** @enum {string} */
             movementType: "RECEIVE" | "ISSUE" | "TRANSFER_IN" | "ADJUST";
             quantity: components["schemas"]["Quantity"];
+            baseUomCode: components["schemas"]["UOMCode"];
+            sourceQuantity?: components["schemas"]["Quantity"];
+            sourceUomCode?: components["schemas"]["UOMCode"];
+            conversionFactor?: components["schemas"]["Quantity"];
             reason: string;
         };
         StockMovementSuccessResponse: components["schemas"]["SuccessResponse"] & {
@@ -1128,6 +1132,11 @@ export interface components {
             movement_id: string;
             /** @enum {string} */
             status: "recorded";
+            movement_qty: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            source_qty: components["schemas"]["Quantity"];
+            source_uom_code: components["schemas"]["UOMCode"];
+            conversion_factor: components["schemas"]["Quantity"];
         };
         AvailableStockSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["AvailableStockItem"][];
