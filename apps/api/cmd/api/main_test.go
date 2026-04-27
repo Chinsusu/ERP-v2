@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"testing"
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
+	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
@@ -713,6 +715,170 @@ func TestAuditLogsHandlerRejectsDelete(t *testing.T) {
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestProductsHandlerListsFilteredMasterData(t *testing.T) {
+	catalog := masterdataapp.NewPrototypeItemCatalog(audit.NewInMemoryLogStore())
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/products?q=serum&status=active", nil)
+	req.Header.Set(response.HeaderRequestID, "req-product-list")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleERPAdmin)))
+	rec := httptest.NewRecorder()
+
+	productsHandler(catalog).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.PaginatedSuccessEnvelope[[]productResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(payload.Data) != 1 {
+		t.Fatalf("products = %d, want 1", len(payload.Data))
+	}
+	if payload.Data[0].SKUCode != "SERUM-30ML" || payload.Pagination.TotalItems != 1 {
+		t.Fatalf("payload = %+v, want SERUM-30ML with one total item", payload)
+	}
+}
+
+func TestProductsHandlerCreatesBlocksDuplicateAndWritesAudit(t *testing.T) {
+	auditStore := audit.NewInMemoryLogStore()
+	catalog := masterdataapp.NewPrototypeItemCatalog(auditStore)
+	body := bytes.NewBufferString(`{
+		"item_code": "ITEM-MASK-SET",
+		"sku_code": "MASK-SET-05",
+		"name": "Sheet Mask Set",
+		"item_type": "finished_good",
+		"item_group": "mask",
+		"brand_code": "MYH",
+		"uom_base": "EA",
+		"lot_controlled": true,
+		"expiry_controlled": true,
+		"shelf_life_days": 540,
+		"qc_required": true,
+		"status": "draft",
+		"is_sellable": true,
+		"is_producible": true
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/products", body)
+	req.Header.Set(response.HeaderRequestID, "req-product-create")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleERPAdmin)))
+	rec := httptest.NewRecorder()
+
+	productsHandler(catalog).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[productResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.ItemCode != "ITEM-MASK-SET" || payload.Data.AuditLogID == "" {
+		t.Fatalf("product = %+v, want normalized item with audit id", payload.Data)
+	}
+
+	duplicate := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/products",
+		bytes.NewBufferString(`{"item_code":"ITEM-MASK-SET","sku_code":"MASK-SET-99","name":"Duplicate","item_type":"finished_good","uom_base":"EA"}`),
+	)
+	duplicate = duplicate.WithContext(req.Context())
+	duplicateRec := httptest.NewRecorder()
+	productsHandler(catalog).ServeHTTP(duplicateRec, duplicate)
+	if duplicateRec.Code != http.StatusConflict {
+		t.Fatalf("duplicate status = %d, want %d: %s", duplicateRec.Code, http.StatusConflict, duplicateRec.Body.String())
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "masterdata.item.created"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestProductDetailHandlerUpdatesAndStatusChange(t *testing.T) {
+	auditStore := audit.NewInMemoryLogStore()
+	catalog := masterdataapp.NewPrototypeItemCatalog(auditStore)
+	principalContext := auth.WithPrincipal(context.Background(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleERPAdmin))
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/products/item-serum-30ml", nil).WithContext(principalContext)
+	getReq.SetPathValue("product_id", "item-serum-30ml")
+	getRec := httptest.NewRecorder()
+	productDetailHandler(catalog).ServeHTTP(getRec, getReq)
+	if getRec.Code != http.StatusOK {
+		t.Fatalf("get status = %d, want %d: %s", getRec.Code, http.StatusOK, getRec.Body.String())
+	}
+
+	updateBody := bytes.NewBufferString(`{
+		"item_code": "ITEM-SERUM-HYDRA",
+		"sku_code": "SERUM-30ML",
+		"name": "Hydrating Serum 30ml v2",
+		"item_type": "finished_good",
+		"item_group": "serum",
+		"brand_code": "MYH",
+		"uom_base": "EA",
+		"lot_controlled": true,
+		"expiry_controlled": true,
+		"shelf_life_days": 730,
+		"qc_required": true,
+		"status": "active",
+		"is_sellable": true,
+		"is_producible": true
+	}`)
+	updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/products/item-serum-30ml", updateBody).WithContext(principalContext)
+	updateReq.SetPathValue("product_id", "item-serum-30ml")
+	updateRec := httptest.NewRecorder()
+
+	productDetailHandler(catalog).ServeHTTP(updateRec, updateReq)
+
+	if updateRec.Code != http.StatusOK {
+		t.Fatalf("update status = %d, want %d: %s", updateRec.Code, http.StatusOK, updateRec.Body.String())
+	}
+	var updatePayload response.SuccessEnvelope[productResponse]
+	if err := json.NewDecoder(updateRec.Body).Decode(&updatePayload); err != nil {
+		t.Fatalf("decode update response: %v", err)
+	}
+	if updatePayload.Data.Name != "Hydrating Serum 30ml v2" || updatePayload.Data.AuditLogID == "" {
+		t.Fatalf("updated product = %+v, want changed name with audit", updatePayload.Data)
+	}
+
+	statusReq := httptest.NewRequest(
+		http.MethodPatch,
+		"/api/v1/products/item-serum-30ml/status",
+		bytes.NewBufferString(`{"status":"inactive"}`),
+	).WithContext(principalContext)
+	statusReq.SetPathValue("product_id", "item-serum-30ml")
+	statusRec := httptest.NewRecorder()
+
+	changeProductStatusHandler(catalog).ServeHTTP(statusRec, statusReq)
+
+	if statusRec.Code != http.StatusOK {
+		t.Fatalf("status change = %d, want %d: %s", statusRec.Code, http.StatusOK, statusRec.Body.String())
+	}
+	var statusPayload response.SuccessEnvelope[productResponse]
+	if err := json.NewDecoder(statusRec.Body).Decode(&statusPayload); err != nil {
+		t.Fatalf("decode status response: %v", err)
+	}
+	if statusPayload.Data.Status != "inactive" || statusPayload.Data.AuditLogID == "" {
+		t.Fatalf("status product = %+v, want inactive with audit", statusPayload.Data)
 	}
 }
 

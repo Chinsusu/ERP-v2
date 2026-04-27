@@ -11,6 +11,8 @@ import (
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
+	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
+	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	returnsdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
 	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
@@ -74,6 +76,59 @@ type permissionResponse struct {
 	Key   string `json:"key"`
 	Name  string `json:"name"`
 	Group string `json:"group"`
+}
+
+type productResponse struct {
+	ID               string  `json:"id"`
+	ItemCode         string  `json:"item_code"`
+	SKUCode          string  `json:"sku_code"`
+	Name             string  `json:"name"`
+	ItemType         string  `json:"item_type"`
+	ItemGroup        string  `json:"item_group,omitempty"`
+	BrandCode        string  `json:"brand_code,omitempty"`
+	UOMCode          string  `json:"uom_code"`
+	UOMBase          string  `json:"uom_base"`
+	UOMPurchase      string  `json:"uom_purchase,omitempty"`
+	UOMIssue         string  `json:"uom_issue,omitempty"`
+	LotControlled    bool    `json:"lot_controlled"`
+	ExpiryControlled bool    `json:"expiry_controlled"`
+	ShelfLifeDays    int     `json:"shelf_life_days,omitempty"`
+	QCRequired       bool    `json:"qc_required"`
+	Status           string  `json:"status"`
+	StandardCost     float64 `json:"standard_cost,omitempty"`
+	IsSellable       bool    `json:"is_sellable"`
+	IsPurchasable    bool    `json:"is_purchasable"`
+	IsProducible     bool    `json:"is_producible"`
+	SpecVersion      string  `json:"spec_version,omitempty"`
+	CreatedAt        string  `json:"created_at"`
+	UpdatedAt        string  `json:"updated_at"`
+	AuditLogID       string  `json:"audit_log_id,omitempty"`
+}
+
+type productRequest struct {
+	ItemCode         string  `json:"item_code"`
+	SKUCode          string  `json:"sku_code"`
+	Name             string  `json:"name"`
+	ItemType         string  `json:"item_type"`
+	ItemGroup        string  `json:"item_group"`
+	BrandCode        string  `json:"brand_code"`
+	UOMBase          string  `json:"uom_base"`
+	UOMPurchase      string  `json:"uom_purchase"`
+	UOMIssue         string  `json:"uom_issue"`
+	LotControlled    bool    `json:"lot_controlled"`
+	ExpiryControlled bool    `json:"expiry_controlled"`
+	ShelfLifeDays    int     `json:"shelf_life_days"`
+	QCRequired       bool    `json:"qc_required"`
+	Status           string  `json:"status"`
+	StandardCost     float64 `json:"standard_cost"`
+	IsSellable       bool    `json:"is_sellable"`
+	IsPurchasable    bool    `json:"is_purchasable"`
+	IsProducible     bool    `json:"is_producible"`
+	SpecVersion      string  `json:"spec_version"`
+}
+
+type changeProductStatusRequest struct {
+	Status string `json:"status"`
 }
 
 type availableStockResponse struct {
@@ -311,6 +366,7 @@ func main() {
 	authSessions := auth.NewSessionManager(authConfig, time.Now)
 	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
 	auditLogStore := audit.NewPrototypeLogStore()
+	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
 	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	listEndOfDayReconciliations := inventoryapp.NewListEndOfDayReconciliations(reconciliationStore)
 	closeEndOfDayReconciliation := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditLogStore)
@@ -347,6 +403,28 @@ func main() {
 			authSessions,
 			auth.PermissionAuditLogView,
 			http.HandlerFunc(auditLogsHandler(auditLogStore)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/products",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(productsHandler(itemCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/products/{product_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(productDetailHandler(itemCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/products/{product_id}/status",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(changeProductStatusHandler(itemCatalog)),
 		),
 	)
 	mux.Handle(
@@ -750,6 +828,209 @@ func auditLogsHandler(store audit.LogStore) http.HandlerFunc {
 		}
 
 		response.WriteSuccess(w, r, http.StatusOK, payload)
+	}
+}
+
+func productsHandler(catalog *masterdataapp.ItemCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+				writePermissionDenied(w, r, auth.PermissionMasterDataView)
+				return
+			}
+			filter := masterdatadomain.NewItemFilter(
+				r.URL.Query().Get("q"),
+				masterdatadomain.ItemStatus(r.URL.Query().Get("status")),
+				masterdatadomain.ItemType(r.URL.Query().Get("item_type")),
+				queryInt(r, "page"),
+				queryInt(r, "page_size"),
+			)
+			items, pagination, err := catalog.List(r.Context(), filter)
+			if err != nil {
+				writeProductError(w, r, err)
+				return
+			}
+
+			payload := make([]productResponse, 0, len(items))
+			for _, item := range items {
+				payload = append(payload, newProductResponse(item, ""))
+			}
+			response.WritePaginatedSuccess(w, r, http.StatusOK, payload, pagination)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload productRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid product master data payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.Create(r.Context(), masterdataapp.CreateItemInput{
+				ItemCode:         payload.ItemCode,
+				SKUCode:          payload.SKUCode,
+				Name:             payload.Name,
+				Type:             payload.ItemType,
+				Group:            payload.ItemGroup,
+				BrandCode:        payload.BrandCode,
+				UOMBase:          payload.UOMBase,
+				UOMPurchase:      payload.UOMPurchase,
+				UOMIssue:         payload.UOMIssue,
+				LotControlled:    payload.LotControlled,
+				ExpiryControlled: payload.ExpiryControlled,
+				ShelfLifeDays:    payload.ShelfLifeDays,
+				QCRequired:       payload.QCRequired,
+				Status:           payload.Status,
+				StandardCost:     payload.StandardCost,
+				IsSellable:       payload.IsSellable,
+				IsPurchasable:    payload.IsPurchasable,
+				IsProducible:     payload.IsProducible,
+				SpecVersion:      payload.SpecVersion,
+				ActorID:          principal.UserID,
+				RequestID:        response.RequestID(r),
+			})
+			if err != nil {
+				writeProductError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusCreated, newProductResponse(result.Item, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func productDetailHandler(catalog *masterdataapp.ItemCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+				writePermissionDenied(w, r, auth.PermissionMasterDataView)
+				return
+			}
+			item, err := catalog.Get(r.Context(), r.PathValue("product_id"))
+			if err != nil {
+				writeProductError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusOK, newProductResponse(item, ""))
+		case http.MethodPatch:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload productRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid product master data payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.Update(r.Context(), masterdataapp.UpdateItemInput{
+				ID:               r.PathValue("product_id"),
+				ItemCode:         payload.ItemCode,
+				SKUCode:          payload.SKUCode,
+				Name:             payload.Name,
+				Type:             payload.ItemType,
+				Group:            payload.ItemGroup,
+				BrandCode:        payload.BrandCode,
+				UOMBase:          payload.UOMBase,
+				UOMPurchase:      payload.UOMPurchase,
+				UOMIssue:         payload.UOMIssue,
+				LotControlled:    payload.LotControlled,
+				ExpiryControlled: payload.ExpiryControlled,
+				ShelfLifeDays:    payload.ShelfLifeDays,
+				QCRequired:       payload.QCRequired,
+				Status:           payload.Status,
+				StandardCost:     payload.StandardCost,
+				IsSellable:       payload.IsSellable,
+				IsPurchasable:    payload.IsPurchasable,
+				IsProducible:     payload.IsProducible,
+				SpecVersion:      payload.SpecVersion,
+				ActorID:          principal.UserID,
+				RequestID:        response.RequestID(r),
+			})
+			if err != nil {
+				writeProductError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusOK, newProductResponse(result.Item, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func changeProductStatusHandler(catalog *masterdataapp.ItemCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload changeProductStatusRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid product status payload",
+				nil,
+			)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		result, err := catalog.ChangeStatus(r.Context(), masterdataapp.ChangeItemStatusInput{
+			ID:        r.PathValue("product_id"),
+			Status:    payload.Status,
+			ActorID:   principal.UserID,
+			RequestID: response.RequestID(r),
+		})
+		if err != nil {
+			writeProductError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newProductResponse(result.Item, result.AuditLogID))
 	}
 }
 
@@ -1473,6 +1754,85 @@ func writeReturnReceiptError(w http.ResponseWriter, r *http.Request, err error) 
 	}
 }
 
+func writeProductError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, masterdataapp.ErrItemNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Product master data was not found", nil)
+	case errors.Is(err, masterdataapp.ErrDuplicateItemCode):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Item code already exists",
+			map[string]any{"field": "item_code"},
+		)
+	case errors.Is(err, masterdataapp.ErrDuplicateSKUCode):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"SKU code already exists",
+			map[string]any{"field": "sku_code"},
+		)
+	case errors.Is(err, masterdatadomain.ErrItemRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Product master data is missing required fields",
+			map[string]any{"required": "item_code, sku_code, name, item_type, and uom_base"},
+		)
+	case errors.Is(err, masterdatadomain.ErrItemInvalidType):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Product item type is invalid",
+			map[string]any{"allowed": "raw_material, packaging, semi_finished, finished_good, service"},
+		)
+	case errors.Is(err, masterdatadomain.ErrItemInvalidStatus):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Product status is invalid",
+			map[string]any{"allowed": "draft, active, inactive, obsolete"},
+		)
+	case errors.Is(err, masterdatadomain.ErrItemInvalidShelfLife):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Shelf life days must be positive when expiry control is enabled",
+			map[string]any{"field": "shelf_life_days"},
+		)
+	case errors.Is(err, masterdatadomain.ErrItemInvalidCost):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Standard cost cannot be negative",
+			map[string]any{"field": "standard_cost"},
+		)
+	default:
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Product master data request could not be processed",
+			nil,
+		)
+	}
+}
+
 func writePermissionDenied(w http.ResponseWriter, r *http.Request, permission auth.PermissionKey) {
 	response.WriteError(
 		w,
@@ -1482,6 +1842,35 @@ func writePermissionDenied(w http.ResponseWriter, r *http.Request, permission au
 		"Permission denied",
 		map[string]any{"permission": string(permission)},
 	)
+}
+
+func newProductResponse(item masterdatadomain.Item, auditLogID string) productResponse {
+	return productResponse{
+		ID:               item.ID,
+		ItemCode:         item.ItemCode,
+		SKUCode:          item.SKUCode,
+		Name:             item.Name,
+		ItemType:         string(item.Type),
+		ItemGroup:        item.Group,
+		BrandCode:        item.BrandCode,
+		UOMCode:          item.UOMBase,
+		UOMBase:          item.UOMBase,
+		UOMPurchase:      item.UOMPurchase,
+		UOMIssue:         item.UOMIssue,
+		LotControlled:    item.LotControlled,
+		ExpiryControlled: item.ExpiryControlled,
+		ShelfLifeDays:    item.ShelfLifeDays,
+		QCRequired:       item.QCRequired,
+		Status:           string(item.Status),
+		StandardCost:     item.StandardCost,
+		IsSellable:       item.IsSellable,
+		IsPurchasable:    item.IsPurchasable,
+		IsProducible:     item.IsProducible,
+		SpecVersion:      item.SpecVersion,
+		CreatedAt:        item.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:        item.UpdatedAt.Format(time.RFC3339),
+		AuditLogID:       auditLogID,
+	}
 }
 
 func newAuditLogResponse(log audit.Log) auditLogResponse {

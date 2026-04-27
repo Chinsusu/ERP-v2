@@ -219,6 +219,11 @@ paths:
         - $ref: "#/components/parameters/PageSizeParam"
         - $ref: "#/components/parameters/SearchParam"
         - $ref: "#/components/parameters/MasterDataStatusParam"
+        - name: item_type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ItemType"
       responses:
         "200":
           description: Product master data list
@@ -232,6 +237,126 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create product master data
+      operationId: createProduct
+      tags:
+        - master-data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Product master data created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /products/{product_id}:
+    get:
+      summary: Get product master data detail
+      operationId: getProduct
+      tags:
+        - master-data
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product master data detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update product master data
+      operationId: updateProduct
+      tags:
+        - master-data
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+      responses:
+        "200":
+          description: Product master data updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /products/{product_id}/status:
+    patch:
+      summary: Change product master data status
+      operationId: changeProductStatus
+      tags:
+        - master-data
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeProductStatusRequest"
+      responses:
+        "200":
+          description: Product master data status changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /suppliers:
     get:
       summary: List supplier master data
@@ -1044,6 +1169,14 @@ components:
         - active
         - inactive
         - obsolete
+    ItemType:
+      type: string
+      enum:
+        - raw_material
+        - packaging
+        - semi_finished
+        - finished_good
+        - service
     ProductListSuccessResponse:
       type: object
       required:
@@ -1064,48 +1197,178 @@ components:
         request_id:
           type: string
           example: req_lq7z2t9c
+    ProductSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ProductListItem"
     ProductListItem:
       type: object
       required:
         - id
+        - item_code
         - sku_code
         - name
         - item_type
         - uom_code
+        - uom_base
         - lot_controlled
         - expiry_controlled
         - qc_required
         - status
+        - is_sellable
+        - is_purchasable
+        - is_producible
+        - created_at
+        - updated_at
       properties:
         id:
           type: string
-          example: sku_01HXABCDEF
+          example: item-serum-30ml
+        item_code:
+          type: string
+          example: ITEM-SERUM-HYDRA
         sku_code:
           type: string
-          example: FG-ABC-SER-30-0012
+          example: SERUM-30ML
         name:
           type: string
-          example: Serum Vitamin C 30ml
+          example: Hydrating Serum 30ml
         item_type:
+          $ref: "#/components/schemas/ItemType"
+        item_group:
           type: string
-          enum:
-            - raw_material
-            - packaging
-            - semi_finished
-            - finished_good
-            - service
+          example: serum
+        brand_code:
+          type: string
+          example: MYH
         uom_code:
           type: string
-          example: PCS
+          example: EA
+        uom_base:
+          type: string
+          example: EA
+        uom_purchase:
+          type: string
+          example: EA
+        uom_issue:
+          type: string
+          example: EA
         lot_controlled:
           type: boolean
           example: true
         expiry_controlled:
           type: boolean
           example: true
+        shelf_life_days:
+          type: integer
+          minimum: 0
+          example: 730
         qc_required:
           type: boolean
           example: true
+        status:
+          $ref: "#/components/schemas/MasterDataStatus"
+        standard_cost:
+          type: number
+          minimum: 0
+          example: 64000
+        is_sellable:
+          type: boolean
+          example: true
+        is_purchasable:
+          type: boolean
+          example: false
+        is_producible:
+          type: boolean
+          example: true
+        spec_version:
+          type: string
+          example: SPEC-SERUM-2026.04
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        audit_log_id:
+          type: string
+          example: audit_1777280400000000000
+    CreateProductRequest:
+      type: object
+      required:
+        - item_code
+        - sku_code
+        - name
+        - item_type
+        - uom_base
+      properties:
+        item_code:
+          type: string
+          example: ITEM-MASK-SET
+        sku_code:
+          type: string
+          example: MASK-SET-05
+        name:
+          type: string
+          example: Sheet Mask Set
+        item_type:
+          $ref: "#/components/schemas/ItemType"
+        item_group:
+          type: string
+          example: mask
+        brand_code:
+          type: string
+          example: MYH
+        uom_base:
+          type: string
+          example: EA
+        uom_purchase:
+          type: string
+          example: EA
+        uom_issue:
+          type: string
+          example: EA
+        lot_controlled:
+          type: boolean
+          default: false
+        expiry_controlled:
+          type: boolean
+          default: false
+        shelf_life_days:
+          type: integer
+          minimum: 0
+        qc_required:
+          type: boolean
+          default: false
+        status:
+          $ref: "#/components/schemas/MasterDataStatus"
+        standard_cost:
+          type: number
+          minimum: 0
+        is_sellable:
+          type: boolean
+          default: false
+        is_purchasable:
+          type: boolean
+          default: false
+        is_producible:
+          type: boolean
+          default: false
+        spec_version:
+          type: string
+    UpdateProductRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateProductRequest"
+    ChangeProductStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
         status:
           $ref: "#/components/schemas/MasterDataStatus"
     SupplierListSuccessResponse:
