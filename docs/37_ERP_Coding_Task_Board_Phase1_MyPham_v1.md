@@ -163,7 +163,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | S1-04-01 | Batch and QC status base model | Batch/QC | BE Lead + QA | P0 | Done | `docs/05_...` + `docs/17_...` |
 | S1-04-02 | QC status transition and audit path | Batch/QC | BE Lead + QA + Internal Control | P1 | Done | `docs/19_...` + `docs/33_...` |
 | S1-05-01 | Warehouse receiving backend v1 | Warehouse Receiving | BE Lead + Warehouse | P0 | Done | `docs/33_...` + `docs/16_...` |
-| S1-05-02 | Warehouse receiving UI v1 | Warehouse Receiving | FE Lead + Warehouse + UI/UX | P0 | Backlog | `docs/39_...` |
+| S1-05-02 | Warehouse receiving UI v1 | Warehouse Receiving | FE Lead + Warehouse + UI/UX | P0 | Done | `docs/39_...` |
 | S1-06-01 | Warehouse daily board data integration v1 | Warehouse Daily Board | FE Lead + BE Lead + Warehouse | P1 | Backlog | `docs/33_...` + `docs/39_...` |
 
 ---
@@ -1397,7 +1397,7 @@ Evidence:
 
 **Owner:** FE Lead + Warehouse + UI/UX
 **Priority:** P0
-**Status:** Backlog
+**Status:** Done
 **Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1407,6 +1407,21 @@ Acceptance criteria:
 - Quantity and location validation errors are visible and actionable.
 - Posting action requires confirmation and shows audit/status result.
 - UI tests cover route access, state rendering, and validation behavior.
+
+Current state:
+
+- Warehouse receiving UI is available from the Operations menu at `/receiving`.
+- The screen includes warehouse/status filters, KPI counters, goods receipt table, receipt detail, line detail, stock movement evidence, and a draft creation form.
+- UI supports the backend state flow: create draft, submit, mark inspect-ready, and post with confirmation.
+- Posting shows status/audit feedback and renders stock movement rows after success.
+- The service uses the real `/goods-receipts` API when available and a prototype fallback for local UI usage when the dev API is offline.
+- Validation covers missing location/reference/line data, positive quantity, missing batch/QC before posting, and duplicate posting in service tests.
+
+Evidence:
+
+- Task branch: `codex/s1-05-02-warehouse-receiving-ui`.
+- Local checks: frontend typecheck and targeted receiving/menu tests.
+- Broader frontend build, full tests, smoke, and diff checks are run before merge for this task.
 
 ### S1-06-01 Warehouse Daily Board Data Integration V1
 
@@ -1458,6 +1473,7 @@ Acceptance criteria:
 | S1-00-03 | PR #133; UOM domain/catalog, PostgreSQL UOM master/conversion migration, Phase 1 UOM seeds, global/item-specific conversion service, and UOM conversion tests |
 | S1-03-01 | PR #134; decimal base-UOM stock movement domain/store, stock ledger/balance migration 000004, source conversion fields, OpenAPI/generated schema, and inbound/outbound/adjustment/rollback tests |
 | S1-05-01 | Manual merge; goods receipt backend state path, receive-enabled location validation, batch/QC posting guard, audited stock movement recording without direct balance updates, OpenAPI/generated schema, and receiving tests |
+| S1-05-02 | Manual merge; `/receiving` UI, menu route, goods receipt filters/KPIs/table/detail/actions, post confirmation, API-backed service with prototype fallback, and receiving service tests |
 
 ---
 
@@ -1477,7 +1493,6 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-05-02` - Warehouse receiving UI v1.
-2. `S1-06-01` - Warehouse daily board data integration v1.
+1. `S1-06-01` - Warehouse daily board data integration v1.
 
-The stock ledger foundation now stores decimal base-UOM movement data, available stock exposes Phase 1 quantity buckets, batch/QC status changes are permissioned and audited, and the receiving backend now owns goods receipt state/posting. The next tasks should make receiving usable in the UI and feed operational signals into the warehouse daily board.
+The stock ledger foundation now stores decimal base-UOM movement data, available stock exposes Phase 1 quantity buckets, batch/QC status changes are permissioned and audited, and receiving now has backend plus UI coverage. The next task should feed these operational signals into the warehouse daily board.

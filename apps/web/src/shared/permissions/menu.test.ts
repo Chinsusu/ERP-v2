@@ -49,6 +49,7 @@ describe("permission menu", () => {
 
     expect(labels).toContain("Dashboard");
     expect(labels).toContain("Warehouse Daily Board");
+    expect(labels).toContain("Receiving");
     expect(labels).toContain("Inventory");
     expect(labels).not.toContain("Settings");
     expect(labels).not.toContain("Audit Log");
