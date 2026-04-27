@@ -1,6 +1,10 @@
 package domain
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
+)
 
 func TestMovementTypesIncludeOperationalStockLedgerTypes(t *testing.T) {
 	types := MovementTypes()
@@ -29,7 +33,7 @@ func TestStockMovementRequiresSourceDocument(t *testing.T) {
 func TestStockMovementBalanceDeltaForReserve(t *testing.T) {
 	movement, err := NewStockMovement(validMovementInput(func(input *NewStockMovementInput) {
 		input.MovementType = MovementSalesReserve
-		input.Quantity = 7
+		input.Quantity = decimal.MustQuantity("7")
 	}))
 	if err != nil {
 		t.Fatalf("new movement: %v", err)
@@ -47,7 +51,7 @@ func TestStockMovementBalanceDeltaForReserve(t *testing.T) {
 	if err != nil {
 		t.Fatalf("balance delta: %v", err)
 	}
-	if delta.OnHand != 0 || delta.Reserved != 7 || delta.Available != -7 {
+	if delta.OnHand != "0.000000" || delta.Reserved != "7.000000" || delta.Available != "-7.000000" {
 		t.Fatalf("delta = %+v, want reserved +7 and available -7", delta)
 	}
 }
@@ -55,7 +59,7 @@ func TestStockMovementBalanceDeltaForReserve(t *testing.T) {
 func TestStockMovementAdjustmentIsAuditable(t *testing.T) {
 	movement, err := NewStockMovement(validMovementInput(func(input *NewStockMovementInput) {
 		input.MovementType = MovementAdjustmentOut
-		input.Quantity = 4
+		input.Quantity = decimal.MustQuantity("4")
 	}))
 	if err != nil {
 		t.Fatalf("new movement: %v", err)
@@ -77,7 +81,7 @@ func TestStockMovementAdjustmentIsAuditable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("balance delta: %v", err)
 	}
-	if delta.OnHand != -4 || delta.Available != -4 {
+	if delta.OnHand != "-4.000000" || delta.Available != "-4.000000" {
 		t.Fatalf("delta = %+v, want on hand -4 and available -4", delta)
 	}
 }
@@ -90,7 +94,8 @@ func validMovementInput(mutators ...func(*NewStockMovementInput)) NewStockMoveme
 		ItemID:        "22222222-2222-2222-2222-222222222222",
 		WarehouseID:   "33333333-3333-3333-3333-333333333333",
 		UnitID:        "44444444-4444-4444-4444-444444444444",
-		Quantity:      10,
+		Quantity:      decimal.MustQuantity("10"),
+		BaseUOMCode:   "PCS",
 		StockStatus:   StockStatusAvailable,
 		SourceDocType: "goods_receipt",
 		SourceDocID:   "55555555-5555-5555-5555-555555555555",

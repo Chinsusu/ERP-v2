@@ -482,17 +482,26 @@ type receiveReturnRequest struct {
 }
 
 type stockMovementRequest struct {
-	MovementID   string `json:"movementId"`
-	SKU          string `json:"sku"`
-	WarehouseID  string `json:"warehouseId"`
-	MovementType string `json:"movementType"`
-	Quantity     string `json:"quantity"`
-	Reason       string `json:"reason"`
+	MovementID       string `json:"movementId"`
+	SKU              string `json:"sku"`
+	WarehouseID      string `json:"warehouseId"`
+	MovementType     string `json:"movementType"`
+	Quantity         string `json:"quantity"`
+	BaseUOMCode      string `json:"baseUomCode"`
+	SourceQuantity   string `json:"sourceQuantity"`
+	SourceUOMCode    string `json:"sourceUomCode"`
+	ConversionFactor string `json:"conversionFactor"`
+	Reason           string `json:"reason"`
 }
 
 type stockMovementResponse struct {
-	MovementID string `json:"movement_id"`
-	Status     string `json:"status"`
+	MovementID       string `json:"movement_id"`
+	Status           string `json:"status"`
+	MovementQuantity string `json:"movement_qty"`
+	BaseUOMCode      string `json:"base_uom_code"`
+	SourceQuantity   string `json:"source_qty"`
+	SourceUOMCode    string `json:"source_uom_code"`
+	ConversionFactor string `json:"conversion_factor"`
 }
 
 type auditLogResponse struct {
@@ -2077,9 +2086,15 @@ func stockMovementHandler(store audit.LogStore) http.HandlerFunc {
 			}
 		}
 
+		movementQty, sourceQty, conversionFactor, baseUOMCode, sourceUOMCode := stockMovementContractValues(payload)
 		response.WriteSuccess(w, r, http.StatusCreated, stockMovementResponse{
-			MovementID: strings.TrimSpace(payload.MovementID),
-			Status:     "recorded",
+			MovementID:       strings.TrimSpace(payload.MovementID),
+			Status:           "recorded",
+			MovementQuantity: movementQty.String(),
+			BaseUOMCode:      baseUOMCode.String(),
+			SourceQuantity:   sourceQty.String(),
+			SourceUOMCode:    sourceUOMCode.String(),
+			ConversionFactor: conversionFactor.String(),
 		})
 	}
 }
@@ -3226,6 +3241,26 @@ func validateStockMovementPayload(payload stockMovementRequest) map[string]any {
 	if err != nil || quantity.IsNegative() || quantity.IsZero() {
 		details["quantity"] = "must be positive"
 	}
+	if _, err := decimal.NormalizeUOMCode(payload.BaseUOMCode); err != nil {
+		details["baseUomCode"] = "required"
+	}
+	if strings.TrimSpace(payload.SourceQuantity) != "" {
+		sourceQuantity, err := decimal.ParseQuantity(payload.SourceQuantity)
+		if err != nil || sourceQuantity.IsNegative() || sourceQuantity.IsZero() {
+			details["sourceQuantity"] = "must be positive"
+		}
+	}
+	if strings.TrimSpace(payload.SourceUOMCode) != "" {
+		if _, err := decimal.NormalizeUOMCode(payload.SourceUOMCode); err != nil {
+			details["sourceUomCode"] = "invalid"
+		}
+	}
+	if strings.TrimSpace(payload.ConversionFactor) != "" {
+		conversionFactor, err := decimal.ParseQuantity(payload.ConversionFactor)
+		if err != nil || conversionFactor.IsNegative() || conversionFactor.IsZero() {
+			details["conversionFactor"] = "must be positive"
+		}
+	}
 	switch strings.ToUpper(strings.TrimSpace(payload.MovementType)) {
 	case "RECEIVE", "ISSUE", "TRANSFER_IN", "ADJUST":
 	default:
@@ -3235,11 +3270,31 @@ func validateStockMovementPayload(payload stockMovementRequest) map[string]any {
 	return details
 }
 
+func stockMovementContractValues(payload stockMovementRequest) (decimal.Decimal, decimal.Decimal, decimal.Decimal, decimal.UOMCode, decimal.UOMCode) {
+	movementQty := decimal.MustQuantity(payload.Quantity)
+	baseUOMCode := decimal.MustUOMCode(payload.BaseUOMCode)
+	sourceQty := movementQty
+	if strings.TrimSpace(payload.SourceQuantity) != "" {
+		sourceQty = decimal.MustQuantity(payload.SourceQuantity)
+	}
+	sourceUOMCode := baseUOMCode
+	if strings.TrimSpace(payload.SourceUOMCode) != "" {
+		sourceUOMCode = decimal.MustUOMCode(payload.SourceUOMCode)
+	}
+	conversionFactor := decimal.MustQuantity("1")
+	if strings.TrimSpace(payload.ConversionFactor) != "" {
+		conversionFactor = decimal.MustQuantity(payload.ConversionFactor)
+	}
+
+	return movementQty, sourceQty, conversionFactor, baseUOMCode, sourceUOMCode
+}
+
 func recordStockAdjustmentAudit(r *http.Request, store audit.LogStore, payload stockMovementRequest) error {
 	principal, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
 		return http.ErrNoCookie
 	}
+	movementQty, sourceQty, conversionFactor, baseUOMCode, sourceUOMCode := stockMovementContractValues(payload)
 
 	log, err := audit.NewLog(audit.NewLogInput{
 		ActorID:    principal.UserID,
@@ -3248,10 +3303,14 @@ func recordStockAdjustmentAudit(r *http.Request, store audit.LogStore, payload s
 		EntityID:   strings.TrimSpace(payload.MovementID),
 		RequestID:  response.RequestID(r),
 		AfterData: map[string]any{
-			"movement_type": strings.ToUpper(strings.TrimSpace(payload.MovementType)),
-			"quantity":      decimal.MustQuantity(payload.Quantity).String(),
-			"warehouse_id":  strings.TrimSpace(payload.WarehouseID),
-			"sku":           strings.ToUpper(strings.TrimSpace(payload.SKU)),
+			"movement_type":     strings.ToUpper(strings.TrimSpace(payload.MovementType)),
+			"movement_qty":      movementQty.String(),
+			"base_uom_code":     baseUOMCode.String(),
+			"source_qty":        sourceQty.String(),
+			"source_uom_code":   sourceUOMCode.String(),
+			"conversion_factor": conversionFactor.String(),
+			"warehouse_id":      strings.TrimSpace(payload.WarehouseID),
+			"sku":               strings.ToUpper(strings.TrimSpace(payload.SKU)),
 		},
 		Metadata: map[string]any{
 			"reason": strings.TrimSpace(payload.Reason),

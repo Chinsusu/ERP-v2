@@ -158,7 +158,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | S1-02-01 | Item and SKU master data CRUD v1 | Master Data | BE Lead + FE Lead + MDA | P0 | Done | `docs/05_...` + `docs/16_...` |
 | S1-02-02 | Warehouse and location master data CRUD v1 | Master Data | BE Lead + FE Lead + Warehouse | P0 | Done | `docs/05_...` + `docs/17_...` |
 | S1-02-03 | Supplier and customer master data CRUD v1 | Master Data | BE Lead + FE Lead + Purchasing + Sales | P0 | Done | `docs/05_...` |
-| S1-03-01 | Inventory stock ledger persistence v1 | Inventory Stock Ledger | BE Lead | P0 | Backlog | `docs/17_...` + `docs/33_...` + `docs/40_...` |
+| S1-03-01 | Inventory stock ledger persistence v1 | Inventory Stock Ledger | BE Lead | P0 | Done | `docs/17_...` + `docs/33_...` + `docs/40_...` |
 | S1-03-02 | Available and reserved stock service v1 | Inventory Stock Ledger | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` + `docs/16_...` |
 | S1-04-01 | Batch and QC status base model | Batch/QC | BE Lead + QA | P0 | Backlog | `docs/05_...` + `docs/17_...` |
 | S1-04-02 | QC status transition and audit path | Batch/QC | BE Lead + QA + Internal Control | P1 | Backlog | `docs/19_...` + `docs/33_...` |
@@ -1245,7 +1245,7 @@ Evidence:
 
 **Owner:** BE Lead
 **Priority:** P0
-**Status:** Backlog
+**Status:** Done
 **Primary Ref:** `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`, `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`, `docs/40_ERP_Unit_Currency_Number_Format_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1257,6 +1257,20 @@ Acceptance criteria:
 - Stock ledger stores `movement_qty`, `base_uom_code`, and source quantity/UOM/conversion fields where the transaction UOM differs from base UOM.
 - Unit and integration tests cover inbound, outbound, adjustment, and rollback behavior.
 - Audit log captures sensitive stock movement metadata.
+
+Current state:
+
+- Stock movement domain quantities and balance deltas use shared decimal quantity values instead of integer counts.
+- PostgreSQL stock movement store writes immutable ledger rows and balance deltas in one transaction, with `SET LOCAL erp.allow_stock_balance_write = 'on'` before balance upsert.
+- Migration `000004_stock_ledger_decimal_base_uom` upgrades stock ledger/balance quantities to `numeric(18,6)`, adds `movement_qty`, `base_uom_code`, `source_qty`, `source_uom_code`, and `conversion_factor`, and keeps rollback coverage.
+- Stock movement API/OpenAPI contract and generated frontend schema expose decimal string movement quantity, base UOM, source UOM, and conversion factor fields.
+- Audit metadata includes movement quantity, base/source UOM, conversion factor, stock status, source document, and reason.
+
+Evidence:
+
+- PR #134: inventory stock ledger persistence v1 into `develop`.
+- Local checks: API tests, API vet, frontend typecheck, frontend tests, frontend build, OpenAPI generate, OpenAPI validate, Sprint 0 smoke pack, migration 000004 sanity check, and `git diff --check`.
+- Local migration apply/rollback was not executed because this workstation has no Docker or PostgreSQL client; GitHub migration CI remains the authoritative DB execution gate.
 
 ### S1-03-02 Available And Reserved Stock Service V1
 
@@ -1381,6 +1395,7 @@ Acceptance criteria:
 | S1-00-01 | PR #131; file 40 tracked as approved baseline; Sprint 1 decimal/UOM foundation tasks added before stock ledger persistence |
 | S1-00-02 | PR #132; backend decimal helpers, string decimal OpenAPI contracts, vi-VN frontend format/input helpers, generated schema, and decimal tests |
 | S1-00-03 | PR #133; UOM domain/catalog, PostgreSQL UOM master/conversion migration, Phase 1 UOM seeds, global/item-specific conversion service, and UOM conversion tests |
+| S1-03-01 | PR #134; decimal base-UOM stock movement domain/store, stock ledger/balance migration 000004, source conversion fields, OpenAPI/generated schema, and inbound/outbound/adjustment/rollback tests |
 
 ---
 
@@ -1400,8 +1415,8 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-03-01` - Inventory stock ledger persistence v1.
-2. `S1-03-02` - Available and reserved stock service v1.
-3. `S1-04-01` - Batch and QC status base model.
+1. `S1-03-02` - Available and reserved stock service v1.
+2. `S1-04-01` - Batch and QC status base model.
+3. `S1-05-01` - Warehouse receiving backend v1.
 
-The decimal and UOM foundations are now in place, so the next inventory tasks can store movement quantities in base UOM without prototype integer/float assumptions.
+The stock ledger foundation now stores decimal base-UOM movement data, so the next inventory tasks can calculate availability from persisted balance fields instead of prototype counts.
