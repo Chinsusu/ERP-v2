@@ -456,6 +456,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/inventory/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List inventory batches by SKU, QC status, and batch status */
+        get: operations["listInventoryBatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/batches/{batch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get inventory batch details */
+        get: operations["getInventoryBatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/warehouse/end-of-day-reconciliations": {
         parameters: {
             query?: never;
@@ -716,6 +750,13 @@ export interface components {
         CurrencyCode: string;
         /** @example PCS */
         UOMCode: string;
+        /**
+         * @description Batch-level QC status used to decide whether stock may contribute to available quantity.
+         * @enum {string}
+         */
+        BatchQCStatus: "hold" | "pass" | "fail" | "quarantine" | "retest_required";
+        /** @enum {string} */
+        BatchStatus: "active" | "inactive" | "blocked";
         /** @enum {string} */
         MasterDataStatus: "draft" | "active" | "inactive" | "obsolete";
         /** @enum {string} */
@@ -1149,6 +1190,10 @@ export interface components {
             sku: string;
             batch_id?: string;
             batch_no?: string;
+            batch_qc_status?: components["schemas"]["BatchQCStatus"];
+            batch_status?: components["schemas"]["BatchStatus"];
+            /** Format: date */
+            batch_expiry_date?: string;
             base_uom_code: components["schemas"]["UOMCode"];
             physical_qty: components["schemas"]["Quantity"];
             reserved_qty: components["schemas"]["Quantity"];
@@ -1158,6 +1203,31 @@ export interface components {
             blocked_qty: components["schemas"]["Quantity"];
             hold_qty: components["schemas"]["Quantity"];
             available_qty: components["schemas"]["Quantity"];
+        };
+        BatchListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["Batch"][];
+        };
+        BatchSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["Batch"];
+        };
+        Batch: {
+            id: string;
+            org_id: string;
+            item_id: string;
+            sku: string;
+            item_name: string;
+            batch_no: string;
+            supplier_id?: string;
+            /** Format: date */
+            mfg_date?: string;
+            /** Format: date */
+            expiry_date?: string;
+            qc_status: components["schemas"]["BatchQCStatus"];
+            status: components["schemas"]["BatchStatus"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
         };
         /** @enum {string} */
         EndOfDayReconciliationStatus: "open" | "in_review" | "closed";
@@ -2458,6 +2528,57 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listInventoryBatches: {
+        parameters: {
+            query?: {
+                sku?: string;
+                qc_status?: components["schemas"]["BatchQCStatus"];
+                status?: components["schemas"]["BatchStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Inventory batch rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getInventoryBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Inventory batch details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listEndOfDayReconciliations: {

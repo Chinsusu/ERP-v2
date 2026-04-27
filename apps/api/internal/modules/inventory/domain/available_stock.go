@@ -3,6 +3,7 @@ package domain
 import (
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
@@ -16,6 +17,9 @@ type StockBalanceSnapshot struct {
 	SKU           string
 	BatchID       string
 	BatchNo       string
+	BatchQCStatus QCStatus
+	BatchStatus   BatchStatus
+	BatchExpiry   time.Time
 	BaseUOMCode   decimal.UOMCode
 	StockStatus   StockStatus
 	QtyOnHand     decimal.Decimal
@@ -37,6 +41,9 @@ type AvailableStockSnapshot struct {
 	SKU              string
 	BatchID          string
 	BatchNo          string
+	BatchQCStatus    QCStatus
+	BatchStatus      BatchStatus
+	BatchExpiry      time.Time
 	BaseUOMCode      decimal.UOMCode
 	PhysicalQty      decimal.Decimal
 	ReservedQty      decimal.Decimal
@@ -66,6 +73,10 @@ func NewAvailableStockFilter(warehouseID string, locationID string, sku string, 
 }
 
 func CalculateAvailableStock(rows []StockBalanceSnapshot) []AvailableStockSnapshot {
+	return CalculateAvailableStockAt(rows, time.Now().UTC())
+}
+
+func CalculateAvailableStockAt(rows []StockBalanceSnapshot, asOf time.Time) []AvailableStockSnapshot {
 	grouped := make(map[availabilityKey]*AvailableStockSnapshot)
 
 	for _, row := range rows {
@@ -90,6 +101,9 @@ func CalculateAvailableStock(rows []StockBalanceSnapshot) []AvailableStockSnapsh
 				SKU:              key.sku,
 				BatchID:          key.batchID,
 				BatchNo:          strings.TrimSpace(row.BatchNo),
+				BatchQCStatus:    NormalizeQCStatus(row.BatchQCStatus),
+				BatchStatus:      NormalizeBatchStatus(row.BatchStatus),
+				BatchExpiry:      dateOnly(row.BatchExpiry),
 				BaseUOMCode:      key.baseUOMCode,
 				PhysicalQty:      decimal.MustQuantity("0"),
 				ReservedQty:      decimal.MustQuantity("0"),
@@ -116,6 +130,14 @@ func CalculateAvailableStock(rows []StockBalanceSnapshot) []AvailableStockSnapsh
 			snapshot.BlockedQty = mustAddQuantity(snapshot.BlockedQty, row.QtyOnHand)
 		case StockStatusSubcontractIssued:
 			snapshot.BlockedQty = mustAddQuantity(snapshot.BlockedQty, row.QtyOnHand)
+		}
+		if row.StockStatus == StockStatusAvailable {
+			switch batchAvailabilityStockStatus(row, asOf) {
+			case StockStatusQCHold:
+				snapshot.QCHoldQty = mustAddQuantity(snapshot.QCHoldQty, row.QtyOnHand)
+			case StockStatusDamaged:
+				snapshot.BlockedQty = mustAddQuantity(snapshot.BlockedQty, row.QtyOnHand)
+			}
 		}
 	}
 
@@ -172,6 +194,31 @@ func mustAddQuantity(left decimal.Decimal, right decimal.Decimal) decimal.Decima
 	}
 
 	return result
+}
+
+func batchAvailabilityStockStatus(row StockBalanceSnapshot, asOf time.Time) StockStatus {
+	qcStatus := NormalizeQCStatus(row.BatchQCStatus)
+	if qcStatus == "" {
+		return StockStatusAvailable
+	}
+	batchStatus := NormalizeBatchStatus(row.BatchStatus)
+	if batchStatus == "" {
+		batchStatus = BatchStatusActive
+	}
+
+	if batchStatus != BatchStatusActive || (!row.BatchExpiry.IsZero() && dateOnly(row.BatchExpiry).Before(dateOnly(asOf))) {
+		return StockStatusDamaged
+	}
+	switch qcStatus {
+	case QCStatusPass:
+		return StockStatusAvailable
+	case QCStatusHold, QCStatusQuarantine, QCStatusRetestRequired:
+		return StockStatusQCHold
+	case QCStatusFail:
+		return StockStatusDamaged
+	default:
+		return StockStatusDamaged
+	}
 }
 
 func mustSubtractQuantity(left decimal.Decimal, right decimal.Decimal) decimal.Decimal {
