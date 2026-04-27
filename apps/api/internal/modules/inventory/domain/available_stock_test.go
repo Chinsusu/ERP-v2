@@ -2,6 +2,7 @@ package domain
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
@@ -124,6 +125,50 @@ func TestCalculateAvailableStockPreventsNegativeAvailableQty(t *testing.T) {
 	}
 }
 
+func TestCalculateAvailableStockUsesBatchQCStatusForAvailability(t *testing.T) {
+	rows := []StockBalanceSnapshot{
+		{
+			WarehouseID:   "wh-hcm",
+			WarehouseCode: "HCM",
+			LocationID:    "bin-a",
+			LocationCode:  "A-01",
+			SKU:           "SKU-HOLD",
+			BatchID:       "batch-hold",
+			BatchNo:       "LOT-HOLD",
+			BatchQCStatus: QCStatusHold,
+			BatchStatus:   BatchStatusActive,
+			BaseUOMCode:   decimal.MustUOMCode("PCS"),
+			StockStatus:   StockStatusAvailable,
+			QtyOnHand:     decimal.MustQuantity("10"),
+		},
+		{
+			WarehouseID:   "wh-hcm",
+			WarehouseCode: "HCM",
+			LocationID:    "bin-a",
+			LocationCode:  "A-01",
+			SKU:           "SKU-FAIL",
+			BatchID:       "batch-fail",
+			BatchNo:       "LOT-FAIL",
+			BatchQCStatus: QCStatusFail,
+			BatchStatus:   BatchStatusActive,
+			BaseUOMCode:   decimal.MustUOMCode("PCS"),
+			StockStatus:   StockStatusAvailable,
+			QtyOnHand:     decimal.MustQuantity("7"),
+		},
+	}
+
+	snapshots := CalculateAvailableStockAt(rows, time.Date(2026, 4, 27, 0, 0, 0, 0, time.UTC))
+	hold := findAvailableSnapshot(t, snapshots, "SKU-HOLD")
+	if hold.QCHoldQty != "10.000000" || hold.AvailableQty != "0.000000" {
+		t.Fatalf("hold batch snapshot = %+v, want qc hold 10 and available 0", hold)
+	}
+
+	failed := findAvailableSnapshot(t, snapshots, "SKU-FAIL")
+	if failed.BlockedQty != "7.000000" || failed.AvailableQty != "0.000000" {
+		t.Fatalf("failed batch snapshot = %+v, want blocked 7 and available 0", failed)
+	}
+}
+
 func TestHoldStockStatusCatalog(t *testing.T) {
 	holdStatuses := []StockStatus{
 		StockStatusQCHold,
@@ -143,4 +188,16 @@ func TestHoldStockStatusCatalog(t *testing.T) {
 	if IsHoldStockStatus(StockStatusReserved) {
 		t.Fatal("reserved status should be counted through reserved quantity, not hold")
 	}
+}
+
+func findAvailableSnapshot(t *testing.T, snapshots []AvailableStockSnapshot, sku string) AvailableStockSnapshot {
+	t.Helper()
+	for _, snapshot := range snapshots {
+		if snapshot.SKU == sku {
+			return snapshot
+		}
+	}
+
+	t.Fatalf("snapshot for %s not found", sku)
+	return AvailableStockSnapshot{}
 }

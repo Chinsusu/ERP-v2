@@ -160,7 +160,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | S1-02-03 | Supplier and customer master data CRUD v1 | Master Data | BE Lead + FE Lead + Purchasing + Sales | P0 | Done | `docs/05_...` |
 | S1-03-01 | Inventory stock ledger persistence v1 | Inventory Stock Ledger | BE Lead | P0 | Done | `docs/17_...` + `docs/33_...` + `docs/40_...` |
 | S1-03-02 | Available and reserved stock service v1 | Inventory Stock Ledger | BE Lead + FE Lead | P0 | Done | `docs/33_...` + `docs/16_...` + `docs/40_...` |
-| S1-04-01 | Batch and QC status base model | Batch/QC | BE Lead + QA | P0 | Backlog | `docs/05_...` + `docs/17_...` |
+| S1-04-01 | Batch and QC status base model | Batch/QC | BE Lead + QA | P0 | Done | `docs/05_...` + `docs/17_...` |
 | S1-04-02 | QC status transition and audit path | Batch/QC | BE Lead + QA + Internal Control | P1 | Backlog | `docs/19_...` + `docs/33_...` |
 | S1-05-01 | Warehouse receiving backend v1 | Warehouse Receiving | BE Lead + Warehouse | P0 | Backlog | `docs/33_...` + `docs/16_...` |
 | S1-05-02 | Warehouse receiving UI v1 | Warehouse Receiving | FE Lead + Warehouse + UI/UX | P0 | Backlog | `docs/39_...` |
@@ -1305,7 +1305,7 @@ Evidence:
 
 **Owner:** BE Lead + QA
 **Priority:** P0
-**Status:** Backlog
+**Status:** Done
 **Primary Ref:** `docs/05_ERP_Data_Dictionary_Master_Data_Phase1_MyPham_v1.md`, `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1315,6 +1315,22 @@ Acceptance criteria:
 - Invalid batch/QC transitions are rejected.
 - Batch/QC status can be used by stock availability calculations.
 - Tests cover expiry, hold/release, and rejected transition cases.
+
+Current state:
+
+- Batch domain model covers identity, item/SKU, batch number, manufacture date, expiry date, QC status, and batch status.
+- QC status catalog follows the current database contract: `hold`, `pass`, `fail`, `quarantine`, and `retest_required`.
+- Domain rules reject invalid expiry dates and invalid base QC transitions; audited permissioned transitions remain scoped to `S1-04-02`.
+- Prototype batch catalog exposes list/get API paths for inventory batches with SKU, QC status, and batch status filters.
+- Available stock calculation can consume batch QC status, status, and expiry to prevent hold/fail/expired batches from contributing to available quantity.
+- OpenAPI contract and generated frontend schema include batch schemas and batch fields on available stock rows.
+- Database base fields already exist in migration `000002_create_phase1_base_tables`; no new schema migration was required for this base model.
+
+Evidence:
+
+- Task branch: `codex/s1-04-01-batch-qc-status-base-model`.
+- Local checks: API tests, API vet, frontend typecheck, frontend tests, frontend build, OpenAPI generate, OpenAPI validate, Sprint 0 smoke pack, and `git diff --check`.
+- Local migration apply/rollback was not executed because no schema migration was added.
 
 ### S1-04-02 QC Status Transition And Audit Path
 
@@ -1429,8 +1445,8 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-04-01` - Batch and QC status base model.
+1. `S1-04-02` - QC status transition and audit path.
 2. `S1-05-01` - Warehouse receiving backend v1.
 3. `S1-05-02` - Warehouse receiving UI v1.
 
-The stock ledger foundation now stores decimal base-UOM movement data and the available stock service exposes the Phase 1 quantity buckets, so the next inventory tasks should add batch/QC state transitions and receiving workflows.
+The stock ledger foundation now stores decimal base-UOM movement data, available stock exposes Phase 1 quantity buckets, and batch/QC base status is modeled. The next inventory tasks should add audited QC transitions and receiving workflows.

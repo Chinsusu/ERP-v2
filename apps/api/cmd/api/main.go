@@ -291,6 +291,9 @@ type availableStockResponse struct {
 	SKU              string `json:"sku"`
 	BatchID          string `json:"batch_id,omitempty"`
 	BatchNo          string `json:"batch_no,omitempty"`
+	BatchQCStatus    string `json:"batch_qc_status,omitempty"`
+	BatchStatus      string `json:"batch_status,omitempty"`
+	BatchExpiryDate  string `json:"batch_expiry_date,omitempty"`
 	BaseUOMCode      string `json:"base_uom_code"`
 	PhysicalQty      string `json:"physical_qty"`
 	ReservedQty      string `json:"reserved_qty"`
@@ -300,6 +303,22 @@ type availableStockResponse struct {
 	BlockedQty       string `json:"blocked_qty"`
 	HoldQty          string `json:"hold_qty"`
 	AvailableQty     string `json:"available_qty"`
+}
+
+type batchResponse struct {
+	ID         string `json:"id"`
+	OrgID      string `json:"org_id"`
+	ItemID     string `json:"item_id"`
+	SKU        string `json:"sku"`
+	ItemName   string `json:"item_name"`
+	BatchNo    string `json:"batch_no"`
+	SupplierID string `json:"supplier_id,omitempty"`
+	MfgDate    string `json:"mfg_date,omitempty"`
+	ExpiryDate string `json:"expiry_date,omitempty"`
+	QCStatus   string `json:"qc_status"`
+	Status     string `json:"status"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
 }
 
 type endOfDayReconciliationSummaryResponse struct {
@@ -533,6 +552,7 @@ func main() {
 	}
 	authSessions := auth.NewSessionManager(authConfig, time.Now)
 	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
+	batchCatalog := inventoryapp.NewPrototypeBatchCatalog()
 	auditLogStore := audit.NewPrototypeLogStore()
 	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
 	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
@@ -699,6 +719,22 @@ func main() {
 			authSessions,
 			auth.PermissionInventoryView,
 			http.HandlerFunc(availableStockHandler(availableStockService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/inventory/batches",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionInventoryView,
+			http.HandlerFunc(batchesHandler(batchCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/inventory/batches/{batch_id}",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionInventoryView,
+			http.HandlerFunc(batchDetailHandler(batchCatalog)),
 		),
 	)
 	mux.Handle(
@@ -2141,6 +2177,54 @@ func availableStockHandler(service inventoryapp.ListAvailableStock) http.Handler
 	}
 }
 
+func batchesHandler(catalog *inventoryapp.BatchCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		filter := domain.NewBatchFilter(
+			r.URL.Query().Get("sku"),
+			domain.QCStatus(r.URL.Query().Get("qc_status")),
+			domain.BatchStatus(r.URL.Query().Get("status")),
+		)
+		batches, err := catalog.ListBatches(r.Context(), filter)
+		if err != nil {
+			response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Batches could not be loaded", nil)
+			return
+		}
+
+		payload := make([]batchResponse, 0, len(batches))
+		for _, batch := range batches {
+			payload = append(payload, newBatchResponse(batch))
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, payload)
+	}
+}
+
+func batchDetailHandler(catalog *inventoryapp.BatchCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		batch, err := catalog.GetBatch(r.Context(), r.PathValue("batch_id"))
+		if err != nil {
+			if errors.Is(err, inventoryapp.ErrBatchNotFound) {
+				response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Batch not found", nil)
+				return
+			}
+			response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Batch could not be loaded", nil)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newBatchResponse(batch))
+	}
+}
+
 func endOfDayReconciliationsHandler(service inventoryapp.ListEndOfDayReconciliations) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -2475,6 +2559,9 @@ func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) available
 		SKU:              snapshot.SKU,
 		BatchID:          snapshot.BatchID,
 		BatchNo:          snapshot.BatchNo,
+		BatchQCStatus:    string(snapshot.BatchQCStatus),
+		BatchStatus:      string(snapshot.BatchStatus),
+		BatchExpiryDate:  dateString(snapshot.BatchExpiry),
 		BaseUOMCode:      snapshot.BaseUOMCode.String(),
 		PhysicalQty:      snapshot.PhysicalQty.String(),
 		ReservedQty:      snapshot.ReservedQty.String(),
@@ -2485,6 +2572,32 @@ func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) available
 		HoldQty:          snapshot.HoldQty.String(),
 		AvailableQty:     snapshot.AvailableQty.String(),
 	}
+}
+
+func newBatchResponse(batch domain.Batch) batchResponse {
+	return batchResponse{
+		ID:         batch.ID,
+		OrgID:      batch.OrgID,
+		ItemID:     batch.ItemID,
+		SKU:        batch.SKU,
+		ItemName:   batch.ItemName,
+		BatchNo:    batch.BatchNo,
+		SupplierID: batch.SupplierID,
+		MfgDate:    dateString(batch.MfgDate),
+		ExpiryDate: dateString(batch.ExpiryDate),
+		QCStatus:   string(batch.QCStatus),
+		Status:     string(batch.Status),
+		CreatedAt:  batch.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:  batch.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func dateString(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+
+	return value.Format(time.DateOnly)
 }
 
 func newEndOfDayReconciliationResponse(

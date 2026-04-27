@@ -1037,6 +1037,64 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+  /inventory/batches:
+    get:
+      summary: List inventory batches by SKU, QC status, and batch status
+      operationId: listInventoryBatches
+      tags:
+        - inventory
+      parameters:
+        - name: sku
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: qc_status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/BatchQCStatus"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/BatchStatus"
+      responses:
+        "200":
+          description: Inventory batch rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /inventory/batches/{batch_id}:
+    get:
+      summary: Get inventory batch details
+      operationId: getInventoryBatch
+      tags:
+        - inventory
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inventory batch details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /warehouse/end-of-day-reconciliations:
     get:
       summary: List warehouse end-of-day reconciliation sessions
@@ -1741,6 +1799,21 @@ components:
       maxLength: 20
       pattern: "^[A-Z0-9_-]+$"
       example: PCS
+    BatchQCStatus:
+      type: string
+      enum:
+        - hold
+        - pass
+        - fail
+        - quarantine
+        - retest_required
+      description: Batch-level QC status used to decide whether stock may contribute to available quantity.
+    BatchStatus:
+      type: string
+      enum:
+        - active
+        - inactive
+        - blocked
     MasterDataStatus:
       type: string
       enum:
@@ -2671,6 +2744,13 @@ components:
           type: string
         batch_no:
           type: string
+        batch_qc_status:
+          $ref: "#/components/schemas/BatchQCStatus"
+        batch_status:
+          $ref: "#/components/schemas/BatchStatus"
+        batch_expiry_date:
+          type: string
+          format: date
         base_uom_code:
           $ref: "#/components/schemas/UOMCode"
         physical_qty:
@@ -2689,6 +2769,70 @@ components:
           $ref: "#/components/schemas/Quantity"
         available_qty:
           $ref: "#/components/schemas/Quantity"
+    BatchListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Batch"
+    BatchSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/Batch"
+    Batch:
+      type: object
+      required:
+        - id
+        - org_id
+        - item_id
+        - sku
+        - item_name
+        - batch_no
+        - qc_status
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        item_id:
+          type: string
+        sku:
+          type: string
+        item_name:
+          type: string
+        batch_no:
+          type: string
+        supplier_id:
+          type: string
+        mfg_date:
+          type: string
+          format: date
+        expiry_date:
+          type: string
+          format: date
+        qc_status:
+          $ref: "#/components/schemas/BatchQCStatus"
+        status:
+          $ref: "#/components/schemas/BatchStatus"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     EndOfDayReconciliationStatus:
       type: string
       enum:
