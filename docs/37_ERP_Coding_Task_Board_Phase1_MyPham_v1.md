@@ -151,7 +151,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | --- | --- | --- | --- | --- | --- | --- |
 | S1-01-01 | Auth session and password policy v1 | Auth/RBAC hardening | BE Lead + FE Lead | P0 | Done | `docs/19_...` + `docs/34_...` |
 | S1-01-02 | RBAC enforcement and permission matrix v1 | Auth/RBAC hardening | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
-| S1-02-01 | Item and SKU master data CRUD v1 | Master Data | BE Lead + FE Lead + MDA | P0 | Backlog | `docs/05_...` + `docs/16_...` |
+| S1-02-01 | Item and SKU master data CRUD v1 | Master Data | BE Lead + FE Lead + MDA | P0 | Done | `docs/05_...` + `docs/16_...` |
 | S1-02-02 | Warehouse and location master data CRUD v1 | Master Data | BE Lead + FE Lead + Warehouse | P0 | Backlog | `docs/05_...` + `docs/17_...` |
 | S1-02-03 | Supplier and customer master data CRUD v1 | Master Data | BE Lead + FE Lead + Purchasing + Sales | P0 | Backlog | `docs/05_...` |
 | S1-03-01 | Inventory stock ledger persistence v1 | Inventory Stock Ledger | BE Lead | P0 | Backlog | `docs/17_...` + `docs/33_...` |
@@ -1098,7 +1098,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead + Master Data Admin
 **Priority:** P0
-**Status:** Backlog
+**Status:** Done
 **Primary Ref:** `docs/05_ERP_Data_Dictionary_Master_Data_Phase1_MyPham_v1.md`, `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1108,6 +1108,20 @@ Acceptance criteria:
 - Required cosmetic master data fields follow file 5.
 - OpenAPI and generated frontend types are updated through the normal generation path.
 - UI includes loading, empty, error, validation, and audit hint states.
+
+Current state:
+
+- Backend `mdm.item` prototype catalog supports item/SKU list, create, detail, update, and status change routes at `/api/v1/products`.
+- Duplicate `item_code` and `sku_code` are blocked case-insensitively before writes.
+- Cosmetic item fields from file 5 are represented: item code, SKU, name, type, group, brand, base/purchase/issue UOM, lot/expiry/QC controls, shelf life, lifecycle status, cost, sellable/purchasable/producible flags, spec version, and audit timestamps.
+- Create, update, and status changes write audit logs with `masterdata.item.*` actions.
+- OpenAPI contract and generated frontend schema include product CRUD/status request and response types.
+- Frontend `/master-data` renders item/SKU master data with filters, list/detail/edit/create/status actions, loading/empty/error states, validation feedback, and audit hint state.
+
+Evidence:
+
+- Self-review completed on implementation diff.
+- Validation passed: API tests, API vet, frontend typecheck, frontend tests, frontend build, OpenAPI validate, generated OpenAPI schema, and Sprint 0 smoke pack.
 
 ### S1-02-02 Warehouse And Location Master Data CRUD V1
 
@@ -1271,6 +1285,7 @@ Acceptance criteria:
 | S0-13-02 | PR #127, PR #128; Sprint 0 demo script, cosmetics sample data path, success/failure scan cases, stock movement, available stock, and audit evidence |
 | S1-01-01 | Manual merge; auth session manager, refresh/policy endpoints, password policy, lockout, frontend expiring session cookie, OpenAPI update, and auth tests |
 | S1-01-02 | Manual merge; RBAC permission catalog endpoint, subcontract permission alignment, backend/frontend catalog drift tests, OpenAPI update |
+| S1-02-01 | Manual merge; item/SKU master data CRUD/status API, duplicate code guards, audit logs, OpenAPI/generated types, and `/master-data` UI states |
 
 ---
 
@@ -1290,6 +1305,6 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-02-01` - Item and SKU master data CRUD v1.
+1. `S1-02-02` - Warehouse and location master data CRUD v1.
 
-This unlocks warehouse/location master data, stock ledger v1, batch/QC, and warehouse receiving v1.
+This unlocks stock ledger v1, batch/QC, warehouse receiving v1, and reliable warehouse daily board integration.

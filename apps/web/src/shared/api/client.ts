@@ -55,6 +55,10 @@ export type ApiRequestOptions<Path extends ApiGetPath> = {
   query?: ApiGetQuery<Path>;
 };
 
+export type ApiWriteOptions = {
+  accessToken?: string;
+};
+
 export async function apiGet<Path extends ApiGetPath>(
   path: Path,
   options: ApiRequestOptions<Path> = {}
@@ -70,6 +74,34 @@ export async function apiGet<Path extends ApiGetPath>(
   return payload.data;
 }
 
+export async function apiGetRaw<TData>(path: string, options: ApiWriteOptions = {}): Promise<TData> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    headers: authHeaders(options)
+  });
+  if (!response.ok) {
+    throw await createApiError(response);
+  }
+
+  const payload = (await response.json()) as ApiSuccessResponse<TData>;
+  return payload.data;
+}
+
+export async function apiPost<TData, TBody>(
+  path: string,
+  body: TBody,
+  options: ApiWriteOptions = {}
+): Promise<TData> {
+  return apiWrite<TData, TBody>("POST", path, body, options);
+}
+
+export async function apiPatch<TData, TBody>(
+  path: string,
+  body: TBody,
+  options: ApiWriteOptions = {}
+): Promise<TData> {
+  return apiWrite<TData, TBody>("PATCH", path, body, options);
+}
+
 function authHeaders(options: { accessToken?: string }) {
   if (!options.accessToken) {
     return undefined;
@@ -78,6 +110,28 @@ function authHeaders(options: { accessToken?: string }) {
   return {
     Authorization: `Bearer ${options.accessToken}`
   };
+}
+
+async function apiWrite<TData, TBody>(
+  method: "PATCH" | "POST",
+  path: string,
+  body: TBody,
+  options: ApiWriteOptions
+): Promise<TData> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(authHeaders(options) ?? {})
+    },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) {
+    throw await createApiError(response);
+  }
+
+  const payload = (await response.json()) as ApiSuccessResponse<TData>;
+  return payload.data;
 }
 
 function queryString(query: unknown) {

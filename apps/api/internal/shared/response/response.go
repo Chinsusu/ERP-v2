@@ -28,6 +28,20 @@ type SuccessEnvelope[T any] struct {
 	RequestID string `json:"request_id"`
 }
 
+type Pagination struct {
+	Page       int `json:"page"`
+	PageSize   int `json:"page_size"`
+	TotalItems int `json:"total_items"`
+	TotalPages int `json:"total_pages"`
+}
+
+type PaginatedSuccessEnvelope[T any] struct {
+	Success    bool       `json:"success"`
+	Data       T          `json:"data"`
+	Pagination Pagination `json:"pagination"`
+	RequestID  string     `json:"request_id"`
+}
+
 type ErrorEnvelope struct {
 	Error APIError `json:"error"`
 }
@@ -45,6 +59,16 @@ func WriteSuccess[T any](w http.ResponseWriter, r *http.Request, status int, dat
 		Success:   true,
 		Data:      data,
 		RequestID: requestID,
+	})
+}
+
+func WritePaginatedSuccess[T any](w http.ResponseWriter, r *http.Request, status int, data T, pagination Pagination) {
+	requestID := RequestID(r)
+	writeJSON(w, status, requestID, PaginatedSuccessEnvelope[T]{
+		Success:    true,
+		Data:       data,
+		Pagination: pagination,
+		RequestID:  requestID,
 	})
 }
 

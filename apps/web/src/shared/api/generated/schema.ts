@@ -167,11 +167,47 @@ export interface paths {
         /** List product master data */
         get: operations["listProducts"];
         put?: never;
-        post?: never;
+        /** Create product master data */
+        post: operations["createProduct"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/products/{product_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get product master data detail */
+        get: operations["getProduct"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update product master data */
+        patch: operations["updateProduct"];
+        trace?: never;
+    };
+    "/products/{product_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change product master data status */
+        patch: operations["changeProductStatus"];
         trace?: never;
     };
     "/suppliers": {
@@ -494,6 +530,8 @@ export interface components {
         };
         /** @enum {string} */
         MasterDataStatus: "draft" | "active" | "inactive" | "obsolete";
+        /** @enum {string} */
+        ItemType: "raw_material" | "packaging" | "semi_finished" | "finished_good" | "service";
         ProductListSuccessResponse: {
             /** @example true */
             success: boolean;
@@ -502,23 +540,94 @@ export interface components {
             /** @example req_lq7z2t9c */
             request_id: string;
         };
+        ProductSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["ProductListItem"];
+        };
         ProductListItem: {
-            /** @example sku_01HXABCDEF */
+            /** @example item-serum-30ml */
             id: string;
-            /** @example FG-ABC-SER-30-0012 */
+            /** @example ITEM-SERUM-HYDRA */
+            item_code: string;
+            /** @example SERUM-30ML */
             sku_code: string;
-            /** @example Serum Vitamin C 30ml */
+            /** @example Hydrating Serum 30ml */
             name: string;
-            /** @enum {string} */
-            item_type: "raw_material" | "packaging" | "semi_finished" | "finished_good" | "service";
-            /** @example PCS */
+            item_type: components["schemas"]["ItemType"];
+            /** @example serum */
+            item_group?: string;
+            /** @example MYH */
+            brand_code?: string;
+            /** @example EA */
             uom_code: string;
+            /** @example EA */
+            uom_base: string;
+            /** @example EA */
+            uom_purchase?: string;
+            /** @example EA */
+            uom_issue?: string;
             /** @example true */
             lot_controlled: boolean;
             /** @example true */
             expiry_controlled: boolean;
+            /** @example 730 */
+            shelf_life_days?: number;
             /** @example true */
             qc_required: boolean;
+            status: components["schemas"]["MasterDataStatus"];
+            /** @example 64000 */
+            standard_cost?: number;
+            /** @example true */
+            is_sellable: boolean;
+            /** @example false */
+            is_purchasable: boolean;
+            /** @example true */
+            is_producible: boolean;
+            /** @example SPEC-SERUM-2026.04 */
+            spec_version?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @example audit_1777280400000000000 */
+            audit_log_id?: string;
+        };
+        CreateProductRequest: {
+            /** @example ITEM-MASK-SET */
+            item_code: string;
+            /** @example MASK-SET-05 */
+            sku_code: string;
+            /** @example Sheet Mask Set */
+            name: string;
+            item_type: components["schemas"]["ItemType"];
+            /** @example mask */
+            item_group?: string;
+            /** @example MYH */
+            brand_code?: string;
+            /** @example EA */
+            uom_base: string;
+            /** @example EA */
+            uom_purchase?: string;
+            /** @example EA */
+            uom_issue?: string;
+            /** @default false */
+            lot_controlled: boolean;
+            /** @default false */
+            expiry_controlled: boolean;
+            shelf_life_days?: number;
+            /** @default false */
+            qc_required: boolean;
+            status?: components["schemas"]["MasterDataStatus"];
+            standard_cost?: number;
+            /** @default false */
+            is_sellable: boolean;
+            /** @default false */
+            is_purchasable: boolean;
+            /** @default false */
+            is_producible: boolean;
+            spec_version?: string;
+        };
+        UpdateProductRequest: components["schemas"]["CreateProductRequest"];
+        ChangeProductStatusRequest: {
             status: components["schemas"]["MasterDataStatus"];
         };
         SupplierListSuccessResponse: {
@@ -1146,6 +1255,7 @@ export interface operations {
                 q?: components["parameters"]["SearchParam"];
                 /** @description Filter by master data lifecycle status. */
                 status?: components["parameters"]["MasterDataStatusParam"];
+                item_type?: components["schemas"]["ItemType"];
             };
             header?: never;
             path?: never;
@@ -1165,6 +1275,121 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    createProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProductRequest"];
+            };
+        };
+        responses: {
+            /** @description Product master data created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Product master data detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProductRequest"];
+            };
+        };
+        responses: {
+            /** @description Product master data updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    changeProductStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeProductStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Product master data status changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     listSuppliers: {
