@@ -20,7 +20,7 @@ func TestNewItemNormalizesCosmeticMasterDataFields(t *testing.T) {
 		ShelfLifeDays:    365,
 		QCRequired:       true,
 		Status:           ItemStatusActive,
-		StandardCost:     12500,
+		StandardCost:     "12500",
 		IsSellable:       true,
 		IsProducible:     true,
 		SpecVersion:      "SPEC-TEST",
@@ -67,7 +67,7 @@ func TestItemFilterMatchesCosmeticFields(t *testing.T) {
 		BrandCode:    "MYH",
 		UOMBase:      "EA",
 		Status:       ItemStatusActive,
-		StandardCost: 12500,
+		StandardCost: "12500",
 		IsSellable:   true,
 		IsProducible: true,
 	})

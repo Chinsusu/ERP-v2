@@ -49,8 +49,8 @@ describe("partyMasterDataService", () => {
       email: "Lab@Partner.Example",
       taxCode: "0319999001",
       leadTimeDays: 5,
-      qualityScore: 90,
-      deliveryScore: 92
+      qualityScore: "90",
+      deliveryScore: "92"
     });
 
     expect(created).toMatchObject({
@@ -110,7 +110,7 @@ describe("partyMasterDataService", () => {
       customerName: "Ha Noi Dealer",
       channelCode: "dealer",
       priceListCode: "pl-dealer-2026",
-      creditLimit: 200000000,
+      creditLimit: "200000000",
       email: "Buyer@HaNoiDealer.Example"
     });
 

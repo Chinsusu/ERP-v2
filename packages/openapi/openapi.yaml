@@ -1703,6 +1703,39 @@ components:
           type: integer
           minimum: 0
           example: 13
+    MoneyAmount:
+      type: string
+      pattern: "^[-]?[0-9]+(\\.[0-9]{1,2})?$"
+      description: Decimal string for VND money amounts, stored as numeric(18,2).
+      example: "1250000.00"
+    UnitCostAmount:
+      type: string
+      pattern: "^[-]?[0-9]+(\\.[0-9]{1,6})?$"
+      description: Decimal string for unit cost values, stored as numeric(18,6).
+      example: "64000.000000"
+    Quantity:
+      type: string
+      pattern: "^[-]?[0-9]+(\\.[0-9]{1,6})?$"
+      description: Decimal string for quantities, stored as numeric(18,6).
+      example: "10.500000"
+    Rate:
+      type: string
+      pattern: "^[-]?[0-9]+(\\.[0-9]{1,4})?$"
+      description: Decimal string for rates or percentages, stored as numeric(9,4).
+      example: "10.0000"
+    CurrencyCode:
+      type: string
+      minLength: 3
+      maxLength: 3
+      pattern: "^[A-Z]{3}$"
+      default: VND
+      example: VND
+    UOMCode:
+      type: string
+      minLength: 1
+      maxLength: 20
+      pattern: "^[A-Z0-9_-]+$"
+      example: PCS
     MasterDataStatus:
       type: string
       enum:
@@ -1851,17 +1884,13 @@ components:
           type: string
           example: MYH
         uom_code:
-          type: string
-          example: EA
+          $ref: "#/components/schemas/UOMCode"
         uom_base:
-          type: string
-          example: EA
+          $ref: "#/components/schemas/UOMCode"
         uom_purchase:
-          type: string
-          example: EA
+          $ref: "#/components/schemas/UOMCode"
         uom_issue:
-          type: string
-          example: EA
+          $ref: "#/components/schemas/UOMCode"
         lot_controlled:
           type: boolean
           example: true
@@ -1878,9 +1907,7 @@ components:
         status:
           $ref: "#/components/schemas/MasterDataStatus"
         standard_cost:
-          type: number
-          minimum: 0
-          example: 64000
+          $ref: "#/components/schemas/UnitCostAmount"
         is_sellable:
           type: boolean
           example: true
@@ -1929,14 +1956,11 @@ components:
           type: string
           example: MYH
         uom_base:
-          type: string
-          example: EA
+          $ref: "#/components/schemas/UOMCode"
         uom_purchase:
-          type: string
-          example: EA
+          $ref: "#/components/schemas/UOMCode"
         uom_issue:
-          type: string
-          example: EA
+          $ref: "#/components/schemas/UOMCode"
         lot_controlled:
           type: boolean
           default: false
@@ -1952,8 +1976,7 @@ components:
         status:
           $ref: "#/components/schemas/MasterDataStatus"
         standard_cost:
-          type: number
-          minimum: 0
+          $ref: "#/components/schemas/UnitCostAmount"
         is_sellable:
           type: boolean
           default: false
@@ -2050,17 +2073,11 @@ components:
           minimum: 0
           example: 12
         moq:
-          type: number
-          minimum: 0
-          example: 50
+          $ref: "#/components/schemas/Quantity"
         quality_score:
-          type: number
-          minimum: 0
-          example: 94
+          $ref: "#/components/schemas/Rate"
         delivery_score:
-          type: number
-          minimum: 0
-          example: 91
+          $ref: "#/components/schemas/Rate"
         status:
           $ref: "#/components/schemas/SupplierStatus"
         created_at:
@@ -2111,17 +2128,11 @@ components:
           minimum: 0
           default: 0
         moq:
-          type: number
-          minimum: 0
-          default: 0
+          $ref: "#/components/schemas/Quantity"
         quality_score:
-          type: number
-          minimum: 0
-          default: 0
+          $ref: "#/components/schemas/Rate"
         delivery_score:
-          type: number
-          minimum: 0
-          default: 0
+          $ref: "#/components/schemas/Rate"
         status:
           $ref: "#/components/schemas/SupplierStatus"
     UpdateSupplierRequest:
@@ -2195,9 +2206,7 @@ components:
           type: string
           example: tier_1
         credit_limit:
-          type: number
-          minimum: 0
-          example: 500000000
+          $ref: "#/components/schemas/MoneyAmount"
         payment_terms:
           type: string
           example: NET30
@@ -2253,9 +2262,7 @@ components:
           type: string
           example: tier_2
         credit_limit:
-          type: number
-          minimum: 0
-          default: 0
+          $ref: "#/components/schemas/MoneyAmount"
         payment_terms:
           type: string
           example: NET15
@@ -2570,8 +2577,7 @@ components:
             - TRANSFER_IN
             - ADJUST
         quantity:
-          type: number
-          exclusiveMinimum: 0
+          $ref: "#/components/schemas/Quantity"
         reason:
           type: string
     StockMovementSuccessResponse:

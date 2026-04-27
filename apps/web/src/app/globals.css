@@ -119,6 +119,54 @@ textarea {
   line-height: var(--erp-line-height-body);
 }
 
+.erp-ds-decimal {
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-ds-code {
+  color: var(--erp-text);
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-font-size-table);
+}
+
+.erp-ds-decimal-input {
+  display: grid;
+  gap: 6px;
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-ds-decimal-input-control {
+  display: flex;
+  align-items: center;
+  min-height: var(--erp-control-height);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius);
+  background: var(--erp-surface);
+}
+
+.erp-ds-decimal-input-control:focus-within {
+  border-color: var(--erp-info);
+}
+
+.erp-ds-decimal-input-control input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--erp-text);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  padding: 7px 10px;
+}
+
+.erp-ds-decimal-input-control small {
+  padding: 0 10px;
+  color: var(--erp-text-secondary);
+  white-space: nowrap;
+}
+
 .erp-page-actions {
   display: inline-flex;
   align-items: center;

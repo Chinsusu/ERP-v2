@@ -3,6 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import {
   DataTable,
+  DecimalInput,
   DetailDrawer,
   EmptyState,
   ErrorState,
@@ -12,6 +13,7 @@ import {
   type DataTableColumn,
   type ToastMessage
 } from "@/shared/design-system/components";
+import { decimalScales, formatMoney, formatQuantity, formatRate } from "@/shared/format/numberFormat";
 import { usePartyMasterData } from "../hooks/usePartyMasterData";
 import {
   customerStatusLabel,
@@ -113,7 +115,7 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
     {
       key: "score",
       header: "Score",
-      render: (row) => `${row.qualityScore ?? 0}/${row.deliveryScore ?? 0}`,
+      render: (row) => `${formatRate(row.qualityScore ?? "0.0000")}/${formatRate(row.deliveryScore ?? "0.0000")}`,
       width: "90px"
     },
     {
@@ -163,7 +165,7 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
     { key: "type", header: "Type", render: (row) => customerTypeLabel(row.customerType), width: "135px" },
     { key: "channel", header: "Channel", render: (row) => row.channelCode || "-", width: "100px" },
     { key: "price", header: "Price list", render: (row) => row.priceListCode || "-", width: "130px" },
-    { key: "credit", header: "Credit", render: (row) => money(row.creditLimit ?? 0), width: "110px" },
+    { key: "credit", header: "Credit", render: (row) => formatMoney(row.creditLimit ?? "0.00"), width: "110px" },
     {
       key: "status",
       header: "Status",
@@ -510,9 +512,9 @@ function SupplierForm({
           <TextField label="Address" value={form.address} onChange={(value) => onChange({ address: value })} />
           <TextField label="Payment terms" value={form.paymentTerms} onChange={(value) => onChange({ paymentTerms: value.toUpperCase() })} />
           <NumberField label="Lead days" value={form.leadTimeDays} onChange={(value) => onChange({ leadTimeDays: value })} />
-          <NumberField label="MOQ" value={form.moq} onChange={(value) => onChange({ moq: value })} />
-          <NumberField label="Quality score" value={form.qualityScore} onChange={(value) => onChange({ qualityScore: value })} />
-          <NumberField label="Delivery score" value={form.deliveryScore} onChange={(value) => onChange({ deliveryScore: value })} />
+          <DecimalInput label="MOQ" scale={decimalScales.quantity} value={form.moq} onChange={(value) => onChange({ moq: value })} />
+          <DecimalInput label="Quality score" scale={decimalScales.rate} suffix="%" value={form.qualityScore} onChange={(value) => onChange({ qualityScore: value })} />
+          <DecimalInput label="Delivery score" scale={decimalScales.rate} suffix="%" value={form.deliveryScore} onChange={(value) => onChange({ deliveryScore: value })} />
         </div>
       </FormSection>
     </form>
@@ -579,7 +581,7 @@ function CustomerForm({
           <TextField label="Channel" value={form.channelCode} onChange={(value) => onChange({ channelCode: value.toUpperCase() })} />
           <TextField label="Price list" value={form.priceListCode} onChange={(value) => onChange({ priceListCode: value.toUpperCase() })} />
           <TextField label="Discount group" value={form.discountGroup} onChange={(value) => onChange({ discountGroup: value })} />
-          <NumberField label="Credit limit" value={form.creditLimit} onChange={(value) => onChange({ creditLimit: value })} />
+          <DecimalInput label="Credit limit" scale={decimalScales.money} suffix="VND" value={form.creditLimit} onChange={(value) => onChange({ creditLimit: value })} />
           <TextField label="Payment terms" value={form.paymentTerms} onChange={(value) => onChange({ paymentTerms: value.toUpperCase() })} />
           <TextField label="Contact" value={form.contactName} onChange={(value) => onChange({ contactName: value })} />
           <TextField label="Phone" value={form.phone} onChange={(value) => onChange({ phone: value })} />
@@ -604,7 +606,8 @@ function SupplierDetail({ item }: { item: SupplierMasterDataItem }) {
       <MasterDataFact label="Tax" value={item.taxCode || "-"} />
       <MasterDataFact label="Terms" value={item.paymentTerms || "-"} />
       <MasterDataFact label="Lead" value={`${item.leadTimeDays ?? 0} days`} />
-      <MasterDataFact label="Scores" value={`${item.qualityScore ?? 0}/${item.deliveryScore ?? 0}`} />
+      <MasterDataFact label="MOQ" value={formatQuantity(item.moq ?? "0.000000")} />
+      <MasterDataFact label="Scores" value={`${formatRate(item.qualityScore ?? "0.0000")}/${formatRate(item.deliveryScore ?? "0.0000")}`} />
       <MasterDataFact label="Updated" value={formatDate(item.updatedAt)} />
       <MasterDataFact label="Audit" value={item.auditLogId || "Tracked on write"} />
     </div>
@@ -619,7 +622,7 @@ function CustomerDetail({ item }: { item: CustomerMasterDataItem }) {
       <MasterDataFact label="Status" value={customerStatusLabel(item.status)} />
       <MasterDataFact label="Channel" value={item.channelCode || "-"} />
       <MasterDataFact label="Price list" value={item.priceListCode || "-"} />
-      <MasterDataFact label="Credit" value={money(item.creditLimit ?? 0)} />
+      <MasterDataFact label="Credit" value={formatMoney(item.creditLimit ?? "0.00")} />
       <MasterDataFact label="Contact" value={item.contactName || "-"} />
       <MasterDataFact label="Phone" value={item.phone || "-"} />
       <MasterDataFact label="Email" value={item.email || "-"} />
@@ -681,9 +684,6 @@ function tableError(error: string | undefined, clearError: () => void) {
   ) : undefined;
 }
 
-function money(value: number) {
-  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value);
-}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" }).format(new Date(value));

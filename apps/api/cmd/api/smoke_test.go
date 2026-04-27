@@ -97,7 +97,7 @@ func TestSprint0APISmokePack(t *testing.T) {
 			"sku": "serum-30ml",
 			"warehouseId": "wh-hcm",
 			"movementType": "ADJUST",
-			"quantity": 8,
+			"quantity": "8.000000",
 			"reason": "smoke cycle count"
 		}`)
 		req := smokeRequestAsRole(

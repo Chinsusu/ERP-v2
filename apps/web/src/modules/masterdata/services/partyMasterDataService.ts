@@ -1,5 +1,6 @@
 import { ApiError, apiGet, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
+import { decimalScales, isNegativeDecimal, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type {
   CustomerMasterDataInput,
   CustomerMasterDataItem,
@@ -68,9 +69,9 @@ export const emptySupplierInput: SupplierMasterDataInput = {
   address: "",
   paymentTerms: "NET30",
   leadTimeDays: 0,
-  moq: 0,
-  qualityScore: 0,
-  deliveryScore: 0,
+  moq: "0.000000",
+  qualityScore: "0.0000",
+  deliveryScore: "0.0000",
   status: "draft"
 };
 
@@ -81,7 +82,7 @@ export const emptyCustomerInput: CustomerMasterDataInput = {
   channelCode: "DEALER",
   priceListCode: "PL-DEALER-2026",
   discountGroup: "",
-  creditLimit: 0,
+  creditLimit: "0.00",
   paymentTerms: "NET15",
   contactName: "",
   phone: "",
@@ -104,9 +105,9 @@ export const prototypeSuppliers: SupplierMasterDataItem[] = [
     address: "Binh Duong raw material hub",
     paymentTerms: "NET30",
     leadTimeDays: 12,
-    moq: 50,
-    qualityScore: 94,
-    deliveryScore: 91,
+    moq: "50.000000",
+    qualityScore: "94.0000",
+    deliveryScore: "91.0000",
     status: "active",
     createdAt: "2026-04-26T11:00:00Z",
     updatedAt: "2026-04-26T11:00:00Z"
@@ -123,9 +124,9 @@ export const prototypeSuppliers: SupplierMasterDataItem[] = [
     address: "Long An packaging park",
     paymentTerms: "NET45",
     leadTimeDays: 8,
-    moq: 1000,
-    qualityScore: 89,
-    deliveryScore: 88,
+    moq: "1000.000000",
+    qualityScore: "89.0000",
+    deliveryScore: "88.0000",
     status: "active",
     createdAt: "2026-04-26T11:10:00Z",
     updatedAt: "2026-04-26T11:10:00Z"
@@ -142,9 +143,9 @@ export const prototypeSuppliers: SupplierMasterDataItem[] = [
     address: "Ho Chi Minh logistics center",
     paymentTerms: "NET15",
     leadTimeDays: 2,
-    moq: 0,
-    qualityScore: 87,
-    deliveryScore: 93,
+    moq: "0.000000",
+    qualityScore: "87.0000",
+    deliveryScore: "93.0000",
     status: "active",
     createdAt: "2026-04-26T11:20:00Z",
     updatedAt: "2026-04-26T11:20:00Z"
@@ -161,9 +162,9 @@ export const prototypeSuppliers: SupplierMasterDataItem[] = [
     address: "Dong Nai outsource site",
     paymentTerms: "NET30",
     leadTimeDays: 15,
-    moq: 500,
-    qualityScore: 82,
-    deliveryScore: 80,
+    moq: "500.000000",
+    qualityScore: "82.0000",
+    deliveryScore: "80.0000",
     status: "inactive",
     createdAt: "2026-04-26T11:30:00Z",
     updatedAt: "2026-04-26T11:30:00Z"
@@ -179,7 +180,7 @@ export const prototypeCustomers: CustomerMasterDataItem[] = [
     channelCode: "B2B",
     priceListCode: "PL-B2B-2026",
     discountGroup: "tier_1",
-    creditLimit: 500000000,
+    creditLimit: "500000000.00",
     paymentTerms: "NET30",
     contactName: "Do Minh Anh",
     phone: "+84909888111",
@@ -198,7 +199,7 @@ export const prototypeCustomers: CustomerMasterDataItem[] = [
     channelCode: "DEALER",
     priceListCode: "PL-DEALER-2026",
     discountGroup: "tier_2",
-    creditLimit: 150000000,
+    creditLimit: "150000000.00",
     paymentTerms: "NET15",
     contactName: "Nguyen Linh Chi",
     phone: "+84909888222",
@@ -217,7 +218,7 @@ export const prototypeCustomers: CustomerMasterDataItem[] = [
     channelCode: "MP",
     priceListCode: "PL-MP-2026",
     discountGroup: "marketplace",
-    creditLimit: 0,
+    creditLimit: "0.00",
     paymentTerms: "PREPAID",
     contactName: "Marketplace Ops",
     phone: "+84909888333",
@@ -236,7 +237,7 @@ export const prototypeCustomers: CustomerMasterDataItem[] = [
     channelCode: "INT",
     priceListCode: "PL-INT-2026",
     discountGroup: "internal",
-    creditLimit: 0,
+    creditLimit: "0.00",
     paymentTerms: "INTERNAL",
     contactName: "Store Lead",
     phone: "+84909888444",
@@ -583,9 +584,9 @@ export function toSupplierInput(item: SupplierMasterDataItem): SupplierMasterDat
     address: item.address ?? "",
     paymentTerms: item.paymentTerms ?? "",
     leadTimeDays: item.leadTimeDays ?? 0,
-    moq: item.moq ?? 0,
-    qualityScore: item.qualityScore ?? 0,
-    deliveryScore: item.deliveryScore ?? 0,
+    moq: item.moq ?? "0.000000",
+    qualityScore: item.qualityScore ?? "0.0000",
+    deliveryScore: item.deliveryScore ?? "0.0000",
     status: item.status
   };
 }
@@ -598,7 +599,7 @@ export function toCustomerInput(item: CustomerMasterDataItem): CustomerMasterDat
     channelCode: item.channelCode ?? "",
     priceListCode: item.priceListCode ?? "",
     discountGroup: item.discountGroup ?? "",
-    creditLimit: item.creditLimit ?? 0,
+    creditLimit: item.creditLimit ?? "0.00",
     paymentTerms: item.paymentTerms ?? "",
     contactName: item.contactName ?? "",
     phone: item.phone ?? "",
@@ -692,9 +693,9 @@ function toSupplierApiRequest(input: SupplierMasterDataInput): SupplierApiCreate
     address: input.address || undefined,
     payment_terms: input.paymentTerms || undefined,
     lead_time_days: input.leadTimeDays,
-    moq: input.moq,
-    quality_score: input.qualityScore,
-    delivery_score: input.deliveryScore,
+    moq: input.moq || undefined,
+    quality_score: input.qualityScore || undefined,
+    delivery_score: input.deliveryScore || undefined,
     status: input.status
   };
 }
@@ -707,7 +708,7 @@ function toCustomerApiRequest(input: CustomerMasterDataInput): CustomerApiCreate
     channel_code: input.channelCode || undefined,
     price_list_code: input.priceListCode || undefined,
     discount_group: input.discountGroup || undefined,
-    credit_limit: input.creditLimit,
+    credit_limit: input.creditLimit || undefined,
     payment_terms: input.paymentTerms || undefined,
     contact_name: input.contactName || undefined,
     phone: input.phone || undefined,
@@ -730,9 +731,9 @@ function normalizeSupplierInput(input: SupplierMasterDataInput): SupplierMasterD
     address: input.address.trim(),
     paymentTerms: input.paymentTerms.trim().toUpperCase(),
     leadTimeDays: finiteNumber(input.leadTimeDays),
-    moq: finiteNumber(input.moq),
-    qualityScore: finiteNumber(input.qualityScore),
-    deliveryScore: finiteNumber(input.deliveryScore)
+    moq: normalizeDecimalInput(input.moq, decimalScales.quantity),
+    qualityScore: normalizeDecimalInput(input.qualityScore, decimalScales.rate),
+    deliveryScore: normalizeDecimalInput(input.deliveryScore, decimalScales.rate)
   };
 }
 
@@ -744,7 +745,7 @@ function normalizeCustomerInput(input: CustomerMasterDataInput): CustomerMasterD
     channelCode: input.channelCode.trim().toUpperCase(),
     priceListCode: input.priceListCode.trim().toUpperCase(),
     discountGroup: input.discountGroup.trim(),
-    creditLimit: finiteNumber(input.creditLimit),
+    creditLimit: normalizeDecimalInput(input.creditLimit, decimalScales.money),
     paymentTerms: input.paymentTerms.trim().toUpperCase(),
     contactName: input.contactName.trim(),
     phone: input.phone.trim(),
@@ -763,7 +764,7 @@ function validateSupplierInput(input: SupplierMasterDataInput) {
   if (missing.length > 0) {
     throw new Error(`Missing required fields: ${missing.map(([label]) => label).join(", ")}`);
   }
-  if (input.leadTimeDays < 0 || input.moq < 0 || input.qualityScore < 0 || input.deliveryScore < 0) {
+  if (input.leadTimeDays < 0 || isNegativeDecimal(input.moq) || isNegativeDecimal(input.qualityScore) || isNegativeDecimal(input.deliveryScore)) {
     throw new Error("Supplier metrics cannot be negative");
   }
 }
@@ -777,7 +778,7 @@ function validateCustomerInput(input: CustomerMasterDataInput) {
   if (missing.length > 0) {
     throw new Error(`Missing required fields: ${missing.map(([label]) => label).join(", ")}`);
   }
-  if (input.creditLimit < 0) {
+  if (isNegativeDecimal(input.creditLimit)) {
     throw new Error("Customer credit limit cannot be negative");
   }
 }
