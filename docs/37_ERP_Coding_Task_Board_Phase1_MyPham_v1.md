@@ -162,7 +162,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | S1-03-02 | Available and reserved stock service v1 | Inventory Stock Ledger | BE Lead + FE Lead | P0 | Done | `docs/33_...` + `docs/16_...` + `docs/40_...` |
 | S1-04-01 | Batch and QC status base model | Batch/QC | BE Lead + QA | P0 | Done | `docs/05_...` + `docs/17_...` |
 | S1-04-02 | QC status transition and audit path | Batch/QC | BE Lead + QA + Internal Control | P1 | Done | `docs/19_...` + `docs/33_...` |
-| S1-05-01 | Warehouse receiving backend v1 | Warehouse Receiving | BE Lead + Warehouse | P0 | Backlog | `docs/33_...` + `docs/16_...` |
+| S1-05-01 | Warehouse receiving backend v1 | Warehouse Receiving | BE Lead + Warehouse | P0 | Done | `docs/33_...` + `docs/16_...` |
 | S1-05-02 | Warehouse receiving UI v1 | Warehouse Receiving | FE Lead + Warehouse + UI/UX | P0 | Backlog | `docs/39_...` |
 | S1-06-01 | Warehouse daily board data integration v1 | Warehouse Daily Board | FE Lead + BE Lead + Warehouse | P1 | Backlog | `docs/33_...` + `docs/39_...` |
 
@@ -1366,7 +1366,7 @@ Evidence:
 
 **Owner:** BE Lead + Warehouse
 **Priority:** P0
-**Status:** Backlog
+**Status:** Done
 **Primary Ref:** `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`, `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1376,6 +1376,22 @@ Acceptance criteria:
 - Receiving supports item/SKU, warehouse/location, batch, quantity, and reference document.
 - Permission and audit checks protect posting.
 - Tests cover happy path, duplicate posting, invalid location, and missing batch/QC data.
+
+Current state:
+
+- Backend exposes warehouse receiving API at `/api/v1/goods-receipts` with draft creation, detail/list, submit, inspect-ready, and post actions.
+- Receiving domain enforces the state path `draft -> submitted -> inspect_ready -> posted`; duplicate posting and invalid transitions are rejected.
+- Posting creates audited `purchase_receipt` stock movement records through the stock movement store and does not update stock balances directly.
+- Receiving lines carry item/SKU, warehouse/location, batch, quantity as string decimal/base UOM, QC status, and reference document context.
+- Receiving creation validates active receive-enabled warehouse locations; posting validates batch/QC data and batch-to-line SKU/item consistency.
+- Posting actions require `record:create`; all receiving mutations record audit logs with request ID and before/after status context.
+- OpenAPI contract and generated frontend schema include goods receipt request/response models and action endpoints.
+
+Evidence:
+
+- Task branch: `codex/s1-05-01-warehouse-receiving-backend`.
+- Local checks: API tests, OpenAPI generate, and OpenAPI validate.
+- Broader frontend/build/smoke checks are run before merge for this task.
 
 ### S1-05-02 Warehouse Receiving UI V1
 
@@ -1441,6 +1457,7 @@ Acceptance criteria:
 | S1-00-02 | PR #132; backend decimal helpers, string decimal OpenAPI contracts, vi-VN frontend format/input helpers, generated schema, and decimal tests |
 | S1-00-03 | PR #133; UOM domain/catalog, PostgreSQL UOM master/conversion migration, Phase 1 UOM seeds, global/item-specific conversion service, and UOM conversion tests |
 | S1-03-01 | PR #134; decimal base-UOM stock movement domain/store, stock ledger/balance migration 000004, source conversion fields, OpenAPI/generated schema, and inbound/outbound/adjustment/rollback tests |
+| S1-05-01 | Manual merge; goods receipt backend state path, receive-enabled location validation, batch/QC posting guard, audited stock movement recording without direct balance updates, OpenAPI/generated schema, and receiving tests |
 
 ---
 
@@ -1460,8 +1477,7 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-05-01` - Warehouse receiving backend v1.
-2. `S1-05-02` - Warehouse receiving UI v1.
-3. `S1-06-01` - Warehouse daily board data integration v1.
+1. `S1-05-02` - Warehouse receiving UI v1.
+2. `S1-06-01` - Warehouse daily board data integration v1.
 
-The stock ledger foundation now stores decimal base-UOM movement data, available stock exposes Phase 1 quantity buckets, and batch/QC status changes are permissioned and audited. The next inventory tasks should add receiving workflows and feed operational signals into the warehouse daily board.
+The stock ledger foundation now stores decimal base-UOM movement data, available stock exposes Phase 1 quantity buckets, batch/QC status changes are permissioned and audited, and the receiving backend now owns goods receipt state/posting. The next tasks should make receiving usable in the UI and feed operational signals into the warehouse daily board.

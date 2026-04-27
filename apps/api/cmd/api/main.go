@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -479,6 +480,84 @@ type carrierManifestScanResponse struct {
 	AuditLogID         string                           `json:"audit_log_id,omitempty"`
 }
 
+type warehouseReceivingLineResponse struct {
+	ID          string `json:"id"`
+	ItemID      string `json:"item_id"`
+	SKU         string `json:"sku"`
+	ItemName    string `json:"item_name,omitempty"`
+	BatchID     string `json:"batch_id,omitempty"`
+	BatchNo     string `json:"batch_no,omitempty"`
+	WarehouseID string `json:"warehouse_id"`
+	LocationID  string `json:"location_id"`
+	Quantity    string `json:"quantity"`
+	BaseUOMCode string `json:"base_uom_code"`
+	QCStatus    string `json:"qc_status,omitempty"`
+}
+
+type warehouseReceivingStockMovementResponse struct {
+	MovementNo      string `json:"movement_no"`
+	MovementType    string `json:"movement_type"`
+	ItemID          string `json:"item_id"`
+	BatchID         string `json:"batch_id"`
+	WarehouseID     string `json:"warehouse_id"`
+	LocationID      string `json:"location_id"`
+	Quantity        string `json:"quantity"`
+	BaseUOMCode     string `json:"base_uom_code"`
+	StockStatus     string `json:"stock_status"`
+	SourceDocID     string `json:"source_doc_id"`
+	SourceDocLineID string `json:"source_doc_line_id"`
+}
+
+type warehouseReceivingResponse struct {
+	ID               string                                    `json:"id"`
+	OrgID            string                                    `json:"org_id"`
+	ReceiptNo        string                                    `json:"receipt_no"`
+	WarehouseID      string                                    `json:"warehouse_id"`
+	WarehouseCode    string                                    `json:"warehouse_code"`
+	LocationID       string                                    `json:"location_id"`
+	LocationCode     string                                    `json:"location_code"`
+	ReferenceDocType string                                    `json:"reference_doc_type"`
+	ReferenceDocID   string                                    `json:"reference_doc_id"`
+	SupplierID       string                                    `json:"supplier_id,omitempty"`
+	Status           string                                    `json:"status"`
+	Lines            []warehouseReceivingLineResponse          `json:"lines"`
+	StockMovements   []warehouseReceivingStockMovementResponse `json:"stock_movements,omitempty"`
+	CreatedBy        string                                    `json:"created_by"`
+	SubmittedBy      string                                    `json:"submitted_by,omitempty"`
+	InspectReadyBy   string                                    `json:"inspect_ready_by,omitempty"`
+	PostedBy         string                                    `json:"posted_by,omitempty"`
+	AuditLogID       string                                    `json:"audit_log_id,omitempty"`
+	CreatedAt        string                                    `json:"created_at"`
+	UpdatedAt        string                                    `json:"updated_at"`
+	SubmittedAt      string                                    `json:"submitted_at,omitempty"`
+	InspectReadyAt   string                                    `json:"inspect_ready_at,omitempty"`
+	PostedAt         string                                    `json:"posted_at,omitempty"`
+}
+
+type createWarehouseReceivingLineRequest struct {
+	ID          string `json:"id"`
+	ItemID      string `json:"item_id"`
+	SKU         string `json:"sku"`
+	ItemName    string `json:"item_name"`
+	BatchID     string `json:"batch_id"`
+	BatchNo     string `json:"batch_no"`
+	Quantity    string `json:"quantity"`
+	BaseUOMCode string `json:"base_uom_code"`
+	QCStatus    string `json:"qc_status"`
+}
+
+type createWarehouseReceivingRequest struct {
+	ID               string                                `json:"id"`
+	OrgID            string                                `json:"org_id"`
+	ReceiptNo        string                                `json:"receipt_no"`
+	WarehouseID      string                                `json:"warehouse_id"`
+	LocationID       string                                `json:"location_id"`
+	ReferenceDocType string                                `json:"reference_doc_type"`
+	ReferenceDocID   string                                `json:"reference_doc_id"`
+	SupplierID       string                                `json:"supplier_id"`
+	Lines            []createWarehouseReceivingLineRequest `json:"lines"`
+}
+
 type returnReceiptLineResponse struct {
 	ID          string `json:"id"`
 	SKU         string `json:"sku"`
@@ -582,6 +661,15 @@ func main() {
 	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
 	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
 	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditLogStore)
+	stockMovementStore := inventoryapp.NewInMemoryStockMovementStore()
+	warehouseReceivingStore := inventoryapp.NewPrototypeWarehouseReceivingStore()
+	warehouseReceiving := inventoryapp.NewWarehouseReceivingService(
+		warehouseReceivingStore,
+		warehouseCatalog,
+		batchCatalog,
+		stockMovementStore,
+		auditLogStore,
+	)
 	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	listEndOfDayReconciliations := inventoryapp.NewListEndOfDayReconciliations(reconciliationStore)
 	closeEndOfDayReconciliation := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditLogStore)
@@ -767,6 +855,45 @@ func main() {
 			authSessions,
 			auth.PermissionInventoryView,
 			http.HandlerFunc(batchDetailHandler(batchCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/goods-receipts",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(goodsReceiptsHandler(warehouseReceiving)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/goods-receipts/{receipt_id}/submit",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(submitGoodsReceiptHandler(warehouseReceiving)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/goods-receipts/{receipt_id}/inspect-ready",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(markGoodsReceiptInspectReadyHandler(warehouseReceiving)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/goods-receipts/{receipt_id}/post",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(postGoodsReceiptHandler(warehouseReceiving)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/goods-receipts/{receipt_id}",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionWarehouseView,
+			http.HandlerFunc(goodsReceiptDetailHandler(warehouseReceiving)),
 		),
 	)
 	mux.Handle(
@@ -2324,6 +2451,162 @@ func batchQCTransitionsHandler(catalog *inventoryapp.BatchCatalog) http.HandlerF
 	}
 }
 
+func goodsReceiptsHandler(service inventoryapp.WarehouseReceivingService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionWarehouseView) {
+				writePermissionDenied(w, r, auth.PermissionWarehouseView)
+				return
+			}
+			filter := domain.NewWarehouseReceivingFilter(
+				r.URL.Query().Get("warehouse_id"),
+				domain.WarehouseReceivingStatus(r.URL.Query().Get("status")),
+			)
+			receipts, err := service.ListWarehouseReceivings(r.Context(), filter)
+			if err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusConflict,
+					response.ErrorCodeConflict,
+					"Goods receipts could not be loaded",
+					nil,
+				)
+				return
+			}
+
+			payload := make([]warehouseReceivingResponse, 0, len(receipts))
+			for _, receipt := range receipts {
+				payload = append(payload, newWarehouseReceivingResponse(receipt, ""))
+			}
+			response.WriteSuccess(w, r, http.StatusOK, payload)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+
+			var payload createWarehouseReceivingRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid goods receipt payload",
+					nil,
+				)
+				return
+			}
+			result, err := service.CreateWarehouseReceiving(r.Context(), inventoryapp.CreateWarehouseReceivingInput{
+				ID:               payload.ID,
+				OrgID:            payload.OrgID,
+				ReceiptNo:        payload.ReceiptNo,
+				WarehouseID:      payload.WarehouseID,
+				LocationID:       payload.LocationID,
+				ReferenceDocType: payload.ReferenceDocType,
+				ReferenceDocID:   payload.ReferenceDocID,
+				SupplierID:       payload.SupplierID,
+				Lines:            newCreateWarehouseReceivingLines(payload.Lines),
+				ActorID:          principal.UserID,
+				RequestID:        response.RequestID(r),
+			})
+			if err != nil {
+				writeWarehouseReceivingError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusCreated, newWarehouseReceivingResponse(result.Receipt, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func goodsReceiptDetailHandler(service inventoryapp.WarehouseReceivingService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		receipt, err := service.GetWarehouseReceiving(r.Context(), r.PathValue("receipt_id"))
+		if err != nil {
+			writeWarehouseReceivingError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newWarehouseReceivingResponse(receipt, ""))
+	}
+}
+
+func submitGoodsReceiptHandler(service inventoryapp.WarehouseReceivingService) http.HandlerFunc {
+	return goodsReceiptTransitionHandler(service, func(
+		ctx context.Context,
+		input inventoryapp.WarehouseReceivingTransitionInput,
+	) (inventoryapp.WarehouseReceivingResult, error) {
+		return service.SubmitWarehouseReceiving(ctx, input)
+	})
+}
+
+func markGoodsReceiptInspectReadyHandler(service inventoryapp.WarehouseReceivingService) http.HandlerFunc {
+	return goodsReceiptTransitionHandler(service, func(
+		ctx context.Context,
+		input inventoryapp.WarehouseReceivingTransitionInput,
+	) (inventoryapp.WarehouseReceivingResult, error) {
+		return service.MarkWarehouseReceivingInspectReady(ctx, input)
+	})
+}
+
+func postGoodsReceiptHandler(service inventoryapp.WarehouseReceivingService) http.HandlerFunc {
+	return goodsReceiptTransitionHandler(service, func(
+		ctx context.Context,
+		input inventoryapp.WarehouseReceivingTransitionInput,
+	) (inventoryapp.WarehouseReceivingResult, error) {
+		return service.PostWarehouseReceiving(ctx, input)
+	})
+}
+
+func goodsReceiptTransitionHandler(
+	_ inventoryapp.WarehouseReceivingService,
+	apply func(context.Context, inventoryapp.WarehouseReceivingTransitionInput) (inventoryapp.WarehouseReceivingResult, error),
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+		result, err := apply(r.Context(), inventoryapp.WarehouseReceivingTransitionInput{
+			ID:        r.PathValue("receipt_id"),
+			ActorID:   principal.UserID,
+			RequestID: response.RequestID(r),
+		})
+		if err != nil {
+			writeWarehouseReceivingError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newWarehouseReceivingResponse(result.Receipt, result.AuditLogID))
+	}
+}
+
 func endOfDayReconciliationsHandler(service inventoryapp.ListEndOfDayReconciliations) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -2707,6 +2990,98 @@ func newBatchQCTransitionResponse(transition domain.BatchQCTransition) batchQCTr
 	}
 }
 
+func newCreateWarehouseReceivingLines(
+	inputs []createWarehouseReceivingLineRequest,
+) []inventoryapp.CreateWarehouseReceivingLineInput {
+	lines := make([]inventoryapp.CreateWarehouseReceivingLineInput, 0, len(inputs))
+	for _, input := range inputs {
+		lines = append(lines, inventoryapp.CreateWarehouseReceivingLineInput{
+			ID:          input.ID,
+			ItemID:      input.ItemID,
+			SKU:         input.SKU,
+			ItemName:    input.ItemName,
+			BatchID:     input.BatchID,
+			BatchNo:     input.BatchNo,
+			Quantity:    input.Quantity,
+			BaseUOMCode: input.BaseUOMCode,
+			QCStatus:    input.QCStatus,
+		})
+	}
+
+	return lines
+}
+
+func newWarehouseReceivingResponse(
+	receipt domain.WarehouseReceiving,
+	auditLogID string,
+) warehouseReceivingResponse {
+	payload := warehouseReceivingResponse{
+		ID:               receipt.ID,
+		OrgID:            receipt.OrgID,
+		ReceiptNo:        receipt.ReceiptNo,
+		WarehouseID:      receipt.WarehouseID,
+		WarehouseCode:    receipt.WarehouseCode,
+		LocationID:       receipt.LocationID,
+		LocationCode:     receipt.LocationCode,
+		ReferenceDocType: receipt.ReferenceDocType,
+		ReferenceDocID:   receipt.ReferenceDocID,
+		SupplierID:       receipt.SupplierID,
+		Status:           string(receipt.Status),
+		Lines:            make([]warehouseReceivingLineResponse, 0, len(receipt.Lines)),
+		StockMovements:   make([]warehouseReceivingStockMovementResponse, 0, len(receipt.StockMovements)),
+		CreatedBy:        receipt.CreatedBy,
+		SubmittedBy:      receipt.SubmittedBy,
+		InspectReadyBy:   receipt.InspectReadyBy,
+		PostedBy:         receipt.PostedBy,
+		AuditLogID:       auditLogID,
+		CreatedAt:        receipt.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:        receipt.UpdatedAt.Format(time.RFC3339),
+		SubmittedAt:      timeString(receipt.SubmittedAt),
+		InspectReadyAt:   timeString(receipt.InspectReadyAt),
+		PostedAt:         timeString(receipt.PostedAt),
+	}
+	for _, line := range receipt.Lines {
+		payload.Lines = append(payload.Lines, warehouseReceivingLineResponse{
+			ID:          line.ID,
+			ItemID:      line.ItemID,
+			SKU:         line.SKU,
+			ItemName:    line.ItemName,
+			BatchID:     line.BatchID,
+			BatchNo:     line.BatchNo,
+			WarehouseID: line.WarehouseID,
+			LocationID:  line.LocationID,
+			Quantity:    line.Quantity.String(),
+			BaseUOMCode: line.BaseUOMCode.String(),
+			QCStatus:    string(line.QCStatus),
+		})
+	}
+	for _, movement := range receipt.StockMovements {
+		payload.StockMovements = append(payload.StockMovements, warehouseReceivingStockMovementResponse{
+			MovementNo:      movement.MovementNo,
+			MovementType:    string(movement.MovementType),
+			ItemID:          movement.ItemID,
+			BatchID:         movement.BatchID,
+			WarehouseID:     movement.WarehouseID,
+			LocationID:      movement.BinID,
+			Quantity:        movement.Quantity.String(),
+			BaseUOMCode:     movement.BaseUOMCode.String(),
+			StockStatus:     string(movement.StockStatus),
+			SourceDocID:     movement.SourceDocID,
+			SourceDocLineID: movement.SourceDocLineID,
+		})
+	}
+
+	return payload
+}
+
+func timeString(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+
+	return value.UTC().Format(time.RFC3339)
+}
+
 func dateString(value time.Time) string {
 	if value.IsZero() {
 		return ""
@@ -2943,6 +3318,62 @@ func writeBatchQCTransitionError(w http.ResponseWriter, r *http.Request, err err
 		)
 	default:
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Batch QC transition could not be processed", nil)
+	}
+}
+
+func writeWarehouseReceivingError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, inventoryapp.ErrWarehouseReceivingNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Goods receipt not found", nil)
+	case errors.Is(err, inventoryapp.ErrReceivingInvalidLocation):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Goods receipt location is invalid",
+			map[string]any{"field": "location_id"},
+		)
+	case errors.Is(err, inventoryapp.ErrBatchNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Batch not found", nil)
+	case errors.Is(err, inventoryapp.ErrReceivingBatchMismatch):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Goods receipt batch does not match the receiving line",
+			nil,
+		)
+	case errors.Is(err, domain.ErrReceivingRequiredField),
+		errors.Is(err, domain.ErrReceivingInvalidStatus),
+		errors.Is(err, domain.ErrBatchInvalidQCStatus),
+		errors.Is(err, decimal.ErrInvalidDecimal),
+		errors.Is(err, decimal.ErrInvalidUOMCode),
+		errors.Is(err, decimal.ErrDecimalOutOfRange):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Invalid goods receipt payload",
+			map[string]any{"required": "warehouse_id, location_id, reference_doc_type, reference_doc_id, lines, quantity, and base_uom_code"},
+		)
+	case errors.Is(err, domain.ErrReceivingMissingBatchQCData):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Batch and QC data are required before posting goods receipt",
+			map[string]any{"required": "batch_id and qc_status"},
+		)
+	case errors.Is(err, domain.ErrReceivingAlreadyPosted):
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Goods receipt is already posted", nil)
+	case errors.Is(err, domain.ErrReceivingInvalidTransition):
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Goods receipt status transition is not allowed", nil)
+	default:
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Goods receipt request could not be processed", nil)
 	}
 }
 
