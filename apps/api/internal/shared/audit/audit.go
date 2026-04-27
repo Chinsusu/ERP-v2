@@ -125,7 +125,7 @@ func NewInMemoryLogStore(logs ...Log) *InMemoryLogStore {
 
 func NewPrototypeLogStore() *InMemoryLogStore {
 	baseTime := time.Date(2026, 4, 26, 8, 30, 0, 0, time.UTC)
-	logs := make([]Log, 0, 3)
+	logs := make([]Log, 0, 4)
 	for _, input := range []NewLogInput{
 		{
 			ID:         "audit-adjust-260426-0001",
@@ -185,6 +185,28 @@ func NewPrototypeLogStore() *InMemoryLogStore {
 				"sku":    "SERUM-30ML",
 			},
 			CreatedAt: baseTime.Add(-95 * time.Minute),
+		},
+		{
+			ID:         "audit-batch-qc-260426-0004",
+			OrgID:      "org-local",
+			ActorID:    "user-qa",
+			Action:     "inventory.batch.qc_status_changed",
+			EntityType: "inventory.batch",
+			EntityID:   "batch-cream-2603b",
+			RequestID:  "req_batch_qc_260426",
+			BeforeData: map[string]any{
+				"qc_status": "hold",
+			},
+			AfterData: map[string]any{
+				"qc_status": "pass",
+			},
+			Metadata: map[string]any{
+				"batch_no":     "LOT-2603B",
+				"business_ref": "QC-260426-0004",
+				"reason":       "incoming inspection passed",
+				"sku":          "CREAM-50G",
+			},
+			CreatedAt: baseTime.Add(-50 * time.Minute),
 		},
 	} {
 		log, err := NewLog(input)

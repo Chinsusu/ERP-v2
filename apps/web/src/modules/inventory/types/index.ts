@@ -6,6 +6,9 @@ export type AvailableStockItem = {
   sku: string;
   batchId?: string;
   batchNo?: string;
+  batchQcStatus?: BatchQCStatus;
+  batchStatus?: BatchStatus;
+  batchExpiryDate?: string;
   baseUomCode: string;
   physicalQty: string;
   reservedQty: string;
@@ -15,6 +18,34 @@ export type AvailableStockItem = {
   blockedQty: string;
   holdQty: string;
   availableQty: string;
+};
+
+export type BatchQCStatus = "hold" | "pass" | "fail" | "quarantine" | "retest_required";
+
+export type BatchStatus = "active" | "inactive" | "blocked";
+
+export type BatchQCTransition = {
+  id: string;
+  batchId: string;
+  batchNo: string;
+  sku: string;
+  fromQcStatus: BatchQCStatus;
+  toQcStatus: BatchQCStatus;
+  actorId: string;
+  reason: string;
+  businessRef: string;
+  auditLogId: string;
+  createdAt: string;
+};
+
+export type BatchQCTransitionInput = {
+  qcStatus: BatchQCStatus;
+  reason: string;
+  businessRef?: string;
+};
+
+export type BatchQCTransitionResult = {
+  transition: BatchQCTransition;
 };
 
 export type AvailableStockQuery = {

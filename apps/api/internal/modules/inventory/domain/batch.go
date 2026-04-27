@@ -66,6 +66,20 @@ type BatchFilter struct {
 	Status   BatchStatus
 }
 
+type BatchQCTransition struct {
+	ID           string
+	BatchID      string
+	BatchNo      string
+	SKU          string
+	FromQCStatus QCStatus
+	ToQCStatus   QCStatus
+	ActorID      string
+	Reason       string
+	BusinessRef  string
+	AuditLogID   string
+	CreatedAt    time.Time
+}
+
 func NewBatch(input NewBatchInput) (Batch, error) {
 	createdAt := input.CreatedAt
 	if createdAt.IsZero() {

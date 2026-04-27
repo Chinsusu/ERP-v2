@@ -1095,6 +1095,65 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /inventory/batches/{batch_id}/qc-transitions:
+    get:
+      summary: List audited QC status transitions for an inventory batch
+      operationId: listBatchQCTransitions
+      tags:
+        - inventory
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Audited batch QC transition history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchQCTransitionListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      summary: Create an audited QC status transition for an inventory batch
+      operationId: createBatchQCTransition
+      tags:
+        - inventory
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBatchQCTransitionRequest"
+      responses:
+        "200":
+          description: Batch QC status changed and audited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchQCTransitionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /warehouse/end-of-day-reconciliations:
     get:
       summary: List warehouse end-of-day reconciliation sessions
@@ -1739,6 +1798,7 @@ components:
         - audit-log:view
         - reports:view
         - settings:view
+        - qc:decision
         - record:create
         - record:export
     Pagination:
@@ -2789,6 +2849,91 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/Batch"
+    BatchQCTransitionListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/BatchQCTransition"
+    BatchQCTransitionResultSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/BatchQCTransitionResult"
+    BatchQCTransitionResult:
+      type: object
+      required:
+        - batch
+        - transition
+      properties:
+        batch:
+          $ref: "#/components/schemas/Batch"
+        transition:
+          $ref: "#/components/schemas/BatchQCTransition"
+    CreateBatchQCTransitionRequest:
+      type: object
+      required:
+        - qc_status
+        - reason
+      properties:
+        qc_status:
+          $ref: "#/components/schemas/BatchQCStatus"
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          example: COA and visual inspection passed
+        business_ref:
+          type: string
+          maxLength: 120
+          example: QC-260427-0001
+    BatchQCTransition:
+      type: object
+      required:
+        - id
+        - batch_id
+        - batch_no
+        - sku
+        - from_qc_status
+        - to_qc_status
+        - actor_id
+        - reason
+        - business_ref
+        - audit_log_id
+        - created_at
+      properties:
+        id:
+          type: string
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        sku:
+          type: string
+        from_qc_status:
+          $ref: "#/components/schemas/BatchQCStatus"
+        to_qc_status:
+          $ref: "#/components/schemas/BatchQCStatus"
+        actor_id:
+          type: string
+        reason:
+          type: string
+        business_ref:
+          type: string
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
     Batch:
       type: object
       required:

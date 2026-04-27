@@ -302,6 +302,82 @@ func TestBatchDetailHandlerReturnsNotFound(t *testing.T) {
 	}
 }
 
+func TestBatchQCTransitionsHandlerRequiresDecisionPermission(t *testing.T) {
+	catalog := inventoryapp.NewPrototypeBatchCatalog(audit.NewInMemoryLogStore())
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/inventory/batches/batch-serum-2604a/qc-transitions",
+		bytes.NewBufferString(`{"qc_status":"pass","reason":"inspection passed"}`),
+	)
+	req.SetPathValue("batch_id", "batch-serum-2604a")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	batchQCTransitionsHandler(catalog).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+func TestBatchQCTransitionsHandlerChangesStatusAndListsHistory(t *testing.T) {
+	auditStore := audit.NewInMemoryLogStore()
+	catalog := inventoryapp.NewPrototypeBatchCatalog(auditStore)
+	principal := auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleQA)
+	body := bytes.NewBufferString(`{"qc_status":"pass","reason":"COA and visual inspection passed","business_ref":"QC-260427-0001"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/inventory/batches/batch-serum-2604a/qc-transitions", body)
+	req.SetPathValue("batch_id", "batch-serum-2604a")
+	req.Header.Set(response.HeaderRequestID, "req-batch-qc")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), principal))
+	rec := httptest.NewRecorder()
+
+	batchQCTransitionsHandler(catalog).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var payload response.SuccessEnvelope[batchQCTransitionResultResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.Batch.QCStatus != "pass" || payload.Data.Transition.FromQCStatus != "hold" {
+		t.Fatalf("transition payload = %+v, want hold -> pass", payload.Data)
+	}
+
+	historyReq := httptest.NewRequest(http.MethodGet, "/api/v1/inventory/batches/batch-serum-2604a/qc-transitions", nil)
+	historyReq.SetPathValue("batch_id", "batch-serum-2604a")
+	historyReq = historyReq.WithContext(auth.WithPrincipal(historyReq.Context(), principal))
+	historyRec := httptest.NewRecorder()
+	batchQCTransitionsHandler(catalog).ServeHTTP(historyRec, historyReq)
+
+	if historyRec.Code != http.StatusOK {
+		t.Fatalf("history status = %d, want %d: %s", historyRec.Code, http.StatusOK, historyRec.Body.String())
+	}
+	var historyPayload response.SuccessEnvelope[[]batchQCTransitionResponse]
+	if err := json.NewDecoder(historyRec.Body).Decode(&historyPayload); err != nil {
+		t.Fatalf("decode history response: %v", err)
+	}
+	if len(historyPayload.Data) != 1 || historyPayload.Data[0].AuditLogID == "" {
+		t.Fatalf("history = %+v, want one audited transition", historyPayload.Data)
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "inventory.batch.qc_status_changed"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].Metadata["business_ref"] != "QC-260427-0001" {
+		t.Fatalf("audit logs = %+v, want business reference", logs)
+	}
+}
+
 func TestEndOfDayReconciliationsHandlerReturnsFilteredRows(t *testing.T) {
 	store := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	service := inventoryapp.NewListEndOfDayReconciliations(store)

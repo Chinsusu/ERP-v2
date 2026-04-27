@@ -595,6 +595,25 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
+.erp-stock-qc-form {
+  display: grid;
+  grid-template-columns: minmax(190px, 240px) minmax(150px, 180px) minmax(180px, 220px) minmax(240px, 1fr) auto auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.erp-stock-qc-reason {
+  min-width: 0;
+}
+
+.erp-stock-qc-status-flow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
 .erp-audit-page {
   display: grid;
   gap: 16px;
@@ -2685,6 +2704,7 @@ textarea {
   }
 
   .erp-stock-toolbar,
+  .erp-stock-qc-form,
   .erp-audit-toolbar,
   .erp-audit-kpis,
   .erp-masterdata-toolbar,

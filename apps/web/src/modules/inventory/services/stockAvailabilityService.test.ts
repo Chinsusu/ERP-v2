@@ -3,6 +3,8 @@ import {
   availabilityTone,
   formatQuantity,
   getAvailableStock,
+  getBatchQCTransitions,
+  prototypeBatchQCTransitions,
   prototypeAvailableStock,
   summarizeAvailableStock
 } from "./stockAvailabilityService";
@@ -46,5 +48,11 @@ describe("stockAvailabilityService", () => {
     await expect(getAvailableStock({ warehouseId: "wh-hn", sku: "toner-100ml" })).resolves.toEqual([
       prototypeAvailableStock[2]
     ]);
+  });
+
+  it("falls back to prototype batch QC transition history", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+
+    await expect(getBatchQCTransitions("batch-cream-2603b")).resolves.toEqual(prototypeBatchQCTransitions);
   });
 });

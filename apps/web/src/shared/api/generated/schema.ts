@@ -490,6 +490,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/inventory/batches/{batch_id}/qc-transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List audited QC status transitions for an inventory batch */
+        get: operations["listBatchQCTransitions"];
+        put?: never;
+        /** Create an audited QC status transition for an inventory batch */
+        post: operations["createBatchQCTransition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/warehouse/end-of-day-reconciliations": {
         parameters: {
             query?: never;
@@ -712,7 +730,7 @@ export interface components {
         /** @enum {string} */
         RoleKey: "CEO" | "ERP_ADMIN" | "WAREHOUSE_STAFF" | "WAREHOUSE_LEAD" | "QA" | "SALES_OPS" | "PRODUCTION_OPS";
         /** @enum {string} */
-        PermissionKey: "dashboard:view" | "warehouse:view" | "inventory:view" | "purchase:view" | "qc:view" | "production:view" | "subcontract:view" | "sales:view" | "shipping:view" | "returns:view" | "master-data:view" | "approvals:view" | "audit-log:view" | "reports:view" | "settings:view" | "record:create" | "record:export";
+        PermissionKey: "dashboard:view" | "warehouse:view" | "inventory:view" | "purchase:view" | "qc:view" | "production:view" | "subcontract:view" | "sales:view" | "shipping:view" | "returns:view" | "master-data:view" | "approvals:view" | "audit-log:view" | "reports:view" | "settings:view" | "qc:decision" | "record:create" | "record:export";
         Pagination: {
             /** @example 1 */
             page: number;
@@ -1209,6 +1227,37 @@ export interface components {
         };
         BatchSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["Batch"];
+        };
+        BatchQCTransitionListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["BatchQCTransition"][];
+        };
+        BatchQCTransitionResultSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["BatchQCTransitionResult"];
+        };
+        BatchQCTransitionResult: {
+            batch: components["schemas"]["Batch"];
+            transition: components["schemas"]["BatchQCTransition"];
+        };
+        CreateBatchQCTransitionRequest: {
+            qc_status: components["schemas"]["BatchQCStatus"];
+            /** @example COA and visual inspection passed */
+            reason: string;
+            /** @example QC-260427-0001 */
+            business_ref?: string;
+        };
+        BatchQCTransition: {
+            id: string;
+            batch_id: string;
+            batch_no: string;
+            sku: string;
+            from_qc_status: components["schemas"]["BatchQCStatus"];
+            to_qc_status: components["schemas"]["BatchQCStatus"];
+            actor_id: string;
+            reason: string;
+            business_ref: string;
+            audit_log_id: string;
+            /** Format: date-time */
+            created_at: string;
         };
         Batch: {
             id: string;
@@ -2579,6 +2628,62 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listBatchQCTransitions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audited batch QC transition history */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchQCTransitionListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createBatchQCTransition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBatchQCTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description Batch QC status changed and audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchQCTransitionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     listEndOfDayReconciliations: {
