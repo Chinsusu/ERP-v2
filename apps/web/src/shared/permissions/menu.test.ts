@@ -38,6 +38,8 @@ describe("permission menu", () => {
       "PRODUCTION_OPS"
     ]);
     expect(rolePermissions.ERP_ADMIN).toContain("settings:view");
+    expect(rolePermissions.QA).toContain("qc:decision");
+    expect(rolePermissions.WAREHOUSE_LEAD).not.toContain("qc:decision");
     expect(rolePermissions.WAREHOUSE_STAFF).not.toContain("settings:view");
   });
 

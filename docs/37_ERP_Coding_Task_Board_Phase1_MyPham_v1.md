@@ -161,7 +161,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | S1-03-01 | Inventory stock ledger persistence v1 | Inventory Stock Ledger | BE Lead | P0 | Done | `docs/17_...` + `docs/33_...` + `docs/40_...` |
 | S1-03-02 | Available and reserved stock service v1 | Inventory Stock Ledger | BE Lead + FE Lead | P0 | Done | `docs/33_...` + `docs/16_...` + `docs/40_...` |
 | S1-04-01 | Batch and QC status base model | Batch/QC | BE Lead + QA | P0 | Done | `docs/05_...` + `docs/17_...` |
-| S1-04-02 | QC status transition and audit path | Batch/QC | BE Lead + QA + Internal Control | P1 | Backlog | `docs/19_...` + `docs/33_...` |
+| S1-04-02 | QC status transition and audit path | Batch/QC | BE Lead + QA + Internal Control | P1 | Done | `docs/19_...` + `docs/33_...` |
 | S1-05-01 | Warehouse receiving backend v1 | Warehouse Receiving | BE Lead + Warehouse | P0 | Backlog | `docs/33_...` + `docs/16_...` |
 | S1-05-02 | Warehouse receiving UI v1 | Warehouse Receiving | FE Lead + Warehouse + UI/UX | P0 | Backlog | `docs/39_...` |
 | S1-06-01 | Warehouse daily board data integration v1 | Warehouse Daily Board | FE Lead + BE Lead + Warehouse | P1 | Backlog | `docs/33_...` + `docs/39_...` |
@@ -1336,8 +1336,8 @@ Evidence:
 
 **Owner:** BE Lead + QA + Internal Control
 **Priority:** P1
-**Status:** Backlog
-**Primary Ref:** `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`, `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`
+**Status:** Done
+**Primary Ref:** `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`, `docs/33_ERP_Core_Docs_v1_1_Update_Pack_Phase1_MyPham.md`
 
 Acceptance criteria:
 
@@ -1346,6 +1346,21 @@ Acceptance criteria:
 - Audit log records before/after status and business reference.
 - UI exposes transition history without allowing silent overwrite.
 - Tests cover allowed, denied, and invalid transition paths.
+
+Current state:
+
+- Backend exposes audited batch QC transition API at `/api/v1/inventory/batches/{batch_id}/qc-transitions`.
+- QC transition write path requires `qc:decision`; QA and ERP Admin have the permission while warehouse roles do not.
+- Transition actor and reason are required; invalid terminal transitions remain rejected by the batch domain model.
+- Audit log records before/after QC status, actor, request ID, reason, SKU, batch number, and business reference.
+- Inventory UI includes a batch QC audit panel with selected batch history and an explicit reason-required transition form.
+- OpenAPI contract and generated frontend schema include QC transition request/response models.
+
+Evidence:
+
+- Task branch: `codex/s1-04-02-qc-transition-audit`.
+- Local checks: API tests, API vet, frontend typecheck, frontend tests, frontend build, OpenAPI generate, OpenAPI validate, Sprint 0 smoke pack, `git diff --check`, and API smoke for batch QC history plus hold-to-pass transition.
+- Local migration apply/rollback was not executed because no schema migration was added.
 
 ### S1-05-01 Warehouse Receiving Backend V1
 
@@ -1445,8 +1460,8 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-04-02` - QC status transition and audit path.
-2. `S1-05-01` - Warehouse receiving backend v1.
-3. `S1-05-02` - Warehouse receiving UI v1.
+1. `S1-05-01` - Warehouse receiving backend v1.
+2. `S1-05-02` - Warehouse receiving UI v1.
+3. `S1-06-01` - Warehouse daily board data integration v1.
 
-The stock ledger foundation now stores decimal base-UOM movement data, available stock exposes Phase 1 quantity buckets, and batch/QC base status is modeled. The next inventory tasks should add audited QC transitions and receiving workflows.
+The stock ledger foundation now stores decimal base-UOM movement data, available stock exposes Phase 1 quantity buckets, and batch/QC status changes are permissioned and audited. The next inventory tasks should add receiving workflows and feed operational signals into the warehouse daily board.
