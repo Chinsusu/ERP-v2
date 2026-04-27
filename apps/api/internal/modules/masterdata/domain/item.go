@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
 
 var ErrItemRequiredField = errors.New("item required field is missing")
@@ -44,7 +46,7 @@ type Item struct {
 	ShelfLifeDays    int
 	QCRequired       bool
 	Status           ItemStatus
-	StandardCost     float64
+	StandardCost     decimal.Decimal
 	IsSellable       bool
 	IsPurchasable    bool
 	IsProducible     bool
@@ -69,7 +71,7 @@ type NewItemInput struct {
 	ShelfLifeDays    int
 	QCRequired       bool
 	Status           ItemStatus
-	StandardCost     float64
+	StandardCost     decimal.Decimal
 	IsSellable       bool
 	IsPurchasable    bool
 	IsProducible     bool
@@ -93,7 +95,7 @@ type UpdateItemInput struct {
 	ShelfLifeDays    int
 	QCRequired       bool
 	Status           ItemStatus
-	StandardCost     float64
+	StandardCost     decimal.Decimal
 	IsSellable       bool
 	IsPurchasable    bool
 	IsProducible     bool
@@ -123,6 +125,11 @@ func NewItem(input NewItemInput) (Item, error) {
 		status = ItemStatusDraft
 	}
 
+	standardCost, err := decimal.ParseUnitCost(input.StandardCost.String())
+	if err != nil {
+		return Item{}, ErrItemInvalidCost
+	}
+
 	item := Item{
 		ID:               strings.TrimSpace(input.ID),
 		ItemCode:         NormalizeItemCode(input.ItemCode),
@@ -139,7 +146,7 @@ func NewItem(input NewItemInput) (Item, error) {
 		ShelfLifeDays:    input.ShelfLifeDays,
 		QCRequired:       input.QCRequired,
 		Status:           status,
-		StandardCost:     input.StandardCost,
+		StandardCost:     standardCost,
 		IsSellable:       input.IsSellable,
 		IsPurchasable:    input.IsPurchasable,
 		IsProducible:     input.IsProducible,
@@ -171,6 +178,11 @@ func (i Item) Update(input UpdateItemInput) (Item, error) {
 		status = i.Status
 	}
 
+	standardCost, err := decimal.ParseUnitCost(input.StandardCost.String())
+	if err != nil {
+		return Item{}, ErrItemInvalidCost
+	}
+
 	updated := i.Clone()
 	updated.ItemCode = NormalizeItemCode(input.ItemCode)
 	updated.SKUCode = NormalizeSKUCode(input.SKUCode)
@@ -186,7 +198,7 @@ func (i Item) Update(input UpdateItemInput) (Item, error) {
 	updated.ShelfLifeDays = input.ShelfLifeDays
 	updated.QCRequired = input.QCRequired
 	updated.Status = status
-	updated.StandardCost = input.StandardCost
+	updated.StandardCost = standardCost
 	updated.IsSellable = input.IsSellable
 	updated.IsPurchasable = input.IsPurchasable
 	updated.IsProducible = input.IsProducible
@@ -242,7 +254,7 @@ func (i Item) Validate() error {
 	if i.ShelfLifeDays < 0 {
 		return ErrItemInvalidShelfLife
 	}
-	if i.StandardCost < 0 {
+	if i.StandardCost.IsNegative() {
 		return ErrItemInvalidCost
 	}
 

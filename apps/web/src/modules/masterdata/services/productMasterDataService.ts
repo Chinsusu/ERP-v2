@@ -1,5 +1,6 @@
 import { ApiError, apiGet, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
+import { decimalScales, isNegativeDecimal, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type {
   ProductMasterDataInput,
   ProductMasterDataItem,
@@ -47,7 +48,7 @@ export const emptyProductInput: ProductMasterDataInput = {
   shelfLifeDays: 365,
   qcRequired: true,
   status: "draft",
-  standardCost: 0,
+  standardCost: "0.000000",
   isSellable: true,
   isPurchasable: false,
   isProducible: true,
@@ -71,7 +72,7 @@ export const prototypeProductMasterData: ProductMasterDataItem[] = [
     shelfLifeDays: 730,
     qcRequired: true,
     status: "active",
-    standardCost: 64000,
+    standardCost: "64000.000000",
     isSellable: true,
     isPurchasable: false,
     isProducible: true,
@@ -95,7 +96,7 @@ export const prototypeProductMasterData: ProductMasterDataItem[] = [
     shelfLifeDays: 540,
     qcRequired: true,
     status: "active",
-    standardCost: 58000,
+    standardCost: "58000.000000",
     isSellable: true,
     isPurchasable: false,
     isProducible: true,
@@ -119,7 +120,7 @@ export const prototypeProductMasterData: ProductMasterDataItem[] = [
     shelfLifeDays: 720,
     qcRequired: true,
     status: "draft",
-    standardCost: 42000,
+    standardCost: "42000.000000",
     isSellable: true,
     isPurchasable: false,
     isProducible: true,
@@ -311,7 +312,7 @@ export function toProductInput(item: ProductMasterDataItem): ProductMasterDataIn
     shelfLifeDays: item.shelfLifeDays ?? 0,
     qcRequired: item.qcRequired,
     status: item.status,
-    standardCost: item.standardCost ?? 0,
+    standardCost: item.standardCost ?? "0.000000",
     isSellable: item.isSellable,
     isPurchasable: item.isPurchasable,
     isProducible: item.isProducible,
@@ -377,7 +378,7 @@ function toApiRequest(input: ProductMasterDataInput): ProductApiCreateRequest {
     shelf_life_days: input.shelfLifeDays,
     qc_required: input.qcRequired,
     status: input.status,
-    standard_cost: input.standardCost,
+    standard_cost: input.standardCost || undefined,
     is_sellable: input.isSellable,
     is_purchasable: input.isPurchasable,
     is_producible: input.isProducible,
@@ -397,7 +398,7 @@ function normalizeInput(input: ProductMasterDataInput): ProductMasterDataInput {
     uomPurchase: input.uomPurchase.trim().toUpperCase(),
     uomIssue: input.uomIssue.trim().toUpperCase(),
     shelfLifeDays: Number.isFinite(input.shelfLifeDays) ? input.shelfLifeDays : 0,
-    standardCost: Number.isFinite(input.standardCost) ? input.standardCost : 0,
+    standardCost: normalizeDecimalInput(input.standardCost, decimalScales.unitCost),
     specVersion: input.specVersion.trim()
   };
 }
@@ -416,7 +417,7 @@ function validateProductInput(input: ProductMasterDataInput) {
   if (input.expiryControlled && input.shelfLifeDays <= 0) {
     throw new Error("Shelf life days is required when expiry control is enabled");
   }
-  if (input.standardCost < 0) {
+  if (isNegativeDecimal(input.standardCost)) {
     throw new Error("Standard cost cannot be negative");
   }
 }

@@ -27,7 +27,7 @@ export type ProductMasterDataItem = {
   shelfLifeDays?: number;
   qcRequired: boolean;
   status: ProductStatus;
-  standardCost?: number;
+  standardCost?: string;
   isSellable: boolean;
   isPurchasable: boolean;
   isProducible: boolean;
@@ -52,7 +52,7 @@ export type ProductMasterDataInput = {
   shelfLifeDays: number;
   qcRequired: boolean;
   status: ProductStatus;
-  standardCost: number;
+  standardCost: string;
   isSellable: boolean;
   isPurchasable: boolean;
   isProducible: boolean;
@@ -163,9 +163,9 @@ export type SupplierMasterDataItem = {
   address?: string;
   paymentTerms?: string;
   leadTimeDays?: number;
-  moq?: number;
-  qualityScore?: number;
-  deliveryScore?: number;
+  moq?: string;
+  qualityScore?: string;
+  deliveryScore?: string;
   status: SupplierStatus;
   createdAt: string;
   updatedAt: string;
@@ -183,9 +183,9 @@ export type SupplierMasterDataInput = {
   address: string;
   paymentTerms: string;
   leadTimeDays: number;
-  moq: number;
-  qualityScore: number;
-  deliveryScore: number;
+  moq: string;
+  qualityScore: string;
+  deliveryScore: string;
   status: SupplierStatus;
 };
 
@@ -203,7 +203,7 @@ export type CustomerMasterDataItem = {
   channelCode?: string;
   priceListCode?: string;
   discountGroup?: string;
-  creditLimit?: number;
+  creditLimit?: string;
   paymentTerms?: string;
   contactName?: string;
   phone?: string;
@@ -223,7 +223,7 @@ export type CustomerMasterDataInput = {
   channelCode: string;
   priceListCode: string;
   discountGroup: string;
-  creditLimit: number;
+  creditLimit: string;
   paymentTerms: string;
   contactName: string;
   phone: string;

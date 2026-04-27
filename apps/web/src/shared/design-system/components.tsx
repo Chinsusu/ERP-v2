@@ -2,6 +2,16 @@
 
 import type { KeyboardEvent, Key, ReactNode } from "react";
 import { useEffect, useRef } from "react";
+import {
+  decimalScales,
+  formatMoney,
+  formatQuantity,
+  formatRate,
+  normalizeCurrencyCode,
+  normalizeDecimalInput,
+  normalizeUOMCode,
+  type DecimalScale
+} from "../format/numberFormat";
 
 export const coreComponentNames = [
   "DataTable",
@@ -316,6 +326,76 @@ export function ScanInput({
           {feedback.title}
         </small>
       ) : null}
+    </label>
+  );
+}
+
+export type MoneyDisplayProps = {
+  value: string;
+  currencyCode?: string;
+};
+
+export function MoneyDisplay({ value, currencyCode = "VND" }: MoneyDisplayProps) {
+  return <span className="erp-ds-decimal erp-ds-decimal--money">{formatMoney(value, currencyCode)}</span>;
+}
+
+export type QuantityDisplayProps = {
+  value: string;
+  uomCode?: string;
+};
+
+export function QuantityDisplay({ value, uomCode }: QuantityDisplayProps) {
+  return <span className="erp-ds-decimal erp-ds-decimal--quantity">{formatQuantity(value, uomCode)}</span>;
+}
+
+export type RateDisplayProps = {
+  value: string;
+};
+
+export function RateDisplay({ value }: RateDisplayProps) {
+  return <span className="erp-ds-decimal erp-ds-decimal--rate">{formatRate(value)}</span>;
+}
+
+export type CurrencyCodeDisplayProps = {
+  value?: string;
+};
+
+export function CurrencyCodeDisplay({ value = "VND" }: CurrencyCodeDisplayProps) {
+  return <span className="erp-ds-code">{normalizeCurrencyCode(value)}</span>;
+}
+
+export type UOMCodeDisplayProps = {
+  value: string;
+};
+
+export function UOMCodeDisplay({ value }: UOMCodeDisplayProps) {
+  return <span className="erp-ds-code">{normalizeUOMCode(value)}</span>;
+}
+
+export type DecimalInputProps = {
+  label: string;
+  value: string;
+  scale?: DecimalScale;
+  suffix?: string;
+  onChange: (value: string) => void;
+};
+
+export function DecimalInput({ label, value, scale = decimalScales.quantity, suffix, onChange }: DecimalInputProps) {
+  function handleBlur() {
+    try {
+      onChange(normalizeDecimalInput(value, scale));
+    } catch {
+      // Keep the raw value so the owning form can show its existing validation error.
+    }
+  }
+
+  return (
+    <label className="erp-ds-decimal-input">
+      <span>{label}</span>
+      <span className="erp-ds-decimal-input-control">
+        <input inputMode="decimal" type="text" value={value} onBlur={handleBlur} onChange={(event) => onChange(event.currentTarget.value)} />
+        {suffix ? <small>{suffix}</small> : null}
+      </span>
     </label>
   );
 }

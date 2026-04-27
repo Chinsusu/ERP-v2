@@ -1019,8 +1019,8 @@ func TestSuppliersHandlerCreatesBlocksDuplicateAndWritesAudit(t *testing.T) {
 		"address": "Ho Chi Minh lab site",
 		"payment_terms": "NET15",
 		"lead_time_days": 5,
-		"quality_score": 90,
-		"delivery_score": 92,
+		"quality_score": "90.0000",
+		"delivery_score": "92.0000",
 		"status": "draft"
 	}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/suppliers", body)
@@ -1093,9 +1093,9 @@ func TestSupplierDetailHandlerUpdatesAndStatusChange(t *testing.T) {
 		"address": "Binh Duong",
 		"payment_terms": "NET45",
 		"lead_time_days": 10,
-		"moq": 60,
-		"quality_score": 95,
-		"delivery_score": 92,
+		"moq": "60.000000",
+		"quality_score": "95.0000",
+		"delivery_score": "92.0000",
 		"status": "active"
 	}`)
 	updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/suppliers/sup-rm-bioactive", updateBody).WithContext(principalContext)
@@ -1149,7 +1149,7 @@ func TestCustomersHandlerCreatesBlocksDuplicateAndWritesAudit(t *testing.T) {
 		"channel_code": "dealer",
 		"price_list_code": "pl-dealer-2026",
 		"discount_group": "tier_2",
-		"credit_limit": 200000000,
+		"credit_limit": "200000000.00",
 		"payment_terms": "NET15",
 		"contact_name": "Tran Ha Noi",
 		"email": "Buyer@HaNoiDealer.Example",
@@ -1224,7 +1224,7 @@ func TestCustomerDetailHandlerUpdatesAndStatusChange(t *testing.T) {
 		"channel_code": "B2B",
 		"price_list_code": "PL-B2B-2026",
 		"discount_group": "tier_1",
-		"credit_limit": 550000000,
+		"credit_limit": "550000000.00",
 		"payment_terms": "NET30",
 		"contact_name": "Do Minh Anh",
 		"email": "orders@minhanh.example",
@@ -1280,7 +1280,7 @@ func TestStockMovementHandlerWritesAuditForAdjustment(t *testing.T) {
 		"sku": "serum-30ml",
 		"warehouseId": "wh-hcm",
 		"movementType": "ADJUST",
-		"quantity": 8,
+		"quantity": "8.000000",
 		"reason": "cycle count"
 	}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/inventory/stock-movements", body)

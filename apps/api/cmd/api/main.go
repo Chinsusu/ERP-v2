@@ -20,6 +20,7 @@ import (
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/config"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
 
@@ -79,52 +80,52 @@ type permissionResponse struct {
 }
 
 type productResponse struct {
-	ID               string  `json:"id"`
-	ItemCode         string  `json:"item_code"`
-	SKUCode          string  `json:"sku_code"`
-	Name             string  `json:"name"`
-	ItemType         string  `json:"item_type"`
-	ItemGroup        string  `json:"item_group,omitempty"`
-	BrandCode        string  `json:"brand_code,omitempty"`
-	UOMCode          string  `json:"uom_code"`
-	UOMBase          string  `json:"uom_base"`
-	UOMPurchase      string  `json:"uom_purchase,omitempty"`
-	UOMIssue         string  `json:"uom_issue,omitempty"`
-	LotControlled    bool    `json:"lot_controlled"`
-	ExpiryControlled bool    `json:"expiry_controlled"`
-	ShelfLifeDays    int     `json:"shelf_life_days,omitempty"`
-	QCRequired       bool    `json:"qc_required"`
-	Status           string  `json:"status"`
-	StandardCost     float64 `json:"standard_cost,omitempty"`
-	IsSellable       bool    `json:"is_sellable"`
-	IsPurchasable    bool    `json:"is_purchasable"`
-	IsProducible     bool    `json:"is_producible"`
-	SpecVersion      string  `json:"spec_version,omitempty"`
-	CreatedAt        string  `json:"created_at"`
-	UpdatedAt        string  `json:"updated_at"`
-	AuditLogID       string  `json:"audit_log_id,omitempty"`
+	ID               string `json:"id"`
+	ItemCode         string `json:"item_code"`
+	SKUCode          string `json:"sku_code"`
+	Name             string `json:"name"`
+	ItemType         string `json:"item_type"`
+	ItemGroup        string `json:"item_group,omitempty"`
+	BrandCode        string `json:"brand_code,omitempty"`
+	UOMCode          string `json:"uom_code"`
+	UOMBase          string `json:"uom_base"`
+	UOMPurchase      string `json:"uom_purchase,omitempty"`
+	UOMIssue         string `json:"uom_issue,omitempty"`
+	LotControlled    bool   `json:"lot_controlled"`
+	ExpiryControlled bool   `json:"expiry_controlled"`
+	ShelfLifeDays    int    `json:"shelf_life_days,omitempty"`
+	QCRequired       bool   `json:"qc_required"`
+	Status           string `json:"status"`
+	StandardCost     string `json:"standard_cost,omitempty"`
+	IsSellable       bool   `json:"is_sellable"`
+	IsPurchasable    bool   `json:"is_purchasable"`
+	IsProducible     bool   `json:"is_producible"`
+	SpecVersion      string `json:"spec_version,omitempty"`
+	CreatedAt        string `json:"created_at"`
+	UpdatedAt        string `json:"updated_at"`
+	AuditLogID       string `json:"audit_log_id,omitempty"`
 }
 
 type productRequest struct {
-	ItemCode         string  `json:"item_code"`
-	SKUCode          string  `json:"sku_code"`
-	Name             string  `json:"name"`
-	ItemType         string  `json:"item_type"`
-	ItemGroup        string  `json:"item_group"`
-	BrandCode        string  `json:"brand_code"`
-	UOMBase          string  `json:"uom_base"`
-	UOMPurchase      string  `json:"uom_purchase"`
-	UOMIssue         string  `json:"uom_issue"`
-	LotControlled    bool    `json:"lot_controlled"`
-	ExpiryControlled bool    `json:"expiry_controlled"`
-	ShelfLifeDays    int     `json:"shelf_life_days"`
-	QCRequired       bool    `json:"qc_required"`
-	Status           string  `json:"status"`
-	StandardCost     float64 `json:"standard_cost"`
-	IsSellable       bool    `json:"is_sellable"`
-	IsPurchasable    bool    `json:"is_purchasable"`
-	IsProducible     bool    `json:"is_producible"`
-	SpecVersion      string  `json:"spec_version"`
+	ItemCode         string `json:"item_code"`
+	SKUCode          string `json:"sku_code"`
+	Name             string `json:"name"`
+	ItemType         string `json:"item_type"`
+	ItemGroup        string `json:"item_group"`
+	BrandCode        string `json:"brand_code"`
+	UOMBase          string `json:"uom_base"`
+	UOMPurchase      string `json:"uom_purchase"`
+	UOMIssue         string `json:"uom_issue"`
+	LotControlled    bool   `json:"lot_controlled"`
+	ExpiryControlled bool   `json:"expiry_controlled"`
+	ShelfLifeDays    int    `json:"shelf_life_days"`
+	QCRequired       bool   `json:"qc_required"`
+	Status           string `json:"status"`
+	StandardCost     string `json:"standard_cost"`
+	IsSellable       bool   `json:"is_sellable"`
+	IsPurchasable    bool   `json:"is_purchasable"`
+	IsProducible     bool   `json:"is_producible"`
+	SpecVersion      string `json:"spec_version"`
 }
 
 type changeProductStatusRequest struct {
@@ -199,41 +200,41 @@ type changeWarehouseLocationStatusRequest struct {
 }
 
 type supplierResponse struct {
-	ID            string  `json:"id"`
-	SupplierCode  string  `json:"supplier_code"`
-	SupplierName  string  `json:"supplier_name"`
-	SupplierGroup string  `json:"supplier_group"`
-	ContactName   string  `json:"contact_name,omitempty"`
-	Phone         string  `json:"phone,omitempty"`
-	Email         string  `json:"email,omitempty"`
-	TaxCode       string  `json:"tax_code,omitempty"`
-	Address       string  `json:"address,omitempty"`
-	PaymentTerms  string  `json:"payment_terms,omitempty"`
-	LeadTimeDays  int     `json:"lead_time_days,omitempty"`
-	MOQ           float64 `json:"moq,omitempty"`
-	QualityScore  float64 `json:"quality_score,omitempty"`
-	DeliveryScore float64 `json:"delivery_score,omitempty"`
-	Status        string  `json:"status"`
-	CreatedAt     string  `json:"created_at"`
-	UpdatedAt     string  `json:"updated_at"`
-	AuditLogID    string  `json:"audit_log_id,omitempty"`
+	ID            string `json:"id"`
+	SupplierCode  string `json:"supplier_code"`
+	SupplierName  string `json:"supplier_name"`
+	SupplierGroup string `json:"supplier_group"`
+	ContactName   string `json:"contact_name,omitempty"`
+	Phone         string `json:"phone,omitempty"`
+	Email         string `json:"email,omitempty"`
+	TaxCode       string `json:"tax_code,omitempty"`
+	Address       string `json:"address,omitempty"`
+	PaymentTerms  string `json:"payment_terms,omitempty"`
+	LeadTimeDays  int    `json:"lead_time_days,omitempty"`
+	MOQ           string `json:"moq,omitempty"`
+	QualityScore  string `json:"quality_score,omitempty"`
+	DeliveryScore string `json:"delivery_score,omitempty"`
+	Status        string `json:"status"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+	AuditLogID    string `json:"audit_log_id,omitempty"`
 }
 
 type supplierRequest struct {
-	SupplierCode  string  `json:"supplier_code"`
-	SupplierName  string  `json:"supplier_name"`
-	SupplierGroup string  `json:"supplier_group"`
-	ContactName   string  `json:"contact_name"`
-	Phone         string  `json:"phone"`
-	Email         string  `json:"email"`
-	TaxCode       string  `json:"tax_code"`
-	Address       string  `json:"address"`
-	PaymentTerms  string  `json:"payment_terms"`
-	LeadTimeDays  int     `json:"lead_time_days"`
-	MOQ           float64 `json:"moq"`
-	QualityScore  float64 `json:"quality_score"`
-	DeliveryScore float64 `json:"delivery_score"`
-	Status        string  `json:"status"`
+	SupplierCode  string `json:"supplier_code"`
+	SupplierName  string `json:"supplier_name"`
+	SupplierGroup string `json:"supplier_group"`
+	ContactName   string `json:"contact_name"`
+	Phone         string `json:"phone"`
+	Email         string `json:"email"`
+	TaxCode       string `json:"tax_code"`
+	Address       string `json:"address"`
+	PaymentTerms  string `json:"payment_terms"`
+	LeadTimeDays  int    `json:"lead_time_days"`
+	MOQ           string `json:"moq"`
+	QualityScore  string `json:"quality_score"`
+	DeliveryScore string `json:"delivery_score"`
+	Status        string `json:"status"`
 }
 
 type changeSupplierStatusRequest struct {
@@ -241,41 +242,41 @@ type changeSupplierStatusRequest struct {
 }
 
 type customerResponse struct {
-	ID            string  `json:"id"`
-	CustomerCode  string  `json:"customer_code"`
-	CustomerName  string  `json:"customer_name"`
-	CustomerType  string  `json:"customer_type"`
-	ChannelCode   string  `json:"channel_code,omitempty"`
-	PriceListCode string  `json:"price_list_code,omitempty"`
-	DiscountGroup string  `json:"discount_group,omitempty"`
-	CreditLimit   float64 `json:"credit_limit,omitempty"`
-	PaymentTerms  string  `json:"payment_terms,omitempty"`
-	ContactName   string  `json:"contact_name,omitempty"`
-	Phone         string  `json:"phone,omitempty"`
-	Email         string  `json:"email,omitempty"`
-	TaxCode       string  `json:"tax_code,omitempty"`
-	Address       string  `json:"address,omitempty"`
-	Status        string  `json:"status"`
-	CreatedAt     string  `json:"created_at"`
-	UpdatedAt     string  `json:"updated_at"`
-	AuditLogID    string  `json:"audit_log_id,omitempty"`
+	ID            string `json:"id"`
+	CustomerCode  string `json:"customer_code"`
+	CustomerName  string `json:"customer_name"`
+	CustomerType  string `json:"customer_type"`
+	ChannelCode   string `json:"channel_code,omitempty"`
+	PriceListCode string `json:"price_list_code,omitempty"`
+	DiscountGroup string `json:"discount_group,omitempty"`
+	CreditLimit   string `json:"credit_limit,omitempty"`
+	PaymentTerms  string `json:"payment_terms,omitempty"`
+	ContactName   string `json:"contact_name,omitempty"`
+	Phone         string `json:"phone,omitempty"`
+	Email         string `json:"email,omitempty"`
+	TaxCode       string `json:"tax_code,omitempty"`
+	Address       string `json:"address,omitempty"`
+	Status        string `json:"status"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+	AuditLogID    string `json:"audit_log_id,omitempty"`
 }
 
 type customerRequest struct {
-	CustomerCode  string  `json:"customer_code"`
-	CustomerName  string  `json:"customer_name"`
-	CustomerType  string  `json:"customer_type"`
-	ChannelCode   string  `json:"channel_code"`
-	PriceListCode string  `json:"price_list_code"`
-	DiscountGroup string  `json:"discount_group"`
-	CreditLimit   float64 `json:"credit_limit"`
-	PaymentTerms  string  `json:"payment_terms"`
-	ContactName   string  `json:"contact_name"`
-	Phone         string  `json:"phone"`
-	Email         string  `json:"email"`
-	TaxCode       string  `json:"tax_code"`
-	Address       string  `json:"address"`
-	Status        string  `json:"status"`
+	CustomerCode  string `json:"customer_code"`
+	CustomerName  string `json:"customer_name"`
+	CustomerType  string `json:"customer_type"`
+	ChannelCode   string `json:"channel_code"`
+	PriceListCode string `json:"price_list_code"`
+	DiscountGroup string `json:"discount_group"`
+	CreditLimit   string `json:"credit_limit"`
+	PaymentTerms  string `json:"payment_terms"`
+	ContactName   string `json:"contact_name"`
+	Phone         string `json:"phone"`
+	Email         string `json:"email"`
+	TaxCode       string `json:"tax_code"`
+	Address       string `json:"address"`
+	Status        string `json:"status"`
 }
 
 type changeCustomerStatusRequest struct {
@@ -481,12 +482,12 @@ type receiveReturnRequest struct {
 }
 
 type stockMovementRequest struct {
-	MovementID   string  `json:"movementId"`
-	SKU          string  `json:"sku"`
-	WarehouseID  string  `json:"warehouseId"`
-	MovementType string  `json:"movementType"`
-	Quantity     float64 `json:"quantity"`
-	Reason       string  `json:"reason"`
+	MovementID   string `json:"movementId"`
+	SKU          string `json:"sku"`
+	WarehouseID  string `json:"warehouseId"`
+	MovementType string `json:"movementType"`
+	Quantity     string `json:"quantity"`
+	Reason       string `json:"reason"`
 }
 
 type stockMovementResponse struct {
@@ -1138,7 +1139,7 @@ func productsHandler(catalog *masterdataapp.ItemCatalog) http.HandlerFunc {
 				ShelfLifeDays:    payload.ShelfLifeDays,
 				QCRequired:       payload.QCRequired,
 				Status:           payload.Status,
-				StandardCost:     payload.StandardCost,
+				StandardCost:     decimal.Decimal(payload.StandardCost),
 				IsSellable:       payload.IsSellable,
 				IsPurchasable:    payload.IsPurchasable,
 				IsProducible:     payload.IsProducible,
@@ -1214,7 +1215,7 @@ func productDetailHandler(catalog *masterdataapp.ItemCatalog) http.HandlerFunc {
 				ShelfLifeDays:    payload.ShelfLifeDays,
 				QCRequired:       payload.QCRequired,
 				Status:           payload.Status,
-				StandardCost:     payload.StandardCost,
+				StandardCost:     decimal.Decimal(payload.StandardCost),
 				IsSellable:       payload.IsSellable,
 				IsPurchasable:    payload.IsPurchasable,
 				IsProducible:     payload.IsProducible,
@@ -1706,9 +1707,9 @@ func suppliersHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
 				Address:       payload.Address,
 				PaymentTerms:  payload.PaymentTerms,
 				LeadTimeDays:  payload.LeadTimeDays,
-				MOQ:           payload.MOQ,
-				QualityScore:  payload.QualityScore,
-				DeliveryScore: payload.DeliveryScore,
+				MOQ:           decimal.Decimal(payload.MOQ),
+				QualityScore:  decimal.Decimal(payload.QualityScore),
+				DeliveryScore: decimal.Decimal(payload.DeliveryScore),
 				Status:        payload.Status,
 				ActorID:       principal.UserID,
 				RequestID:     response.RequestID(r),
@@ -1777,9 +1778,9 @@ func supplierDetailHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc
 				Address:       payload.Address,
 				PaymentTerms:  payload.PaymentTerms,
 				LeadTimeDays:  payload.LeadTimeDays,
-				MOQ:           payload.MOQ,
-				QualityScore:  payload.QualityScore,
-				DeliveryScore: payload.DeliveryScore,
+				MOQ:           decimal.Decimal(payload.MOQ),
+				QualityScore:  decimal.Decimal(payload.QualityScore),
+				DeliveryScore: decimal.Decimal(payload.DeliveryScore),
 				Status:        payload.Status,
 				ActorID:       principal.UserID,
 				RequestID:     response.RequestID(r),
@@ -1895,7 +1896,7 @@ func customersHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
 				ChannelCode:   payload.ChannelCode,
 				PriceListCode: payload.PriceListCode,
 				DiscountGroup: payload.DiscountGroup,
-				CreditLimit:   payload.CreditLimit,
+				CreditLimit:   decimal.Decimal(payload.CreditLimit),
 				PaymentTerms:  payload.PaymentTerms,
 				ContactName:   payload.ContactName,
 				Phone:         payload.Phone,
@@ -1966,7 +1967,7 @@ func customerDetailHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc
 				ChannelCode:   payload.ChannelCode,
 				PriceListCode: payload.PriceListCode,
 				DiscountGroup: payload.DiscountGroup,
-				CreditLimit:   payload.CreditLimit,
+				CreditLimit:   decimal.Decimal(payload.CreditLimit),
 				PaymentTerms:  payload.PaymentTerms,
 				ContactName:   payload.ContactName,
 				Phone:         payload.Phone,
@@ -3092,7 +3093,7 @@ func newProductResponse(item masterdatadomain.Item, auditLogID string) productRe
 		ShelfLifeDays:    item.ShelfLifeDays,
 		QCRequired:       item.QCRequired,
 		Status:           string(item.Status),
-		StandardCost:     item.StandardCost,
+		StandardCost:     item.StandardCost.String(),
 		IsSellable:       item.IsSellable,
 		IsPurchasable:    item.IsPurchasable,
 		IsProducible:     item.IsProducible,
@@ -3154,9 +3155,9 @@ func newSupplierResponse(supplier masterdatadomain.Supplier, auditLogID string) 
 		Address:       supplier.Address,
 		PaymentTerms:  supplier.PaymentTerms,
 		LeadTimeDays:  supplier.LeadTimeDays,
-		MOQ:           supplier.MOQ,
-		QualityScore:  supplier.QualityScore,
-		DeliveryScore: supplier.DeliveryScore,
+		MOQ:           supplier.MOQ.String(),
+		QualityScore:  supplier.QualityScore.String(),
+		DeliveryScore: supplier.DeliveryScore.String(),
 		Status:        string(supplier.Status),
 		CreatedAt:     supplier.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     supplier.UpdatedAt.Format(time.RFC3339),
@@ -3173,7 +3174,7 @@ func newCustomerResponse(customer masterdatadomain.Customer, auditLogID string) 
 		ChannelCode:   customer.ChannelCode,
 		PriceListCode: customer.PriceListCode,
 		DiscountGroup: customer.DiscountGroup,
-		CreditLimit:   customer.CreditLimit,
+		CreditLimit:   customer.CreditLimit.String(),
 		PaymentTerms:  customer.PaymentTerms,
 		ContactName:   customer.ContactName,
 		Phone:         customer.Phone,
@@ -3221,7 +3222,8 @@ func validateStockMovementPayload(payload stockMovementRequest) map[string]any {
 	if strings.TrimSpace(payload.Reason) == "" {
 		details["reason"] = "required"
 	}
-	if payload.Quantity <= 0 {
+	quantity, err := decimal.ParseQuantity(payload.Quantity)
+	if err != nil || quantity.IsNegative() || quantity.IsZero() {
 		details["quantity"] = "must be positive"
 	}
 	switch strings.ToUpper(strings.TrimSpace(payload.MovementType)) {
@@ -3247,7 +3249,7 @@ func recordStockAdjustmentAudit(r *http.Request, store audit.LogStore, payload s
 		RequestID:  response.RequestID(r),
 		AfterData: map[string]any{
 			"movement_type": strings.ToUpper(strings.TrimSpace(payload.MovementType)),
-			"quantity":      payload.Quantity,
+			"quantity":      decimal.MustQuantity(payload.Quantity).String(),
 			"warehouse_id":  strings.TrimSpace(payload.WarehouseID),
 			"sku":           strings.ToUpper(strings.TrimSpace(payload.SKU)),
 		},

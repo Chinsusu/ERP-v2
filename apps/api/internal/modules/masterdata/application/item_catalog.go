@@ -10,6 +10,7 @@ import (
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
 
@@ -39,7 +40,7 @@ type CreateItemInput struct {
 	ShelfLifeDays    int
 	QCRequired       bool
 	Status           string
-	StandardCost     float64
+	StandardCost     decimal.Decimal
 	IsSellable       bool
 	IsPurchasable    bool
 	IsProducible     bool
@@ -64,7 +65,7 @@ type UpdateItemInput struct {
 	ShelfLifeDays    int
 	QCRequired       bool
 	Status           string
-	StandardCost     float64
+	StandardCost     decimal.Decimal
 	IsSellable       bool
 	IsPurchasable    bool
 	IsProducible     bool
@@ -439,7 +440,7 @@ func prototypeItems() []domain.Item {
 			ShelfLifeDays:    730,
 			QCRequired:       true,
 			Status:           domain.ItemStatusActive,
-			StandardCost:     64000,
+			StandardCost:     decimal.MustUnitCost("64000"),
 			IsSellable:       true,
 			IsPurchasable:    false,
 			IsProducible:     true,
@@ -463,7 +464,7 @@ func prototypeItems() []domain.Item {
 			ShelfLifeDays:    540,
 			QCRequired:       true,
 			Status:           domain.ItemStatusActive,
-			StandardCost:     58000,
+			StandardCost:     decimal.MustUnitCost("58000"),
 			IsSellable:       true,
 			IsPurchasable:    false,
 			IsProducible:     true,
@@ -487,7 +488,7 @@ func prototypeItems() []domain.Item {
 			ShelfLifeDays:    720,
 			QCRequired:       true,
 			Status:           domain.ItemStatusDraft,
-			StandardCost:     42000,
+			StandardCost:     decimal.MustUnitCost("42000"),
 			IsSellable:       true,
 			IsPurchasable:    false,
 			IsProducible:     true,

@@ -151,7 +151,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | Task ID | Title | Epic | Owner | Priority | Status | Primary Ref |
 | --- | --- | --- | --- | --- | --- | --- |
 | S1-00-01 | Unit currency number format baseline | Cross-cutting standards | Tech Lead + BE Lead + FE Lead + QA | P0 | Done | `docs/40_...` |
-| S1-00-02 | Decimal money quantity rate foundation v1 | Cross-cutting standards | BE Lead + FE Lead | P0 | Backlog | `docs/40_...` + `docs/16_...` |
+| S1-00-02 | Decimal money quantity rate foundation v1 | Cross-cutting standards | BE Lead + FE Lead | P0 | Review | `docs/40_...` + `docs/16_...` |
 | S1-00-03 | UOM master and conversion foundation v1 | Cross-cutting standards | BE Lead + Master Data Admin | P0 | Backlog | `docs/40_...` + `docs/05_...` + `docs/17_...` |
 | S1-01-01 | Auth session and password policy v1 | Auth/RBAC hardening | BE Lead + FE Lead | P0 | Done | `docs/19_...` + `docs/34_...` |
 | S1-01-02 | RBAC enforcement and permission matrix v1 | Auth/RBAC hardening | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
@@ -1121,7 +1121,7 @@ Evidence:
 
 **Owner:** BE Lead + FE Lead
 **Priority:** P0
-**Status:** Backlog
+**Status:** Review
 **Primary Ref:** `docs/40_ERP_Unit_Currency_Number_Format_Standards_Phase1_MyPham_v1.md`, `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`, `docs/12_ERP_Go_Coding_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1131,6 +1131,11 @@ Acceptance criteria:
 - OpenAPI defines reusable `MoneyAmount`, `Quantity`, `Rate`, `CurrencyCode`, and `UOMCode` schemas using string decimal where required.
 - Frontend has shared `vi-VN` parse/format helpers and display/input components for money, quantity, rate, currency, UOM, date, and datetime.
 - Tests cover decimal parsing, VND formatting, vi-VN input normalization, and rounding scale rules from file 40.
+
+Evidence:
+
+- PR pending.
+- Local checks: API tests, API vet, frontend typecheck, frontend tests, frontend build, OpenAPI generate, OpenAPI validate, and `git diff --check`.
 
 ### S1-00-03 UOM Master And Conversion Foundation V1
 
