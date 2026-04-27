@@ -36,6 +36,142 @@ func TestReadinessHandlerReturnsReady(t *testing.T) {
 	}
 }
 
+func TestLoginHandlerIssuesSessionContract(t *testing.T) {
+	authConfig := auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}
+	sessions := auth.NewSessionManager(authConfig, nil)
+	store := audit.NewInMemoryLogStore()
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/auth/login",
+		bytes.NewBufferString(`{"email":"admin@example.local","password":"local-only-mock-password"}`),
+	)
+	rec := httptest.NewRecorder()
+
+	loginHandler(sessions, store).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[loginResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.AccessToken == "" || payload.Data.RefreshToken == "" {
+		t.Fatalf("tokens are empty: %+v", payload.Data)
+	}
+	if payload.Data.TokenType != "Bearer" || payload.Data.ExpiresIn <= 0 || payload.Data.RefreshExpiresIn <= 0 {
+		t.Fatalf("session contract = %+v, want bearer with positive expiries", payload.Data)
+	}
+
+	meReq := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
+	meReq.Header.Set("Authorization", "Bearer "+payload.Data.AccessToken)
+	meRec := httptest.NewRecorder()
+	auth.RequireSessionToken(sessions, http.HandlerFunc(meHandler)).ServeHTTP(meRec, meReq)
+	if meRec.Code != http.StatusOK {
+		t.Fatalf("me status = %d, want %d: %s", meRec.Code, http.StatusOK, meRec.Body.String())
+	}
+
+	logs, err := store.List(req.Context(), audit.Query{Action: "auth.login_succeeded"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].ActorID != "user-erp-admin" {
+		t.Fatalf("auth audit logs = %+v, want one admin success event", logs)
+	}
+}
+
+func TestRefreshHandlerRotatesSessionContract(t *testing.T) {
+	sessions := auth.NewSessionManager(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, nil)
+	session, failure, ok := sessions.Login("admin@example.local", "local-only-mock-password")
+	if !ok {
+		t.Fatalf("login rejected: %+v", failure)
+	}
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/auth/refresh",
+		bytes.NewBufferString(`{"refresh_token":"`+session.RefreshToken+`"}`),
+	)
+	rec := httptest.NewRecorder()
+
+	refreshHandler(sessions).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[loginResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.AccessToken == session.AccessToken || payload.Data.RefreshToken == session.RefreshToken {
+		t.Fatalf("tokens were not rotated: old=%+v new=%+v", session, payload.Data)
+	}
+}
+
+func TestAuthPolicyHandlerDocumentsPasswordAndLockoutPolicy(t *testing.T) {
+	sessions := auth.NewSessionManager(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/policy", nil)
+	rec := httptest.NewRecorder()
+
+	authPolicyHandler(sessions).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[authPolicyResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.PasswordMinLength != 10 || payload.Data.MaxFailedAttempts != 5 {
+		t.Fatalf("policy = %+v, want password min 10 and max attempts 5", payload.Data)
+	}
+}
+
+func TestLoginHandlerLocksAfterRepeatedFailures(t *testing.T) {
+	sessions := auth.NewSessionManager(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, nil)
+
+	var rec *httptest.ResponseRecorder
+	for range 5 {
+		req := httptest.NewRequest(
+			http.MethodPost,
+			"/api/v1/auth/login",
+			bytes.NewBufferString(`{"email":"admin@example.local","password":"wrong-password!"}`),
+		)
+		rec = httptest.NewRecorder()
+		loginHandler(sessions).ServeHTTP(rec, req)
+	}
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+
+	var payload response.ErrorEnvelope
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Error.Details["reason"] != string(auth.LoginFailureLocked) {
+		t.Fatalf("details = %+v, want locked reason", payload.Error.Details)
+	}
+}
+
 func TestAccessLogMiddlewareWritesRequestSummary(t *testing.T) {
 	var logs bytes.Buffer
 	logger := log.New(&logs, "", 0)
