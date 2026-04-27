@@ -141,6 +141,31 @@ func TestAuthPolicyHandlerDocumentsPasswordAndLockoutPolicy(t *testing.T) {
 	}
 }
 
+func TestRbacPermissionsHandlerReturnsCatalog(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/rbac/permissions", nil)
+	rec := httptest.NewRecorder()
+
+	rbacPermissionsHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[[]permissionResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	var hasSubcontract bool
+	for _, permission := range payload.Data {
+		if permission.Key == string(auth.PermissionSubcontractView) && permission.Group == "operations" {
+			hasSubcontract = true
+		}
+	}
+	if !hasSubcontract {
+		t.Fatalf("permissions = %+v, want subcontract operations permission", payload.Data)
+	}
+}
+
 func TestLoginHandlerLocksAfterRepeatedFailures(t *testing.T) {
 	sessions := auth.NewSessionManager(auth.MockConfig{
 		Email:       "admin@example.local",

@@ -104,6 +104,43 @@ func TestRoleCatalogIncludesPhaseOneRoles(t *testing.T) {
 	}
 }
 
+func TestPermissionCatalogIncludesPhaseOneModuleKeys(t *testing.T) {
+	catalog := PermissionCatalog()
+	got := make(map[PermissionKey]bool, len(catalog))
+	for _, permission := range catalog {
+		got[permission.Key] = true
+	}
+
+	for _, permission := range []PermissionKey{
+		PermissionDashboardView,
+		PermissionWarehouseView,
+		PermissionInventoryView,
+		PermissionSubcontractView,
+		PermissionMasterDataView,
+		PermissionSettingsView,
+		PermissionRecordCreate,
+	} {
+		if !got[permission] {
+			t.Fatalf("permission %q missing from catalog", permission)
+		}
+	}
+}
+
+func TestRolePermissionsUseKnownCatalogKeys(t *testing.T) {
+	known := make(map[PermissionKey]bool)
+	for _, permission := range PermissionCatalog() {
+		known[permission.Key] = true
+	}
+
+	for _, role := range RoleCatalog() {
+		for _, permission := range role.Permissions {
+			if !known[permission] {
+				t.Fatalf("role %q uses unknown permission %q", role.Key, permission)
+			}
+		}
+	}
+}
+
 func TestRequirePermissionRejectsMissingPermission(t *testing.T) {
 	principal := MockPrincipalForRole(testConfig, RoleWarehouseStaff)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/rbac/roles", nil)

@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rbac/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List RBAC permission catalog */
+        get: operations["listRbacPermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/audit-logs": {
         parameters: {
             query?: never;
@@ -424,6 +441,19 @@ export interface components {
             name: string;
             permissions: components["schemas"]["PermissionKey"][];
         };
+        RbacPermissionCatalogSuccessResponse: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["RbacPermission"][];
+            /** @example req_lq7z2t9c */
+            request_id: string;
+        };
+        RbacPermission: {
+            key: components["schemas"]["PermissionKey"];
+            name: string;
+            /** @enum {string} */
+            group: "overview" | "operations" | "data" | "control" | "action";
+        };
         AuditLogSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["AuditLogItem"][];
         };
@@ -451,7 +481,7 @@ export interface components {
         /** @enum {string} */
         RoleKey: "CEO" | "ERP_ADMIN" | "WAREHOUSE_STAFF" | "WAREHOUSE_LEAD" | "QA" | "SALES_OPS" | "PRODUCTION_OPS";
         /** @enum {string} */
-        PermissionKey: "dashboard:view" | "warehouse:view" | "inventory:view" | "purchase:view" | "qc:view" | "production:view" | "sales:view" | "shipping:view" | "returns:view" | "master-data:view" | "approvals:view" | "audit-log:view" | "reports:view" | "settings:view" | "record:create" | "record:export";
+        PermissionKey: "dashboard:view" | "warehouse:view" | "inventory:view" | "purchase:view" | "qc:view" | "production:view" | "subcontract:view" | "sales:view" | "shipping:view" | "returns:view" | "master-data:view" | "approvals:view" | "audit-log:view" | "reports:view" | "settings:view" | "record:create" | "record:export";
         Pagination: {
             /** @example 1 */
             page: number;
@@ -1049,6 +1079,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RbacRoleCatalogSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listRbacPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description RBAC permission catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RbacPermissionCatalogSuccessResponse"];
                 };
             };
             401: components["responses"]["Unauthorized"];
