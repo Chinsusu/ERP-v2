@@ -77,6 +77,20 @@ func RoundRate(value string) (Decimal, error) {
 	return roundFixedScale(value, ratePrecision, RateScale)
 }
 
+func MultiplyQuantityByFactor(quantity Decimal, factor Decimal) (Decimal, error) {
+	left, err := scaledInt(quantity.String(), QuantityScale)
+	if err != nil {
+		return "", err
+	}
+	right, err := scaledInt(factor.String(), QuantityScale)
+	if err != nil {
+		return "", err
+	}
+
+	product := new(big.Int).Mul(left, right)
+	return scaledProductToDecimal(product, QuantityScale*2, QuantityScale, quantityPrecision)
+}
+
 func MustMoneyAmount(value string) Decimal {
 	return must(ParseMoneyAmount(value))
 }
@@ -99,6 +113,14 @@ func MustRate(value string) Decimal {
 
 func (d Decimal) String() string {
 	return string(d)
+}
+
+func (c CurrencyCode) String() string {
+	return string(c)
+}
+
+func (c UOMCode) String() string {
+	return string(c)
 }
 
 func (d Decimal) IsNegative() bool {
@@ -310,6 +332,59 @@ func allZero(value string) bool {
 	}
 
 	return true
+}
+
+func scaledInt(value string, scale int) (*big.Int, error) {
+	parts, err := parseFixedScale(value, quantityPrecision, scale)
+	if err != nil {
+		return nil, err
+	}
+	digits := strings.ReplaceAll(parts.String(), ".", "")
+	negative := strings.HasPrefix(digits, "-")
+	digits = strings.TrimPrefix(digits, "-")
+	intValue, ok := new(big.Int).SetString(digits, 10)
+	if !ok {
+		return nil, ErrInvalidDecimal
+	}
+	if negative {
+		intValue.Neg(intValue)
+	}
+
+	return intValue, nil
+}
+
+func scaledProductToDecimal(product *big.Int, productScale int, targetScale int, precision int) (Decimal, error) {
+	if productScale < targetScale {
+		return "", ErrInvalidDecimal
+	}
+
+	divisor := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(productScale-targetScale)), nil)
+	quotient, remainder := new(big.Int).QuoRem(product, divisor, new(big.Int))
+	absRemainder := new(big.Int).Abs(remainder)
+	threshold := new(big.Int).Mul(absRemainder, big.NewInt(2))
+	if threshold.Cmp(divisor) >= 0 {
+		if product.Sign() < 0 {
+			quotient.Sub(quotient, big.NewInt(1))
+		} else {
+			quotient.Add(quotient, big.NewInt(1))
+		}
+	}
+
+	negative := quotient.Sign() < 0
+	digits := new(big.Int).Abs(quotient).String()
+	if targetScale > 0 && len(digits) <= targetScale {
+		digits = strings.Repeat("0", targetScale-len(digits)+1) + digits
+	}
+
+	parts := decimalParts{negative: negative}
+	if targetScale == 0 {
+		parts.intPart = digits
+	} else {
+		parts.intPart = digits[:len(digits)-targetScale]
+		parts.fracPart = digits[len(digits)-targetScale:]
+	}
+
+	return parts.toDecimal(precision, targetScale)
 }
 
 func must(value Decimal, err error) Decimal {

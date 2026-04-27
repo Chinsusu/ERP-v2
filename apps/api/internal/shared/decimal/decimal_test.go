@@ -91,3 +91,28 @@ func TestDecimalCodeNormalization(t *testing.T) {
 		t.Fatalf("uom = %q, want KG", uom)
 	}
 }
+
+func TestMultiplyQuantityByFactor(t *testing.T) {
+	tests := []struct {
+		name     string
+		quantity Decimal
+		factor   Decimal
+		want     Decimal
+	}{
+		{name: "carton to pieces", quantity: MustQuantity("2"), factor: MustQuantity("48"), want: "96.000000"},
+		{name: "kilogram to gram", quantity: MustQuantity("25"), factor: MustQuantity("1000"), want: "25000.000000"},
+		{name: "milligram to gram", quantity: MustQuantity("250"), factor: MustQuantity("0.001"), want: "0.250000"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MultiplyQuantityByFactor(tt.quantity, tt.factor)
+			if err != nil {
+				t.Fatalf("multiply: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("quantity = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

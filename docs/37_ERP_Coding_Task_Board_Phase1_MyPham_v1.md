@@ -152,7 +152,7 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 | --- | --- | --- | --- | --- | --- | --- |
 | S1-00-01 | Unit currency number format baseline | Cross-cutting standards | Tech Lead + BE Lead + FE Lead + QA | P0 | Done | `docs/40_...` |
 | S1-00-02 | Decimal money quantity rate foundation v1 | Cross-cutting standards | BE Lead + FE Lead | P0 | Done | `docs/40_...` + `docs/16_...` |
-| S1-00-03 | UOM master and conversion foundation v1 | Cross-cutting standards | BE Lead + Master Data Admin | P0 | Backlog | `docs/40_...` + `docs/05_...` + `docs/17_...` |
+| S1-00-03 | UOM master and conversion foundation v1 | Cross-cutting standards | BE Lead + Master Data Admin | P0 | Done | `docs/40_...` + `docs/05_...` + `docs/17_...` |
 | S1-01-01 | Auth session and password policy v1 | Auth/RBAC hardening | BE Lead + FE Lead | P0 | Done | `docs/19_...` + `docs/34_...` |
 | S1-01-02 | RBAC enforcement and permission matrix v1 | Auth/RBAC hardening | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
 | S1-02-01 | Item and SKU master data CRUD v1 | Master Data | BE Lead + FE Lead + MDA | P0 | Done | `docs/05_...` + `docs/16_...` |
@@ -1141,7 +1141,7 @@ Evidence:
 
 **Owner:** BE Lead + Master Data Admin
 **Priority:** P0
-**Status:** Backlog
+**Status:** Done
 **Primary Ref:** `docs/40_ERP_Unit_Currency_Number_Format_Standards_Phase1_MyPham_v1.md`, `docs/05_ERP_Data_Dictionary_Master_Data_Phase1_MyPham_v1.md`, `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
@@ -1152,6 +1152,19 @@ Acceptance criteria:
 - Backend conversion service calculates `base_qty`, `base_uom_code`, and `conversion_factor`; frontend does not calculate authoritative stock conversion.
 - Missing or inactive conversion returns a standard API error with SKU, source UOM, and base UOM details.
 - Tests cover global conversion, item-specific conversion, invalid UOM, missing conversion, and base UOM passthrough.
+
+Current state:
+
+- Backend has UOM domain models, Phase 1 prototype catalog seeds, and a conversion service that returns source quantity/UOM, base quantity/UOM, conversion factor, conversion type, and item-specific conversion metadata.
+- PostgreSQL migration `000003_create_uom_foundation` adds canonical `mdm.uoms` and `mdm.uom_conversions` tables, Phase 1 UOM seed rows, global `KG/G/MG` and `L/ML` conversions, item-specific conversion constraints, and rollback.
+- Missing or inactive conversion returns `UOMConversionError` details with `sku_code`, `item_id`, `from_uom_code`, `to_uom_code`, and `base_uom_code`; shared API error code `UOM_CONVERSION_NOT_FOUND` is registered.
+- Decimal quantity multiplication stays in backend shared decimal helpers; frontend remains display-only for authoritative stock conversion.
+
+Evidence:
+
+- PR #133: UOM master and conversion foundation into `develop`.
+- Local checks: API tests, API vet, Sprint 0 smoke pack, migration seed sanity check, and `git diff --check`.
+- Local migration apply/rollback was not executed because this workstation has no Docker or PostgreSQL client; GitHub migration CI remains the authoritative DB execution gate.
 
 ### S1-02-01 Item And SKU Master Data CRUD V1
 
@@ -1367,6 +1380,7 @@ Acceptance criteria:
 | S1-02-03 | Manual merge; supplier/customer CRUD/status API, duplicate code and invalid transition guards, audit logs, OpenAPI/generated types, and `/master-data` supplier/customer UI states |
 | S1-00-01 | PR #131; file 40 tracked as approved baseline; Sprint 1 decimal/UOM foundation tasks added before stock ledger persistence |
 | S1-00-02 | PR #132; backend decimal helpers, string decimal OpenAPI contracts, vi-VN frontend format/input helpers, generated schema, and decimal tests |
+| S1-00-03 | PR #133; UOM domain/catalog, PostgreSQL UOM master/conversion migration, Phase 1 UOM seeds, global/item-specific conversion service, and UOM conversion tests |
 
 ---
 
@@ -1386,8 +1400,8 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-00-02` - Decimal money quantity rate foundation v1.
-2. `S1-00-03` - UOM master and conversion foundation v1.
-3. `S1-03-01` - Inventory stock ledger persistence v1.
+1. `S1-03-01` - Inventory stock ledger persistence v1.
+2. `S1-03-02` - Available and reserved stock service v1.
+3. `S1-04-01` - Batch and QC status base model.
 
-These foundation tasks prevent stock ledger v1 from encoding prototype integer/float assumptions before persistence work starts.
+The decimal and UOM foundations are now in place, so the next inventory tasks can store movement quantities in base UOM without prototype integer/float assumptions.
