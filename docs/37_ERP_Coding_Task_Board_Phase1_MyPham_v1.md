@@ -35,6 +35,7 @@ This file replaces the previous placeholder task board.
 | Frontend architecture | `docs/15_ERP_Frontend_Architecture_React_NextJS_Phase1_MyPham_v1.md` |
 | OpenAPI standard | `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md` + `packages/openapi/openapi.yaml` |
 | Database standard | `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md` + `apps/api/migrations` |
+| Unit, currency, number, UOM standard | `docs/40_ERP_Unit_Currency_Number_Format_Standards_Phase1_MyPham_v1.md` |
 
 If this file conflicts with file 34 for Sprint 0 or Sprint 1 task direction, file 34 wins and this file must be corrected.
 
@@ -149,12 +150,15 @@ Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 kee
 
 | Task ID | Title | Epic | Owner | Priority | Status | Primary Ref |
 | --- | --- | --- | --- | --- | --- | --- |
+| S1-00-01 | Unit currency number format baseline | Cross-cutting standards | Tech Lead + BE Lead + FE Lead + QA | P0 | Done | `docs/40_...` |
+| S1-00-02 | Decimal money quantity rate foundation v1 | Cross-cutting standards | BE Lead + FE Lead | P0 | Backlog | `docs/40_...` + `docs/16_...` |
+| S1-00-03 | UOM master and conversion foundation v1 | Cross-cutting standards | BE Lead + Master Data Admin | P0 | Backlog | `docs/40_...` + `docs/05_...` + `docs/17_...` |
 | S1-01-01 | Auth session and password policy v1 | Auth/RBAC hardening | BE Lead + FE Lead | P0 | Done | `docs/19_...` + `docs/34_...` |
 | S1-01-02 | RBAC enforcement and permission matrix v1 | Auth/RBAC hardening | BE Lead + FE Lead + BA | P0 | Done | `docs/04_...` + `docs/19_...` |
 | S1-02-01 | Item and SKU master data CRUD v1 | Master Data | BE Lead + FE Lead + MDA | P0 | Done | `docs/05_...` + `docs/16_...` |
 | S1-02-02 | Warehouse and location master data CRUD v1 | Master Data | BE Lead + FE Lead + Warehouse | P0 | Done | `docs/05_...` + `docs/17_...` |
 | S1-02-03 | Supplier and customer master data CRUD v1 | Master Data | BE Lead + FE Lead + Purchasing + Sales | P0 | Done | `docs/05_...` |
-| S1-03-01 | Inventory stock ledger persistence v1 | Inventory Stock Ledger | BE Lead | P0 | Backlog | `docs/17_...` + `docs/33_...` |
+| S1-03-01 | Inventory stock ledger persistence v1 | Inventory Stock Ledger | BE Lead | P0 | Backlog | `docs/17_...` + `docs/33_...` + `docs/40_...` |
 | S1-03-02 | Available and reserved stock service v1 | Inventory Stock Ledger | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` + `docs/16_...` |
 | S1-04-01 | Batch and QC status base model | Batch/QC | BE Lead + QA | P0 | Backlog | `docs/05_...` + `docs/17_...` |
 | S1-04-02 | QC status transition and audit path | Batch/QC | BE Lead + QA + Internal Control | P1 | Backlog | `docs/19_...` + `docs/33_...` |
@@ -1094,6 +1098,56 @@ Evidence:
 - Self-review completed on implementation diff.
 - Validation passed: API tests, API vet, frontend typecheck, frontend tests, OpenAPI validate, generated OpenAPI schema, and Sprint 0 smoke pack.
 
+### S1-00-01 Unit Currency Number Format Baseline
+
+**Owner:** Tech Lead + BE Lead + FE Lead + QA
+**Priority:** P0
+**Status:** Done
+**Primary Ref:** `docs/40_ERP_Unit_Currency_Number_Format_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- File 40 is tracked in the repo as the approved baseline for unit, currency, number, UOM, rounding, import/export, and testing rules.
+- Source-of-truth mapping references file 40.
+- Future tasks touching money, quantity, rate, stock, UOM, import/export, or related UI formatting inherit the file 40 Definition of Done.
+- Sprint 1 board includes explicit foundation tasks for decimal formatting and UOM conversion before stock ledger persistence.
+
+Evidence:
+
+- PR #131: unit, currency, number, and UOM baseline into `develop`.
+- Local check: `git diff --check`.
+
+### S1-00-02 Decimal Money Quantity Rate Foundation V1
+
+**Owner:** BE Lead + FE Lead
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/40_ERP_Unit_Currency_Number_Format_Standards_Phase1_MyPham_v1.md`, `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`, `docs/12_ERP_Go_Coding_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Backend has shared decimal-backed value objects/helpers for money, quantity, rate, currency code, and UOM code.
+- Backend domain code for official money/quantity/rate paths does not use `float32`, `float64`, `real`, `double precision`, or JavaScript `number` as authoritative calculation storage.
+- OpenAPI defines reusable `MoneyAmount`, `Quantity`, `Rate`, `CurrencyCode`, and `UOMCode` schemas using string decimal where required.
+- Frontend has shared `vi-VN` parse/format helpers and display/input components for money, quantity, rate, currency, UOM, date, and datetime.
+- Tests cover decimal parsing, VND formatting, vi-VN input normalization, and rounding scale rules from file 40.
+
+### S1-00-03 UOM Master And Conversion Foundation V1
+
+**Owner:** BE Lead + Master Data Admin
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/40_ERP_Unit_Currency_Number_Format_Standards_Phase1_MyPham_v1.md`, `docs/05_ERP_Data_Dictionary_Master_Data_Phase1_MyPham_v1.md`, `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- UOM master and UOM conversion persistence model exists with Phase 1 seed values from file 40.
+- Global conversions support `KG/G/MG` and `L/ML`.
+- Item-specific conversions support pack/commercial UOM such as `BOX`, `CARTON`, and `SET`.
+- Backend conversion service calculates `base_qty`, `base_uom_code`, and `conversion_factor`; frontend does not calculate authoritative stock conversion.
+- Missing or inactive conversion returns a standard API error with SKU, source UOM, and base UOM details.
+- Tests cover global conversion, item-specific conversion, invalid UOM, missing conversion, and base UOM passthrough.
+
 ### S1-02-01 Item And SKU Master Data CRUD V1
 
 **Owner:** BE Lead + FE Lead + Master Data Admin
@@ -1174,13 +1228,15 @@ Evidence:
 **Owner:** BE Lead
 **Priority:** P0
 **Status:** Backlog
-**Primary Ref:** `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`, `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`
+**Primary Ref:** `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`, `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`, `docs/40_ERP_Unit_Currency_Number_Format_Standards_Phase1_MyPham_v1.md`
 
 Acceptance criteria:
 
 - Stock movement write path persists through PostgreSQL transaction boundaries.
 - Balance deltas are derived from immutable stock movement rows.
 - Direct balance updates outside movement posting remain blocked.
+- Movement quantities use decimal string API contracts, PostgreSQL `numeric(18,6)`, and base UOM fields from file 40.
+- Stock ledger stores `movement_qty`, `base_uom_code`, and source quantity/UOM/conversion fields where the transaction UOM differs from base UOM.
 - Unit and integration tests cover inbound, outbound, adjustment, and rollback behavior.
 - Audit log captures sensitive stock movement metadata.
 
@@ -1304,6 +1360,7 @@ Acceptance criteria:
 | S1-02-01 | Manual merge; item/SKU master data CRUD/status API, duplicate code guards, audit logs, OpenAPI/generated types, and `/master-data` UI states |
 | S1-02-02 | Manual merge; warehouse/location CRUD/status API, location warehouse validation, inactive location guard, OpenAPI/generated types, and `/master-data` warehouse/location UI states |
 | S1-02-03 | Manual merge; supplier/customer CRUD/status API, duplicate code and invalid transition guards, audit logs, OpenAPI/generated types, and `/master-data` supplier/customer UI states |
+| S1-00-01 | PR #131; file 40 tracked as approved baseline; Sprint 1 decimal/UOM foundation tasks added before stock ledger persistence |
 
 ---
 
@@ -1323,6 +1380,8 @@ Acceptance criteria:
 
 Recommended next tasks:
 
-1. `S1-03-01` - Inventory stock ledger persistence v1.
+1. `S1-00-02` - Decimal money quantity rate foundation v1.
+2. `S1-00-03` - UOM master and conversion foundation v1.
+3. `S1-03-01` - Inventory stock ledger persistence v1.
 
-This starts the persistence layer needed by available/reserved stock, batch/QC, warehouse receiving, and reliable warehouse daily board integration.
+These foundation tasks prevent stock ledger v1 from encoding prototype integer/float assumptions before persistence work starts.
