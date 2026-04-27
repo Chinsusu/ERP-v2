@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
 
 type StockAvailabilityStore interface {
@@ -54,6 +55,9 @@ func (s PrototypeStockAvailabilityStore) ListBalances(
 		if filter.WarehouseID != "" && row.WarehouseID != filter.WarehouseID {
 			continue
 		}
+		if filter.LocationID != "" && row.LocationID != filter.LocationID {
+			continue
+		}
 		if filterSKU != "" && strings.ToUpper(row.SKU) != filterSKU {
 			continue
 		}
@@ -72,65 +76,83 @@ func prototypeStockBalanceRows() []domain.StockBalanceSnapshot {
 		{
 			WarehouseID:   "wh-hcm",
 			WarehouseCode: "HCM",
+			LocationID:    "bin-hcm-a01",
+			LocationCode:  "A-01",
 			ItemID:        "item-serum-30ml",
 			SKU:           "SERUM-30ML",
 			BatchID:       "batch-serum-2604a",
 			BatchNo:       "LOT-2604A",
+			BaseUOMCode:   decimal.MustUOMCode("PCS"),
 			StockStatus:   domain.StockStatusAvailable,
-			QtyOnHand:     120,
-			QtyReserved:   10,
+			QtyOnHand:     decimal.MustQuantity("120"),
+			QtyReserved:   decimal.MustQuantity("10"),
 		},
 		{
 			WarehouseID:   "wh-hcm",
 			WarehouseCode: "HCM",
+			LocationID:    "bin-hcm-a01",
+			LocationCode:  "A-01",
 			ItemID:        "item-serum-30ml",
 			SKU:           "SERUM-30ML",
 			BatchID:       "batch-serum-2604a",
 			BatchNo:       "LOT-2604A",
+			BaseUOMCode:   decimal.MustUOMCode("PCS"),
 			StockStatus:   domain.StockStatusQCHold,
-			QtyOnHand:     8,
+			QtyOnHand:     decimal.MustQuantity("8"),
 		},
 		{
 			WarehouseID:   "wh-hcm",
 			WarehouseCode: "HCM",
+			LocationID:    "bin-hcm-a01",
+			LocationCode:  "A-01",
 			ItemID:        "item-cream-50g",
 			SKU:           "CREAM-50G",
 			BatchID:       "batch-cream-2603b",
 			BatchNo:       "LOT-2603B",
+			BaseUOMCode:   decimal.MustUOMCode("PCS"),
 			StockStatus:   domain.StockStatusAvailable,
-			QtyOnHand:     44,
-			QtyReserved:   12,
+			QtyOnHand:     decimal.MustQuantity("44"),
+			QtyReserved:   decimal.MustQuantity("12"),
 		},
 		{
 			WarehouseID:   "wh-hcm",
 			WarehouseCode: "HCM",
+			LocationID:    "bin-hcm-a01",
+			LocationCode:  "A-01",
 			ItemID:        "item-cream-50g",
 			SKU:           "CREAM-50G",
 			BatchID:       "batch-cream-2603b",
 			BatchNo:       "LOT-2603B",
+			BaseUOMCode:   decimal.MustUOMCode("PCS"),
 			StockStatus:   domain.StockStatusDamaged,
-			QtyOnHand:     2,
+			QtyOnHand:     decimal.MustQuantity("2"),
 		},
 		{
 			WarehouseID:   "wh-hn",
 			WarehouseCode: "HN",
+			LocationID:    "bin-hn-r01",
+			LocationCode:  "R-01",
 			ItemID:        "item-toner-100ml",
 			SKU:           "TONER-100ML",
 			BatchID:       "batch-toner-2604c",
 			BatchNo:       "LOT-2604C",
+			BaseUOMCode:   decimal.MustUOMCode("PCS"),
 			StockStatus:   domain.StockStatusAvailable,
-			QtyOnHand:     85,
-			QtyReserved:   20,
+			QtyOnHand:     decimal.MustQuantity("85"),
+			QtyReserved:   decimal.MustQuantity("20"),
 		},
 		{
 			WarehouseID:   "wh-hn",
 			WarehouseCode: "HN",
+			LocationID:    "bin-hn-r01",
+			LocationCode:  "R-01",
 			ItemID:        "item-toner-100ml",
 			SKU:           "TONER-100ML",
 			BatchID:       "batch-toner-2604c",
 			BatchNo:       "LOT-2604C",
+			BaseUOMCode:   decimal.MustUOMCode("PCS"),
 			StockStatus:   domain.StockStatusReturnPending,
-			QtyOnHand:     5,
+			QtyOnHand:     decimal.MustQuantity("5"),
 		},
 	}
 }

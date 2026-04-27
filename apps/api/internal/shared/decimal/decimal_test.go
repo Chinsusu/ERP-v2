@@ -116,3 +116,21 @@ func TestMultiplyQuantityByFactor(t *testing.T) {
 		})
 	}
 }
+
+func TestQuantityArithmetic(t *testing.T) {
+	sum, err := AddQuantity(MustQuantity("10.500000"), MustQuantity("0.250000"))
+	if err != nil {
+		t.Fatalf("add quantity: %v", err)
+	}
+	if sum != "10.750000" {
+		t.Fatalf("sum = %q, want 10.750000", sum)
+	}
+
+	diff, err := SubtractQuantity(MustQuantity("10.000000"), MustQuantity("12.500000"))
+	if err != nil {
+		t.Fatalf("subtract quantity: %v", err)
+	}
+	if diff != "-2.500000" {
+		t.Fatalf("diff = %q, want -2.500000", diff)
+	}
+}
