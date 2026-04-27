@@ -2,8 +2,8 @@
 
 **Project:** ERP my pham - Phase 1
 **Document type:** Coding Task Board / Implementation Tracker
-**Version:** v1.2
-**Date:** 2026-04-26
+**Version:** v1.3
+**Date:** 2026-04-27
 **Status:** Active
 **Primary audience:** PM, BA, Tech Lead, BE, FE, DevOps, QA, vendor
 
@@ -24,6 +24,7 @@ This file replaces the previous placeholder task board.
 | Topic | Primary source |
 | --- | --- |
 | Sprint 0 backlog | `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md` |
+| Sprint 1 proposed backlog | `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md#20-sprint-1-de-xuat-sau-sprint-0` |
 | Workspace and repo structure | `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md` |
 | DevOps and CI/CD | `docs/18_ERP_DevOps_CICD_Environment_Standards_Phase1_MyPham_v1.md` |
 | QA and test gates | `docs/24_ERP_QA_Test_Strategy_Automation_Phase1_MyPham_v1.md` |
@@ -35,7 +36,7 @@ This file replaces the previous placeholder task board.
 | OpenAPI standard | `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md` + `packages/openapi/openapi.yaml` |
 | Database standard | `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md` + `apps/api/migrations` |
 
-If this file conflicts with file 34 for Sprint 0 task IDs, file 34 wins and this file must be corrected.
+If this file conflicts with file 34 for Sprint 0 or Sprint 1 task direction, file 34 wins and this file must be corrected.
 
 ---
 
@@ -139,6 +140,27 @@ Task Ref: docs/37_ERP_Coding_Task_Board_Phase1_MyPham_v1.md#s0-01-01-setup-repos
 | S0-12-03 | Dev/Staging deployment skeleton | DevOps/CI/CD foundation | DevOps | P0 | Done | `docs/18_...` |
 | S0-13-01 | Smoke test pack | QA foundation | QA Lead | P0 | Done | `docs/24_...` |
 | S0-13-02 | Sprint 0 demo script | QA foundation | QA Lead + BA + PO | P0 | Done | `docs/34_...` |
+
+---
+
+## 5A. Sprint 1 Summary Board
+
+Sprint 1 starts only after Sprint 0 gate evidence exists. File 34 section 20 keeps the Sprint 1 priority order: Auth/RBAC, Master Data, Inventory Stock Ledger, Batch/QC, Warehouse Receiving, then Warehouse Daily Board v1.
+
+| Task ID | Title | Epic | Owner | Priority | Status | Primary Ref |
+| --- | --- | --- | --- | --- | --- | --- |
+| S1-01-01 | Auth session and password policy v1 | Auth/RBAC hardening | BE Lead + FE Lead | P0 | Ready | `docs/19_...` + `docs/34_...` |
+| S1-01-02 | RBAC enforcement and permission matrix v1 | Auth/RBAC hardening | BE Lead + FE Lead + BA | P0 | Backlog | `docs/04_...` + `docs/19_...` |
+| S1-02-01 | Item and SKU master data CRUD v1 | Master Data | BE Lead + FE Lead + MDA | P0 | Backlog | `docs/05_...` + `docs/16_...` |
+| S1-02-02 | Warehouse and location master data CRUD v1 | Master Data | BE Lead + FE Lead + Warehouse | P0 | Backlog | `docs/05_...` + `docs/17_...` |
+| S1-02-03 | Supplier and customer master data CRUD v1 | Master Data | BE Lead + FE Lead + Purchasing + Sales | P0 | Backlog | `docs/05_...` |
+| S1-03-01 | Inventory stock ledger persistence v1 | Inventory Stock Ledger | BE Lead | P0 | Backlog | `docs/17_...` + `docs/33_...` |
+| S1-03-02 | Available and reserved stock service v1 | Inventory Stock Ledger | BE Lead + FE Lead | P0 | Backlog | `docs/33_...` + `docs/16_...` |
+| S1-04-01 | Batch and QC status base model | Batch/QC | BE Lead + QA | P0 | Backlog | `docs/05_...` + `docs/17_...` |
+| S1-04-02 | QC status transition and audit path | Batch/QC | BE Lead + QA + Internal Control | P1 | Backlog | `docs/19_...` + `docs/33_...` |
+| S1-05-01 | Warehouse receiving backend v1 | Warehouse Receiving | BE Lead + Warehouse | P0 | Backlog | `docs/33_...` + `docs/16_...` |
+| S1-05-02 | Warehouse receiving UI v1 | Warehouse Receiving | FE Lead + Warehouse + UI/UX | P0 | Backlog | `docs/39_...` |
+| S1-06-01 | Warehouse daily board data integration v1 | Warehouse Daily Board | FE Lead + BE Lead + Warehouse | P1 | Backlog | `docs/33_...` + `docs/39_...` |
 
 ---
 
@@ -1013,6 +1035,190 @@ Evidence:
 
 ---
 
+## 6A. Sprint 1 Detailed Tasks
+
+### S1-01-01 Auth Session And Password Policy V1
+
+**Owner:** BE Lead + FE Lead
+**Priority:** P0
+**Status:** Ready
+**Primary Ref:** `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`, `docs/34_ERP_Sprint0_Implementation_Kickoff_Plan_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Login flow returns a real session/token contract instead of a pure mock-only skeleton.
+- Session expiry and refresh behavior are documented in API and frontend code.
+- Password policy covers minimum length, lockout or retry limit, and local development defaults.
+- Protected API and protected frontend routes use the same session state.
+- Authentication events are audit-ready and do not expose secrets in logs.
+
+### S1-01-02 RBAC Enforcement And Permission Matrix V1
+
+**Owner:** BE Lead + FE Lead + BA
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/04_ERP_Permission_Approval_Matrix_Phase1_MyPham_v1.md`, `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Permission catalog maps Phase 1 roles to API actions and menu actions.
+- Backend rejects protected actions without required permission.
+- Frontend hides or disables actions using the same permission key names.
+- Permission denial response uses the standard API error envelope.
+- Tests cover at least one allowed and one denied path per protected module group.
+
+### S1-02-01 Item And SKU Master Data CRUD V1
+
+**Owner:** BE Lead + FE Lead + Master Data Admin
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/05_ERP_Data_Dictionary_Master_Data_Phase1_MyPham_v1.md`, `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Item/SKU create, list, detail, update, and status change paths exist.
+- Duplicate item/SKU code is blocked.
+- Required cosmetic master data fields follow file 5.
+- OpenAPI and generated frontend types are updated through the normal generation path.
+- UI includes loading, empty, error, validation, and audit hint states.
+
+### S1-02-02 Warehouse And Location Master Data CRUD V1
+
+**Owner:** BE Lead + FE Lead + Warehouse
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/05_ERP_Data_Dictionary_Master_Data_Phase1_MyPham_v1.md`, `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Warehouse and location create, list, detail, update, and active/inactive paths exist.
+- Location belongs to one warehouse and cannot be assigned to an invalid warehouse.
+- Warehouse type and location type validations support Phase 1 inventory flows.
+- API and UI expose enough data for receiving and stock ledger tasks.
+- Tests cover duplicate code, invalid warehouse, and inactive location behavior.
+
+### S1-02-03 Supplier And Customer Master Data CRUD V1
+
+**Owner:** BE Lead + FE Lead + Purchasing + Sales
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/05_ERP_Data_Dictionary_Master_Data_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Supplier and customer create, list, detail, update, and status change paths exist.
+- Required tax/contact/address fields follow file 5.
+- Duplicate code and invalid status transitions are blocked.
+- UI supports search/filter and compact operational list views.
+- Audit metadata is captured for create/update/status changes.
+
+### S1-03-01 Inventory Stock Ledger Persistence V1
+
+**Owner:** BE Lead
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`, `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Stock movement write path persists through PostgreSQL transaction boundaries.
+- Balance deltas are derived from immutable stock movement rows.
+- Direct balance updates outside movement posting remain blocked.
+- Unit and integration tests cover inbound, outbound, adjustment, and rollback behavior.
+- Audit log captures sensitive stock movement metadata.
+
+### S1-03-02 Available And Reserved Stock Service V1
+
+**Owner:** BE Lead + FE Lead
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`, `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Available stock calculation includes on-hand, reserved, QC hold, and blocked quantities.
+- Service supports SKU, warehouse, location, and batch filters where data exists.
+- API response is OpenAPI-documented and generated frontend types are updated.
+- UI shows available, reserved, blocked, and QC hold quantities without visual ambiguity.
+- Tests cover zero stock, negative prevention, QC hold, and reservation behavior.
+
+### S1-04-01 Batch And QC Status Base Model
+
+**Owner:** BE Lead + QA
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/05_ERP_Data_Dictionary_Master_Data_Phase1_MyPham_v1.md`, `docs/17_ERP_Database_Schema_PostgreSQL_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Batch identity, expiry, and QC status fields exist in domain/database/API contracts.
+- Valid QC statuses support Phase 1 receiving and inventory availability.
+- Invalid batch/QC transitions are rejected.
+- Batch/QC status can be used by stock availability calculations.
+- Tests cover expiry, hold/release, and rejected transition cases.
+
+### S1-04-02 QC Status Transition And Audit Path
+
+**Owner:** BE Lead + QA + Internal Control
+**Priority:** P1
+**Status:** Backlog
+**Primary Ref:** `docs/19_ERP_Security_RBAC_Audit_Compliance_Standards_Phase1_MyPham_v1.md`, `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- QC hold, release, reject, and quarantine transitions require permission.
+- Transition reason and actor are mandatory.
+- Audit log records before/after status and business reference.
+- UI exposes transition history without allowing silent overwrite.
+- Tests cover allowed, denied, and invalid transition paths.
+
+### S1-05-01 Warehouse Receiving Backend V1
+
+**Owner:** BE Lead + Warehouse
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`, `docs/16_ERP_API_Contract_OpenAPI_Standards_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Receiving draft, submit, inspect-ready, and posted states exist.
+- Posted receiving creates stock movement rows and never updates balances directly.
+- Receiving supports item/SKU, warehouse/location, batch, quantity, and reference document.
+- Permission and audit checks protect posting.
+- Tests cover happy path, duplicate posting, invalid location, and missing batch/QC data.
+
+### S1-05-02 Warehouse Receiving UI V1
+
+**Owner:** FE Lead + Warehouse + UI/UX
+**Priority:** P0
+**Status:** Backlog
+**Primary Ref:** `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Receiving list and detail/action screens follow file 39 industrial minimal style.
+- UI supports draft, submit, posted, exception, loading, empty, and error states.
+- Quantity and location validation errors are visible and actionable.
+- Posting action requires confirmation and shows audit/status result.
+- UI tests cover route access, state rendering, and validation behavior.
+
+### S1-06-01 Warehouse Daily Board Data Integration V1
+
+**Owner:** FE Lead + BE Lead + Warehouse
+**Priority:** P1
+**Status:** Backlog
+**Primary Ref:** `docs/33_ERP_Sprint0_Technical_Prototype_Scope_Phase1_MyPham_v1.md`, `docs/39_ERP_UI_Template_Hetzner_Minimal_Style_Phase1_MyPham_v1.md`
+
+Acceptance criteria:
+
+- Daily board uses real receiving, stock movement, shipping, return, and exception data where available.
+- Board counters have documented source fields.
+- UI remains dense, scan-friendly, and operational rather than marketing-style.
+- Filters support shift/date/warehouse/status.
+- Tests cover empty board, active shift, exception, and mixed workload states.
+
+---
+
 ## 7. Done Evidence Log
 
 | Task ID | Evidence |
@@ -1055,6 +1261,6 @@ Evidence:
 
 Recommended next tasks:
 
-No Sprint 0 ready tasks remain. Start Sprint 1 planning from file 34 section 20.
+1. `S1-01-01` - Auth session and password policy v1.
 
-Sprint 0 now has demo, smoke, deployment, review, and merge evidence for the implemented foundation.
+This unlocks RBAC hardening, master data CRUD, inventory ledger v1, and warehouse receiving v1.
