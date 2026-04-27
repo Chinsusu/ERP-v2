@@ -321,6 +321,31 @@ type batchResponse struct {
 	UpdatedAt  string `json:"updated_at"`
 }
 
+type batchQCTransitionRequest struct {
+	QCStatus    string `json:"qc_status"`
+	Reason      string `json:"reason"`
+	BusinessRef string `json:"business_ref"`
+}
+
+type batchQCTransitionResponse struct {
+	ID           string `json:"id"`
+	BatchID      string `json:"batch_id"`
+	BatchNo      string `json:"batch_no"`
+	SKU          string `json:"sku"`
+	FromQCStatus string `json:"from_qc_status"`
+	ToQCStatus   string `json:"to_qc_status"`
+	ActorID      string `json:"actor_id"`
+	Reason       string `json:"reason"`
+	BusinessRef  string `json:"business_ref"`
+	AuditLogID   string `json:"audit_log_id"`
+	CreatedAt    string `json:"created_at"`
+}
+
+type batchQCTransitionResultResponse struct {
+	Batch      batchResponse             `json:"batch"`
+	Transition batchQCTransitionResponse `json:"transition"`
+}
+
 type endOfDayReconciliationSummaryResponse struct {
 	SystemQuantity     int64 `json:"system_quantity"`
 	CountedQuantity    int64 `json:"counted_quantity"`
@@ -552,8 +577,8 @@ func main() {
 	}
 	authSessions := auth.NewSessionManager(authConfig, time.Now)
 	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
-	batchCatalog := inventoryapp.NewPrototypeBatchCatalog()
 	auditLogStore := audit.NewPrototypeLogStore()
+	batchCatalog := inventoryapp.NewPrototypeBatchCatalog(auditLogStore)
 	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
 	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
 	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditLogStore)
@@ -727,6 +752,13 @@ func main() {
 			authSessions,
 			auth.PermissionInventoryView,
 			http.HandlerFunc(batchesHandler(batchCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/inventory/batches/{batch_id}/qc-transitions",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(batchQCTransitionsHandler(batchCatalog)),
 		),
 	)
 	mux.Handle(
@@ -2225,6 +2257,73 @@ func batchDetailHandler(catalog *inventoryapp.BatchCatalog) http.HandlerFunc {
 	}
 }
 
+func batchQCTransitionsHandler(catalog *inventoryapp.BatchCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionInventoryView) {
+				writePermissionDenied(w, r, auth.PermissionInventoryView)
+				return
+			}
+			transitions, err := catalog.ListQCTransitions(r.Context(), r.PathValue("batch_id"))
+			if err != nil {
+				writeBatchQCTransitionError(w, r, err)
+				return
+			}
+
+			payload := make([]batchQCTransitionResponse, 0, len(transitions))
+			for _, transition := range transitions {
+				payload = append(payload, newBatchQCTransitionResponse(transition))
+			}
+			response.WriteSuccess(w, r, http.StatusOK, payload)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionQCDecision) {
+				writePermissionDenied(w, r, auth.PermissionQCDecision)
+				return
+			}
+
+			var payload batchQCTransitionRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid batch QC transition payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.ChangeQCStatus(r.Context(), inventoryapp.ChangeBatchQCStatusInput{
+				BatchID:     r.PathValue("batch_id"),
+				NextStatus:  domain.QCStatus(payload.QCStatus),
+				ActorID:     principal.UserID,
+				Reason:      payload.Reason,
+				BusinessRef: payload.BusinessRef,
+				RequestID:   response.RequestID(r),
+			})
+			if err != nil {
+				writeBatchQCTransitionError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusOK, batchQCTransitionResultResponse{
+				Batch:      newBatchResponse(result.Batch),
+				Transition: newBatchQCTransitionResponse(result.Transition),
+			})
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
 func endOfDayReconciliationsHandler(service inventoryapp.ListEndOfDayReconciliations) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -2592,6 +2691,22 @@ func newBatchResponse(batch domain.Batch) batchResponse {
 	}
 }
 
+func newBatchQCTransitionResponse(transition domain.BatchQCTransition) batchQCTransitionResponse {
+	return batchQCTransitionResponse{
+		ID:           transition.ID,
+		BatchID:      transition.BatchID,
+		BatchNo:      transition.BatchNo,
+		SKU:          transition.SKU,
+		FromQCStatus: string(transition.FromQCStatus),
+		ToQCStatus:   string(transition.ToQCStatus),
+		ActorID:      transition.ActorID,
+		Reason:       transition.Reason,
+		BusinessRef:  transition.BusinessRef,
+		AuditLogID:   transition.AuditLogID,
+		CreatedAt:    transition.CreatedAt.Format(time.RFC3339),
+	}
+}
+
 func dateString(value time.Time) string {
 	if value.IsZero() {
 		return ""
@@ -2784,6 +2899,51 @@ func newReturnReceiptResponse(receipt returnsdomain.ReturnReceipt, auditLogID st
 	}
 
 	return payload
+}
+
+func writeBatchQCTransitionError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, inventoryapp.ErrBatchNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Batch not found", nil)
+	case errors.Is(err, inventoryapp.ErrBatchTransitionActorRequired):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Batch QC transition actor is required",
+			map[string]any{"required": "actor"},
+		)
+	case errors.Is(err, inventoryapp.ErrBatchTransitionReasonRequired):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Batch QC transition reason is required",
+			map[string]any{"required": "reason"},
+		)
+	case errors.Is(err, domain.ErrBatchInvalidQCStatus):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Batch QC status is invalid",
+			map[string]any{"allowed": "hold, pass, fail, quarantine, retest_required"},
+		)
+	case errors.Is(err, domain.ErrBatchInvalidQCTransition):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Batch QC status transition is not allowed",
+			nil,
+		)
+	default:
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Batch QC transition could not be processed", nil)
+	}
 }
 
 func writeCloseReconciliationError(w http.ResponseWriter, r *http.Request, err error) {

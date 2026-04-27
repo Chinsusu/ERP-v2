@@ -1,15 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { DataTable, StatusChip, type DataTableColumn } from "@/shared/design-system/components";
 import { useAvailableStock } from "../hooks/useAvailableStock";
-import { availabilityTone, formatQuantity } from "../services/stockAvailabilityService";
-import type { AvailableStockItem, AvailableStockQuery } from "../types";
+import {
+  availabilityTone,
+  createBatchQCTransition,
+  formatQuantity,
+  getBatchQCTransitions
+} from "../services/stockAvailabilityService";
+import type { AvailableStockItem, AvailableStockQuery, BatchQCStatus, BatchQCTransition } from "../types";
 
 const warehouseOptions = [
   { label: "All warehouses", value: "" },
   { label: "HCM", value: "wh-hcm" },
   { label: "HN", value: "wh-hn" }
+];
+
+const qcStatusOptions: { label: string; value: BatchQCStatus }[] = [
+  { label: "Pass", value: "pass" },
+  { label: "Fail", value: "fail" },
+  { label: "Quarantine", value: "quarantine" },
+  { label: "Retest", value: "retest_required" }
 ];
 
 const columns: DataTableColumn<AvailableStockItem>[] = [
@@ -80,10 +92,62 @@ const columns: DataTableColumn<AvailableStockItem>[] = [
   }
 ];
 
+const transitionColumns: DataTableColumn<BatchQCTransition>[] = [
+  {
+    key: "createdAt",
+    header: "Time",
+    render: (row) => formatDateTime(row.createdAt),
+    width: "180px"
+  },
+  {
+    key: "status",
+    header: "QC status",
+    render: (row) => (
+      <span className="erp-stock-qc-status-flow">
+        <StatusChip tone={qcStatusTone(row.fromQcStatus)}>{qcStatusLabel(row.fromQcStatus)}</StatusChip>
+        <span>to</span>
+        <StatusChip tone={qcStatusTone(row.toQcStatus)}>{qcStatusLabel(row.toQcStatus)}</StatusChip>
+      </span>
+    ),
+    width: "230px"
+  },
+  {
+    key: "actor",
+    header: "Actor",
+    render: (row) => row.actorId,
+    width: "150px"
+  },
+  {
+    key: "businessRef",
+    header: "Ref",
+    render: (row) => row.businessRef || "-",
+    width: "150px"
+  },
+  {
+    key: "reason",
+    header: "Reason",
+    render: (row) => row.reason
+  },
+  {
+    key: "audit",
+    header: "Audit",
+    render: (row) => row.auditLogId,
+    width: "190px"
+  }
+];
+
 export function AvailableStockPrototype() {
   const [warehouseId, setWarehouseId] = useState("");
   const [locationId, setLocationId] = useState("");
   const [sku, setSKU] = useState("");
+  const [selectedBatchId, setSelectedBatchId] = useState("");
+  const [nextQCStatus, setNextQCStatus] = useState<BatchQCStatus>("pass");
+  const [transitionReason, setTransitionReason] = useState("");
+  const [businessRef, setBusinessRef] = useState("");
+  const [transitions, setTransitions] = useState<BatchQCTransition[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [transitionSubmitting, setTransitionSubmitting] = useState(false);
+  const [transitionMessage, setTransitionMessage] = useState("");
   const query = useMemo<AvailableStockQuery>(
     () => ({
       warehouseId: warehouseId || undefined,
@@ -93,6 +157,69 @@ export function AvailableStockPrototype() {
     [locationId, warehouseId, sku]
   );
   const { items, loading, summary } = useAvailableStock(query);
+  const batchOptions = useMemo(() => uniqueBatchOptions(items), [items]);
+  const selectedBatch = useMemo(
+    () => batchOptions.find((batch) => batch.id === selectedBatchId),
+    [batchOptions, selectedBatchId]
+  );
+  const selectedBatchQCStatus = transitions[0]?.toQcStatus ?? selectedBatch?.qcStatus;
+
+  useEffect(() => {
+    if (selectedBatchId && batchOptions.some((batch) => batch.id === selectedBatchId)) {
+      return;
+    }
+    setSelectedBatchId(batchOptions[0]?.id ?? "");
+  }, [batchOptions, selectedBatchId]);
+
+  useEffect(() => {
+    let active = true;
+    if (!selectedBatchId) {
+      setTransitions([]);
+      return;
+    }
+
+    setHistoryLoading(true);
+    getBatchQCTransitions(selectedBatchId)
+      .then((items) => {
+        if (active) {
+          setTransitions(items);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setHistoryLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedBatchId]);
+
+  async function handleTransitionSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedBatchId || transitionReason.trim() === "") {
+      return;
+    }
+
+    setTransitionSubmitting(true);
+    setTransitionMessage("");
+    try {
+      await createBatchQCTransition(selectedBatchId, {
+        qcStatus: nextQCStatus,
+        reason: transitionReason,
+        businessRef
+      });
+      setTransitionReason("");
+      setBusinessRef("");
+      setTransitions(await getBatchQCTransitions(selectedBatchId));
+      setTransitionMessage("Recorded");
+    } catch {
+      setTransitionMessage("Could not record");
+    } finally {
+      setTransitionSubmitting(false);
+    }
+  }
 
   return (
     <section className="erp-module-page erp-stock-page">
@@ -157,6 +284,82 @@ export function AvailableStockPrototype() {
           loading={loading}
         />
       </section>
+
+      <section className="erp-card erp-card--padded erp-module-table-card erp-stock-qc-audit">
+        <div className="erp-section-header">
+          <h2 className="erp-section-title">Batch QC audit</h2>
+          <StatusChip tone={selectedBatchQCStatus ? qcStatusTone(selectedBatchQCStatus) : "normal"}>
+            {selectedBatchQCStatus ? qcStatusLabel(selectedBatchQCStatus) : "No batch"}
+          </StatusChip>
+        </div>
+
+        <form className="erp-stock-qc-form" onSubmit={handleTransitionSubmit}>
+          <label className="erp-field">
+            <span>Batch</span>
+            <select
+              className="erp-input"
+              value={selectedBatchId}
+              onChange={(event) => setSelectedBatchId(event.target.value)}
+            >
+              {batchOptions.map((batch) => (
+                <option key={batch.id} value={batch.id}>
+                  {batch.batchNo} / {batch.sku}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="erp-field">
+            <span>Next QC</span>
+            <select
+              className="erp-input"
+              value={nextQCStatus}
+              onChange={(event) => setNextQCStatus(event.target.value as BatchQCStatus)}
+            >
+              {qcStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="erp-field">
+            <span>Reference</span>
+            <input
+              className="erp-input"
+              type="text"
+              value={businessRef}
+              placeholder="QC-260427-0001"
+              onChange={(event) => setBusinessRef(event.target.value)}
+            />
+          </label>
+          <label className="erp-field erp-stock-qc-reason">
+            <span>Reason</span>
+            <input
+              className="erp-input"
+              type="text"
+              value={transitionReason}
+              placeholder="COA and visual inspection passed"
+              required
+              onChange={(event) => setTransitionReason(event.target.value)}
+            />
+          </label>
+          <button
+            className="erp-button erp-button--primary"
+            type="submit"
+            disabled={!selectedBatchId || transitionReason.trim() === "" || transitionSubmitting}
+          >
+            {transitionSubmitting ? "Recording" : "Record"}
+          </button>
+          {transitionMessage ? <StatusChip tone={transitionMessage === "Recorded" ? "success" : "danger"}>{transitionMessage}</StatusChip> : null}
+        </form>
+
+        <DataTable
+          columns={transitionColumns}
+          rows={transitions}
+          getRowKey={(row) => row.id}
+          loading={historyLoading}
+        />
+      </section>
     </section>
   );
 }
@@ -193,4 +396,68 @@ function statusLabel(item: AvailableStockItem) {
   }
 
   return "Available";
+}
+
+function uniqueBatchOptions(items: AvailableStockItem[]) {
+  const batches = new Map<
+    string,
+    { id: string; batchNo: string; sku: string; qcStatus?: BatchQCStatus }
+  >();
+  for (const item of items) {
+    if (!item.batchId) {
+      continue;
+    }
+    batches.set(item.batchId, {
+      id: item.batchId,
+      batchNo: item.batchNo ?? item.batchId,
+      sku: item.sku,
+      qcStatus: item.batchQcStatus
+    });
+  }
+
+  return Array.from(batches.values()).sort((left, right) => left.batchNo.localeCompare(right.batchNo));
+}
+
+function qcStatusLabel(status: BatchQCStatus) {
+  switch (status) {
+    case "pass":
+      return "Pass";
+    case "fail":
+      return "Fail";
+    case "quarantine":
+      return "Quarantine";
+    case "retest_required":
+      return "Retest";
+    case "hold":
+    default:
+      return "Hold";
+  }
+}
+
+function qcStatusTone(status: BatchQCStatus): "success" | "warning" | "danger" | "info" {
+  switch (status) {
+    case "pass":
+      return "success";
+    case "fail":
+      return "danger";
+    case "quarantine":
+    case "retest_required":
+      return "warning";
+    case "hold":
+    default:
+      return "info";
+  }
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "Asia/Ho_Chi_Minh"
+  }).format(date);
 }

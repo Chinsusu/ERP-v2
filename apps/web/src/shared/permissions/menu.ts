@@ -15,6 +15,7 @@ export type PermissionKey =
   | "inventory:view"
   | "purchase:view"
   | "qc:view"
+  | "qc:decision"
   | "production:view"
   | "subcontract:view"
   | "sales:view"
@@ -68,6 +69,7 @@ export const permissionCatalog: PermissionDefinition[] = [
   { key: "inventory:view", label: "Inventory", group: "operations" },
   { key: "purchase:view", label: "Purchase", group: "operations" },
   { key: "qc:view", label: "QC", group: "operations" },
+  { key: "qc:decision", label: "QC Decision", group: "action" },
   { key: "production:view", label: "Production", group: "operations" },
   { key: "subcontract:view", label: "Subcontract", group: "operations" },
   { key: "sales:view", label: "Sales", group: "operations" },
@@ -96,6 +98,7 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "inventory:view",
     "purchase:view",
     "qc:view",
+    "qc:decision",
     "production:view",
     "subcontract:view",
     "sales:view",
@@ -131,6 +134,7 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "dashboard:view",
     "inventory:view",
     "qc:view",
+    "qc:decision",
     "production:view",
     "subcontract:view",
     "returns:view",

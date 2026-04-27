@@ -1,9 +1,18 @@
-import { apiGet } from "../../../shared/api/client";
+import { apiGet, apiGetRaw, apiPost } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
-import type { AvailableStockItem, AvailableStockQuery, AvailableStockSummary } from "../types";
+import type {
+  AvailableStockItem,
+  AvailableStockQuery,
+  AvailableStockSummary,
+  BatchQCTransition,
+  BatchQCTransitionInput,
+  BatchQCTransitionResult
+} from "../types";
 
 type AvailableStockApiItem = components["schemas"]["AvailableStockItem"];
 type AvailableStockApiQuery = operations["listAvailableStock"]["parameters"]["query"];
+type BatchQCTransitionApiItem = components["schemas"]["BatchQCTransition"];
+type BatchQCTransitionResultApi = components["schemas"]["BatchQCTransitionResult"];
 
 const defaultAccessToken = "local-dev-access-token";
 const quantityScale = 6;
@@ -18,6 +27,9 @@ export const prototypeAvailableStock: AvailableStockItem[] = [
     sku: "SERUM-30ML",
     batchId: "batch-serum-2604a",
     batchNo: "LOT-2604A",
+    batchQcStatus: "hold",
+    batchStatus: "active",
+    batchExpiryDate: "2027-04-01",
     baseUomCode: "PCS",
     physicalQty: "128.000000",
     reservedQty: "10.000000",
@@ -36,6 +48,9 @@ export const prototypeAvailableStock: AvailableStockItem[] = [
     sku: "CREAM-50G",
     batchId: "batch-cream-2603b",
     batchNo: "LOT-2603B",
+    batchQcStatus: "pass",
+    batchStatus: "active",
+    batchExpiryDate: "2028-03-01",
     baseUomCode: "PCS",
     physicalQty: "46.000000",
     reservedQty: "12.000000",
@@ -54,6 +69,9 @@ export const prototypeAvailableStock: AvailableStockItem[] = [
     sku: "TONER-100ML",
     batchId: "batch-toner-2604c",
     batchNo: "LOT-2604C",
+    batchQcStatus: "fail",
+    batchStatus: "blocked",
+    batchExpiryDate: "2027-10-10",
     baseUomCode: "PCS",
     physicalQty: "90.000000",
     reservedQty: "20.000000",
@@ -63,6 +81,22 @@ export const prototypeAvailableStock: AvailableStockItem[] = [
     blockedQty: "5.000000",
     holdQty: "5.000000",
     availableQty: "65.000000"
+  }
+];
+
+export const prototypeBatchQCTransitions: BatchQCTransition[] = [
+  {
+    id: "audit-batch-qc-260426-0004",
+    batchId: "batch-cream-2603b",
+    batchNo: "LOT-2603B",
+    sku: "CREAM-50G",
+    fromQcStatus: "hold",
+    toQcStatus: "pass",
+    actorId: "user-qa",
+    reason: "incoming inspection passed",
+    businessRef: "QC-260426-0004",
+    auditLogId: "audit-batch-qc-260426-0004",
+    createdAt: "2026-04-26T07:40:00Z"
   }
 ];
 
@@ -77,6 +111,38 @@ export async function getAvailableStock(query: AvailableStockQuery = {}): Promis
   } catch {
     return filterPrototypeStock(query);
   }
+}
+
+export async function getBatchQCTransitions(batchId: string): Promise<BatchQCTransition[]> {
+  try {
+    const items = await apiGetRaw<BatchQCTransitionApiItem[]>(
+      `/inventory/batches/${encodeURIComponent(batchId)}/qc-transitions`,
+      { accessToken: defaultAccessToken }
+    );
+
+    return items.map(fromApiTransition);
+  } catch {
+    return prototypeBatchQCTransitions.filter((transition) => transition.batchId === batchId);
+  }
+}
+
+export async function createBatchQCTransition(
+  batchId: string,
+  input: BatchQCTransitionInput
+): Promise<BatchQCTransitionResult> {
+  const result = await apiPost<BatchQCTransitionResultApi, components["schemas"]["CreateBatchQCTransitionRequest"]>(
+    `/inventory/batches/${encodeURIComponent(batchId)}/qc-transitions`,
+    {
+      qc_status: input.qcStatus,
+      reason: input.reason,
+      business_ref: input.businessRef
+    },
+    { accessToken: defaultAccessToken }
+  );
+
+  return {
+    transition: fromApiTransition(result.transition)
+  };
 }
 
 export function summarizeAvailableStock(items: AvailableStockItem[]): AvailableStockSummary {
@@ -138,6 +204,9 @@ function fromApiItem(item: AvailableStockApiItem): AvailableStockItem {
     sku: item.sku,
     batchId: item.batch_id,
     batchNo: item.batch_no,
+    batchQcStatus: item.batch_qc_status,
+    batchStatus: item.batch_status,
+    batchExpiryDate: item.batch_expiry_date,
     baseUomCode: item.base_uom_code,
     physicalQty: item.physical_qty,
     reservedQty: item.reserved_qty,
@@ -147,6 +216,22 @@ function fromApiItem(item: AvailableStockApiItem): AvailableStockItem {
     blockedQty: item.blocked_qty,
     holdQty: item.hold_qty,
     availableQty: item.available_qty
+  };
+}
+
+function fromApiTransition(item: BatchQCTransitionApiItem): BatchQCTransition {
+  return {
+    id: item.id,
+    batchId: item.batch_id,
+    batchNo: item.batch_no,
+    sku: item.sku,
+    fromQcStatus: item.from_qc_status,
+    toQcStatus: item.to_qc_status,
+    actorId: item.actor_id,
+    reason: item.reason,
+    businessRef: item.business_ref,
+    auditLogId: item.audit_log_id,
+    createdAt: item.created_at
   };
 }
 

@@ -115,6 +115,7 @@ func TestPermissionCatalogIncludesPhaseOneModuleKeys(t *testing.T) {
 		PermissionDashboardView,
 		PermissionWarehouseView,
 		PermissionInventoryView,
+		PermissionQCDecision,
 		PermissionSubcontractView,
 		PermissionMasterDataView,
 		PermissionSettingsView,
@@ -123,6 +124,15 @@ func TestPermissionCatalogIncludesPhaseOneModuleKeys(t *testing.T) {
 		if !got[permission] {
 			t.Fatalf("permission %q missing from catalog", permission)
 		}
+	}
+}
+
+func TestQCDecisionPermissionIsScopedToQARoles(t *testing.T) {
+	if !HasPermission(MockPrincipalForRole(testConfig, RoleQA), PermissionQCDecision) {
+		t.Fatal("QA role missing QC decision permission")
+	}
+	if HasPermission(MockPrincipalForRole(testConfig, RoleWarehouseLead), PermissionQCDecision) {
+		t.Fatal("warehouse lead should not have QC decision permission")
 	}
 }
 
