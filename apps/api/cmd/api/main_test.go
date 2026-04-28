@@ -1266,6 +1266,39 @@ func TestVerifyCarrierManifestScanHandlerReturnsWarningCodes(t *testing.T) {
 	}
 }
 
+func TestReturnMasterDataHandlerListsReasonConditionAndDispositionSeed(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/return-reasons", nil)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseStaff)))
+	rec := httptest.NewRecorder()
+
+	returnMasterDataHandler(returnsapp.NewListReturnMasterData()).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[returnMasterDataResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(payload.Data.Reasons) == 0 {
+		t.Fatal("return reasons are empty")
+	}
+	if len(payload.Data.Conditions) != 5 {
+		t.Fatalf("conditions = %d, want 5", len(payload.Data.Conditions))
+	}
+	if len(payload.Data.Dispositions) != 3 {
+		t.Fatalf("dispositions = %d, want 3", len(payload.Data.Dispositions))
+	}
+	if payload.Data.Conditions[0].Code != "sealed_good" {
+		t.Fatalf("first condition = %q, want sealed_good", payload.Data.Conditions[0].Code)
+	}
+}
+
 func TestReturnReceiptsHandlerReturnsFilteredRows(t *testing.T) {
 	store := returnsapp.NewPrototypeReturnReceiptStore()
 	listService := returnsapp.NewListReturnReceipts(store)

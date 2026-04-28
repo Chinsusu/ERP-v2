@@ -766,6 +766,44 @@ type receiveReturnRequest struct {
 	InvestigationNote string `json:"investigation_note"`
 }
 
+type returnMasterDataResponse struct {
+	Reasons      []returnReasonResponse      `json:"reasons"`
+	Conditions   []returnConditionResponse   `json:"conditions"`
+	Dispositions []returnDispositionResponse `json:"dispositions"`
+}
+
+type returnReasonResponse struct {
+	Code        string `json:"code"`
+	Label       string `json:"label"`
+	Description string `json:"description"`
+	Active      bool   `json:"active"`
+	SortOrder   int    `json:"sort_order"`
+}
+
+type returnConditionResponse struct {
+	Code                 string `json:"code"`
+	Label                string `json:"label"`
+	Description          string `json:"description"`
+	DefaultDisposition   string `json:"default_disposition"`
+	InventoryDisposition string `json:"inventory_disposition"`
+	RequiresQA           bool   `json:"requires_qa"`
+	Active               bool   `json:"active"`
+	SortOrder            int    `json:"sort_order"`
+}
+
+type returnDispositionResponse struct {
+	Code                  string `json:"code"`
+	Label                 string `json:"label"`
+	Description           string `json:"description"`
+	InventoryDisposition  string `json:"inventory_disposition"`
+	TargetStockStatus     string `json:"target_stock_status"`
+	TargetLocationType    string `json:"target_location_type"`
+	CreatesAvailableStock bool   `json:"creates_available_stock"`
+	RequiresApproval      bool   `json:"requires_approval"`
+	Active                bool   `json:"active"`
+	SortOrder             int    `json:"sort_order"`
+}
+
 type stockMovementRequest struct {
 	MovementID       string `json:"movementId"`
 	SKU              string `json:"sku"`
@@ -860,6 +898,7 @@ func main() {
 	confirmPackTask := shippingapp.NewConfirmPackTask(packTaskStore, auditLogStore, salesOrderPackerAdapter{service: salesOrderService})
 	reportPackTaskException := shippingapp.NewReportPackTaskException(packTaskStore, auditLogStore)
 	returnReceiptStore := returnsapp.NewPrototypeReturnReceiptStore()
+	listReturnMasterData := returnsapp.NewListReturnMasterData()
 	listReturnReceipts := returnsapp.NewListReturnReceipts(returnReceiptStore)
 	receiveReturn := returnsapp.NewReceiveReturn(returnReceiptStore, auditLogStore)
 
@@ -1274,6 +1313,13 @@ func main() {
 			authSessions,
 			auth.PermissionShippingView,
 			http.HandlerFunc(verifyCarrierManifestScanHandler(verifyCarrierManifestScan)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/return-reasons",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(returnMasterDataHandler(listReturnMasterData)),
 		),
 	)
 	mux.Handle(
@@ -3623,6 +3669,39 @@ func verifyCarrierManifestScanHandler(service shippingapp.VerifyCarrierManifestS
 	}
 }
 
+func returnMasterDataHandler(service returnsapp.ListReturnMasterData) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionReturnsView) {
+			writePermissionDenied(w, r, auth.PermissionReturnsView)
+			return
+		}
+
+		data, err := service.Execute(r.Context())
+		if err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusConflict,
+				response.ErrorCodeConflict,
+				"Return master data could not be loaded",
+				nil,
+			)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newReturnMasterDataResponse(data))
+	}
+}
+
 func returnReceiptsHandler(
 	listService returnsapp.ListReturnReceipts,
 	receiveService returnsapp.ReceiveReturn,
@@ -4011,6 +4090,51 @@ func newCarrierManifestScanResponse(result shippingapp.CarrierManifestScanResult
 			HandoverBinCode:  result.Line.HandoverBinCode,
 			Scanned:          result.Line.Scanned,
 		}
+	}
+
+	return payload
+}
+
+func newReturnMasterDataResponse(data returnsdomain.ReturnMasterData) returnMasterDataResponse {
+	payload := returnMasterDataResponse{
+		Reasons:      make([]returnReasonResponse, 0, len(data.Reasons)),
+		Conditions:   make([]returnConditionResponse, 0, len(data.Conditions)),
+		Dispositions: make([]returnDispositionResponse, 0, len(data.Dispositions)),
+	}
+	for _, reason := range data.Reasons {
+		payload.Reasons = append(payload.Reasons, returnReasonResponse{
+			Code:        reason.Code,
+			Label:       reason.Label,
+			Description: reason.Description,
+			Active:      reason.Active,
+			SortOrder:   reason.SortOrder,
+		})
+	}
+	for _, condition := range data.Conditions {
+		payload.Conditions = append(payload.Conditions, returnConditionResponse{
+			Code:                 condition.Code,
+			Label:                condition.Label,
+			Description:          condition.Description,
+			DefaultDisposition:   string(condition.DefaultDisposition),
+			InventoryDisposition: condition.InventoryDisposition,
+			RequiresQA:           condition.RequiresQA,
+			Active:               condition.Active,
+			SortOrder:            condition.SortOrder,
+		})
+	}
+	for _, disposition := range data.Dispositions {
+		payload.Dispositions = append(payload.Dispositions, returnDispositionResponse{
+			Code:                  string(disposition.Code),
+			Label:                 disposition.Label,
+			Description:           disposition.Description,
+			InventoryDisposition:  disposition.InventoryDisposition,
+			TargetStockStatus:     disposition.TargetStockStatus,
+			TargetLocationType:    disposition.TargetLocationType,
+			CreatesAvailableStock: disposition.CreatesAvailableStock,
+			RequiresApproval:      disposition.RequiresApproval,
+			Active:                disposition.Active,
+			SortOrder:             disposition.SortOrder,
+		})
 	}
 
 	return payload

@@ -1856,6 +1856,25 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /return-reasons:
+    get:
+      summary: List return reason, condition, and disposition master data
+      operationId: listReturnReasons
+      tags:
+        - returns
+      responses:
+        "200":
+          description: Return master data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnMasterDataSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /returns/receipts:
     get:
       summary: List return receipts
@@ -4303,6 +4322,133 @@ components:
         - reusable
         - not_reusable
         - needs_inspection
+    ReturnMasterDataSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ReturnMasterData"
+    ReturnMasterData:
+      type: object
+      required:
+        - reasons
+        - conditions
+        - dispositions
+      properties:
+        reasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnReasonMaster"
+        conditions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnConditionMaster"
+        dispositions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnDispositionMaster"
+    ReturnReasonMaster:
+      type: object
+      required:
+        - code
+        - label
+        - description
+        - active
+        - sort_order
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+        active:
+          type: boolean
+        sort_order:
+          type: integer
+    ReturnConditionMaster:
+      type: object
+      required:
+        - code
+        - label
+        - description
+        - default_disposition
+        - inventory_disposition
+        - requires_qa
+        - active
+        - sort_order
+      properties:
+        code:
+          type: string
+          enum:
+            - sealed_good
+            - opened_good
+            - damaged
+            - expired
+            - suspected_quality_issue
+        label:
+          type: string
+        description:
+          type: string
+        default_disposition:
+          $ref: "#/components/schemas/ReturnDisposition"
+        inventory_disposition:
+          type: string
+          enum:
+            - restock_available
+            - restock_quarantine
+            - scrap
+            - return_to_supplier
+            - hold_investigation
+        requires_qa:
+          type: boolean
+        active:
+          type: boolean
+        sort_order:
+          type: integer
+    ReturnDispositionMaster:
+      type: object
+      required:
+        - code
+        - label
+        - description
+        - inventory_disposition
+        - target_stock_status
+        - target_location_type
+        - creates_available_stock
+        - requires_approval
+        - active
+        - sort_order
+      properties:
+        code:
+          $ref: "#/components/schemas/ReturnDisposition"
+        label:
+          type: string
+        description:
+          type: string
+        inventory_disposition:
+          type: string
+          enum:
+            - restock_available
+            - restock_quarantine
+            - scrap
+            - return_to_supplier
+            - hold_investigation
+        target_stock_status:
+          type: string
+        target_location_type:
+          type: string
+        creates_available_stock:
+          type: boolean
+        requires_approval:
+          type: boolean
+        active:
+          type: boolean
+        sort_order:
+          type: integer
     ReturnReceiptListSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
