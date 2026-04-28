@@ -29,7 +29,7 @@ func TestPrototypeReturnMasterDataContainsStandardConditionsAndDispositions(t *t
 	wantDispositions := map[ReturnDisposition]string{
 		ReturnDispositionReusable:        "return_pending",
 		ReturnDispositionNotReusable:     "damaged",
-		ReturnDispositionNeedsInspection: "quarantine",
+		ReturnDispositionNeedsInspection: "qc_hold",
 	}
 	for code, stockStatus := range wantDispositions {
 		disposition, ok := findReturnDispositionMaster(data.Dispositions, code)

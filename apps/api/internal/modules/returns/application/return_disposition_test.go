@@ -71,6 +71,7 @@ func TestApplyReturnDispositionRoutesNotReusableAndQAHold(t *testing.T) {
 		disposition     string
 		wantLocation    string
 		wantStockStatus string
+		wantMovement    *domain.ReturnStockMovement
 	}{
 		{
 			name:            "not reusable",
@@ -85,6 +86,10 @@ func TestApplyReturnDispositionRoutesNotReusableAndQAHold(t *testing.T) {
 			disposition:     "needs_inspection",
 			wantLocation:    "return-quarantine-hold",
 			wantStockStatus: "qc_hold",
+			wantMovement: &domain.ReturnStockMovement{
+				MovementType:      "return_receipt",
+				TargetStockStatus: "qc_hold",
+			},
 		},
 	}
 
@@ -114,8 +119,17 @@ func TestApplyReturnDispositionRoutesNotReusableAndQAHold(t *testing.T) {
 			if result.Action.TargetStockStatus != tt.wantStockStatus {
 				t.Fatalf("target stock status = %q, want %s", result.Action.TargetStockStatus, tt.wantStockStatus)
 			}
-			if result.Receipt.StockMovement != nil {
+			if tt.wantMovement == nil && result.Receipt.StockMovement != nil {
 				t.Fatalf("stock movement = %+v, want nil", result.Receipt.StockMovement)
+			}
+			if tt.wantMovement != nil {
+				if result.Receipt.StockMovement == nil {
+					t.Fatal("stock movement = nil, want quarantine movement")
+				}
+				if result.Receipt.StockMovement.MovementType != tt.wantMovement.MovementType ||
+					result.Receipt.StockMovement.TargetStockStatus != tt.wantMovement.TargetStockStatus {
+					t.Fatalf("stock movement = %+v, want %+v", result.Receipt.StockMovement, tt.wantMovement)
+				}
 			}
 		})
 	}
