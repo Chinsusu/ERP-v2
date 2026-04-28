@@ -29,6 +29,7 @@ var ErrManifestScanCodeRequired = errors.New("manifest scan code is required")
 var ErrManifestScanNotFound = errors.New("manifest scan code was not found")
 var ErrManifestScanInvalidState = errors.New("manifest cannot accept scan in current state")
 var ErrManifestScanDuplicate = errors.New("manifest line is already scanned")
+var ErrManifestNoMissingOrders = errors.New("carrier manifest has no missing orders")
 
 type CarrierManifestScanResultCode string
 
@@ -296,6 +297,25 @@ func (m CarrierManifest) Cancel() (CarrierManifest, error) {
 	return next, nil
 }
 
+func (m CarrierManifest) ReportMissingOrders() (CarrierManifest, []CarrierManifestLine, error) {
+	if isCarrierManifestClosed(m.Status) {
+		return CarrierManifest{}, nil, ErrManifestAlreadyCompleted
+	}
+	if m.Status != ManifestStatusReady && m.Status != ManifestStatusScanning && m.Status != ManifestStatusException {
+		return CarrierManifest{}, nil, ErrManifestInvalidTransition
+	}
+
+	missingLines := m.MissingLines()
+	if len(missingLines) == 0 {
+		return CarrierManifest{}, nil, ErrManifestNoMissingOrders
+	}
+
+	next := m.Clone()
+	next.Status = ManifestStatusException
+
+	return next, missingLines, nil
+}
+
 func (m CarrierManifest) MarkLineScanned(code string) (CarrierManifest, CarrierManifestLine, error) {
 	normalizedCode := NormalizeManifestScanCode(code)
 	if normalizedCode == "" {
@@ -389,6 +409,17 @@ func (m CarrierManifest) Summary() CarrierManifestSummary {
 	}
 
 	return summary
+}
+
+func (m CarrierManifest) MissingLines() []CarrierManifestLine {
+	missing := make([]CarrierManifestLine, 0, len(m.Lines))
+	for _, line := range m.Lines {
+		if !line.Scanned {
+			missing = append(missing, line)
+		}
+	}
+
+	return missing
 }
 
 func (m CarrierManifest) Clone() CarrierManifest {

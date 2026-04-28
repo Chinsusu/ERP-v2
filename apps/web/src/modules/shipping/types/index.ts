@@ -41,6 +41,7 @@ export type CarrierManifest = {
   auditLogId?: string;
   summary: CarrierManifestSummary;
   lines: CarrierManifestLine[];
+  missingLines: CarrierManifestLine[];
   createdAt: string;
 };
 

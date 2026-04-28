@@ -336,6 +336,7 @@ describe("carrierManifestService", () => {
       id: "manifest-api-1",
       handoverZoneCode: "handover-a",
       handoverBinCode: "A01",
+      missingLines: [{ trackingNo: "GHNAPI1" }],
       lines: [{ handoverZoneCode: "handover-a", handoverBinCode: "A01" }]
     });
     expect(ready.status).toBe("ready");

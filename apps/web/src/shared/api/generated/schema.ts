@@ -750,6 +750,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shipping/manifests/{manifest_id}/exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Report missing orders for a carrier manifest */
+        post: operations["reportCarrierManifestMissingOrders"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/returns/receipts": {
         parameters: {
             query?: never;
@@ -1809,6 +1826,9 @@ export interface components {
         AddShipmentToCarrierManifestRequest: {
             shipment_id: string;
         };
+        CarrierManifestActionRequest: {
+            reason?: string;
+        };
         VerifyCarrierManifestScanRequest: {
             code: string;
             station_id?: string;
@@ -1868,6 +1888,7 @@ export interface components {
             created_at?: string;
             summary: components["schemas"]["CarrierManifestSummary"];
             lines: components["schemas"]["CarrierManifestLine"][];
+            missing_lines: components["schemas"]["CarrierManifestLine"][];
         };
         CarrierManifestSummary: {
             expected_count: number;
@@ -3588,6 +3609,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CarrierManifestScanSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    reportCarrierManifestMissingOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                manifest_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CarrierManifestActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Missing order exception recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarrierManifestSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];
