@@ -564,10 +564,18 @@ type stockAdjustmentResponse struct {
 	Reason        string                        `json:"reason"`
 	Status        string                        `json:"status"`
 	RequestedBy   string                        `json:"requested_by"`
+	SubmittedBy   string                        `json:"submitted_by,omitempty"`
+	ApprovedBy    string                        `json:"approved_by,omitempty"`
+	RejectedBy    string                        `json:"rejected_by,omitempty"`
+	PostedBy      string                        `json:"posted_by,omitempty"`
 	Lines         []stockAdjustmentLineResponse `json:"lines"`
 	AuditLogID    string                        `json:"audit_log_id,omitempty"`
 	CreatedAt     string                        `json:"created_at"`
 	UpdatedAt     string                        `json:"updated_at"`
+	SubmittedAt   string                        `json:"submitted_at,omitempty"`
+	ApprovedAt    string                        `json:"approved_at,omitempty"`
+	RejectedAt    string                        `json:"rejected_at,omitempty"`
+	PostedAt      string                        `json:"posted_at,omitempty"`
 }
 
 type batchResponse struct {
@@ -1038,8 +1046,10 @@ func main() {
 	stockAdjustmentStore := inventoryapp.NewPrototypeStockAdjustmentStore()
 	stockCountStore := inventoryapp.NewPrototypeStockCountStore()
 	auditLogStore := audit.NewPrototypeLogStore()
+	stockMovementStore := inventoryapp.NewInMemoryStockMovementStore()
 	listStockAdjustments := inventoryapp.NewListStockAdjustments(stockAdjustmentStore)
 	createStockAdjustment := inventoryapp.NewCreateStockAdjustment(stockAdjustmentStore, auditLogStore)
+	transitionStockAdjustment := inventoryapp.NewTransitionStockAdjustment(stockAdjustmentStore, stockMovementStore, auditLogStore)
 	listStockCounts := inventoryapp.NewListStockCounts(stockCountStore)
 	createStockCount := inventoryapp.NewCreateStockCount(stockCountStore, auditLogStore)
 	submitStockCount := inventoryapp.NewSubmitStockCount(stockCountStore, auditLogStore)
@@ -1051,7 +1061,6 @@ func main() {
 	salesOrderReservationStore := inventoryapp.NewPrototypeSalesOrderReservationStore(auditLogStore)
 	salesOrderService := salesapp.NewSalesOrderService(salesOrderStore, partyCatalog, itemCatalog, warehouseCatalog).
 		WithStockReserver(salesOrderReservationStore)
-	stockMovementStore := inventoryapp.NewInMemoryStockMovementStore()
 	warehouseReceivingStore := inventoryapp.NewPrototypeWarehouseReceivingStore()
 	warehouseReceiving := inventoryapp.NewWarehouseReceivingService(
 		warehouseReceivingStore,
@@ -1283,6 +1292,34 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(stockAdjustmentsHandler(listStockAdjustments, createStockAdjustment)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/stock-adjustments/{stock_adjustment_id}/submit",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(stockAdjustmentActionHandler(transitionStockAdjustment, "submit")),
+		),
+	)
+	mux.Handle(
+		"/api/v1/stock-adjustments/{stock_adjustment_id}/approve",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(stockAdjustmentActionHandler(transitionStockAdjustment, "approve")),
+		),
+	)
+	mux.Handle(
+		"/api/v1/stock-adjustments/{stock_adjustment_id}/reject",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(stockAdjustmentActionHandler(transitionStockAdjustment, "reject")),
+		),
+	)
+	mux.Handle(
+		"/api/v1/stock-adjustments/{stock_adjustment_id}/post",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(stockAdjustmentActionHandler(transitionStockAdjustment, "post")),
 		),
 	)
 	mux.Handle(
@@ -3227,6 +3264,54 @@ func stockAdjustmentsHandler(
 	}
 }
 
+func stockAdjustmentActionHandler(
+	service inventoryapp.TransitionStockAdjustment,
+	action string,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		requiredPermission := auth.PermissionRecordCreate
+		if action == "approve" || action == "reject" {
+			requiredPermission = auth.PermissionApprovalsView
+		}
+		if !auth.HasPermission(principal, requiredPermission) {
+			writePermissionDenied(w, r, requiredPermission)
+			return
+		}
+
+		var result inventoryapp.StockAdjustmentResult
+		var err error
+		id := r.PathValue("stock_adjustment_id")
+		switch action {
+		case "submit":
+			result, err = service.Submit(r.Context(), id, principal.UserID, response.RequestID(r))
+		case "approve":
+			result, err = service.Approve(r.Context(), id, principal.UserID, response.RequestID(r))
+		case "reject":
+			result, err = service.Reject(r.Context(), id, principal.UserID, response.RequestID(r))
+		case "post":
+			result, err = service.Post(r.Context(), id, principal.UserID, response.RequestID(r))
+		default:
+			response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		if err != nil {
+			writeStockAdjustmentError(w, r, err)
+			return
+		}
+		response.WriteSuccess(w, r, http.StatusOK, newStockAdjustmentResponse(result.Adjustment, result.AuditLogID))
+	}
+}
+
 func stockCountsHandler(
 	listService inventoryapp.ListStockCounts,
 	createService inventoryapp.CreateStockCount,
@@ -4563,10 +4648,18 @@ func newStockAdjustmentResponse(
 		Reason:        adjustment.Reason,
 		Status:        string(adjustment.Status),
 		RequestedBy:   adjustment.RequestedBy,
+		SubmittedBy:   adjustment.SubmittedBy,
+		ApprovedBy:    adjustment.ApprovedBy,
+		RejectedBy:    adjustment.RejectedBy,
+		PostedBy:      adjustment.PostedBy,
 		Lines:         make([]stockAdjustmentLineResponse, 0, len(adjustment.Lines)),
 		AuditLogID:    auditLogID,
 		CreatedAt:     adjustment.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     adjustment.UpdatedAt.UTC().Format(time.RFC3339),
+		SubmittedAt:   timeString(adjustment.SubmittedAt),
+		ApprovedAt:    timeString(adjustment.ApprovedAt),
+		RejectedAt:    timeString(adjustment.RejectedAt),
+		PostedAt:      timeString(adjustment.PostedAt),
 	}
 	for _, line := range adjustment.Lines {
 		payload.Lines = append(payload.Lines, stockAdjustmentLineResponse{
@@ -5080,6 +5173,8 @@ func writeBatchQCTransitionError(w http.ResponseWriter, r *http.Request, err err
 
 func writeStockAdjustmentError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
+	case errors.Is(err, inventoryapp.ErrStockAdjustmentNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Stock adjustment not found", nil)
 	case errors.Is(err, domain.ErrStockAdjustmentRequiredField):
 		response.WriteError(
 			w,
@@ -5109,6 +5204,8 @@ func writeStockAdjustmentError(w http.ResponseWriter, r *http.Request, err error
 			"Stock adjustment requires at least one variance",
 			nil,
 		)
+	case errors.Is(err, domain.ErrStockAdjustmentInvalidStatus):
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Stock adjustment status transition is not allowed", nil)
 	default:
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Stock adjustment could not be processed", nil)
 	}

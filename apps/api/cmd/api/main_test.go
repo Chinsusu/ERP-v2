@@ -2791,6 +2791,65 @@ func TestStockAdjustmentsHandlerRejectsNoVariance(t *testing.T) {
 	}
 }
 
+func TestStockAdjustmentActionHandlerApprovesAndPosts(t *testing.T) {
+	adjustmentStore := inventoryapp.NewPrototypeStockAdjustmentStore()
+	auditStore := audit.NewInMemoryLogStore()
+	movementStore := inventoryapp.NewInMemoryStockMovementStore()
+	createService := inventoryapp.NewCreateStockAdjustment(adjustmentStore, auditStore)
+	created, err := createService.Execute(context.Background(), inventoryapp.CreateStockAdjustmentInput{
+		ID:          "adj-hcm-action",
+		WarehouseID: "wh-hcm",
+		Reason:      "cycle count variance",
+		RequestedBy: "user-warehouse-lead",
+		Lines: []inventoryapp.CreateStockAdjustmentLineInput{
+			{ID: "line-serum", SKU: "SERUM-30ML", ExpectedQty: "20", CountedQty: "18", BaseUOMCode: "EA"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("create adjustment: %v", err)
+	}
+	service := inventoryapp.NewTransitionStockAdjustment(adjustmentStore, movementStore, auditStore)
+	warehouseLeadContext := auth.WithPrincipal(context.Background(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "lead@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead))
+
+	submitReq := httptest.NewRequest(http.MethodPost, "/api/v1/stock-adjustments/adj-hcm-action/submit", nil).WithContext(warehouseLeadContext)
+	submitReq.SetPathValue("stock_adjustment_id", created.Adjustment.ID)
+	submitRec := httptest.NewRecorder()
+	stockAdjustmentActionHandler(service, "submit").ServeHTTP(submitRec, submitReq)
+	if submitRec.Code != http.StatusOK {
+		t.Fatalf("submit status = %d, want %d: %s", submitRec.Code, http.StatusOK, submitRec.Body.String())
+	}
+
+	approveReq := httptest.NewRequest(http.MethodPost, "/api/v1/stock-adjustments/adj-hcm-action/approve", nil).WithContext(warehouseLeadContext)
+	approveReq.SetPathValue("stock_adjustment_id", created.Adjustment.ID)
+	approveRec := httptest.NewRecorder()
+	stockAdjustmentActionHandler(service, "approve").ServeHTTP(approveRec, approveReq)
+	if approveRec.Code != http.StatusOK {
+		t.Fatalf("approve status = %d, want %d: %s", approveRec.Code, http.StatusOK, approveRec.Body.String())
+	}
+
+	postReq := httptest.NewRequest(http.MethodPost, "/api/v1/stock-adjustments/adj-hcm-action/post", nil).WithContext(warehouseLeadContext)
+	postReq.SetPathValue("stock_adjustment_id", created.Adjustment.ID)
+	postRec := httptest.NewRecorder()
+	stockAdjustmentActionHandler(service, "post").ServeHTTP(postRec, postReq)
+	if postRec.Code != http.StatusOK {
+		t.Fatalf("post status = %d, want %d: %s", postRec.Code, http.StatusOK, postRec.Body.String())
+	}
+	var payload response.SuccessEnvelope[stockAdjustmentResponse]
+	if err := json.NewDecoder(postRec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode post response: %v", err)
+	}
+	if payload.Data.Status != "posted" || payload.Data.PostedBy == "" {
+		t.Fatalf("post payload = %+v, want posted adjustment", payload.Data)
+	}
+	if movementStore.Count() != 1 || movementStore.Movements()[0].MovementType != inventorydomain.MovementAdjustmentOut {
+		t.Fatalf("movements = %+v, want one adjustment out", movementStore.Movements())
+	}
+}
+
 func TestStockCountsHandlerCreatesAndSubmitsVarianceReview(t *testing.T) {
 	stockCountStore := inventoryapp.NewPrototypeStockCountStore()
 	auditStore := audit.NewInMemoryLogStore()

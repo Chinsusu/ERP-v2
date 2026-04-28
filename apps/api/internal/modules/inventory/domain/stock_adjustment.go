@@ -21,6 +21,7 @@ const StockAdjustmentStatusCancelled StockAdjustmentStatus = "cancelled"
 
 var ErrStockAdjustmentRequiredField = errors.New("stock adjustment required field is missing")
 var ErrStockAdjustmentInvalidQuantity = errors.New("stock adjustment quantity is invalid")
+var ErrStockAdjustmentInvalidStatus = errors.New("stock adjustment status is invalid")
 var ErrStockAdjustmentNoVariance = errors.New("stock adjustment requires at least one variance")
 
 type StockAdjustment struct {
@@ -34,9 +35,17 @@ type StockAdjustment struct {
 	Reason        string
 	Status        StockAdjustmentStatus
 	RequestedBy   string
+	SubmittedBy   string
+	ApprovedBy    string
+	RejectedBy    string
+	PostedBy      string
 	Lines         []StockAdjustmentLine
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	SubmittedAt   time.Time
+	ApprovedAt    time.Time
+	RejectedAt    time.Time
+	PostedAt      time.Time
 }
 
 type StockAdjustmentLine struct {
@@ -190,6 +199,46 @@ func (a StockAdjustment) Validate() error {
 	return nil
 }
 
+func (a StockAdjustment) Submit(actorID string, at time.Time) (StockAdjustment, error) {
+	if a.Status != StockAdjustmentStatusDraft {
+		return StockAdjustment{}, ErrStockAdjustmentInvalidStatus
+	}
+	return a.transition(StockAdjustmentStatusSubmitted, actorID, at, func(updated *StockAdjustment, actor string, when time.Time) {
+		updated.SubmittedBy = actor
+		updated.SubmittedAt = when
+	})
+}
+
+func (a StockAdjustment) Approve(actorID string, at time.Time) (StockAdjustment, error) {
+	if a.Status != StockAdjustmentStatusSubmitted {
+		return StockAdjustment{}, ErrStockAdjustmentInvalidStatus
+	}
+	return a.transition(StockAdjustmentStatusApproved, actorID, at, func(updated *StockAdjustment, actor string, when time.Time) {
+		updated.ApprovedBy = actor
+		updated.ApprovedAt = when
+	})
+}
+
+func (a StockAdjustment) Reject(actorID string, at time.Time) (StockAdjustment, error) {
+	if a.Status != StockAdjustmentStatusSubmitted {
+		return StockAdjustment{}, ErrStockAdjustmentInvalidStatus
+	}
+	return a.transition(StockAdjustmentStatusRejected, actorID, at, func(updated *StockAdjustment, actor string, when time.Time) {
+		updated.RejectedBy = actor
+		updated.RejectedAt = when
+	})
+}
+
+func (a StockAdjustment) MarkPosted(actorID string, at time.Time) (StockAdjustment, error) {
+	if a.Status != StockAdjustmentStatusApproved {
+		return StockAdjustment{}, ErrStockAdjustmentInvalidStatus
+	}
+	return a.transition(StockAdjustmentStatusPosted, actorID, at, func(updated *StockAdjustment, actor string, when time.Time) {
+		updated.PostedBy = actor
+		updated.PostedAt = when
+	})
+}
+
 func (a StockAdjustment) HasVariance() bool {
 	for _, line := range a.Lines {
 		if !line.DeltaQty.IsZero() {
@@ -198,6 +247,27 @@ func (a StockAdjustment) HasVariance() bool {
 	}
 
 	return false
+}
+
+func (a StockAdjustment) transition(
+	status StockAdjustmentStatus,
+	actorID string,
+	at time.Time,
+	apply func(updated *StockAdjustment, actor string, when time.Time),
+) (StockAdjustment, error) {
+	actorID = strings.TrimSpace(actorID)
+	if actorID == "" {
+		return StockAdjustment{}, ErrStockAdjustmentRequiredField
+	}
+	if at.IsZero() {
+		at = time.Now().UTC()
+	}
+	updated := a.Clone()
+	updated.Status = status
+	updated.UpdatedAt = at.UTC()
+	apply(&updated, actorID, at.UTC())
+
+	return updated, nil
 }
 
 func (a StockAdjustment) Clone() StockAdjustment {
