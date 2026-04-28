@@ -151,6 +151,8 @@ Một tài liệu chỉ có giá trị khi nó giúp:
 | 20 | `20_ERP_Current_Workflow_AsIs_Warehouse_Production_Phase1_MyPham_v1.md` | Workflow hiện tại từ tài liệu nội bộ | BA, PM, Business Owner | Khi kiểm chứng thiết kế |
 | 21 | `21_ERP_Gap_Analysis_AsIs_vs_ToBe_Decision_Log_Phase1_MyPham_v1.md` | So sánh As-Is vs To-Be, quyết định chỉnh | BA, PM, CEO, Architect | Khi chốt workflow cuối |
 | 22 | `22_ERP_Core_Docs_Revision_v1_1_Change_Log_Phase1_MyPham.md` | Log tài liệu lõi cần sửa lên v1.1 | PM, BA, Tech Lead | Khi update core docs |
+| 41 | `41_ERP_Coding_Task_Board_Sprint2_Order_Fulfillment_Core_MyPham_v1.md` | Sprint 2 Order Fulfillment Core task board | PM, Tech Lead, Dev, QA | Khi triển khai order-to-handover |
+| 42 | `42_ERP_Sprint2_Changelog_Order_Fulfillment_Core_MyPham_v1.md` | Changelog/release note Sprint 2 | PM, Tech Lead, QA | Khi theo dõi kickoff và release evidence Sprint 2 |
 
 ### 4.5. Nhóm tích hợp, test, delivery và vận hành
 
@@ -186,7 +188,7 @@ Một tài liệu chỉ có giá trị khi nó giúp:
 | Integration | 23 Integration Spec | 16 API, 18 DevOps | Carrier/POS/payment/marketplace theo 23 |
 | QA kỹ thuật | 24 QA Strategy | 09 UAT | 24 cho test kỹ thuật, 09 cho business UAT |
 | UAT | 09 UAT Scenarios | 06 Process Flow, 08 Screen List | User nghiệm thu theo 09 |
-| Sprint plan | 25 Product Backlog | 03 PRD, 21 Gap | Nếu sprint scope đổi, phải ghi CR |
+| Sprint plan | 25 Product Backlog, 37 Sprint 1 Board, 41 Sprint 2 Board | 03 PRD, 21 Gap | Nếu sprint scope đổi, phải ghi CR |
 | Training | 26 SOP Manual | 08 Screen, 06 Flow | SOP phải update khi màn hình/workflow đổi |
 | Go-live | 27 GoLive Runbook | 10 Migration, 29 Support | Không go-live nếu thiếu checklist |
 | Incident | 28 Risk/Incident Playbook | 29 Support, 19 Security | Sự cố phải đi theo playbook |
