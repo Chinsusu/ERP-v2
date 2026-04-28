@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -197,11 +198,68 @@ func TestPrototypeSalesOrderReservationStoreBlocksNotSellableBatches(t *testing.
 	}
 }
 
+func TestPrototypeSalesOrderReservationStorePreventsConcurrentOversell(t *testing.T) {
+	store := NewPrototypeSalesOrderReservationStoreWithRows([]domain.StockBalanceSnapshot{
+		reservableRow("SERUM-30ML", "item-serum-30ml", "5", "0"),
+	})
+	inputs := []salesapp.SalesOrderStockReservationInput{
+		salesReservationInputForOrder("so-concurrent-1", "SO-CONCURRENT-1", []salesapp.SalesOrderStockReservationLineInput{
+			reservationLine("line-serum-1", "item-serum-30ml", "SERUM-30ML", "4"),
+		}),
+		salesReservationInputForOrder("so-concurrent-2", "SO-CONCURRENT-2", []salesapp.SalesOrderStockReservationLineInput{
+			reservationLine("line-serum-2", "item-serum-30ml", "SERUM-30ML", "4"),
+		}),
+	}
+
+	start := make(chan struct{})
+	errs := make([]error, len(inputs))
+	var wg sync.WaitGroup
+	for index, input := range inputs {
+		wg.Add(1)
+		go func(index int, input salesapp.SalesOrderStockReservationInput) {
+			defer wg.Done()
+			<-start
+			_, errs[index] = store.ReserveSalesOrder(context.Background(), input)
+		}(index, input)
+	}
+	close(start)
+	wg.Wait()
+
+	successCount := 0
+	insufficientCount := 0
+	for _, err := range errs {
+		if err == nil {
+			successCount++
+			continue
+		}
+		if errors.Is(err, ErrInsufficientStock) {
+			insufficientCount++
+		}
+	}
+	if successCount != 1 || insufficientCount != 1 {
+		t.Fatalf("concurrent reservation errors = %+v, want one success and one insufficient stock", errs)
+	}
+	if got := store.Rows()[0].QtyReserved; got != "4.000000" {
+		t.Fatalf("reserved qty after concurrent reserve = %s, want 4.000000", got)
+	}
+	if reservations := store.Reservations(); len(reservations) != 1 {
+		t.Fatalf("reservations = %+v, want exactly one active reservation", reservations)
+	}
+}
+
 func salesReservationInput(lines []salesapp.SalesOrderStockReservationLineInput) salesapp.SalesOrderStockReservationInput {
+	return salesReservationInputForOrder("so-reserve", "SO-RESERVE", lines)
+}
+
+func salesReservationInputForOrder(
+	salesOrderID string,
+	orderNo string,
+	lines []salesapp.SalesOrderStockReservationLineInput,
+) salesapp.SalesOrderStockReservationInput {
 	return salesapp.SalesOrderStockReservationInput{
 		OrgID:         "org-my-pham",
-		SalesOrderID:  "so-reserve",
-		OrderNo:       "SO-RESERVE",
+		SalesOrderID:  salesOrderID,
+		OrderNo:       orderNo,
 		WarehouseID:   "wh-hcm-fg",
 		WarehouseCode: "WH-HCM-FG",
 		ActorID:       "user-sales",
