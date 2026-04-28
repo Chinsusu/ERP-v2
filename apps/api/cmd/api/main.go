@@ -772,6 +772,20 @@ type returnInspectionResponse struct {
 	InspectedAt    string `json:"inspected_at"`
 }
 
+type returnDispositionActionResponse struct {
+	ID                string `json:"id"`
+	ReceiptID         string `json:"receipt_id"`
+	ReceiptNo         string `json:"receipt_no"`
+	Disposition       string `json:"disposition"`
+	TargetLocation    string `json:"target_location"`
+	TargetStockStatus string `json:"target_stock_status"`
+	ActionCode        string `json:"action_code"`
+	ActorID           string `json:"actor_id"`
+	Note              string `json:"note,omitempty"`
+	AuditLogID        string `json:"audit_log_id,omitempty"`
+	DecidedAt         string `json:"decided_at"`
+}
+
 type receiveReturnRequest struct {
 	WarehouseID       string `json:"warehouse_id"`
 	WarehouseCode     string `json:"warehouse_code"`
@@ -787,6 +801,11 @@ type inspectReturnRequest struct {
 	Disposition   string `json:"disposition"`
 	Note          string `json:"note"`
 	EvidenceLabel string `json:"evidence_label"`
+}
+
+type applyReturnDispositionRequest struct {
+	Disposition string `json:"disposition"`
+	Note        string `json:"note"`
 }
 
 type returnMasterDataResponse struct {
@@ -925,6 +944,7 @@ func main() {
 	listReturnReceipts := returnsapp.NewListReturnReceipts(returnReceiptStore)
 	receiveReturn := returnsapp.NewReceiveReturn(returnReceiptStore, auditLogStore)
 	inspectReturn := returnsapp.NewInspectReturn(returnReceiptStore, auditLogStore)
+	applyReturnDisposition := returnsapp.NewApplyReturnDisposition(returnReceiptStore, auditLogStore)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
@@ -1365,6 +1385,13 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(returnInspectionHandler(inspectReturn)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/returns/{return_receipt_id}/disposition",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(returnDispositionHandler(applyReturnDisposition)),
 		),
 	)
 
@@ -3924,6 +3951,56 @@ func returnInspectionHandler(inspectService returnsapp.InspectReturn) http.Handl
 	}
 }
 
+func returnDispositionHandler(applyService returnsapp.ApplyReturnDisposition) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		var payload applyReturnDispositionRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid return disposition payload",
+				nil,
+			)
+			return
+		}
+
+		result, err := applyService.Execute(r.Context(), returnsapp.ApplyReturnDispositionInput{
+			ReceiptID:   r.PathValue("return_receipt_id"),
+			Disposition: payload.Disposition,
+			Note:        payload.Note,
+			ActorID:     principal.UserID,
+			RequestID:   response.RequestID(r),
+		})
+		if err != nil {
+			writeReturnReceiptError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(
+			w,
+			r,
+			http.StatusOK,
+			newReturnDispositionActionResponse(result.Action, result.AuditLogID),
+		)
+	}
+}
+
 func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) availableStockResponse {
 	return availableStockResponse{
 		WarehouseID:      snapshot.WarehouseID,
@@ -4351,6 +4428,25 @@ func newReturnInspectionResponse(
 	}
 }
 
+func newReturnDispositionActionResponse(
+	action returnsdomain.ReturnDispositionAction,
+	auditLogID string,
+) returnDispositionActionResponse {
+	return returnDispositionActionResponse{
+		ID:                action.ID,
+		ReceiptID:         action.ReceiptID,
+		ReceiptNo:         action.ReceiptNo,
+		Disposition:       string(action.Disposition),
+		TargetLocation:    action.TargetLocation,
+		TargetStockStatus: action.TargetStockStatus,
+		ActionCode:        action.ActionCode,
+		ActorID:           action.ActorID,
+		Note:              action.Note,
+		AuditLogID:        auditLogID,
+		DecidedAt:         action.DecidedAt.UTC().Format(time.RFC3339),
+	}
+}
+
 func writeBatchQCTransitionError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, inventoryapp.ErrBatchNotFound):
@@ -4608,6 +4704,15 @@ func writeReturnReceiptError(w http.ResponseWriter, r *http.Request, err error) 
 			"Invalid return inspection payload",
 			map[string]any{"required": "receipt_id, condition, disposition, and inspector"},
 		)
+	case errors.Is(err, returnsdomain.ErrReturnDispositionRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Invalid return disposition payload",
+			map[string]any{"required": "receipt_id, disposition, and actor"},
+		)
 	case errors.Is(err, returnsdomain.ErrReturnReceiptRequiredField):
 		response.WriteError(
 			w,
@@ -4643,6 +4748,15 @@ func writeReturnReceiptError(w http.ResponseWriter, r *http.Request, err error) 
 			response.ErrorCodeConflict,
 			"Return receipt is not pending inspection",
 			map[string]any{"required_status": "pending_inspection"},
+		)
+	case errors.Is(err, returnsapp.ErrReturnReceiptDispositionNotAllowed):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Return receipt must be inspected before disposition",
+			map[string]any{"required_status": "inspected"},
 		)
 	default:
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Return receipt could not be processed", nil)

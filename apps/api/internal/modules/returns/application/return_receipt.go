@@ -122,16 +122,18 @@ func (uc ReceiveReturn) Execute(ctx context.Context, input ReceiveReturnInput) (
 }
 
 type PrototypeReturnReceiptStore struct {
-	mu          sync.RWMutex
-	records     map[string]domain.ReturnReceipt
-	inspections map[string]domain.ReturnInspection
-	expected    []domain.ExpectedReturn
+	mu           sync.RWMutex
+	records      map[string]domain.ReturnReceipt
+	inspections  map[string]domain.ReturnInspection
+	dispositions map[string]domain.ReturnDispositionAction
+	expected     []domain.ExpectedReturn
 }
 
 func NewPrototypeReturnReceiptStore() *PrototypeReturnReceiptStore {
 	store := &PrototypeReturnReceiptStore{
-		records:     make(map[string]domain.ReturnReceipt),
-		inspections: make(map[string]domain.ReturnInspection),
+		records:      make(map[string]domain.ReturnReceipt),
+		inspections:  make(map[string]domain.ReturnInspection),
+		dispositions: make(map[string]domain.ReturnDispositionAction),
 	}
 	store.expected = prototypeExpectedReturns()
 	for _, receipt := range prototypeReturnReceipts() {
@@ -226,6 +228,30 @@ func (s *PrototypeReturnReceiptStore) SaveInspection(
 	}
 	s.records[receipt.ID] = receipt.Clone()
 	s.inspections[inspection.ID] = inspection.Clone()
+
+	return nil
+}
+
+func (s *PrototypeReturnReceiptStore) SaveDisposition(
+	_ context.Context,
+	receipt domain.ReturnReceipt,
+	action domain.ReturnDispositionAction,
+) error {
+	if s == nil {
+		return errors.New("return receipt store is required")
+	}
+	if strings.TrimSpace(receipt.ID) == "" || strings.TrimSpace(action.ID) == "" {
+		return domain.ErrReturnDispositionRequiredField
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.records[receipt.ID]; !ok {
+		return ErrReturnReceiptNotFound
+	}
+	s.records[receipt.ID] = receipt.Clone()
+	s.dispositions[action.ID] = action.Clone()
 
 	return nil
 }
