@@ -45,6 +45,24 @@ type AddShipmentToCarrierManifest struct {
 	clock    func() time.Time
 }
 
+type RemoveShipmentFromCarrierManifest struct {
+	store    CarrierManifestStore
+	auditLog audit.LogStore
+	clock    func() time.Time
+}
+
+type MarkCarrierManifestReadyToScan struct {
+	store    CarrierManifestStore
+	auditLog audit.LogStore
+	clock    func() time.Time
+}
+
+type CancelCarrierManifest struct {
+	store    CarrierManifestStore
+	auditLog audit.LogStore
+	clock    func() time.Time
+}
+
 type VerifyCarrierManifestScan struct {
 	store    CarrierManifestStore
 	auditLog audit.LogStore
@@ -70,6 +88,20 @@ type AddShipmentToCarrierManifestInput struct {
 	ShipmentID string
 	ActorID    string
 	RequestID  string
+}
+
+type RemoveShipmentFromCarrierManifestInput struct {
+	ManifestID string
+	ShipmentID string
+	ActorID    string
+	RequestID  string
+}
+
+type CarrierManifestActionInput struct {
+	ManifestID string
+	ActorID    string
+	RequestID  string
+	Reason     string
 }
 
 type VerifyCarrierManifestScanInput struct {
@@ -140,6 +172,39 @@ func NewAddShipmentToCarrierManifest(
 	auditLog audit.LogStore,
 ) AddShipmentToCarrierManifest {
 	return AddShipmentToCarrierManifest{
+		store:    store,
+		auditLog: auditLog,
+		clock:    func() time.Time { return time.Now().UTC() },
+	}
+}
+
+func NewRemoveShipmentFromCarrierManifest(
+	store CarrierManifestStore,
+	auditLog audit.LogStore,
+) RemoveShipmentFromCarrierManifest {
+	return RemoveShipmentFromCarrierManifest{
+		store:    store,
+		auditLog: auditLog,
+		clock:    func() time.Time { return time.Now().UTC() },
+	}
+}
+
+func NewMarkCarrierManifestReadyToScan(
+	store CarrierManifestStore,
+	auditLog audit.LogStore,
+) MarkCarrierManifestReadyToScan {
+	return MarkCarrierManifestReadyToScan{
+		store:    store,
+		auditLog: auditLog,
+		clock:    func() time.Time { return time.Now().UTC() },
+	}
+}
+
+func NewCancelCarrierManifest(
+	store CarrierManifestStore,
+	auditLog audit.LogStore,
+) CancelCarrierManifest {
+	return CancelCarrierManifest{
 		store:    store,
 		auditLog: auditLog,
 		clock:    func() time.Time { return time.Now().UTC() },
@@ -283,6 +348,141 @@ func (uc AddShipmentToCarrierManifest) Execute(
 		map[string]any{
 			"source":      "carrier manifest add shipment",
 			"shipment_id": strings.TrimSpace(input.ShipmentID),
+		},
+		uc.clock(),
+	)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	if err := uc.auditLog.Record(ctx, log); err != nil {
+		return CarrierManifestResult{}, err
+	}
+
+	return CarrierManifestResult{Manifest: updated, AuditLogID: log.ID}, nil
+}
+
+func (uc RemoveShipmentFromCarrierManifest) Execute(
+	ctx context.Context,
+	input RemoveShipmentFromCarrierManifestInput,
+) (CarrierManifestResult, error) {
+	if uc.store == nil {
+		return CarrierManifestResult{}, errors.New("carrier manifest store is required")
+	}
+	if uc.auditLog == nil {
+		return CarrierManifestResult{}, errors.New("audit log store is required")
+	}
+
+	manifest, err := uc.store.Get(ctx, input.ManifestID)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	updated, err := manifest.RemoveShipment(input.ShipmentID)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	if err := uc.store.Save(ctx, updated); err != nil {
+		return CarrierManifestResult{}, err
+	}
+
+	log, err := newManifestAuditLog(
+		input.ActorID,
+		input.RequestID,
+		"shipping.manifest.shipment_removed",
+		updated,
+		map[string]any{
+			"source":      "carrier manifest remove shipment",
+			"shipment_id": strings.TrimSpace(input.ShipmentID),
+		},
+		uc.clock(),
+	)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	if err := uc.auditLog.Record(ctx, log); err != nil {
+		return CarrierManifestResult{}, err
+	}
+
+	return CarrierManifestResult{Manifest: updated, AuditLogID: log.ID}, nil
+}
+
+func (uc MarkCarrierManifestReadyToScan) Execute(
+	ctx context.Context,
+	input CarrierManifestActionInput,
+) (CarrierManifestResult, error) {
+	if uc.store == nil {
+		return CarrierManifestResult{}, errors.New("carrier manifest store is required")
+	}
+	if uc.auditLog == nil {
+		return CarrierManifestResult{}, errors.New("audit log store is required")
+	}
+
+	manifest, err := uc.store.Get(ctx, input.ManifestID)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	updated, err := manifest.MarkReadyToScan()
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	if manifest.Status == updated.Status {
+		return CarrierManifestResult{Manifest: updated}, nil
+	}
+	if err := uc.store.Save(ctx, updated); err != nil {
+		return CarrierManifestResult{}, err
+	}
+
+	log, err := newManifestAuditLog(
+		input.ActorID,
+		input.RequestID,
+		"shipping.manifest.ready_to_scan",
+		updated,
+		map[string]any{"source": "carrier manifest ready to scan"},
+		uc.clock(),
+	)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	if err := uc.auditLog.Record(ctx, log); err != nil {
+		return CarrierManifestResult{}, err
+	}
+
+	return CarrierManifestResult{Manifest: updated, AuditLogID: log.ID}, nil
+}
+
+func (uc CancelCarrierManifest) Execute(
+	ctx context.Context,
+	input CarrierManifestActionInput,
+) (CarrierManifestResult, error) {
+	if uc.store == nil {
+		return CarrierManifestResult{}, errors.New("carrier manifest store is required")
+	}
+	if uc.auditLog == nil {
+		return CarrierManifestResult{}, errors.New("audit log store is required")
+	}
+
+	manifest, err := uc.store.Get(ctx, input.ManifestID)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	updated, err := manifest.Cancel()
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	if manifest.Status == updated.Status {
+		return CarrierManifestResult{Manifest: updated}, nil
+	}
+	if err := uc.store.Save(ctx, updated); err != nil {
+		return CarrierManifestResult{}, err
+	}
+
+	log, err := newManifestAuditLog(
+		input.ActorID,
+		input.RequestID,
+		"shipping.manifest.cancelled",
+		updated,
+		map[string]any{
+			"source": "carrier manifest cancel",
+			"reason": strings.TrimSpace(input.Reason),
 		},
 		uc.clock(),
 	)

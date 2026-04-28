@@ -568,6 +568,10 @@ type addShipmentToManifestRequest struct {
 	ShipmentID string `json:"shipment_id"`
 }
 
+type cancelCarrierManifestRequest struct {
+	Reason string `json:"reason"`
+}
+
 type verifyCarrierManifestScanRequest struct {
 	Code      string `json:"code"`
 	StationID string `json:"station_id"`
@@ -803,6 +807,9 @@ func main() {
 	listCarrierManifests := shippingapp.NewListCarrierManifests(carrierManifestStore)
 	createCarrierManifest := shippingapp.NewCreateCarrierManifest(carrierManifestStore, auditLogStore)
 	addShipmentToCarrierManifest := shippingapp.NewAddShipmentToCarrierManifest(carrierManifestStore, auditLogStore)
+	removeShipmentFromCarrierManifest := shippingapp.NewRemoveShipmentFromCarrierManifest(carrierManifestStore, auditLogStore)
+	markCarrierManifestReadyToScan := shippingapp.NewMarkCarrierManifestReadyToScan(carrierManifestStore, auditLogStore)
+	cancelCarrierManifest := shippingapp.NewCancelCarrierManifest(carrierManifestStore, auditLogStore)
 	verifyCarrierManifestScan := shippingapp.NewVerifyCarrierManifestScan(carrierManifestStore, auditLogStore)
 	pickTaskStore := shippingapp.NewPrototypePickTaskStore(mustPrototypePickTask())
 	listPickTasks := shippingapp.NewListPickTasks(pickTaskStore)
@@ -1176,6 +1183,30 @@ func main() {
 			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(addShipmentToCarrierManifestHandler(addShipmentToCarrierManifest)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/shipping/manifests/{manifest_id}/shipments/{shipment_id}",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(removeShipmentFromCarrierManifestHandler(removeShipmentFromCarrierManifest)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/shipping/manifests/{manifest_id}/ready",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(markCarrierManifestReadyToScanHandler(markCarrierManifestReadyToScan)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/shipping/manifests/{manifest_id}/cancel",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(cancelCarrierManifestHandler(cancelCarrierManifest)),
 		),
 	)
 	mux.Handle(
@@ -3253,6 +3284,93 @@ func addShipmentToCarrierManifestHandler(service shippingapp.AddShipmentToCarrie
 	}
 }
 
+func removeShipmentFromCarrierManifestHandler(service shippingapp.RemoveShipmentFromCarrierManifest) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		result, err := service.Execute(r.Context(), shippingapp.RemoveShipmentFromCarrierManifestInput{
+			ManifestID: r.PathValue("manifest_id"),
+			ShipmentID: r.PathValue("shipment_id"),
+			ActorID:    principal.UserID,
+			RequestID:  response.RequestID(r),
+		})
+		if err != nil {
+			writeCarrierManifestError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newCarrierManifestResponse(result.Manifest, result.AuditLogID))
+	}
+}
+
+func markCarrierManifestReadyToScanHandler(service shippingapp.MarkCarrierManifestReadyToScan) http.HandlerFunc {
+	return carrierManifestActionHandler(func(r *http.Request, actorID string, _ cancelCarrierManifestRequest) (shippingapp.CarrierManifestResult, error) {
+		return service.Execute(r.Context(), shippingapp.CarrierManifestActionInput{
+			ManifestID: r.PathValue("manifest_id"),
+			ActorID:    actorID,
+			RequestID:  response.RequestID(r),
+		})
+	})
+}
+
+func cancelCarrierManifestHandler(service shippingapp.CancelCarrierManifest) http.HandlerFunc {
+	return carrierManifestActionHandler(func(r *http.Request, actorID string, payload cancelCarrierManifestRequest) (shippingapp.CarrierManifestResult, error) {
+		return service.Execute(r.Context(), shippingapp.CarrierManifestActionInput{
+			ManifestID: r.PathValue("manifest_id"),
+			ActorID:    actorID,
+			RequestID:  response.RequestID(r),
+			Reason:     payload.Reason,
+		})
+	})
+}
+
+type carrierManifestAction func(*http.Request, string, cancelCarrierManifestRequest) (shippingapp.CarrierManifestResult, error)
+
+func carrierManifestActionHandler(action carrierManifestAction) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		var payload cancelCarrierManifestRequest
+		if r.Body != nil {
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil && !errors.Is(err, io.EOF) {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid carrier manifest action payload",
+					nil,
+				)
+				return
+			}
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		result, err := action(r, principal.UserID, payload)
+		if err != nil {
+			writeCarrierManifestError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newCarrierManifestResponse(result.Manifest, result.AuditLogID))
+	}
+}
+
 func verifyCarrierManifestScanHandler(service shippingapp.VerifyCarrierManifestScan) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -3871,7 +3989,9 @@ func writeSalesOrderError(w http.ResponseWriter, r *http.Request, err error) {
 
 func writeCarrierManifestError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
-	case errors.Is(err, shippingapp.ErrCarrierManifestNotFound), errors.Is(err, shippingapp.ErrPackedShipmentNotFound):
+	case errors.Is(err, shippingapp.ErrCarrierManifestNotFound),
+		errors.Is(err, shippingapp.ErrPackedShipmentNotFound),
+		errors.Is(err, shippingdomain.ErrManifestShipmentNotFound):
 		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Carrier manifest resource not found", nil)
 	case errors.Is(err, shippingapp.ErrCarrierNotFound):
 		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Carrier was not found", nil)
@@ -3899,6 +4019,8 @@ func writeCarrierManifestError(w http.ResponseWriter, r *http.Request, err error
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Shipment already exists in carrier manifest", nil)
 	case errors.Is(err, shippingdomain.ErrManifestAlreadyCompleted):
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier manifest is already completed", nil)
+	case errors.Is(err, shippingdomain.ErrManifestInvalidTransition):
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier manifest status transition is invalid", nil)
 	case errors.Is(err, shippingapp.ErrCarrierInactive):
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier is inactive", nil)
 	default:
