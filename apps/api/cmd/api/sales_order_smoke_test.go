@@ -163,6 +163,77 @@ func TestSalesOrderAPISmokePack(t *testing.T) {
 		}
 	})
 
+	t.Run("prevents oversell on confirm", func(t *testing.T) {
+		service, _ := newTestSalesOrderAPIService()
+		createReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/sales-orders", bytes.NewBufferString(`{
+				"id": "so-smoke-oversell",
+				"order_no": "SO-SMOKE-OVERSELL",
+				"customer_id": "cus-dl-minh-anh",
+				"channel": "B2B",
+				"warehouse_id": "wh-hcm-fg",
+				"order_date": "2026-04-28",
+				"currency_code": "VND",
+				"lines": [
+					{
+						"item_id": "item-serum-30ml",
+						"ordered_qty": "200",
+						"uom_code": "EA",
+						"unit_price": "125000"
+					}
+				]
+			}`)),
+			authConfig,
+			auth.RoleSalesOps,
+		)
+		createRec := httptest.NewRecorder()
+
+		salesOrdersHandler(service).ServeHTTP(createRec, createReq)
+
+		if createRec.Code != http.StatusCreated {
+			t.Fatalf("create status = %d, want %d: %s", createRec.Code, http.StatusCreated, createRec.Body.String())
+		}
+
+		confirmReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/sales-orders/so-smoke-oversell/confirm", bytes.NewBufferString(`{"expected_version":1}`)),
+			authConfig,
+			auth.RoleSalesOps,
+		)
+		confirmReq.SetPathValue("sales_order_id", "so-smoke-oversell")
+		confirmRec := httptest.NewRecorder()
+
+		salesOrderConfirmHandler(service).ServeHTTP(confirmRec, confirmReq)
+
+		if confirmRec.Code != http.StatusConflict {
+			t.Fatalf("confirm status = %d, want %d: %s", confirmRec.Code, http.StatusConflict, confirmRec.Body.String())
+		}
+		errorPayload := decodeSmokeError(t, confirmRec)
+		if errorPayload.Error.Code != response.ErrorCodeInsufficientStock {
+			t.Fatalf("code = %s, want %s", errorPayload.Error.Code, response.ErrorCodeInsufficientStock)
+		}
+		if errorPayload.Error.Details["available_qty"] != "110.000000" {
+			t.Fatalf("details = %+v, want available qty 110", errorPayload.Error.Details)
+		}
+
+		detailReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodGet, "/api/v1/sales-orders/so-smoke-oversell", nil),
+			authConfig,
+			auth.RoleSalesOps,
+		)
+		detailReq.SetPathValue("sales_order_id", "so-smoke-oversell")
+		detailRec := httptest.NewRecorder()
+
+		salesOrderDetailHandler(service).ServeHTTP(detailRec, detailReq)
+
+		if detailRec.Code != http.StatusOK {
+			t.Fatalf("detail status = %d, want %d: %s", detailRec.Code, http.StatusOK, detailRec.Body.String())
+		}
+		order := decodeSmokeSuccess[salesOrderResponse](t, detailRec).Data
+		if order.Status != "draft" || order.Version != 1 || order.Lines[0].ReservedQty != "0.000000" {
+			t.Fatalf("order after failed reserve = %+v, want unchanged draft", order)
+		}
+	})
+
 	t.Run("denies warehouse role without sales permission", func(t *testing.T) {
 		service, _ := newTestSalesOrderAPIService()
 		req := smokeRequestAsRole(
