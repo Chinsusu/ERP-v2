@@ -112,6 +112,8 @@ type VerifyCarrierManifestScanInput struct {
 	ManifestID string
 	Code       string
 	StationID  string
+	DeviceID   string
+	Source     string
 	ActorID    string
 	RequestID  string
 }
@@ -134,6 +136,8 @@ type CarrierManifestScanEvent struct {
 	TrackingNo         string
 	ActorID            string
 	StationID          string
+	DeviceID           string
+	Source             string
 	WarehouseID        string
 	CarrierCode        string
 	CreatedAt          time.Time
@@ -919,12 +923,17 @@ func newCarrierManifestScanEvent(
 		Message:            strings.TrimSpace(result.Message),
 		ActorID:            strings.TrimSpace(input.ActorID),
 		StationID:          strings.TrimSpace(input.StationID),
+		DeviceID:           strings.TrimSpace(input.DeviceID),
+		Source:             strings.TrimSpace(input.Source),
 		WarehouseID:        result.Manifest.WarehouseID,
 		CarrierCode:        result.Manifest.CarrierCode,
 		CreatedAt:          createdAt.UTC(),
 	}
 	if event.StationID == "" {
 		event.StationID = "shipping-handover"
+	}
+	if event.Source == "" {
+		event.Source = "shipping_handover"
 	}
 	if result.Line != nil {
 		event.ShipmentID = result.Line.ShipmentID
@@ -958,10 +967,15 @@ func newManifestScanAuditLog(
 			"shipment_id":          event.ShipmentID,
 			"order_no":             event.OrderNo,
 			"tracking_no":          event.TrackingNo,
+			"station_id":           event.StationID,
+			"device_id":            event.DeviceID,
+			"source":               event.Source,
 		},
 		Metadata: map[string]any{
-			"source":     "carrier manifest scan",
-			"station_id": event.StationID,
+			"source":      "carrier manifest scan",
+			"station_id":  event.StationID,
+			"device_id":   event.DeviceID,
+			"scan_source": event.Source,
 		},
 		CreatedAt: createdAt,
 	})

@@ -4361,6 +4361,10 @@ components:
           type: string
         station_id:
           type: string
+        device_id:
+          type: string
+        source:
+          type: string
     CarrierManifestScanResultCode:
       type: string
       enum:
@@ -4418,6 +4422,7 @@ components:
         - message
         - actor_id
         - station_id
+        - source
         - warehouse_id
         - carrier_code
         - created_at
@@ -4445,6 +4450,10 @@ components:
         actor_id:
           type: string
         station_id:
+          type: string
+        device_id:
+          type: string
+        source:
           type: string
         warehouse_id:
           type: string

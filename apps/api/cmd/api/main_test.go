@@ -861,7 +861,7 @@ func TestVerifyCarrierManifestScanHandlerMarksLineAndWritesAudit(t *testing.T) {
 	store := shippingapp.NewPrototypeCarrierManifestStore()
 	auditStore := audit.NewInMemoryLogStore()
 	service := shippingapp.NewVerifyCarrierManifestScan(store, auditStore)
-	body := bytes.NewBufferString(`{"code":"GHN260426003","station_id":"dock-a"}`)
+	body := bytes.NewBufferString(`{"code":"GHN260426003","station_id":"dock-a","device_id":"scanner-01","source":"handheld_scanner"}`)
 	req := httptest.NewRequest(
 		http.MethodPost,
 		"/api/v1/shipping/manifests/manifest-hcm-ghn-morning/scan",
@@ -892,6 +892,12 @@ func TestVerifyCarrierManifestScanHandlerMarksLineAndWritesAudit(t *testing.T) {
 	if payload.Data.ScanEvent.ID == "" || payload.Data.AuditLogID == "" {
 		t.Fatalf("scan event/audit response = %+v, want ids", payload.Data)
 	}
+	if payload.Data.ScanEvent.DeviceID != "scanner-01" || payload.Data.ScanEvent.Source != "handheld_scanner" {
+		t.Fatalf("scan event = %+v, want device/source retained", payload.Data.ScanEvent)
+	}
+	if payload.Data.ScanEvent.ManifestID != "manifest-hcm-ghn-morning" || payload.Data.ScanEvent.OrderNo != "SO-260426-003" || payload.Data.ScanEvent.TrackingNo != "GHN260426003" {
+		t.Fatalf("scan event = %+v, want manifest/order/tracking retained", payload.Data.ScanEvent)
+	}
 
 	logs, err := auditStore.List(req.Context(), audit.Query{Action: "shipping.manifest.scan_recorded"})
 	if err != nil {
@@ -899,6 +905,9 @@ func TestVerifyCarrierManifestScanHandlerMarksLineAndWritesAudit(t *testing.T) {
 	}
 	if len(logs) != 1 {
 		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+	if logs[0].AfterData["device_id"] != "scanner-01" || logs[0].Metadata["scan_source"] != "handheld_scanner" {
+		t.Fatalf("audit log = %+v, want scanner device/source retained", logs[0])
 	}
 }
 

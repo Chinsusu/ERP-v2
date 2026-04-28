@@ -583,6 +583,8 @@ type cancelCarrierManifestRequest struct {
 type verifyCarrierManifestScanRequest struct {
 	Code      string `json:"code"`
 	StationID string `json:"station_id"`
+	DeviceID  string `json:"device_id"`
+	Source    string `json:"source"`
 }
 
 type carrierManifestScanEventResponse struct {
@@ -598,6 +600,8 @@ type carrierManifestScanEventResponse struct {
 	TrackingNo         string `json:"tracking_no,omitempty"`
 	ActorID            string `json:"actor_id"`
 	StationID          string `json:"station_id"`
+	DeviceID           string `json:"device_id,omitempty"`
+	Source             string `json:"source"`
 	WarehouseID        string `json:"warehouse_id"`
 	CarrierCode        string `json:"carrier_code"`
 	CreatedAt          string `json:"created_at"`
@@ -3412,6 +3416,8 @@ func verifyCarrierManifestScanHandler(service shippingapp.VerifyCarrierManifestS
 			ManifestID: r.PathValue("manifest_id"),
 			Code:       payload.Code,
 			StationID:  payload.StationID,
+			DeviceID:   payload.DeviceID,
+			Source:     payload.Source,
 			ActorID:    principal.UserID,
 			RequestID:  response.RequestID(r),
 		})
@@ -3782,6 +3788,8 @@ func newCarrierManifestScanResponse(result shippingapp.CarrierManifestScanResult
 			TrackingNo:         result.Event.TrackingNo,
 			ActorID:            result.Event.ActorID,
 			StationID:          result.Event.StationID,
+			DeviceID:           result.Event.DeviceID,
+			Source:             result.Event.Source,
 			WarehouseID:        result.Event.WarehouseID,
 			CarrierCode:        result.Event.CarrierCode,
 			CreatedAt:          result.Event.CreatedAt.UTC().Format(time.RFC3339),

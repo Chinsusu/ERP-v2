@@ -73,6 +73,8 @@ export type CarrierManifestScanEvent = {
   trackingNo?: string;
   actorId: string;
   stationId: string;
+  deviceId?: string;
+  source: string;
   warehouseId: string;
   carrierCode: string;
   createdAt: string;
@@ -93,6 +95,8 @@ export type VerifyCarrierManifestScanInput = {
   manifestId: string;
   code: string;
   stationId?: string;
+  deviceId?: string;
+  source?: string;
 };
 
 export type CreateCarrierManifestInput = {

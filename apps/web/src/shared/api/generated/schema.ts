@@ -1812,6 +1812,8 @@ export interface components {
         VerifyCarrierManifestScanRequest: {
             code: string;
             station_id?: string;
+            device_id?: string;
+            source?: string;
         };
         /** @enum {string} */
         CarrierManifestScanResultCode: "MATCHED" | "NOT_FOUND" | "INVALID_STATE" | "MANIFEST_MISMATCH" | "DUPLICATE_SCAN";
@@ -1842,6 +1844,8 @@ export interface components {
             tracking_no?: string;
             actor_id: string;
             station_id: string;
+            device_id?: string;
+            source: string;
             warehouse_id: string;
             carrier_code: string;
             /** Format: date-time */
