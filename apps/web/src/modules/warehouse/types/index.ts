@@ -18,6 +18,7 @@ export type WarehouseDailyTask = {
   title: string;
   warehouseId: string;
   warehouseCode: string;
+  carrierCode?: string;
   shiftCode: WarehouseDailyShiftCode;
   status: WarehouseDailyTaskStatus;
   priority: WarehouseDailyTaskPriority;
@@ -32,6 +33,7 @@ export type WarehouseDailyBoardQuery = {
   warehouseId?: string;
   date?: string;
   shiftCode?: WarehouseDailyShiftCode;
+  carrierCode?: string;
   status?: WarehouseDailyTaskStatus;
 };
 
@@ -43,6 +45,22 @@ export type WarehouseDailyBoardSummary = {
   returns: number;
   reconciliationMismatch: number;
   overdue: number;
+};
+
+export type WarehouseFulfillmentMetrics = {
+  warehouseId?: string;
+  date?: string;
+  shiftCode?: string;
+  carrierCode?: string;
+  totalOrders: number;
+  newOrders: number;
+  reservedOrders: number;
+  pickingOrders: number;
+  packedOrders: number;
+  waitingHandoverOrders: number;
+  missingOrders: number;
+  handoverOrders: number;
+  generatedAt: string;
 };
 
 export type WarehouseDailyBoardCounterSource = {
@@ -59,6 +77,7 @@ export type WarehouseDailyBoardData = {
   shiftStatus: "open" | "closing" | "closed";
   owner: string;
   summary: WarehouseDailyBoardSummary;
+  fulfillment: WarehouseFulfillmentMetrics;
   sourceFields: WarehouseDailyBoardCounterSource[];
   tasks: WarehouseDailyTask[];
 };

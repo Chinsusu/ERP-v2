@@ -6,10 +6,12 @@ import {
   closeEndOfDayReconciliation,
   composeWarehouseDailyBoard,
   getEndOfDayReconciliations,
+  getWarehouseFulfillmentMetrics,
   getWarehouseDailyBoard,
   prototypeEndOfDayReconciliations,
   prototypeWarehouseDailyTasks,
   sortWarehouseTasksByRisk,
+  summarizeWarehouseFulfillmentMetrics,
   summarizeReconciliationLines,
   reconciliationStatusTone,
   summarizeWarehouseDailyBoard,
@@ -84,6 +86,101 @@ describe("warehouseDailyBoardService", () => {
           source: "reconciliation"
         }
       ]
+    });
+  });
+
+  it("loads fulfillment metrics from the daily board API with the selected carrier", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/warehouse/daily-board/fulfillment-metrics")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              success: true,
+              request_id: "req-fulfillment-metrics",
+              data: {
+                warehouse_id: "wh-hcm",
+                date: "2026-04-26",
+                shift_code: "day",
+                carrier_code: "GHN",
+                total_orders: 8,
+                new_orders: 1,
+                reserved_orders: 2,
+                picking_orders: 1,
+                packed_orders: 1,
+                waiting_handover_orders: 2,
+                missing_orders: 1,
+                handover_orders: 0,
+                generated_at: "2026-04-26T10:00:00Z"
+              }
+            }),
+            { status: 200 }
+          )
+        );
+      }
+
+      return Promise.reject(new Error("offline"));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      getWarehouseFulfillmentMetrics({
+        warehouseId: "wh-hcm",
+        date: "2026-04-26",
+        shiftCode: "day",
+        carrierCode: "ghn"
+      })
+    ).resolves.toMatchObject({
+      carrierCode: "GHN",
+      totalOrders: 8,
+      reservedOrders: 2,
+      missingOrders: 1
+    });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("carrier_code=GHN"))).toBe(true);
+  });
+
+  it("keeps the board carrier filter aligned with fulfillment and handover tasks", () => {
+    const board = composeWarehouseDailyBoard(
+      { warehouseId: "wh-hcm", date: "2026-04-26", shiftCode: "day", carrierCode: "GHN" },
+      {
+        carrierManifests: prototypeCarrierManifests,
+        fulfillmentMetrics: {
+          warehouseId: "wh-hcm",
+          date: "2026-04-26",
+          shiftCode: "day",
+          carrierCode: "GHN",
+          totalOrders: 3,
+          newOrders: 0,
+          reservedOrders: 0,
+          pickingOrders: 0,
+          packedOrders: 0,
+          waitingHandoverOrders: 3,
+          missingOrders: 1,
+          handoverOrders: 0,
+          generatedAt: "2026-04-26T10:00:00Z"
+        }
+      }
+    );
+
+    expect(board.fulfillment).toMatchObject({
+      carrierCode: "GHN",
+      totalOrders: 3,
+      missingOrders: 1
+    });
+    expect(board.tasks.length).toBeGreaterThan(0);
+    expect(board.tasks.every((task) => task.carrierCode === "GHN")).toBe(true);
+  });
+
+  it("derives fallback fulfillment metrics from available board tasks", () => {
+    expect(
+      summarizeWarehouseFulfillmentMetrics({ date: "2026-04-26", shiftCode: "day" }, prototypeWarehouseDailyTasks)
+    ).toMatchObject({
+      totalOrders: 4,
+      newOrders: 2,
+      reservedOrders: 0,
+      pickingOrders: 1,
+      packedOrders: 1,
+      generatedAt: "2026-04-26T00:00:00Z"
     });
   });
 
