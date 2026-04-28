@@ -203,6 +203,10 @@ func pickTaskActionHandler(action pickTaskAction) http.HandlerFunc {
 			writePermissionDenied(w, r, auth.PermissionRecordCreate)
 			return
 		}
+		if !hasAnyRole(principal, auth.RoleWarehouseLead, auth.RoleERPAdmin) {
+			writeRoleDenied(w, r, auth.RoleWarehouseLead, auth.RoleERPAdmin)
+			return
+		}
 
 		r = requestWithStableID(r)
 		result, handled, err := action(w, r, principal.UserID)

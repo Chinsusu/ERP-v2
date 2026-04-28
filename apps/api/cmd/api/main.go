@@ -3333,8 +3333,16 @@ func carrierManifestsHandler(
 			}
 			response.WriteSuccess(w, r, http.StatusOK, payload)
 		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionShippingView) {
+				writePermissionDenied(w, r, auth.PermissionShippingView)
+				return
+			}
 			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
 				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			if !hasAnyRole(principal, auth.RoleWarehouseLead, auth.RoleERPAdmin) {
+				writeRoleDenied(w, r, auth.RoleWarehouseLead, auth.RoleERPAdmin)
 				return
 			}
 			var payload createCarrierManifestRequest
@@ -3404,6 +3412,18 @@ func addShipmentToCarrierManifestHandler(service shippingapp.AddShipmentToCarrie
 			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
 			return
 		}
+		if !auth.HasPermission(principal, auth.PermissionShippingView) {
+			writePermissionDenied(w, r, auth.PermissionShippingView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+		if !hasAnyRole(principal, auth.RoleWarehouseLead, auth.RoleERPAdmin) {
+			writeRoleDenied(w, r, auth.RoleWarehouseLead, auth.RoleERPAdmin)
+			return
+		}
 		result, err := service.Execute(r.Context(), shippingapp.AddShipmentToCarrierManifestInput{
 			ManifestID: r.PathValue("manifest_id"),
 			ShipmentID: payload.ShipmentID,
@@ -3429,6 +3449,18 @@ func removeShipmentFromCarrierManifestHandler(service shippingapp.RemoveShipment
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
 			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionShippingView) {
+			writePermissionDenied(w, r, auth.PermissionShippingView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+		if !hasAnyRole(principal, auth.RoleWarehouseLead, auth.RoleERPAdmin) {
+			writeRoleDenied(w, r, auth.RoleWarehouseLead, auth.RoleERPAdmin)
 			return
 		}
 		result, err := service.Execute(r.Context(), shippingapp.RemoveShipmentFromCarrierManifestInput{
@@ -3518,6 +3550,18 @@ func carrierManifestActionHandler(action carrierManifestAction) http.HandlerFunc
 			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
 			return
 		}
+		if !auth.HasPermission(principal, auth.PermissionShippingView) {
+			writePermissionDenied(w, r, auth.PermissionShippingView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+		if !hasAnyRole(principal, auth.RoleWarehouseLead, auth.RoleERPAdmin) {
+			writeRoleDenied(w, r, auth.RoleWarehouseLead, auth.RoleERPAdmin)
+			return
+		}
 		result, err := action(r, principal.UserID, payload)
 		if err != nil {
 			writeCarrierManifestError(w, r, err)
@@ -3551,6 +3595,14 @@ func verifyCarrierManifestScanHandler(service shippingapp.VerifyCarrierManifestS
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
 			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionShippingView) {
+			writePermissionDenied(w, r, auth.PermissionShippingView)
+			return
+		}
+		if !hasAnyRole(principal, auth.RoleWarehouseStaff, auth.RoleWarehouseLead, auth.RoleERPAdmin) {
+			writeRoleDenied(w, r, auth.RoleWarehouseStaff, auth.RoleWarehouseLead, auth.RoleERPAdmin)
 			return
 		}
 		result, err := service.Execute(r.Context(), shippingapp.VerifyCarrierManifestScanInput{
@@ -4578,6 +4630,36 @@ func writePermissionDenied(w http.ResponseWriter, r *http.Request, permission au
 		"Permission denied",
 		map[string]any{"permission": string(permission)},
 	)
+}
+
+func writeRoleDenied(w http.ResponseWriter, r *http.Request, roles ...auth.RoleKey) {
+	response.WriteError(
+		w,
+		r,
+		http.StatusForbidden,
+		response.ErrorCodeForbidden,
+		"Permission denied",
+		map[string]any{"roles": roleKeyStrings(roles)},
+	)
+}
+
+func hasAnyRole(principal auth.Principal, roles ...auth.RoleKey) bool {
+	for _, role := range roles {
+		if principal.Role == role {
+			return true
+		}
+	}
+
+	return false
+}
+
+func roleKeyStrings(roles []auth.RoleKey) []string {
+	values := make([]string, 0, len(roles))
+	for _, role := range roles {
+		values = append(values, string(role))
+	}
+
+	return values
 }
 
 func newProductResponse(item masterdatadomain.Item, auditLogID string) productResponse {
