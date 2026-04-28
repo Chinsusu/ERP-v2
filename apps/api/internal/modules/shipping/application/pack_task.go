@@ -18,6 +18,7 @@ var ErrPackTaskDuplicate = errors.New("pack task already exists")
 var ErrPackTaskSalesOrderNotPicked = errors.New("sales order must be picked before generating pack task")
 var ErrPackTaskPickTaskNotCompleted = errors.New("pick task must be completed before generating pack task")
 var ErrPackTaskPickTaskLineNotPicked = errors.New("every pick task line must be picked before generating pack task")
+var ErrPackTaskSalesOrderPackerRequired = errors.New("sales order packer is required")
 
 type PackTaskStore interface {
 	ListPackTasks(ctx context.Context) ([]domain.PackTask, error)
@@ -25,6 +26,30 @@ type PackTaskStore interface {
 	GetPackTaskBySalesOrder(ctx context.Context, salesOrderID string) (domain.PackTask, error)
 	GetPackTaskByPickTask(ctx context.Context, pickTaskID string) (domain.PackTask, error)
 	SavePackTask(ctx context.Context, task domain.PackTask) error
+}
+
+type PackTaskSalesOrderPacker interface {
+	MarkSalesOrderPacked(ctx context.Context, input PackTaskSalesOrderPackedInput) (salesdomain.SalesOrder, error)
+}
+
+type PackTaskSalesOrderPackedInput struct {
+	SalesOrderID string
+	ActorID      string
+	RequestID    string
+}
+
+type PackTaskFilter struct {
+	WarehouseID string
+	Status      domain.PackTaskStatus
+	AssignedTo  string
+}
+
+type ListPackTasks struct {
+	store PackTaskStore
+}
+
+type GetPackTask struct {
+	store PackTaskStore
 }
 
 type GeneratePackTaskAfterPick struct {
@@ -47,12 +72,128 @@ type PackTaskResult struct {
 	AuditLogID string
 }
 
+type PackTaskActionInput struct {
+	PackTaskID string
+	ActorID    string
+	RequestID  string
+}
+
+type ConfirmPackTaskInput struct {
+	PackTaskID string
+	Lines      []ConfirmPackTaskLineInput
+	ActorID    string
+	RequestID  string
+}
+
+type ConfirmPackTaskLineInput struct {
+	LineID    string
+	PackedQty string
+}
+
+type ReportPackTaskExceptionInput struct {
+	PackTaskID    string
+	LineID        string
+	ExceptionCode string
+	ActorID       string
+	RequestID     string
+	Investigation string
+}
+
+type StartPackTask struct {
+	store    PackTaskStore
+	auditLog audit.LogStore
+	clock    func() time.Time
+}
+
+type ConfirmPackTask struct {
+	store       PackTaskStore
+	auditLog    audit.LogStore
+	salesOrders PackTaskSalesOrderPacker
+	clock       func() time.Time
+}
+
+type ReportPackTaskException struct {
+	store    PackTaskStore
+	auditLog audit.LogStore
+	clock    func() time.Time
+}
+
 func NewGeneratePackTaskAfterPick(store PackTaskStore, auditLog audit.LogStore) GeneratePackTaskAfterPick {
 	return GeneratePackTaskAfterPick{
 		store:    store,
 		auditLog: auditLog,
 		clock:    func() time.Time { return time.Now().UTC() },
 	}
+}
+
+func NewListPackTasks(store PackTaskStore) ListPackTasks {
+	return ListPackTasks{store: store}
+}
+
+func NewGetPackTask(store PackTaskStore) GetPackTask {
+	return GetPackTask{store: store}
+}
+
+func NewStartPackTask(store PackTaskStore, auditLog audit.LogStore) StartPackTask {
+	return StartPackTask{store: store, auditLog: auditLog, clock: func() time.Time { return time.Now().UTC() }}
+}
+
+func NewConfirmPackTask(
+	store PackTaskStore,
+	auditLog audit.LogStore,
+	salesOrders PackTaskSalesOrderPacker,
+) ConfirmPackTask {
+	return ConfirmPackTask{
+		store:       store,
+		auditLog:    auditLog,
+		salesOrders: salesOrders,
+		clock:       func() time.Time { return time.Now().UTC() },
+	}
+}
+
+func NewReportPackTaskException(store PackTaskStore, auditLog audit.LogStore) ReportPackTaskException {
+	return ReportPackTaskException{store: store, auditLog: auditLog, clock: func() time.Time { return time.Now().UTC() }}
+}
+
+func (uc ListPackTasks) Execute(ctx context.Context, filter PackTaskFilter) ([]domain.PackTask, error) {
+	if uc.store == nil {
+		return nil, errors.New("pack task store is required")
+	}
+	tasks, err := uc.store.ListPackTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filter.WarehouseID = strings.TrimSpace(filter.WarehouseID)
+	filter.AssignedTo = strings.TrimSpace(filter.AssignedTo)
+	filter.Status = domain.NormalizePackTaskStatus(filter.Status)
+	if filter.WarehouseID == "" && filter.AssignedTo == "" && filter.Status == "" {
+		return tasks, nil
+	}
+
+	filtered := make([]domain.PackTask, 0, len(tasks))
+	for _, task := range tasks {
+		if filter.WarehouseID != "" && strings.TrimSpace(task.WarehouseID) != filter.WarehouseID {
+			continue
+		}
+		if filter.AssignedTo != "" && strings.TrimSpace(task.AssignedTo) != filter.AssignedTo {
+			continue
+		}
+		if filter.Status != "" && task.Status != filter.Status {
+			continue
+		}
+		filtered = append(filtered, task.Clone())
+	}
+
+	return filtered, nil
+}
+
+func (uc GetPackTask) Execute(ctx context.Context, id string) (domain.PackTask, error) {
+	if uc.store == nil {
+		return domain.PackTask{}, errors.New("pack task store is required")
+	}
+
+	return uc.store.GetPackTask(ctx, id)
 }
 
 func (uc GeneratePackTaskAfterPick) Execute(
@@ -126,6 +267,132 @@ func (uc GeneratePackTaskAfterPick) Execute(
 	}
 
 	return PackTaskResult{PackTask: task, SalesOrder: updatedOrder, AuditLogID: log.ID}, nil
+}
+
+func (uc StartPackTask) Execute(ctx context.Context, input PackTaskActionInput) (PackTaskResult, error) {
+	if err := ensurePackTaskActionReady(uc.store, uc.auditLog, input.ActorID); err != nil {
+		return PackTaskResult{}, err
+	}
+	current, err := uc.store.GetPackTask(ctx, input.PackTaskID)
+	if err != nil {
+		return PackTaskResult{}, err
+	}
+	if current.Status == domain.PackTaskStatusInProgress || current.Status == domain.PackTaskStatusPacked {
+		return PackTaskResult{PackTask: current}, nil
+	}
+
+	now := uc.clock()
+	updated, err := current.Start(input.ActorID, now)
+	if err != nil {
+		return PackTaskResult{}, err
+	}
+
+	return saveAndAuditPackTaskAction(ctx, uc.store, uc.auditLog, input.ActorID, input.RequestID, "shipping.pack_task.started", current, updated, salesdomain.SalesOrder{}, nil, now)
+}
+
+func (uc ConfirmPackTask) Execute(ctx context.Context, input ConfirmPackTaskInput) (PackTaskResult, error) {
+	if err := ensurePackTaskActionReady(uc.store, uc.auditLog, input.ActorID); err != nil {
+		return PackTaskResult{}, err
+	}
+	if uc.salesOrders == nil {
+		return PackTaskResult{}, ErrPackTaskSalesOrderPackerRequired
+	}
+	current, err := uc.store.GetPackTask(ctx, input.PackTaskID)
+	if err != nil {
+		return PackTaskResult{}, err
+	}
+	if current.Status == domain.PackTaskStatusPacked {
+		return PackTaskResult{PackTask: current}, nil
+	}
+
+	now := uc.clock()
+	updated := current.Clone()
+	lines, err := packTaskConfirmLines(current, input.Lines)
+	if err != nil {
+		return PackTaskResult{}, err
+	}
+	for _, line := range lines {
+		if lineAlreadyPacked(updated, line.LineID, line.PackedQty) {
+			continue
+		}
+		updated, err = updated.MarkLinePacked(line.LineID, line.PackedQty, input.ActorID, now)
+		if err != nil {
+			return PackTaskResult{}, err
+		}
+	}
+	updated, err = updated.Complete(input.ActorID, now)
+	if err != nil {
+		return PackTaskResult{}, err
+	}
+	packedOrder, err := uc.salesOrders.MarkSalesOrderPacked(ctx, PackTaskSalesOrderPackedInput{
+		SalesOrderID: current.SalesOrderID,
+		ActorID:      input.ActorID,
+		RequestID:    input.RequestID,
+	})
+	if err != nil {
+		return PackTaskResult{}, err
+	}
+
+	return saveAndAuditPackTaskAction(ctx, uc.store, uc.auditLog, input.ActorID, input.RequestID, "shipping.pack_task.confirmed", current, updated, packedOrder, nil, now)
+}
+
+func (uc ReportPackTaskException) Execute(
+	ctx context.Context,
+	input ReportPackTaskExceptionInput,
+) (PackTaskResult, error) {
+	if err := ensurePackTaskActionReady(uc.store, uc.auditLog, input.ActorID); err != nil {
+		return PackTaskResult{}, err
+	}
+	current, err := uc.store.GetPackTask(ctx, input.PackTaskID)
+	if err != nil {
+		return PackTaskResult{}, err
+	}
+	if normalizePackTaskExceptionStatus(input.ExceptionCode) == "" {
+		return PackTaskResult{}, domain.ErrPackTaskInvalidStatus
+	}
+	if current.Status == domain.PackTaskStatusPackException && (strings.TrimSpace(input.LineID) == "" || packLineAlreadyInException(current, input.LineID)) {
+		return PackTaskResult{PackTask: current}, nil
+	}
+	if current.Status == domain.PackTaskStatusPacked || current.Status == domain.PackTaskStatusCancelled {
+		return PackTaskResult{}, domain.ErrPackTaskInvalidTransition
+	}
+
+	now := uc.clock()
+	updated := domain.PackTask{}
+	if strings.TrimSpace(input.LineID) == "" {
+		updated = current.Clone()
+		updated.Status = domain.PackTaskStatusPackException
+		updated.UpdatedAt = now
+		if err := updated.Validate(); err != nil {
+			return PackTaskResult{}, err
+		}
+	} else {
+		updated, err = current.ReportLineException(input.LineID, input.ActorID, now)
+		if err != nil {
+			return PackTaskResult{}, err
+		}
+	}
+	metadata := map[string]any{
+		"exception_code": string(domain.PackTaskStatusPackException),
+		"investigation":  strings.TrimSpace(input.Investigation),
+	}
+	if strings.TrimSpace(input.LineID) != "" {
+		metadata["line_id"] = strings.TrimSpace(input.LineID)
+	}
+
+	return saveAndAuditPackTaskAction(
+		ctx,
+		uc.store,
+		uc.auditLog,
+		input.ActorID,
+		input.RequestID,
+		"shipping.pack_task.exception_reported",
+		current,
+		updated,
+		salesdomain.SalesOrder{},
+		metadata,
+		now,
+	)
 }
 
 type PrototypePackTaskStore struct {
@@ -232,6 +499,88 @@ func (s *PrototypePackTaskStore) ListPackTasks(_ context.Context) ([]domain.Pack
 	return tasks, nil
 }
 
+func saveAndAuditPackTaskAction(
+	ctx context.Context,
+	store PackTaskStore,
+	auditLog audit.LogStore,
+	actorID string,
+	requestID string,
+	action string,
+	before domain.PackTask,
+	after domain.PackTask,
+	salesOrder salesdomain.SalesOrder,
+	metadata map[string]any,
+	createdAt time.Time,
+) (PackTaskResult, error) {
+	if err := store.SavePackTask(ctx, after); err != nil {
+		return PackTaskResult{}, err
+	}
+	log, err := newPackTaskActionAuditLog(actorID, requestID, action, before, after, salesOrder, metadata, createdAt)
+	if err != nil {
+		return PackTaskResult{}, err
+	}
+	if err := auditLog.Record(ctx, log); err != nil {
+		return PackTaskResult{}, err
+	}
+
+	return PackTaskResult{PackTask: after, SalesOrder: salesOrder, AuditLogID: log.ID}, nil
+}
+
+func ensurePackTaskActionReady(store PackTaskStore, auditLog audit.LogStore, actorID string) error {
+	if store == nil {
+		return errors.New("pack task store is required")
+	}
+	if auditLog == nil {
+		return errors.New("audit log store is required")
+	}
+	if strings.TrimSpace(actorID) == "" {
+		return domain.ErrPackTaskActorRequired
+	}
+
+	return nil
+}
+
+func packTaskConfirmLines(task domain.PackTask, input []ConfirmPackTaskLineInput) ([]ConfirmPackTaskLineInput, error) {
+	if len(input) == 0 {
+		lines := make([]ConfirmPackTaskLineInput, 0, len(task.Lines))
+		for _, line := range task.Lines {
+			lines = append(lines, ConfirmPackTaskLineInput{
+				LineID:    line.ID,
+				PackedQty: line.QtyToPack.String(),
+			})
+		}
+
+		return lines, nil
+	}
+
+	byLineID := make(map[string]ConfirmPackTaskLineInput, len(input))
+	for _, line := range input {
+		line.LineID = strings.TrimSpace(line.LineID)
+		line.PackedQty = strings.TrimSpace(line.PackedQty)
+		if line.LineID == "" || line.PackedQty == "" {
+			return nil, domain.ErrPackTaskRequiredField
+		}
+		if _, ok := byLineID[line.LineID]; ok {
+			return nil, domain.ErrPackTaskDuplicateLine
+		}
+		byLineID[line.LineID] = line
+	}
+	lines := make([]ConfirmPackTaskLineInput, 0, len(task.Lines))
+	for _, taskLine := range task.Lines {
+		line, ok := byLineID[taskLine.ID]
+		if !ok {
+			return nil, domain.ErrPackTaskInvalidTransition
+		}
+		lines = append(lines, line)
+		delete(byLineID, taskLine.ID)
+	}
+	if len(byLineID) > 0 {
+		return nil, domain.ErrPackTaskRequiredField
+	}
+
+	return lines, nil
+}
+
 func newPackTaskLinesFromPickTask(salesOrderID string, pickTask domain.PickTask) ([]domain.NewPackTaskLineInput, error) {
 	lines := make([]domain.NewPackTaskLineInput, 0, len(pickTask.Lines))
 	for _, pickLine := range pickTask.Lines {
@@ -254,6 +603,38 @@ func newPackTaskLinesFromPickTask(salesOrderID string, pickTask domain.PickTask)
 	}
 
 	return lines, nil
+}
+
+func lineAlreadyPacked(task domain.PackTask, lineID string, packedQty string) bool {
+	qty := normalizeQuantityText(packedQty)
+	for _, line := range task.Lines {
+		if strings.TrimSpace(line.ID) == strings.TrimSpace(lineID) &&
+			line.Status == domain.PackTaskLineStatusPacked &&
+			line.QtyPacked.String() == qty {
+			return true
+		}
+	}
+
+	return false
+}
+
+func normalizePackTaskExceptionStatus(value string) domain.PackTaskStatus {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case string(domain.PackTaskStatusPackException):
+		return domain.PackTaskStatusPackException
+	default:
+		return ""
+	}
+}
+
+func packLineAlreadyInException(task domain.PackTask, lineID string) bool {
+	for _, line := range task.Lines {
+		if strings.TrimSpace(line.ID) == strings.TrimSpace(lineID) && line.Status == domain.PackTaskLineStatusPackException {
+			return true
+		}
+	}
+
+	return false
 }
 
 func assignedAt(assignedTo string, at time.Time) time.Time {
@@ -295,6 +676,63 @@ func newPackTaskAuditLog(
 		},
 		CreatedAt: createdAt,
 	})
+}
+
+func newPackTaskActionAuditLog(
+	actorID string,
+	requestID string,
+	action string,
+	before domain.PackTask,
+	after domain.PackTask,
+	salesOrder salesdomain.SalesOrder,
+	metadata map[string]any,
+	createdAt time.Time,
+) (audit.Log, error) {
+	baseMetadata := map[string]any{"source": "pack task action"}
+	for key, value := range metadata {
+		baseMetadata[key] = value
+	}
+	afterData := packTaskAuditData(after)
+	if strings.TrimSpace(salesOrder.ID) != "" {
+		afterData["sales_order_state"] = string(salesOrder.Status)
+	}
+
+	return audit.NewLog(audit.NewLogInput{
+		OrgID:      after.OrgID,
+		ActorID:    strings.TrimSpace(actorID),
+		Action:     action,
+		EntityType: "shipping.pack_task",
+		EntityID:   after.ID,
+		RequestID:  strings.TrimSpace(requestID),
+		BeforeData: packTaskAuditData(before),
+		AfterData:  afterData,
+		Metadata:   baseMetadata,
+		CreatedAt:  createdAt,
+	})
+}
+
+func packTaskAuditData(task domain.PackTask) map[string]any {
+	return map[string]any{
+		"pack_task_no":   task.PackTaskNo,
+		"sales_order_id": task.SalesOrderID,
+		"pick_task_id":   task.PickTaskID,
+		"warehouse_id":   task.WarehouseID,
+		"status":         string(task.Status),
+		"assigned_to":    task.AssignedTo,
+		"line_count":     len(task.Lines),
+		"packed_count":   countPackedLines(task),
+	}
+}
+
+func countPackedLines(task domain.PackTask) int {
+	count := 0
+	for _, line := range task.Lines {
+		if line.Status == domain.PackTaskLineStatusPacked {
+			count++
+		}
+	}
+
+	return count
 }
 
 func newPackTaskID(salesOrderID string) string {

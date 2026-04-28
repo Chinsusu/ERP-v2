@@ -131,6 +131,158 @@ func TestGeneratePackTaskAfterPickRejectsDuplicateTask(t *testing.T) {
 	}
 }
 
+func TestPackTaskActionsStartConfirmAndException(t *testing.T) {
+	ctx := context.Background()
+	pickStore := NewPrototypePickTaskStore()
+	auditStore := audit.NewInMemoryLogStore()
+	pickTask := completedPickTaskForPackTask(t, pickStore, auditStore)
+	order := pickedSalesOrderForPackTask(t)
+	packStore := NewPrototypePackTaskStore()
+	generated, err := NewGeneratePackTaskAfterPick(packStore, auditStore).Execute(ctx, GeneratePackTaskAfterPickInput{
+		SalesOrder: order,
+		PickTask:   pickTask,
+		ActorID:    "user-warehouse-lead",
+		RequestID:  "req-generate-pack-for-actions",
+	})
+	if err != nil {
+		t.Fatalf("generate pack task: %v", err)
+	}
+	packer := &fakePackTaskSalesOrderPacker{order: generated.SalesOrder}
+
+	started, err := NewStartPackTask(packStore, auditStore).Execute(ctx, PackTaskActionInput{
+		PackTaskID: generated.PackTask.ID,
+		ActorID:    "user-packer",
+		RequestID:  "req-start-pack",
+	})
+	if err != nil {
+		t.Fatalf("start pack task: %v", err)
+	}
+	if started.PackTask.Status != domain.PackTaskStatusInProgress || started.AuditLogID == "" {
+		t.Fatalf("started = %+v, want in-progress task with audit", started)
+	}
+	startedAgain, err := NewStartPackTask(packStore, auditStore).Execute(ctx, PackTaskActionInput{
+		PackTaskID: generated.PackTask.ID,
+		ActorID:    "user-packer",
+		RequestID:  "req-start-pack",
+	})
+	if err != nil {
+		t.Fatalf("repeat start pack task: %v", err)
+	}
+	if startedAgain.PackTask.Status != domain.PackTaskStatusInProgress || startedAgain.AuditLogID != "" {
+		t.Fatalf("repeat start = %+v, want idempotent no-op without audit", startedAgain)
+	}
+
+	confirmed, err := NewConfirmPackTask(packStore, auditStore, packer).Execute(ctx, ConfirmPackTaskInput{
+		PackTaskID: generated.PackTask.ID,
+		Lines: []ConfirmPackTaskLineInput{
+			{LineID: generated.PackTask.Lines[0].ID, PackedQty: "3"},
+		},
+		ActorID:   "user-packer",
+		RequestID: "req-confirm-pack",
+	})
+	if err != nil {
+		t.Fatalf("confirm pack task: %v", err)
+	}
+	if confirmed.PackTask.Status != domain.PackTaskStatusPacked ||
+		confirmed.PackTask.Lines[0].Status != domain.PackTaskLineStatusPacked ||
+		confirmed.PackTask.Lines[0].QtyPacked.String() != "3.000000" ||
+		confirmed.SalesOrder.Status != salesdomain.SalesOrderStatusPacked ||
+		confirmed.AuditLogID == "" {
+		t.Fatalf("confirmed = %+v, want packed task, packed line, packed order, and audit", confirmed)
+	}
+	confirmedAgain, err := NewConfirmPackTask(packStore, auditStore, packer).Execute(ctx, ConfirmPackTaskInput{
+		PackTaskID: generated.PackTask.ID,
+		ActorID:    "user-packer",
+		RequestID:  "req-confirm-pack",
+	})
+	if err != nil {
+		t.Fatalf("repeat confirm pack task: %v", err)
+	}
+	if confirmedAgain.PackTask.Status != domain.PackTaskStatusPacked || confirmedAgain.AuditLogID != "" {
+		t.Fatalf("repeat confirm = %+v, want idempotent no-op without audit", confirmedAgain)
+	}
+	if packer.calls != 1 {
+		t.Fatalf("sales order pack calls = %d, want 1", packer.calls)
+	}
+
+	logs, err := auditStore.List(ctx, audit.Query{Action: "shipping.pack_task.confirmed"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].AfterData["sales_order_state"] != string(salesdomain.SalesOrderStatusPacked) {
+		t.Fatalf("audit logs = %+v, want one confirmed log with packed order state", logs)
+	}
+}
+
+func TestReportPackTaskExceptionBlocksConfirm(t *testing.T) {
+	ctx := context.Background()
+	pickStore := NewPrototypePickTaskStore()
+	auditStore := audit.NewInMemoryLogStore()
+	pickTask := completedPickTaskForPackTask(t, pickStore, auditStore)
+	packStore := NewPrototypePackTaskStore()
+	generated, err := NewGeneratePackTaskAfterPick(packStore, auditStore).Execute(ctx, GeneratePackTaskAfterPickInput{
+		SalesOrder: pickedSalesOrderForPackTask(t),
+		PickTask:   pickTask,
+		ActorID:    "user-warehouse-lead",
+		RequestID:  "req-generate-pack-for-exception",
+	})
+	if err != nil {
+		t.Fatalf("generate pack task: %v", err)
+	}
+
+	result, err := NewReportPackTaskException(packStore, auditStore).Execute(ctx, ReportPackTaskExceptionInput{
+		PackTaskID:    generated.PackTask.ID,
+		LineID:        generated.PackTask.Lines[0].ID,
+		ExceptionCode: "pack_exception",
+		ActorID:       "user-packer",
+		RequestID:     "req-pack-exception",
+		Investigation: "Packed quantity did not match the order line",
+	})
+	if err != nil {
+		t.Fatalf("report pack exception: %v", err)
+	}
+	if result.PackTask.Status != domain.PackTaskStatusPackException ||
+		result.PackTask.Lines[0].Status != domain.PackTaskLineStatusPackException ||
+		result.AuditLogID == "" {
+		t.Fatalf("result = %+v, want pack exception task and line with audit", result)
+	}
+
+	packer := &fakePackTaskSalesOrderPacker{order: pickedSalesOrderForPackTask(t)}
+	_, err = NewConfirmPackTask(packStore, auditStore, packer).Execute(ctx, ConfirmPackTaskInput{
+		PackTaskID: generated.PackTask.ID,
+		ActorID:    "user-packer",
+		RequestID:  "req-confirm-after-pack-exception",
+	})
+	if !errors.Is(err, domain.ErrPackTaskInvalidTransition) {
+		t.Fatalf("confirm exception task err = %v, want invalid transition", err)
+	}
+}
+
+type fakePackTaskSalesOrderPacker struct {
+	order salesdomain.SalesOrder
+	calls int
+}
+
+func (f *fakePackTaskSalesOrderPacker) MarkSalesOrderPacked(
+	_ context.Context,
+	input PackTaskSalesOrderPackedInput,
+) (salesdomain.SalesOrder, error) {
+	if f == nil {
+		return salesdomain.SalesOrder{}, ErrPackTaskSalesOrderPackerRequired
+	}
+	if input.SalesOrderID != f.order.ID {
+		return salesdomain.SalesOrder{}, ErrPackTaskSalesOrderNotPicked
+	}
+	packed, err := f.order.MarkPacked(input.ActorID, time.Date(2026, 4, 28, 16, 0, 0, 0, time.UTC))
+	if err != nil {
+		return salesdomain.SalesOrder{}, err
+	}
+	f.order = packed
+	f.calls++
+
+	return packed, nil
+}
+
 func pickedSalesOrderForPackTask(t *testing.T) salesdomain.SalesOrder {
 	t.Helper()
 	reserved := reservedSalesOrderForPickTask(t)

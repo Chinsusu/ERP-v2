@@ -328,6 +328,37 @@ func (t PackTask) Complete(actorID string, packedAt time.Time) (PackTask, error)
 	return next, next.Validate()
 }
 
+func (t PackTask) ReportLineException(lineID string, actorID string, reportedAt time.Time) (PackTask, error) {
+	actorID = strings.TrimSpace(actorID)
+	if actorID == "" {
+		return PackTask{}, ErrPackTaskActorRequired
+	}
+	if t.Status == PackTaskStatusPacked || t.Status == PackTaskStatusCancelled {
+		return PackTask{}, ErrPackTaskInvalidTransition
+	}
+	if reportedAt.IsZero() {
+		reportedAt = time.Now().UTC()
+	}
+
+	next := t.Clone()
+	for index, line := range next.Lines {
+		if strings.TrimSpace(line.ID) != strings.TrimSpace(lineID) {
+			continue
+		}
+		if line.Status != PackTaskLineStatusPending {
+			return PackTask{}, ErrPackTaskInvalidTransition
+		}
+		line.Status = PackTaskLineStatusPackException
+		line.UpdatedAt = reportedAt.UTC()
+		next.Lines[index] = line
+		next.Status = PackTaskStatusPackException
+		next.UpdatedAt = reportedAt.UTC()
+		return next, next.Validate()
+	}
+
+	return PackTask{}, ErrPackTaskRequiredField
+}
+
 func (t PackTask) Clone() PackTask {
 	clone := t
 	clone.Lines = append([]PackTaskLine(nil), t.Lines...)
