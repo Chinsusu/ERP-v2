@@ -1993,6 +1993,41 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /returns/{return_receipt_id}/disposition:
+    post:
+      summary: Apply the final disposition routing for an inspected return
+      operationId: applyReturnDisposition
+      tags:
+        - returns
+      parameters:
+        - name: return_receipt_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyReturnDispositionRequest"
+      responses:
+        "200":
+          description: Return disposition applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnDispositionActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   responses:
     BadRequest:
@@ -4371,6 +4406,7 @@ components:
       enum:
         - pending_inspection
         - inspected
+        - dispositioned
     ReturnSource:
       type: string
       enum:
@@ -4555,6 +4591,15 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/ReturnInspection"
+    ReturnDispositionActionSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ReturnDispositionAction"
     ReceiveReturnRequest:
       type: object
       required:
@@ -4589,6 +4634,15 @@ components:
         note:
           type: string
         evidence_label:
+          type: string
+    ApplyReturnDispositionRequest:
+      type: object
+      required:
+        - disposition
+      properties:
+        disposition:
+          $ref: "#/components/schemas/ReturnDisposition"
+        note:
           type: string
     ScanReturnRequest:
       type: object
@@ -4721,6 +4775,50 @@ components:
         audit_log_id:
           type: string
         inspected_at:
+          type: string
+          format: date-time
+    ReturnDispositionAction:
+      type: object
+      required:
+        - id
+        - receipt_id
+        - receipt_no
+        - disposition
+        - target_location
+        - target_stock_status
+        - action_code
+        - actor_id
+        - decided_at
+      properties:
+        id:
+          type: string
+        receipt_id:
+          type: string
+        receipt_no:
+          type: string
+        disposition:
+          $ref: "#/components/schemas/ReturnDisposition"
+        target_location:
+          type: string
+        target_stock_status:
+          type: string
+          enum:
+            - return_pending
+            - damaged
+            - qc_hold
+        action_code:
+          type: string
+          enum:
+            - route_to_putaway
+            - route_to_lab_or_damaged
+            - route_to_quarantine_hold
+        actor_id:
+          type: string
+        note:
+          type: string
+        audit_log_id:
+          type: string
+        decided_at:
           type: string
           format: date-time
     ReturnReceiptLine:

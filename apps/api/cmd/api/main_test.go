@@ -1725,6 +1725,154 @@ func TestReturnInspectionHandlerRejectsInvalidConditionAndMissingReceipt(t *test
 	}
 }
 
+func TestReturnDispositionHandlerRoutesReusableAfterInspection(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	auditStore := audit.NewInMemoryLogStore()
+	inspectService := returnsapp.NewInspectReturn(store, auditStore)
+	_, err := inspectService.Execute(context.Background(), returnsapp.InspectReturnInput{
+		ReceiptID:   "rr-260426-0001",
+		Condition:   "intact",
+		Disposition: "reusable",
+		ActorID:     "user-return-inspector",
+		RequestID:   "req-return-inspect",
+	})
+	if err != nil {
+		t.Fatalf("inspect return: %v", err)
+	}
+
+	applyService := returnsapp.NewApplyReturnDisposition(store, auditStore)
+	body := bytes.NewBufferString(`{
+		"disposition": "reusable",
+		"note": "ready for putaway"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/returns/rr-260426-0001/disposition", body)
+	req.SetPathValue("return_receipt_id", "rr-260426-0001")
+	req.Header.Set(response.HeaderRequestID, "req-return-disposition")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnDispositionHandler(applyService).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[returnDispositionActionResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.ActionCode != "route_to_putaway" || payload.Data.TargetLocation != "return-putaway-ready" {
+		t.Fatalf("payload = %+v, want putaway disposition", payload.Data)
+	}
+	if payload.Data.AuditLogID == "" {
+		t.Fatal("audit log id is empty")
+	}
+
+	rows, err := returnsapp.NewListReturnReceipts(store).Execute(
+		req.Context(),
+		returnsdomain.NewReturnReceiptFilter("wh-hcm", returnsdomain.ReturnStatusDispositioned),
+	)
+	if err != nil {
+		t.Fatalf("list return receipts: %v", err)
+	}
+	if len(rows) != 1 || rows[0].TargetLocation != "return-putaway-ready" || rows[0].StockMovement != nil {
+		t.Fatalf("rows = %+v, want dispositioned receipt without stock movement", rows)
+	}
+}
+
+func TestReturnDispositionHandlerRoutesQAHold(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	auditStore := audit.NewInMemoryLogStore()
+	_, err := returnsapp.NewInspectReturn(store, auditStore).Execute(context.Background(), returnsapp.InspectReturnInput{
+		ReceiptID:   "rr-260426-0001",
+		Condition:   "seal_torn",
+		Disposition: "needs_inspection",
+		ActorID:     "user-return-inspector",
+		RequestID:   "req-return-inspect",
+	})
+	if err != nil {
+		t.Fatalf("inspect return: %v", err)
+	}
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/returns/rr-260426-0001/disposition",
+		bytes.NewBufferString(`{"disposition":"needs_inspection"}`),
+	)
+	req.SetPathValue("return_receipt_id", "rr-260426-0001")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnDispositionHandler(returnsapp.NewApplyReturnDisposition(store, auditStore)).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[returnDispositionActionResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.TargetLocation != "return-quarantine-hold" || payload.Data.TargetStockStatus != "qc_hold" {
+		t.Fatalf("payload = %+v, want quarantine hold", payload.Data)
+	}
+}
+
+func TestReturnDispositionHandlerRejectsPendingReceiptAndInvalidDisposition(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	auditStore := audit.NewInMemoryLogStore()
+	applyService := returnsapp.NewApplyReturnDisposition(store, auditStore)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/returns/rr-260426-0001/disposition",
+		bytes.NewBufferString(`{"disposition":"reusable"}`),
+	)
+	req.SetPathValue("return_receipt_id", "rr-260426-0001")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnDispositionHandler(applyService).ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("pending receipt status = %d, want %d: %s", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+
+	_, err := returnsapp.NewInspectReturn(store, auditStore).Execute(context.Background(), returnsapp.InspectReturnInput{
+		ReceiptID:   "rr-260426-0001",
+		Condition:   "intact",
+		Disposition: "reusable",
+		ActorID:     "user-return-inspector",
+		RequestID:   "req-return-inspect",
+	})
+	if err != nil {
+		t.Fatalf("inspect return: %v", err)
+	}
+	invalid := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/returns/rr-260426-0001/disposition",
+		bytes.NewBufferString(`{"disposition":"usable"}`),
+	)
+	invalid.SetPathValue("return_receipt_id", "rr-260426-0001")
+	invalid = invalid.WithContext(req.Context())
+	invalidRec := httptest.NewRecorder()
+
+	returnDispositionHandler(applyService).ServeHTTP(invalidRec, invalid)
+	if invalidRec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid disposition status = %d, want %d: %s", invalidRec.Code, http.StatusBadRequest, invalidRec.Body.String())
+	}
+}
+
 func TestAuditLogsHandlerReturnsFilteredRows(t *testing.T) {
 	log, err := audit.NewLog(audit.NewLogInput{
 		ID:         "audit-test",

@@ -12,6 +12,7 @@ type ReturnReceiptStatus string
 
 const ReturnStatusPendingInspection ReturnReceiptStatus = "pending_inspection"
 const ReturnStatusInspected ReturnReceiptStatus = "inspected"
+const ReturnStatusDispositioned ReturnReceiptStatus = "dispositioned"
 
 type ReturnSource string
 
@@ -192,7 +193,7 @@ func NewReturnReceiptFilter(warehouseID string, status ReturnReceiptStatus) Retu
 
 func NormalizeReturnReceiptStatus(status ReturnReceiptStatus) ReturnReceiptStatus {
 	switch status {
-	case ReturnStatusPendingInspection, ReturnStatusInspected:
+	case ReturnStatusPendingInspection, ReturnStatusInspected, ReturnStatusDispositioned:
 		return status
 	default:
 		return ""

@@ -1,4 +1,4 @@
-export type ReturnReceiptStatus = "pending_inspection" | "inspected";
+export type ReturnReceiptStatus = "pending_inspection" | "inspected" | "dispositioned";
 
 export type ReturnSource = "SHIPPER" | "CARRIER" | "CUSTOMER" | "MARKETPLACE" | "UNKNOWN";
 
