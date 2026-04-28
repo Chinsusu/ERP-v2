@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   DataTable,
   EmptyState,
@@ -169,6 +169,19 @@ export function SalesOrderPrototype() {
   const selectedCustomer = salesCustomerOptions.find((customer) => customer.value === customerId) ?? salesCustomerOptions[0];
   const selectedLineItem = salesItemOptions.find((item) => item.value === lineItemId) ?? salesItemOptions[0];
   const totals = summarizeOrders(visibleOrders);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextStatus = salesStatusFromParam(params.get("status"));
+    const nextWarehouseId = salesWarehouseFromParam(params.get("warehouse_id"));
+
+    if (nextStatus !== null) {
+      setStatus(nextStatus);
+    }
+    if (nextWarehouseId !== null) {
+      setFilterWarehouseId(nextWarehouseId);
+    }
+  }, []);
 
   function handleCustomerChange(nextCustomerId: string) {
     const customer = salesCustomerOptions.find((candidate) => candidate.value === nextCustomerId) ?? salesCustomerOptions[0];
@@ -544,6 +557,28 @@ function KPI({ label, value, tone = "normal" }: { label: string; value: string; 
       <StatusChip tone={tone}>{label}</StatusChip>
     </article>
   );
+}
+
+function salesStatusFromParam(value: string | null): StatusFilter | null {
+  if (value === null) {
+    return null;
+  }
+  if (salesStatusOptions.some((option) => option.value === value)) {
+    return value as StatusFilter;
+  }
+
+  return null;
+}
+
+function salesWarehouseFromParam(value: string | null) {
+  if (value === null) {
+    return null;
+  }
+  if (value === "wh-hcm") {
+    return "wh-hcm-fg";
+  }
+
+  return salesWarehouseOptions.some((option) => option.value === value) ? value : null;
 }
 
 function Fact({ label, value }: { label: string; value: string }) {

@@ -233,6 +233,27 @@ export function CarrierManifestPrototype() {
   );
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextWarehouseId = optionValueFromParam(params.get("warehouse_id"), manifestWarehouseOptions);
+    const nextCarrierCode = optionValueFromParam(params.get("carrier_code"), carrierOptions);
+    const nextStatus = optionValueFromParam(params.get("status"), carrierManifestStatusOptions);
+    const nextDate = params.get("date");
+
+    if (nextWarehouseId !== null) {
+      setWarehouseId(nextWarehouseId);
+    }
+    if (nextDate) {
+      setDate(nextDate);
+    }
+    if (nextCarrierCode !== null) {
+      setCarrierCode(nextCarrierCode);
+    }
+    if (nextStatus !== null) {
+      setStatus(nextStatus as "" | CarrierManifestStatus);
+    }
+  }, []);
+
+  useEffect(() => {
     if (selectedManifest) {
       window.setTimeout(() => scanInputRef.current?.focus(), 0);
     }
@@ -478,7 +499,7 @@ export function CarrierManifestPrototype() {
         <ShippingKPI label="Manifests" value={displayedManifests.length} tone="normal" />
       </section>
 
-      <section className="erp-card erp-card--padded erp-module-table-card">
+      <section className="erp-card erp-card--padded erp-module-table-card" id="carrier-manifest-list">
         <div className="erp-section-header">
           <h2 className="erp-section-title">Manifest batches</h2>
           <StatusChip tone={displayedManifests.length === 0 ? "warning" : "info"}>{displayedManifests.length} rows</StatusChip>
@@ -686,6 +707,17 @@ function HandoverMetric({
       {tone !== "normal" ? <StatusChip tone={tone}>{label}</StatusChip> : null}
     </div>
   );
+}
+
+function optionValueFromParam<TValue extends string>(
+  value: string | null,
+  options: readonly { value: TValue; label: string }[]
+): TValue | null {
+  if (value === null) {
+    return null;
+  }
+
+  return options.some((option) => option.value === value) ? (value as TValue) : null;
 }
 
 function statusLabel(status: CarrierManifestStatus) {
