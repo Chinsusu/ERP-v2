@@ -26,6 +26,24 @@ func TestNewCarrierManifestDefaultsToDraft(t *testing.T) {
 	}
 }
 
+func TestNormalizeCarrierManifestStatusIncludesHandoverStates(t *testing.T) {
+	cases := []CarrierManifestStatus{
+		ManifestStatusDraft,
+		ManifestStatusReady,
+		ManifestStatusScanning,
+		ManifestStatusCompleted,
+		ManifestStatusHandedOver,
+		ManifestStatusException,
+		ManifestStatusCancelled,
+	}
+
+	for _, status := range cases {
+		if NormalizeManifestStatus(status) != status {
+			t.Fatalf("normalize %q = %q, want same status", status, NormalizeManifestStatus(status))
+		}
+	}
+}
+
 func TestCarrierManifestAddShipmentUpdatesExpectedAndMissingCounts(t *testing.T) {
 	manifest, err := NewCarrierManifest(NewCarrierManifestInput{
 		CarrierCode: "VTP",

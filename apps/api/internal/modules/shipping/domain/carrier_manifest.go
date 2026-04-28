@@ -14,7 +14,9 @@ const ManifestStatusDraft CarrierManifestStatus = "draft"
 const ManifestStatusReady CarrierManifestStatus = "ready"
 const ManifestStatusScanning CarrierManifestStatus = "scanning"
 const ManifestStatusCompleted CarrierManifestStatus = "completed"
+const ManifestStatusHandedOver CarrierManifestStatus = "handed_over"
 const ManifestStatusException CarrierManifestStatus = "exception"
+const ManifestStatusCancelled CarrierManifestStatus = "cancelled"
 
 var ErrManifestRequiredField = errors.New("carrier manifest required field is missing")
 var ErrManifestDuplicateShipment = errors.New("shipment already exists in carrier manifest")
@@ -155,7 +157,13 @@ func NewCarrierManifestFilter(
 
 func NormalizeManifestStatus(status CarrierManifestStatus) CarrierManifestStatus {
 	switch status {
-	case ManifestStatusDraft, ManifestStatusReady, ManifestStatusScanning, ManifestStatusCompleted, ManifestStatusException:
+	case ManifestStatusDraft,
+		ManifestStatusReady,
+		ManifestStatusScanning,
+		ManifestStatusCompleted,
+		ManifestStatusHandedOver,
+		ManifestStatusException,
+		ManifestStatusCancelled:
 		return status
 	default:
 		return ""
