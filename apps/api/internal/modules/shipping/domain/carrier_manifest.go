@@ -30,6 +30,7 @@ var ErrManifestScanNotFound = errors.New("manifest scan code was not found")
 var ErrManifestScanInvalidState = errors.New("manifest cannot accept scan in current state")
 var ErrManifestScanDuplicate = errors.New("manifest line is already scanned")
 var ErrManifestNoMissingOrders = errors.New("carrier manifest has no missing orders")
+var ErrManifestMissingOrders = errors.New("carrier manifest has missing orders")
 
 type CarrierManifestScanResultCode string
 
@@ -314,6 +315,29 @@ func (m CarrierManifest) ReportMissingOrders() (CarrierManifest, []CarrierManife
 	next.Status = ManifestStatusException
 
 	return next, missingLines, nil
+}
+
+func (m CarrierManifest) ConfirmHandover() (CarrierManifest, error) {
+	if m.Status == ManifestStatusHandedOver {
+		return m.Clone(), nil
+	}
+	if isCarrierManifestClosed(m.Status) {
+		return CarrierManifest{}, ErrManifestAlreadyCompleted
+	}
+	if m.Status != ManifestStatusReady && m.Status != ManifestStatusScanning {
+		return CarrierManifest{}, ErrManifestInvalidTransition
+	}
+	if len(m.Lines) == 0 {
+		return CarrierManifest{}, ErrManifestRequiredField
+	}
+	if m.Summary().MissingCount > 0 {
+		return CarrierManifest{}, ErrManifestMissingOrders
+	}
+
+	next := m.Clone()
+	next.Status = ManifestStatusHandedOver
+
+	return next, nil
 }
 
 func (m CarrierManifest) MarkLineScanned(code string) (CarrierManifest, CarrierManifestLine, error) {

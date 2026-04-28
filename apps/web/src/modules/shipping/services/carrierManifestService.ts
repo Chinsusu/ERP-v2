@@ -266,6 +266,24 @@ export async function cancelCarrierManifest(manifestId: string, reason = ""): Pr
   }
 }
 
+export async function confirmCarrierManifestHandover(manifestId: string): Promise<CarrierManifest> {
+  try {
+    return fromApiCarrierManifest(
+      await apiPost<CarrierManifestApi, Record<string, never>>(
+        `/shipping/manifests/${encodeURIComponent(manifestId)}/confirm-handover`,
+        {},
+        { accessToken: defaultAccessToken }
+      )
+    );
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return confirmPrototypeManifestHandover(manifestId);
+  }
+}
+
 export async function verifyCarrierManifestScan(
   input: VerifyCarrierManifestScanInput,
   manifests: CarrierManifest[] = prototypeCarrierManifests
@@ -582,6 +600,28 @@ function cancelPrototypeManifest(manifestId: string): CarrierManifest {
     ...manifest,
     status: "cancelled",
     auditLogId: "audit-manifest-cancelled-prototype"
+  });
+  replacePrototypeManifest(updated);
+
+  return cloneManifest(updated);
+}
+
+function confirmPrototypeManifestHandover(manifestId: string): CarrierManifest {
+  const manifest = findPrototypeManifest(manifestId);
+  if (manifest.status === "handed_over") {
+    return cloneManifest(manifest);
+  }
+  if (manifest.status !== "ready" && manifest.status !== "scanning") {
+    throw new Error("Carrier manifest status transition is invalid");
+  }
+  if (manifest.summary.expectedCount === 0 || manifest.summary.missingCount > 0) {
+    throw new Error("Carrier manifest has missing orders");
+  }
+
+  const updated = createManifest({
+    ...manifest,
+    status: "handed_over",
+    auditLogId: "audit-manifest-handed-over-prototype"
   });
   replacePrototypeManifest(updated);
 

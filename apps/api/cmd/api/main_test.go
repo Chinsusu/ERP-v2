@@ -13,6 +13,7 @@ import (
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
+	salesdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/domain"
 	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
 	shippingdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
@@ -901,6 +902,58 @@ func TestReportCarrierManifestMissingOrdersHandlerMarksException(t *testing.T) {
 	}
 	if len(logs) != 1 || logs[0].Metadata["missing_count"] != 1 {
 		t.Fatalf("audit logs = %+v, want missing exception count", logs)
+	}
+}
+
+func TestConfirmCarrierManifestHandoverHandlerMarksManifestHandedOver(t *testing.T) {
+	store := shippingapp.NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	handover := &recordingCarrierManifestSalesOrderHandover{}
+	if _, err := shippingapp.NewVerifyCarrierManifestScan(store, auditStore).Execute(context.Background(), shippingapp.VerifyCarrierManifestScanInput{
+		ManifestID: "manifest-hcm-ghn-morning",
+		Code:       "GHN260426003",
+		ActorID:    "user-handover-operator",
+		RequestID:  "req-confirm-scan",
+	}); err != nil {
+		t.Fatalf("scan missing line: %v", err)
+	}
+	service := shippingapp.NewConfirmCarrierManifestHandover(store, auditStore, handover)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/shipping/manifests/manifest-hcm-ghn-morning/confirm-handover",
+		nil,
+	)
+	req.SetPathValue("manifest_id", "manifest-hcm-ghn-morning")
+	req.Header.Set(response.HeaderRequestID, "req-manifest-confirm-handover")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	confirmCarrierManifestHandoverHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var payload response.SuccessEnvelope[carrierManifestResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.Status != "handed_over" || payload.Data.AuditLogID == "" {
+		t.Fatalf("payload = %+v, want handed_over manifest with audit", payload.Data)
+	}
+	if len(handover.orderNos) != 3 || handover.orderNos[0] != "SO-260426-001" {
+		t.Fatalf("handover calls = %+v, want all manifest orders", handover.orderNos)
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "shipping.manifest.handed_over"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].Metadata["handed_over_order_count"] != 3 {
+		t.Fatalf("audit logs = %+v, want handed over count", logs)
 	}
 }
 
@@ -1825,4 +1878,19 @@ func mustDraftCarrierManifestForHandler(t *testing.T) shippingdomain.CarrierMani
 	}
 
 	return manifest
+}
+
+type recordingCarrierManifestSalesOrderHandover struct {
+	orderNos []string
+}
+
+func (r *recordingCarrierManifestSalesOrderHandover) MarkSalesOrderHandedOver(
+	_ context.Context,
+	input shippingapp.CarrierManifestSalesOrderHandoverInput,
+) (salesdomain.SalesOrder, error) {
+	r.orderNos = append(r.orderNos, input.OrderNo)
+	return salesdomain.SalesOrder{
+		OrderNo: input.OrderNo,
+		Status:  salesdomain.SalesOrderStatusHandedOver,
+	}, nil
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	salesdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 )
@@ -308,6 +309,60 @@ func TestReportCarrierManifestMissingOrdersRejectsCleanManifest(t *testing.T) {
 	}
 }
 
+func TestConfirmCarrierManifestHandoverRequiresAllScansAndMarksOrders(t *testing.T) {
+	ctx := context.Background()
+	store := NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	handover := &recordingSalesOrderHandover{}
+	service := NewConfirmCarrierManifestHandover(store, auditStore, handover)
+
+	_, err := service.Execute(ctx, CarrierManifestActionInput{
+		ManifestID: "manifest-hcm-ghn-morning",
+		ActorID:    "user-handover-operator",
+		RequestID:  "req-confirm-missing",
+	})
+	if !errors.Is(err, domain.ErrManifestMissingOrders) {
+		t.Fatalf("err = %v, want missing orders", err)
+	}
+	if len(handover.orderNos) != 0 {
+		t.Fatalf("handover calls = %+v, want none when missing", handover.orderNos)
+	}
+
+	if _, err := NewVerifyCarrierManifestScan(store, auditStore).Execute(ctx, VerifyCarrierManifestScanInput{
+		ManifestID: "manifest-hcm-ghn-morning",
+		Code:       "GHN260426003",
+		ActorID:    "user-handover-operator",
+		RequestID:  "req-scan-before-confirm",
+	}); err != nil {
+		t.Fatalf("scan missing line: %v", err)
+	}
+	result, err := service.Execute(ctx, CarrierManifestActionInput{
+		ManifestID: "manifest-hcm-ghn-morning",
+		ActorID:    "user-handover-operator",
+		RequestID:  "req-confirm-handover",
+	})
+	if err != nil {
+		t.Fatalf("confirm handover: %v", err)
+	}
+	if result.Manifest.Status != domain.ManifestStatusHandedOver || result.AuditLogID == "" {
+		t.Fatalf("result = %+v, want handed_over manifest with audit", result)
+	}
+	if len(handover.orderNos) != 3 || handover.orderNos[2] != "SO-260426-003" {
+		t.Fatalf("handover order calls = %+v, want all manifest orders", handover.orderNos)
+	}
+	if len(result.SalesOrders) != 3 || result.SalesOrders[0].Status != salesdomain.SalesOrderStatusHandedOver {
+		t.Fatalf("sales orders = %+v, want handed over orders", result.SalesOrders)
+	}
+
+	logs, err := auditStore.List(ctx, audit.Query{Action: "shipping.manifest.handed_over"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].Metadata["handed_over_order_count"] != 3 {
+		t.Fatalf("audit logs = %+v, want handed over count", logs)
+	}
+}
+
 func TestVerifyCarrierManifestScanMarksExpectedLineAndRecordsEvent(t *testing.T) {
 	store := NewPrototypeCarrierManifestStore()
 	auditStore := audit.NewInMemoryLogStore()
@@ -360,6 +415,21 @@ func TestVerifyCarrierManifestScanMarksExpectedLineAndRecordsEvent(t *testing.T)
 	if logs[0].Metadata["scan_source"] != "handheld_scanner" {
 		t.Fatalf("audit metadata = %+v, want scan source retained", logs[0].Metadata)
 	}
+}
+
+type recordingSalesOrderHandover struct {
+	orderNos []string
+}
+
+func (r *recordingSalesOrderHandover) MarkSalesOrderHandedOver(
+	_ context.Context,
+	input CarrierManifestSalesOrderHandoverInput,
+) (salesdomain.SalesOrder, error) {
+	r.orderNos = append(r.orderNos, input.OrderNo)
+	return salesdomain.SalesOrder{
+		OrderNo: input.OrderNo,
+		Status:  salesdomain.SalesOrderStatusHandedOver,
+	}, nil
 }
 
 func TestVerifyCarrierManifestScanReturnsClearWarningCodes(t *testing.T) {
