@@ -34,6 +34,12 @@ func (s *InMemoryStockMovementStore) Count() int {
 	return len(s.movements)
 }
 
+func (s *InMemoryStockMovementStore) Movements() []domain.StockMovement {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]domain.StockMovement(nil), s.movements...)
+}
+
 type RecordStockMovement struct {
 	store StockMovementStore
 }

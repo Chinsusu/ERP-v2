@@ -964,7 +964,7 @@ func main() {
 	listReturnReceipts := returnsapp.NewListReturnReceipts(returnReceiptStore)
 	receiveReturn := returnsapp.NewReceiveReturn(returnReceiptStore, auditLogStore)
 	inspectReturn := returnsapp.NewInspectReturn(returnReceiptStore, auditLogStore)
-	applyReturnDisposition := returnsapp.NewApplyReturnDisposition(returnReceiptStore, auditLogStore)
+	applyReturnDisposition := returnsapp.NewApplyReturnDisposition(returnReceiptStore, stockMovementStore, auditLogStore)
 	uploadReturnAttachment := returnsapp.NewUploadReturnAttachment(returnReceiptStore, auditLogStore)
 
 	mux := http.NewServeMux()
