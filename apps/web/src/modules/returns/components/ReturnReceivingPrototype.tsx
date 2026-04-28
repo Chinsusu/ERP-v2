@@ -85,8 +85,7 @@ export function ReturnReceivingPrototype() {
   const [busy, setBusy] = useState(false);
   const query = useMemo<ReturnReceiptQuery>(
     () => ({
-      warehouseId,
-      status: "pending_inspection"
+      warehouseId
     }),
     [warehouseId]
   );
@@ -306,7 +305,12 @@ export function ReturnReceivingPrototype() {
         </div>
       </section>
 
-      <ReturnInspectionPanel receipts={displayedReceipts} />
+      <ReturnInspectionPanel
+        receipts={displayedReceipts}
+        onReceiptChange={(receipt) => {
+          setLocalReceipts((current) => [receipt, ...current.filter((candidate) => candidate.id !== receipt.id)]);
+        }}
+      />
 
       <section className="erp-card erp-card--padded erp-module-table-card" id="return-receipts">
         <div className="erp-section-header">
@@ -366,6 +370,12 @@ function matchesReceiptQuery(receipt: ReturnReceipt, query: ReturnReceiptQuery) 
 function statusLabel(status: string) {
   if (status === "pending_inspection") {
     return "Pending inspection";
+  }
+  if (status === "inspected") {
+    return "Inspected";
+  }
+  if (status === "dispositioned") {
+    return "Dispositioned";
   }
 
   return status;

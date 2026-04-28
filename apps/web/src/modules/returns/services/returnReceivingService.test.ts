@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  applyDispositionToReceipt,
+  applyInspectionToReceipt,
+  applyReturnDisposition,
+  createReturnDispositionAction,
   createReturnInspection,
   formatReturnInspectionCondition,
   formatReturnInspectionDisposition,
   formatReturnDisposition,
   getReturnReceipts,
+  inspectReturn,
   matchesReturnReceiptCode,
   receiveReturn,
   resetPrototypeReturnReceiptsForTest,
@@ -138,26 +143,79 @@ describe("returnReceivingService", () => {
     expect(
       createReturnInspection({
         receipt,
-        condition: "qa_required",
-        disposition: "qa_hold",
+        condition: "missing_accessory",
+        disposition: "needs_inspection",
         note: "needs QA",
         evidenceLabel: "photo-001"
       })
     ).toMatchObject({
       receiptNo: "RR-260426-0001",
-      status: "RETURN_QA_HOLD",
+      status: "return_qa_hold",
       targetLocation: "return-qa-hold",
-      riskLevel: "medium",
+      riskLevel: "high",
       evidenceLabel: "photo-001"
+    });
+  });
+
+  it("updates receipt state after inspection and disposition actions", async () => {
+    const [receipt] = await getReturnReceipts({ warehouseId: "wh-hcm" });
+    const inspection = await inspectReturn({
+      receipt,
+      condition: "intact",
+      disposition: "reusable",
+      note: "usable",
+      evidenceLabel: "photo-001"
+    });
+    const inspectedReceipt = applyInspectionToReceipt(receipt, inspection);
+
+    expect(inspectedReceipt).toMatchObject({
+      status: "inspected",
+      disposition: "reusable",
+      targetLocation: "return-area-qc-release",
+      stockMovement: undefined
+    });
+
+    const action = await applyReturnDisposition({
+      receipt: inspectedReceipt,
+      disposition: "reusable",
+      note: "ready"
+    });
+    const dispositionedReceipt = applyDispositionToReceipt(inspectedReceipt, action);
+
+    expect(action).toMatchObject({
+      actionCode: "route_to_putaway",
+      targetLocation: "return-putaway-ready",
+      targetStockStatus: "return_pending"
+    });
+    expect(dispositionedReceipt).toMatchObject({
+      status: "dispositioned",
+      targetLocation: "return-putaway-ready",
+      stockMovement: undefined
+    });
+  });
+
+  it("creates prototype disposition actions for QA hold", async () => {
+    const [receipt] = await getReturnReceipts({ warehouseId: "wh-hcm" });
+
+    expect(
+      createReturnDispositionAction({
+        receipt,
+        disposition: "needs_inspection",
+        note: "QA review"
+      })
+    ).toMatchObject({
+      actionCode: "route_to_quarantine_hold",
+      targetLocation: "return-quarantine-hold",
+      targetStockStatus: "qc_hold"
     });
   });
 
   it("maps inspection conditions dispositions and status to labels and tones", () => {
     expect(returnInspectionConditionTone("intact")).toBe("success");
     expect(returnInspectionConditionTone("damaged")).toBe("danger");
-    expect(returnInspectionDispositionTone("not_usable")).toBe("danger");
-    expect(returnInspectionStatusTone("RETURN_QA_HOLD")).toBe("warning");
+    expect(returnInspectionDispositionTone("not_reusable")).toBe("danger");
+    expect(returnInspectionStatusTone("return_qa_hold")).toBe("warning");
     expect(formatReturnInspectionCondition("seal_torn")).toBe("Seal torn");
-    expect(formatReturnInspectionDisposition("qa_hold")).toBe("QA hold");
+    expect(formatReturnInspectionDisposition("needs_inspection")).toBe("Needs QA");
   });
 });

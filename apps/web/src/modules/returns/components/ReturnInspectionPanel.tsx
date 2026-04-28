@@ -3,9 +3,13 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { StatusChip, type StatusTone } from "@/shared/design-system/components";
 import {
-  createReturnInspection,
+  applyDispositionToReceipt,
+  applyInspectionToReceipt,
+  applyReturnDisposition,
   formatReturnInspectionCondition,
   formatReturnInspectionDisposition,
+  formatReturnDisposition,
+  inspectReturn,
   matchesReturnReceiptCode,
   returnInspectionConditionOptions,
   returnInspectionConditionTone,
@@ -14,6 +18,7 @@ import {
   returnInspectionStatusTone
 } from "../services/returnReceivingService";
 import type {
+  ReturnDispositionAction,
   ReturnInspectionCondition,
   ReturnInspectionDisposition,
   ReturnInspectionResult,
@@ -22,17 +27,20 @@ import type {
 
 type ReturnInspectionPanelProps = {
   receipts: ReturnReceipt[];
+  onReceiptChange?: (receipt: ReturnReceipt) => void;
 };
 
-export function ReturnInspectionPanel({ receipts }: ReturnInspectionPanelProps) {
+export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspectionPanelProps) {
   const [lookupCode, setLookupCode] = useState("");
   const [selectedReceiptId, setSelectedReceiptId] = useState("");
   const [condition, setCondition] = useState<ReturnInspectionCondition>("intact");
-  const [disposition, setDisposition] = useState<ReturnInspectionDisposition>("usable");
+  const [disposition, setDisposition] = useState<ReturnInspectionDisposition>("reusable");
   const [note, setNote] = useState("");
   const [evidenceLabel, setEvidenceLabel] = useState("");
   const [inspectionResult, setInspectionResult] = useState<ReturnInspectionResult | null>(null);
+  const [dispositionAction, setDispositionAction] = useState<ReturnDispositionAction | null>(null);
   const [lookupFeedback, setLookupFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
+  const [busyAction, setBusyAction] = useState<"inspect" | "dispose" | null>(null);
   const selectedReceipt = useMemo(
     () => receipts.find((receipt) => receipt.id === selectedReceiptId) ?? receipts[0] ?? null,
     [receipts, selectedReceiptId]
@@ -68,29 +76,84 @@ export function ReturnInspectionPanel({ receipts }: ReturnInspectionPanelProps) 
 
   function handleConditionChange(nextCondition: ReturnInspectionCondition) {
     setCondition(nextCondition);
-    if (nextCondition === "qa_required") {
-      setDisposition("qa_hold");
+    if (nextCondition === "seal_torn" || nextCondition === "used") {
+      setDisposition("needs_inspection");
     }
-    if (nextCondition === "damaged") {
-      setDisposition("not_usable");
+    if (nextCondition === "damaged" || nextCondition === "missing_accessory") {
+      setDisposition("not_reusable");
+    }
+    if (nextCondition === "intact") {
+      setDisposition("reusable");
     }
   }
 
-  function handleConfirmInspection(nextDisposition = disposition) {
-    if (!selectedReceipt) {
+  async function handleConfirmInspection(nextDisposition = disposition) {
+    if (!selectedReceipt || busyAction) {
       return;
     }
 
-    const result = createReturnInspection({
-      receipt: selectedReceipt,
-      condition,
-      disposition: nextDisposition,
-      note,
-      evidenceLabel
-    });
-    setInspectionResult(result);
-    setDisposition(nextDisposition);
-    setLookupFeedback({ tone: returnInspectionStatusTone(result.status), message: `${result.receiptNo} / ${result.status}` });
+    setBusyAction("inspect");
+    try {
+      const result = await inspectReturn({
+        receipt: selectedReceipt,
+        condition,
+        disposition: nextDisposition,
+        note,
+        evidenceLabel
+      });
+      const updatedReceipt = applyInspectionToReceipt(selectedReceipt, result);
+      onReceiptChange?.(updatedReceipt);
+      setSelectedReceiptId(updatedReceipt.id);
+      setInspectionResult(result);
+      setDispositionAction(null);
+      setDisposition(nextDisposition);
+      setLookupFeedback({
+        tone: returnInspectionStatusTone(result.status),
+        message: `${result.receiptNo} / ${inspectionStatusLabel(result.status)}`
+      });
+    } catch (cause) {
+      setLookupFeedback({
+        tone: "danger",
+        message: cause instanceof Error ? cause.message : "Return inspection could not be recorded"
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleApplyDisposition() {
+    if (!selectedReceipt || busyAction) {
+      return;
+    }
+
+    const receiptForAction =
+      inspectionResult?.receiptId === selectedReceipt.id && selectedReceipt.status === "pending_inspection"
+        ? applyInspectionToReceipt(selectedReceipt, inspectionResult)
+        : selectedReceipt;
+
+    setBusyAction("dispose");
+    try {
+      const action = await applyReturnDisposition({
+        receipt: receiptForAction,
+        disposition,
+        note
+      });
+      const updatedReceipt = applyDispositionToReceipt(receiptForAction, action);
+      onReceiptChange?.(updatedReceipt);
+      setSelectedReceiptId(updatedReceipt.id);
+      setDispositionAction(action);
+      setLookupFeedback({
+        tone: returnInspectionDispositionTone(action.disposition),
+        message: `${action.receiptNo} / ${action.actionCode}`
+      });
+    } catch (cause) {
+      setLookupFeedback({
+        tone: "danger",
+        message: cause instanceof Error ? cause.message : "Return disposition could not be applied"
+      });
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   return (
@@ -204,18 +267,31 @@ export function ReturnInspectionPanel({ receipts }: ReturnInspectionPanelProps) 
           <button
             className="erp-button erp-button--primary"
             type="button"
-            disabled={!selectedReceipt}
+            disabled={!selectedReceipt || busyAction !== null || selectedReceipt.status !== "pending_inspection"}
             onClick={() => handleConfirmInspection()}
           >
-            Confirm inspection
+            {busyAction === "inspect" ? "Recording..." : "Confirm inspection"}
           </button>
           <button
             className="erp-button erp-button--secondary"
             type="button"
-            disabled={!selectedReceipt}
-            onClick={() => handleConfirmInspection("qa_hold")}
+            disabled={!selectedReceipt || busyAction !== null || selectedReceipt.status !== "pending_inspection"}
+            onClick={() => handleConfirmInspection("needs_inspection")}
           >
             Escalate QA
+          </button>
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={
+              !selectedReceipt ||
+              busyAction !== null ||
+              selectedReceipt.status === "dispositioned" ||
+              (selectedReceipt.status === "pending_inspection" && inspectionResult?.receiptId !== selectedReceipt.id)
+            }
+            onClick={() => void handleApplyDisposition()}
+          >
+            {busyAction === "dispose" ? "Applying..." : "Apply routing"}
           </button>
         </div>
       </div>
@@ -236,13 +312,30 @@ export function ReturnInspectionPanel({ receipts }: ReturnInspectionPanelProps) 
             <ReturnInspectionFact label="Target" value={inspectionResult.targetLocation} />
             <ReturnInspectionFact label="Risk" value={inspectionResult.riskLevel} />
             <ReturnInspectionFact label="Evidence" value={inspectionResult.evidenceLabel ?? "-"} />
+            <ReturnInspectionFact label="Inspector" value={inspectionResult.inspectorId} />
           </div>
         ) : (
           <div className="erp-returns-empty-state">No inspection result recorded</div>
         )}
+        {dispositionAction ? (
+          <div className="erp-returns-result-grid erp-returns-disposition-result">
+            <ReturnInspectionFact label="Routing" value={formatReturnDisposition(dispositionAction.disposition)} />
+            <ReturnInspectionFact label="Target" value={dispositionAction.targetLocation} />
+            <ReturnInspectionFact label="Stock status" value={dispositionAction.targetStockStatus} />
+            <ReturnInspectionFact label="Action" value={dispositionAction.actionCode} />
+          </div>
+        ) : null}
       </div>
     </section>
   );
+}
+
+function inspectionStatusLabel(status: ReturnInspectionResult["status"]) {
+  if (status === "return_qa_hold") {
+    return "QA hold";
+  }
+
+  return "Inspection recorded";
 }
 
 function ReturnInspectionFact({ label, value }: { label: string; value: string }) {

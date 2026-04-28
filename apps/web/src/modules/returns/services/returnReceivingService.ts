@@ -1,8 +1,10 @@
 import { ApiError, apiGet, apiPost } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import type {
+  ApplyReturnDispositionInput,
   InspectReturnInput,
   ReceiveReturnInput,
+  ReturnDispositionAction,
   ReturnInspectionCondition,
   ReturnInspectionDisposition,
   ReturnInspectionResult,
@@ -19,6 +21,10 @@ import type {
 type ReturnReceiptApi = components["schemas"]["ReturnReceipt"];
 type ReturnReceiptApiQuery = operations["listReturnReceipts"]["parameters"]["query"];
 type ScanReturnApiRequest = components["schemas"]["ScanReturnRequest"];
+type ReturnInspectionApi = components["schemas"]["ReturnInspection"];
+type InspectReturnApiRequest = components["schemas"]["InspectReturnRequest"];
+type ReturnDispositionActionApi = components["schemas"]["ReturnDispositionAction"];
+type ApplyReturnDispositionApiRequest = components["schemas"]["ApplyReturnDispositionRequest"];
 
 type ExpectedReturnRecord = {
   orderNo: string;
@@ -66,13 +72,13 @@ export const returnInspectionConditionOptions: { label: string; value: ReturnIns
   { label: "Seal torn", value: "seal_torn" },
   { label: "Used", value: "used" },
   { label: "Damaged", value: "damaged" },
-  { label: "QA required", value: "qa_required" }
+  { label: "Missing accessory", value: "missing_accessory" }
 ];
 
 export const returnInspectionDispositionOptions: { label: string; value: ReturnInspectionDisposition }[] = [
-  { label: "Usable", value: "usable" },
-  { label: "Not usable", value: "not_usable" },
-  { label: "QA hold", value: "qa_hold" }
+  { label: "Reusable", value: "reusable" },
+  { label: "Not reusable", value: "not_reusable" },
+  { label: "Needs QA", value: "needs_inspection" }
 ];
 
 export let prototypeReturnReceipts: ReturnReceipt[] = createPrototypeReturnReceipts();
@@ -187,6 +193,54 @@ export async function receiveReturn(input: ReceiveReturnInput): Promise<ReturnRe
   }
 }
 
+export async function inspectReturn(input: InspectReturnInput): Promise<ReturnInspectionResult> {
+  try {
+    const inspection = await apiPost<ReturnInspectionApi, InspectReturnApiRequest>(
+      `/returns/${input.receipt.id}/inspect`,
+      toApiInspectInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiReturnInspection(inspection);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    const result = createReturnInspection(input);
+    prototypeReturnReceipts = [
+      applyInspectionToReceipt(input.receipt, result),
+      ...prototypeReturnReceipts.filter((candidate) => candidate.id !== input.receipt.id)
+    ];
+
+    return result;
+  }
+}
+
+export async function applyReturnDisposition(input: ApplyReturnDispositionInput): Promise<ReturnDispositionAction> {
+  try {
+    const action = await apiPost<ReturnDispositionActionApi, ApplyReturnDispositionApiRequest>(
+      `/returns/${input.receipt.id}/disposition`,
+      toApiDispositionInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiReturnDispositionAction(action);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    const action = createReturnDispositionAction(input);
+    prototypeReturnReceipts = [
+      applyDispositionToReceipt(input.receipt, action),
+      ...prototypeReturnReceipts.filter((candidate) => candidate.id !== input.receipt.id)
+    ];
+
+    return action;
+  }
+}
+
 export function resetPrototypeReturnReceiptsForTest() {
   prototypeReturnReceipts = createPrototypeReturnReceipts();
 }
@@ -281,7 +335,7 @@ export function returnDispositionTone(
 export function createReturnInspection(input: InspectReturnInput): ReturnInspectionResult {
   const disposition = normalizeInspectionDisposition(input.disposition);
   const condition = normalizeInspectionCondition(input.condition);
-  const status: ReturnInspectionStatus = disposition === "qa_hold" ? "RETURN_QA_HOLD" : "INSPECTION_RECORDED";
+  const status: ReturnInspectionStatus = disposition === "needs_inspection" ? "return_qa_hold" : "inspection_recorded";
 
   return {
     id: `inspect-${input.receipt.id}-${condition}-${disposition}`,
@@ -292,11 +346,51 @@ export function createReturnInspection(input: InspectReturnInput): ReturnInspect
     status,
     targetLocation: inspectionTargetLocation(disposition),
     riskLevel: inspectionRiskLevel(condition, disposition),
-    inspector: "Return Inspector",
+    inspectorId: "user-return-inspector",
     note: input.note?.trim() || undefined,
     evidenceLabel: input.evidenceLabel?.trim() || undefined,
     inspectedAt: "2026-04-26T11:00:00Z"
   };
+}
+
+export function createReturnDispositionAction(input: ApplyReturnDispositionInput): ReturnDispositionAction {
+  const disposition = normalizeDisposition(input.disposition);
+
+  return {
+    id: `dispose-${input.receipt.id}-${disposition}`,
+    receiptId: input.receipt.id,
+    receiptNo: input.receipt.receiptNo,
+    disposition,
+    targetLocation: dispositionTargetLocation(disposition),
+    targetStockStatus: dispositionTargetStockStatus(disposition),
+    actionCode: dispositionActionCode(disposition),
+    actorId: "user-return-inspector",
+    note: input.note?.trim() || undefined,
+    auditLogId: "audit-return-disposition-prototype",
+    decidedAt: "2026-04-26T11:30:00Z"
+  };
+}
+
+export function applyInspectionToReceipt(receipt: ReturnReceipt, inspection: ReturnInspectionResult): ReturnReceipt {
+  return createReturnReceipt({
+    ...receipt,
+    status: "inspected",
+    packageCondition: inspection.condition,
+    disposition: inspection.disposition,
+    targetLocation: inspection.targetLocation,
+    lines: receipt.lines.map((line) => ({ ...line, condition: inspection.condition })),
+    stockMovement: undefined
+  });
+}
+
+export function applyDispositionToReceipt(receipt: ReturnReceipt, action: ReturnDispositionAction): ReturnReceipt {
+  return createReturnReceipt({
+    ...receipt,
+    status: "dispositioned",
+    disposition: action.disposition,
+    targetLocation: action.targetLocation,
+    stockMovement: undefined
+  });
 }
 
 export function matchesReturnReceiptCode(receipt: ReturnReceipt, code: string) {
@@ -322,9 +416,8 @@ export function returnInspectionConditionTone(
     case "intact":
       return "success";
     case "damaged":
+    case "missing_accessory":
       return "danger";
-    case "qa_required":
-      return "info";
     case "dented_box":
     case "seal_torn":
     case "used":
@@ -337,18 +430,18 @@ export function returnInspectionDispositionTone(
   disposition: ReturnInspectionDisposition
 ): "success" | "warning" | "danger" {
   switch (disposition) {
-    case "usable":
+    case "reusable":
       return "success";
-    case "not_usable":
+    case "not_reusable":
       return "danger";
-    case "qa_hold":
+    case "needs_inspection":
     default:
       return "warning";
   }
 }
 
 export function returnInspectionStatusTone(status: ReturnInspectionStatus): "success" | "warning" {
-  return status === "RETURN_QA_HOLD" ? "warning" : "success";
+  return status === "return_qa_hold" ? "warning" : "success";
 }
 
 export function formatReturnInspectionCondition(condition: ReturnInspectionCondition) {
@@ -414,6 +507,39 @@ function fromApiReturnReceipt(receipt: ReturnReceiptApi): ReturnReceipt {
   });
 }
 
+function fromApiReturnInspection(inspection: ReturnInspectionApi): ReturnInspectionResult {
+  return {
+    id: inspection.id,
+    receiptId: inspection.receipt_id,
+    receiptNo: inspection.receipt_no,
+    condition: inspection.condition,
+    disposition: inspection.disposition,
+    status: inspection.status,
+    targetLocation: inspection.target_location,
+    riskLevel: inspection.risk_level,
+    inspectorId: inspection.inspector_id,
+    note: inspection.note,
+    evidenceLabel: inspection.evidence_label,
+    inspectedAt: inspection.inspected_at
+  };
+}
+
+function fromApiReturnDispositionAction(action: ReturnDispositionActionApi): ReturnDispositionAction {
+  return {
+    id: action.id,
+    receiptId: action.receipt_id,
+    receiptNo: action.receipt_no,
+    disposition: action.disposition,
+    targetLocation: action.target_location,
+    targetStockStatus: action.target_stock_status,
+    actionCode: action.action_code,
+    actorId: action.actor_id,
+    note: action.note,
+    auditLogId: action.audit_log_id,
+    decidedAt: action.decided_at
+  };
+}
+
 function toApiQuery(query: ReturnReceiptQuery): ReturnReceiptApiQuery {
   return {
     warehouse_id: query.warehouseId,
@@ -430,6 +556,22 @@ function toApiScanInput(input: ReceiveReturnInput): ScanReturnApiRequest {
     package_condition: input.packageCondition,
     disposition: input.disposition,
     investigation_note: input.investigationNote
+  };
+}
+
+function toApiInspectInput(input: InspectReturnInput): InspectReturnApiRequest {
+  return {
+    condition: input.condition,
+    disposition: input.disposition,
+    note: input.note,
+    evidence_label: input.evidenceLabel
+  };
+}
+
+function toApiDispositionInput(input: ApplyReturnDispositionInput): ApplyReturnDispositionApiRequest {
+  return {
+    disposition: input.disposition,
+    note: input.note
   };
 }
 
@@ -553,7 +695,7 @@ function normalizeInspectionCondition(condition: ReturnInspectionCondition): Ret
     return condition;
   }
 
-  return "qa_required";
+  return "missing_accessory";
 }
 
 function normalizeInspectionDisposition(disposition: ReturnInspectionDisposition): ReturnInspectionDisposition {
@@ -561,30 +703,66 @@ function normalizeInspectionDisposition(disposition: ReturnInspectionDisposition
     return disposition;
   }
 
-  return "qa_hold";
+  return "needs_inspection";
 }
 
 function inspectionTargetLocation(disposition: ReturnInspectionDisposition) {
   switch (disposition) {
-    case "usable":
+    case "reusable":
       return "return-area-qc-release";
-    case "not_usable":
+    case "not_reusable":
       return "lab-damaged-placeholder";
-    case "qa_hold":
+    case "needs_inspection":
     default:
       return "return-qa-hold";
   }
 }
 
 function inspectionRiskLevel(condition: ReturnInspectionCondition, disposition: ReturnInspectionDisposition) {
-  if (condition === "damaged" || disposition === "not_usable") {
+  if (condition === "damaged" || condition === "missing_accessory" || disposition === "not_reusable") {
     return "high";
   }
-  if (condition === "qa_required" || disposition === "qa_hold" || condition === "used") {
+  if (condition === "seal_torn" || disposition === "needs_inspection" || condition === "used") {
     return "medium";
   }
 
   return "low";
+}
+
+function dispositionTargetLocation(disposition: ReturnDisposition) {
+  switch (disposition) {
+    case "reusable":
+      return "return-putaway-ready";
+    case "not_reusable":
+      return "lab-damaged-placeholder";
+    case "needs_inspection":
+    default:
+      return "return-quarantine-hold";
+  }
+}
+
+function dispositionTargetStockStatus(disposition: ReturnDisposition): ReturnDispositionAction["targetStockStatus"] {
+  switch (disposition) {
+    case "reusable":
+      return "return_pending";
+    case "not_reusable":
+      return "damaged";
+    case "needs_inspection":
+    default:
+      return "qc_hold";
+  }
+}
+
+function dispositionActionCode(disposition: ReturnDisposition): ReturnDispositionAction["actionCode"] {
+  switch (disposition) {
+    case "reusable":
+      return "route_to_putaway";
+    case "not_reusable":
+      return "route_to_lab_or_damaged";
+    case "needs_inspection":
+    default:
+      return "route_to_quarantine_hold";
+  }
 }
 
 function matchesExpectedReturn(candidate: ExpectedReturnRecord, scanCode: string) {
