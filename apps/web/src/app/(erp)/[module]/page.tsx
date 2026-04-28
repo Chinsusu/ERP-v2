@@ -5,7 +5,7 @@ import { MasterDataPrototype } from "@/modules/masterdata/components/MasterDataP
 import { WarehouseReceivingPrototype } from "@/modules/receiving/components/WarehouseReceivingPrototype";
 import { ReturnReceivingPrototype } from "@/modules/returns/components/ReturnReceivingPrototype";
 import { SalesOrderPrototype } from "@/modules/sales/components/SalesOrderPrototype";
-import { CarrierManifestPrototype } from "@/modules/shipping/components/CarrierManifestPrototype";
+import { ShippingOperationsPrototype } from "@/modules/shipping/components/ShippingOperationsPrototype";
 import { SubcontractOrderPrototype } from "@/modules/subcontract/components/SubcontractOrderPrototype";
 import WarehouseDailyBoard from "@/modules/warehouse/components/WarehouseDailyBoard";
 import { getMockSession } from "@/shared/auth/mockSession";
@@ -46,7 +46,7 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
   }
 
   if (module === "shipping") {
-    return <CarrierManifestPrototype />;
+    return <ShippingOperationsPrototype />;
   }
 
   if (module === "returns") {

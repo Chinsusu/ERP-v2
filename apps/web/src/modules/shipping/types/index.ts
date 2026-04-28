@@ -94,3 +94,74 @@ export type CreateCarrierManifestInput = {
   stagingZone?: string;
   owner?: string;
 };
+
+export type PickTaskStatus =
+  | "created"
+  | "assigned"
+  | "in_progress"
+  | "completed"
+  | "missing_stock"
+  | "wrong_sku"
+  | "wrong_batch"
+  | "wrong_location"
+  | "cancelled";
+
+export type PickTaskLineStatus =
+  | "pending"
+  | "picked"
+  | "missing_stock"
+  | "wrong_sku"
+  | "wrong_batch"
+  | "wrong_location"
+  | "cancelled";
+
+export type PickTaskLine = {
+  id: string;
+  lineNo: number;
+  salesOrderLineId: string;
+  stockReservationId: string;
+  itemId: string;
+  skuCode: string;
+  batchId: string;
+  batchNo: string;
+  warehouseId: string;
+  binId: string;
+  binCode: string;
+  qtyToPick: string;
+  qtyPicked: string;
+  baseUOMCode: string;
+  status: PickTaskLineStatus;
+  pickedAt?: string;
+  pickedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PickTask = {
+  id: string;
+  orgId: string;
+  pickTaskNo: string;
+  salesOrderId: string;
+  orderNo: string;
+  warehouseId: string;
+  warehouseCode: string;
+  status: PickTaskStatus;
+  assignedTo?: string;
+  assignedAt?: string;
+  startedAt?: string;
+  startedBy?: string;
+  completedAt?: string;
+  completedBy?: string;
+  auditLogId?: string;
+  lines: PickTaskLine[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PickTaskQuery = {
+  warehouseId?: string;
+  status?: PickTaskStatus;
+  assignedTo?: string;
+};
+
+export type PickTaskExceptionCode = "missing_stock" | "wrong_sku" | "wrong_batch" | "wrong_location" | "cancelled";
