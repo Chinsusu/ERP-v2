@@ -77,6 +77,7 @@ type ConfirmPickTaskLineInput struct {
 
 type ReportPickTaskExceptionInput struct {
 	PickTaskID    string
+	LineID        string
 	ExceptionCode string
 	ActorID       string
 	RequestID     string
@@ -330,19 +331,38 @@ func (uc ReportPickTaskException) Execute(
 	if exceptionStatus == "" {
 		return PickTaskResult{}, domain.ErrPickTaskInvalidStatus
 	}
-	if current.Status == exceptionStatus {
+	lineStatus := normalizePickTaskExceptionLineStatus(input.ExceptionCode)
+	if strings.TrimSpace(input.LineID) != "" && lineStatus == "" {
+		return PickTaskResult{}, domain.ErrPickTaskInvalidStatus
+	}
+	if current.Status == exceptionStatus && (strings.TrimSpace(input.LineID) == "" || lineAlreadyInException(current, input.LineID, lineStatus)) {
 		return PickTaskResult{PickTask: current}, nil
 	}
-	if current.Status == domain.PickTaskStatusCompleted || isPickTaskExceptionStatus(current.Status) {
+	if current.Status == domain.PickTaskStatusCompleted || (isPickTaskExceptionStatus(current.Status) && current.Status != exceptionStatus) {
 		return PickTaskResult{}, domain.ErrPickTaskInvalidTransition
 	}
 
 	now := uc.clock()
-	updated := current.Clone()
-	updated.Status = exceptionStatus
-	updated.UpdatedAt = now
-	if err := updated.Validate(); err != nil {
-		return PickTaskResult{}, err
+	updated := domain.PickTask{}
+	if strings.TrimSpace(input.LineID) == "" {
+		updated = current.Clone()
+		updated.Status = exceptionStatus
+		updated.UpdatedAt = now
+		if err := updated.Validate(); err != nil {
+			return PickTaskResult{}, err
+		}
+	} else {
+		updated, err = current.ReportLineException(input.LineID, lineStatus, input.ActorID, now)
+		if err != nil {
+			return PickTaskResult{}, err
+		}
+	}
+	metadata := map[string]any{
+		"exception_code": string(exceptionStatus),
+		"investigation":  strings.TrimSpace(input.Investigation),
+	}
+	if strings.TrimSpace(input.LineID) != "" {
+		metadata["line_id"] = strings.TrimSpace(input.LineID)
 	}
 
 	return saveAndAuditPickTaskAction(
@@ -354,10 +374,7 @@ func (uc ReportPickTaskException) Execute(
 		"shipping.pick_task.exception_reported",
 		current,
 		updated,
-		map[string]any{
-			"exception_code": string(exceptionStatus),
-			"investigation":  strings.TrimSpace(input.Investigation),
-		},
+		metadata,
 		now,
 	)
 }
@@ -569,6 +586,23 @@ func normalizePickTaskExceptionStatus(value string) domain.PickTaskStatus {
 	}
 }
 
+func normalizePickTaskExceptionLineStatus(value string) domain.PickTaskLineStatus {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case string(domain.PickTaskLineStatusMissingStock):
+		return domain.PickTaskLineStatusMissingStock
+	case string(domain.PickTaskLineStatusWrongSKU):
+		return domain.PickTaskLineStatusWrongSKU
+	case string(domain.PickTaskLineStatusWrongBatch):
+		return domain.PickTaskLineStatusWrongBatch
+	case string(domain.PickTaskLineStatusWrongLocation):
+		return domain.PickTaskLineStatusWrongLocation
+	case string(domain.PickTaskLineStatusCancelled):
+		return domain.PickTaskLineStatusCancelled
+	default:
+		return ""
+	}
+}
+
 func isPickTaskExceptionStatus(status domain.PickTaskStatus) bool {
 	switch status {
 	case domain.PickTaskStatusMissingStock,
@@ -580,6 +614,16 @@ func isPickTaskExceptionStatus(status domain.PickTaskStatus) bool {
 	default:
 		return false
 	}
+}
+
+func lineAlreadyInException(task domain.PickTask, lineID string, status domain.PickTaskLineStatus) bool {
+	for _, line := range task.Lines {
+		if strings.TrimSpace(line.ID) == strings.TrimSpace(lineID) && line.Status == status {
+			return true
+		}
+	}
+
+	return false
 }
 
 func normalizeQuantityText(value string) string {

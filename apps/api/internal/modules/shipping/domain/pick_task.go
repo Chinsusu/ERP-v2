@@ -323,6 +323,9 @@ func (t PickTask) MarkLinePicked(lineID string, pickedQty string, actorID string
 		if strings.TrimSpace(line.ID) != strings.TrimSpace(lineID) {
 			continue
 		}
+		if line.Status != PickTaskLineStatusPending {
+			return PickTask{}, ErrPickTaskInvalidTransition
+		}
 		if !quantityEqual(qty, line.QtyToPick) {
 			return PickTask{}, ErrPickTaskInvalidQuantity
 		}
@@ -333,6 +336,55 @@ func (t PickTask) MarkLinePicked(lineID string, pickedQty string, actorID string
 		line.UpdatedAt = pickedAt.UTC()
 		next.Lines[index] = line
 		next.UpdatedAt = pickedAt.UTC()
+		return next, next.Validate()
+	}
+
+	return PickTask{}, ErrPickTaskRequiredField
+}
+
+func (t PickTask) ReportLineException(lineID string, status PickTaskLineStatus, actorID string, reportedAt time.Time) (PickTask, error) {
+	actorID = strings.TrimSpace(actorID)
+	if actorID == "" {
+		return PickTask{}, ErrPickTaskActorRequired
+	}
+	lineID = strings.TrimSpace(lineID)
+	if lineID == "" {
+		return PickTask{}, ErrPickTaskRequiredField
+	}
+	lineStatus := NormalizePickTaskLineStatus(status)
+	taskStatus := pickTaskStatusForLineException(lineStatus)
+	if taskStatus == "" {
+		return PickTask{}, ErrPickTaskInvalidStatus
+	}
+	if t.Status == PickTaskStatusCompleted {
+		return PickTask{}, ErrPickTaskInvalidTransition
+	}
+	if isPickTaskExceptionStatus(t.Status) && t.Status != taskStatus {
+		return PickTask{}, ErrPickTaskInvalidTransition
+	}
+	if reportedAt.IsZero() {
+		reportedAt = time.Now().UTC()
+	}
+
+	next := t.Clone()
+	for index, line := range next.Lines {
+		if strings.TrimSpace(line.ID) != lineID {
+			continue
+		}
+		if line.Status == PickTaskLineStatusPicked {
+			return PickTask{}, ErrPickTaskInvalidTransition
+		}
+		if isPickTaskLineExceptionStatus(line.Status) && line.Status != lineStatus {
+			return PickTask{}, ErrPickTaskInvalidTransition
+		}
+		if line.Status != PickTaskLineStatusPending && line.Status != lineStatus {
+			return PickTask{}, ErrPickTaskInvalidTransition
+		}
+		line.Status = lineStatus
+		line.UpdatedAt = reportedAt.UTC()
+		next.Lines[index] = line
+		next.Status = taskStatus
+		next.UpdatedAt = reportedAt.UTC()
 		return next, next.Validate()
 	}
 
@@ -470,6 +522,49 @@ func quantityAtMost(left decimal.Decimal, right decimal.Decimal) bool {
 func quantityEqual(left decimal.Decimal, right decimal.Decimal) bool {
 	delta, err := decimal.SubtractQuantity(left, right)
 	return err == nil && delta.IsZero()
+}
+
+func pickTaskStatusForLineException(status PickTaskLineStatus) PickTaskStatus {
+	switch status {
+	case PickTaskLineStatusMissingStock:
+		return PickTaskStatusMissingStock
+	case PickTaskLineStatusWrongSKU:
+		return PickTaskStatusWrongSKU
+	case PickTaskLineStatusWrongBatch:
+		return PickTaskStatusWrongBatch
+	case PickTaskLineStatusWrongLocation:
+		return PickTaskStatusWrongLocation
+	case PickTaskLineStatusCancelled:
+		return PickTaskStatusCancelled
+	default:
+		return ""
+	}
+}
+
+func isPickTaskExceptionStatus(status PickTaskStatus) bool {
+	switch status {
+	case PickTaskStatusMissingStock,
+		PickTaskStatusWrongSKU,
+		PickTaskStatusWrongBatch,
+		PickTaskStatusWrongLocation,
+		PickTaskStatusCancelled:
+		return true
+	default:
+		return false
+	}
+}
+
+func isPickTaskLineExceptionStatus(status PickTaskLineStatus) bool {
+	switch status {
+	case PickTaskLineStatusMissingStock,
+		PickTaskLineStatusWrongSKU,
+		PickTaskLineStatusWrongBatch,
+		PickTaskLineStatusWrongLocation,
+		PickTaskLineStatusCancelled:
+		return true
+	default:
+		return false
+	}
 }
 
 func firstNonBlank(values ...string) string {
