@@ -1,4 +1,4 @@
-import { apiGet, apiGetRaw, apiPost } from "../../../shared/api/client";
+import { ApiError, apiGet, apiGetRaw, apiPost } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import type {
   AvailableStockItem,
@@ -6,13 +6,72 @@ import type {
   AvailableStockSummary,
   BatchQCTransition,
   BatchQCTransitionInput,
-  BatchQCTransitionResult
+  BatchQCTransitionResult,
+  CreateStockCountInput,
+  StockCountSession,
+  StockCountStatus,
+  SubmitStockCountInput
 } from "../types";
 
 type AvailableStockApiItem = components["schemas"]["AvailableStockItem"];
 type AvailableStockApiQuery = operations["listAvailableStock"]["parameters"]["query"];
 type BatchQCTransitionApiItem = components["schemas"]["BatchQCTransition"];
 type BatchQCTransitionResultApi = components["schemas"]["BatchQCTransitionResult"];
+type StockCountApiLine = {
+  id: string;
+  item_id?: string;
+  sku: string;
+  batch_id?: string;
+  batch_no?: string;
+  location_id?: string;
+  location_code?: string;
+  expected_qty: string;
+  counted_qty: string;
+  delta_qty: string;
+  base_uom_code: string;
+  counted: boolean;
+  note?: string;
+};
+type StockCountApiSession = {
+  id: string;
+  count_no: string;
+  org_id: string;
+  warehouse_id: string;
+  warehouse_code?: string;
+  scope: string;
+  status: StockCountStatus;
+  created_by: string;
+  submitted_by?: string;
+  lines: StockCountApiLine[];
+  audit_log_id?: string;
+  created_at: string;
+  updated_at: string;
+  submitted_at?: string;
+};
+type CreateStockCountApiRequest = {
+  count_no?: string;
+  warehouse_id: string;
+  warehouse_code?: string;
+  scope: string;
+  lines: Array<{
+    id?: string;
+    item_id?: string;
+    sku: string;
+    batch_id?: string;
+    batch_no?: string;
+    location_id?: string;
+    location_code?: string;
+    expected_qty: string;
+    base_uom_code: string;
+  }>;
+};
+type SubmitStockCountApiRequest = {
+  lines: Array<{
+    id: string;
+    counted_qty: string;
+    note?: string;
+  }>;
+};
 
 const defaultAccessToken = "local-dev-access-token";
 const quantityScale = 6;
@@ -100,6 +159,38 @@ export const prototypeBatchQCTransitions: BatchQCTransition[] = [
   }
 ];
 
+const initialPrototypeStockCounts: StockCountSession[] = [
+  {
+    id: "count-hcm-260427-0001",
+    countNo: "CNT-260427-0001",
+    orgId: "org-my-pham",
+    warehouseId: "wh-hcm",
+    warehouseCode: "HCM",
+    scope: "cycle-count",
+    status: "open",
+    createdBy: "user-warehouse",
+    lines: [
+      {
+        id: "count-line-hcm-0001",
+        sku: "SERUM-30ML",
+        batchId: "batch-serum-2604a",
+        batchNo: "LOT-2604A",
+        locationId: "bin-hcm-a01",
+        locationCode: "A-01",
+        expectedQty: "128.000000",
+        countedQty: zeroQuantity,
+        deltaQty: zeroQuantity,
+        baseUomCode: "PCS",
+        counted: false
+      }
+    ],
+    createdAt: "2026-04-27T08:15:00Z",
+    updatedAt: "2026-04-27T08:15:00Z"
+  }
+];
+
+let prototypeStockCounts = initialPrototypeStockCounts.map(cloneStockCount);
+
 export async function getAvailableStock(query: AvailableStockQuery = {}): Promise<AvailableStockItem[]> {
   try {
     const items = await apiGet("/inventory/available-stock", {
@@ -143,6 +234,58 @@ export async function createBatchQCTransition(
   return {
     transition: fromApiTransition(result.transition)
   };
+}
+
+export async function getStockCounts(): Promise<StockCountSession[]> {
+  try {
+    const items = await apiGetRaw<StockCountApiSession[]>("/stock-counts", {
+      accessToken: defaultAccessToken
+    });
+
+    return items.map(fromApiStockCount);
+  } catch {
+    return prototypeStockCounts.map(cloneStockCount);
+  }
+}
+
+export async function createStockCount(input: CreateStockCountInput): Promise<StockCountSession> {
+  try {
+    const result = await apiPost<StockCountApiSession, CreateStockCountApiRequest>(
+      "/stock-counts",
+      toApiCreateStockCount(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiStockCount(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    return createPrototypeStockCount(input);
+  }
+}
+
+export async function submitStockCount(id: string, input: SubmitStockCountInput): Promise<StockCountSession> {
+  try {
+    const result = await apiPost<StockCountApiSession, SubmitStockCountApiRequest>(
+      `/stock-counts/${encodeURIComponent(id)}/submit`,
+      toApiSubmitStockCount(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiStockCount(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    return submitPrototypeStockCount(id, input);
+  }
+}
+
+export function resetPrototypeStockCountsForTest() {
+  prototypeStockCounts = initialPrototypeStockCounts.map(cloneStockCount);
 }
 
 export function summarizeAvailableStock(items: AvailableStockItem[]): AvailableStockSummary {
@@ -235,6 +378,69 @@ function fromApiTransition(item: BatchQCTransitionApiItem): BatchQCTransition {
   };
 }
 
+function fromApiStockCount(item: StockCountApiSession): StockCountSession {
+  return {
+    id: item.id,
+    countNo: item.count_no,
+    orgId: item.org_id,
+    warehouseId: item.warehouse_id,
+    warehouseCode: item.warehouse_code,
+    scope: item.scope,
+    status: item.status,
+    createdBy: item.created_by,
+    submittedBy: item.submitted_by,
+    lines: item.lines.map((line) => ({
+      id: line.id,
+      itemId: line.item_id,
+      sku: line.sku,
+      batchId: line.batch_id,
+      batchNo: line.batch_no,
+      locationId: line.location_id,
+      locationCode: line.location_code,
+      expectedQty: line.expected_qty,
+      countedQty: line.counted_qty,
+      deltaQty: line.delta_qty,
+      baseUomCode: line.base_uom_code,
+      counted: line.counted,
+      note: line.note
+    })),
+    auditLogId: item.audit_log_id,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+    submittedAt: item.submitted_at
+  };
+}
+
+function toApiCreateStockCount(input: CreateStockCountInput): CreateStockCountApiRequest {
+  return {
+    count_no: input.countNo,
+    warehouse_id: input.warehouseId,
+    warehouse_code: input.warehouseCode,
+    scope: input.scope,
+    lines: input.lines.map((line) => ({
+      id: line.id,
+      item_id: line.itemId,
+      sku: line.sku,
+      batch_id: line.batchId,
+      batch_no: line.batchNo,
+      location_id: line.locationId,
+      location_code: line.locationCode,
+      expected_qty: line.expectedQty,
+      base_uom_code: line.baseUomCode
+    }))
+  };
+}
+
+function toApiSubmitStockCount(input: SubmitStockCountInput): SubmitStockCountApiRequest {
+  return {
+    lines: input.lines.map((line) => ({
+      id: line.id,
+      counted_qty: line.countedQty,
+      note: line.note
+    }))
+  };
+}
+
 function toApiQuery(query: AvailableStockQuery): AvailableStockApiQuery {
   return {
     warehouse_id: query.warehouseId,
@@ -264,8 +470,97 @@ function filterPrototypeStock(query: AvailableStockQuery): AvailableStockItem[] 
   });
 }
 
+function createPrototypeStockCount(input: CreateStockCountInput): StockCountSession {
+  const now = new Date().toISOString();
+  const id = `count-local-${Date.now()}`;
+  const count: StockCountSession = {
+    id,
+    countNo: input.countNo || `CNT-LOCAL-${String(prototypeStockCounts.length + 1).padStart(4, "0")}`,
+    orgId: "org-my-pham",
+    warehouseId: input.warehouseId,
+    warehouseCode: input.warehouseCode,
+    scope: input.scope,
+    status: "open",
+    createdBy: "local-dev",
+    lines: input.lines.map((line, index) => ({
+      id: line.id || `count-line-local-${index + 1}`,
+      itemId: line.itemId,
+      sku: line.sku,
+      batchId: line.batchId,
+      batchNo: line.batchNo,
+      locationId: line.locationId,
+      locationCode: line.locationCode,
+      expectedQty: normalizeQuantity(line.expectedQty),
+      countedQty: zeroQuantity,
+      deltaQty: zeroQuantity,
+      baseUomCode: line.baseUomCode,
+      counted: false
+    })),
+    auditLogId: `audit-${id}`,
+    createdAt: now,
+    updatedAt: now
+  };
+  prototypeStockCounts = [cloneStockCount(count), ...prototypeStockCounts];
+
+  return cloneStockCount(count);
+}
+
+function submitPrototypeStockCount(id: string, input: SubmitStockCountInput): StockCountSession {
+  const index = prototypeStockCounts.findIndex((count) => count.id === id);
+  if (index < 0) {
+    throw new Error("Stock count not found");
+  }
+  const current = prototypeStockCounts[index];
+  if (current.status !== "open") {
+    throw new Error("Stock count is not open");
+  }
+
+  const countedByLine = new Map(input.lines.map((line) => [line.id, line]));
+  const now = new Date().toISOString();
+  const updatedLines = current.lines.map((line) => {
+    const counted = countedByLine.get(line.id);
+    if (!counted) {
+      throw new Error("All stock count lines must be counted");
+    }
+    const countedQty = normalizeQuantity(counted.countedQty);
+
+    return {
+      ...line,
+      countedQty,
+      deltaQty: subtractQuantity(countedQty, line.expectedQty),
+      counted: true,
+      note: counted.note
+    };
+  });
+  const status: StockCountStatus = updatedLines.some((line) => compareQuantity(line.deltaQty, zeroQuantity) !== 0)
+    ? "variance_review"
+    : "submitted";
+  const updated: StockCountSession = {
+    ...current,
+    status,
+    submittedBy: "local-dev",
+    lines: updatedLines,
+    updatedAt: now,
+    submittedAt: now
+  };
+  prototypeStockCounts = prototypeStockCounts.map((count) => (count.id === id ? cloneStockCount(updated) : count));
+
+  return cloneStockCount(updated);
+}
+
+function cloneStockCount(count: StockCountSession): StockCountSession {
+  return {
+    ...count,
+    lines: count.lines.map((line) => ({ ...line }))
+  };
+}
+
 function addQuantity(left: string, right: string) {
   return scaledToQuantity(quantityToScaled(left) + quantityToScaled(right));
+}
+
+function subtractQuantity(left: string, right: string) {
+  return scaledToQuantity(quantityToScaled(left) - quantityToScaled(right));
 }
 
 function compareQuantity(left: string, right: string) {

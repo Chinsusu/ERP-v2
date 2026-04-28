@@ -63,3 +63,64 @@ export type AvailableStockSummary = {
   blockedQty: string;
   availableQty: string;
 };
+
+export type StockCountStatus = "open" | "submitted" | "variance_review";
+
+export type StockCountLine = {
+  id: string;
+  itemId?: string;
+  sku: string;
+  batchId?: string;
+  batchNo?: string;
+  locationId?: string;
+  locationCode?: string;
+  expectedQty: string;
+  countedQty: string;
+  deltaQty: string;
+  baseUomCode: string;
+  counted: boolean;
+  note?: string;
+};
+
+export type StockCountSession = {
+  id: string;
+  countNo: string;
+  orgId: string;
+  warehouseId: string;
+  warehouseCode?: string;
+  scope: string;
+  status: StockCountStatus;
+  createdBy: string;
+  submittedBy?: string;
+  lines: StockCountLine[];
+  auditLogId?: string;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt?: string;
+};
+
+export type CreateStockCountInput = {
+  countNo?: string;
+  warehouseId: string;
+  warehouseCode?: string;
+  scope: string;
+  lines: Array<{
+    id?: string;
+    itemId?: string;
+    sku: string;
+    batchId?: string;
+    batchNo?: string;
+    locationId?: string;
+    locationCode?: string;
+    expectedQty: string;
+    baseUomCode: string;
+  }>;
+};
+
+export type SubmitStockCountInput = {
+  lines: Array<{
+    id: string;
+    countedQty: string;
+    note?: string;
+  }>;
+};

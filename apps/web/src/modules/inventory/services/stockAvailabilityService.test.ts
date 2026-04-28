@@ -1,15 +1,23 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   availabilityTone,
+  createStockCount,
   formatQuantity,
   getAvailableStock,
   getBatchQCTransitions,
+  getStockCounts,
   prototypeBatchQCTransitions,
   prototypeAvailableStock,
+  resetPrototypeStockCountsForTest,
+  submitStockCount,
   summarizeAvailableStock
 } from "./stockAvailabilityService";
 
 describe("stockAvailabilityService", () => {
+  beforeEach(() => {
+    resetPrototypeStockCountsForTest();
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -54,5 +62,40 @@ describe("stockAvailabilityService", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
 
     await expect(getBatchQCTransitions("batch-cream-2603b")).resolves.toEqual(prototypeBatchQCTransitions);
+  });
+
+  it("opens and submits a prototype stock count with variance when the API is not reachable", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+
+    const created = await createStockCount({
+      warehouseId: "wh-hcm",
+      warehouseCode: "HCM",
+      scope: "cycle-count",
+      lines: [
+        {
+          id: "count-line-test-1",
+          sku: "SERUM-30ML",
+          batchId: "batch-serum-2604a",
+          batchNo: "LOT-2604A",
+          locationId: "bin-hcm-a01",
+          locationCode: "A-01",
+          expectedQty: "10.000000",
+          baseUomCode: "PCS"
+        }
+      ]
+    });
+
+    const submitted = await submitStockCount(created.id, {
+      lines: [{ id: created.lines[0].id, countedQty: "11.500000", note: "cycle count" }]
+    });
+
+    expect(created.status).toBe("open");
+    expect(submitted.status).toBe("variance_review");
+    expect(submitted.lines[0]).toMatchObject({
+      countedQty: "11.500000",
+      deltaQty: "1.500000",
+      counted: true
+    });
+    await expect(getStockCounts()).resolves.toEqual(expect.arrayContaining([submitted]));
   });
 });
