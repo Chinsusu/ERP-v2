@@ -62,6 +62,19 @@ func TestApplyReturnDispositionRoutesReusableToPutawayAndAudit(t *testing.T) {
 	if logs[0].AfterData["stock_movement_type"] != "return_restock" {
 		t.Fatalf("audit after data = %+v, want stock movement type", logs[0].AfterData)
 	}
+
+	movementLogs, err := auditStore.List(context.Background(), audit.Query{Action: returnStockMovementRecordedAction})
+	if err != nil {
+		t.Fatalf("list movement audit logs: %v", err)
+	}
+	if len(movementLogs) != 1 {
+		t.Fatalf("movement audit logs = %d, want 1", len(movementLogs))
+	}
+	if movementLogs[0].EntityType != returnStockMovementEntityType ||
+		movementLogs[0].AfterData["movement_type"] != "return_restock" ||
+		movementLogs[0].AfterData["delta_available"] != "1.000000" {
+		t.Fatalf("movement audit log = %+v, want reusable available movement", movementLogs[0])
+	}
 }
 
 func TestApplyReturnDispositionRoutesNotReusableAndQAHold(t *testing.T) {
@@ -129,6 +142,22 @@ func TestApplyReturnDispositionRoutesNotReusableAndQAHold(t *testing.T) {
 				if result.Receipt.StockMovement.MovementType != tt.wantMovement.MovementType ||
 					result.Receipt.StockMovement.TargetStockStatus != tt.wantMovement.TargetStockStatus {
 					t.Fatalf("stock movement = %+v, want %+v", result.Receipt.StockMovement, tt.wantMovement)
+				}
+			}
+			quarantineLogs, err := auditStore.List(context.Background(), audit.Query{Action: returnStockQuarantinedAction})
+			if err != nil {
+				t.Fatalf("list quarantine audit logs: %v", err)
+			}
+			if tt.wantMovement == nil && len(quarantineLogs) != 0 {
+				t.Fatalf("quarantine logs = %+v, want none", quarantineLogs)
+			}
+			if tt.wantMovement != nil {
+				if len(quarantineLogs) != 1 {
+					t.Fatalf("quarantine logs = %d, want 1", len(quarantineLogs))
+				}
+				if quarantineLogs[0].AfterData["stock_status"] != "qc_hold" ||
+					quarantineLogs[0].AfterData["delta_available"] != "0.000000" {
+					t.Fatalf("quarantine audit log = %+v, want qc hold with zero available delta", quarantineLogs[0])
 				}
 			}
 		})
