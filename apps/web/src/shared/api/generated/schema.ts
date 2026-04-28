@@ -887,6 +887,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/returns/{return_receipt_id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload photo or video evidence for a return inspection */
+        post: operations["uploadReturnAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1922,6 +1939,9 @@ export interface components {
         ReturnDispositionActionSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["ReturnDispositionAction"];
         };
+        ReturnAttachmentSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["ReturnAttachment"];
+        };
         ReceiveReturnRequest: {
             warehouse_id: string;
             warehouse_code?: string;
@@ -1939,6 +1959,12 @@ export interface components {
         };
         ApplyReturnDispositionRequest: {
             disposition: components["schemas"]["ReturnDisposition"];
+            note?: string;
+        };
+        UploadReturnAttachmentRequest: {
+            inspection_id: string;
+            /** Format: binary */
+            file: string;
             note?: string;
         };
         ScanReturnRequest: {
@@ -2008,6 +2034,27 @@ export interface components {
             audit_log_id?: string;
             /** Format: date-time */
             decided_at: string;
+        };
+        ReturnAttachment: {
+            id: string;
+            receipt_id: string;
+            receipt_no: string;
+            inspection_id: string;
+            file_name: string;
+            file_ext?: string;
+            /** @enum {string} */
+            mime_type: "image/jpeg" | "image/png" | "image/webp" | "video/mp4" | "video/quicktime";
+            /** Format: int64 */
+            file_size_bytes: number;
+            storage_bucket: string;
+            storage_key: string;
+            /** @enum {string} */
+            status: "active" | "deleted" | "quarantined";
+            uploaded_by: string;
+            note?: string;
+            audit_log_id?: string;
+            /** Format: date-time */
+            uploaded_at: string;
         };
         ReturnReceiptLine: {
             id: string;
@@ -4090,6 +4137,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReturnDispositionActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    uploadReturnAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                return_receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadReturnAttachmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Return attachment uploaded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnAttachmentSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];

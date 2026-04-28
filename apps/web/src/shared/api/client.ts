@@ -94,6 +94,24 @@ export async function apiPost<TData, TBody>(
   return apiWrite<TData, TBody>("POST", path, body, options);
 }
 
+export async function apiPostForm<TData>(
+  path: string,
+  body: FormData,
+  options: ApiWriteOptions = {}
+): Promise<TData> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: authHeaders(options),
+    body
+  });
+  if (!response.ok) {
+    throw await createApiError(response);
+  }
+
+  const payload = (await response.json()) as ApiSuccessResponse<TData>;
+  return payload.data;
+}
+
 export async function apiPatch<TData, TBody>(
   path: string,
   body: TBody,

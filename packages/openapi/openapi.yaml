@@ -2028,6 +2028,41 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /returns/{return_receipt_id}/attachments:
+    post:
+      summary: Upload photo or video evidence for a return inspection
+      operationId: uploadReturnAttachment
+      tags:
+        - returns
+      parameters:
+        - name: return_receipt_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/UploadReturnAttachmentRequest"
+      responses:
+        "201":
+          description: Return attachment uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnAttachmentSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   responses:
     BadRequest:
@@ -4600,6 +4635,15 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/ReturnDispositionAction"
+    ReturnAttachmentSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ReturnAttachment"
     ReceiveReturnRequest:
       type: object
       required:
@@ -4642,6 +4686,19 @@ components:
       properties:
         disposition:
           $ref: "#/components/schemas/ReturnDisposition"
+        note:
+          type: string
+    UploadReturnAttachmentRequest:
+      type: object
+      required:
+        - inspection_id
+        - file
+      properties:
+        inspection_id:
+          type: string
+        file:
+          type: string
+          format: binary
         note:
           type: string
     ScanReturnRequest:
@@ -4819,6 +4876,66 @@ components:
         audit_log_id:
           type: string
         decided_at:
+          type: string
+          format: date-time
+    ReturnAttachment:
+      type: object
+      required:
+        - id
+        - receipt_id
+        - receipt_no
+        - inspection_id
+        - file_name
+        - mime_type
+        - file_size_bytes
+        - storage_bucket
+        - storage_key
+        - status
+        - uploaded_by
+        - uploaded_at
+      properties:
+        id:
+          type: string
+        receipt_id:
+          type: string
+        receipt_no:
+          type: string
+        inspection_id:
+          type: string
+        file_name:
+          type: string
+        file_ext:
+          type: string
+        mime_type:
+          type: string
+          enum:
+            - image/jpeg
+            - image/png
+            - image/webp
+            - video/mp4
+            - video/quicktime
+        file_size_bytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 26214400
+        storage_bucket:
+          type: string
+        storage_key:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - deleted
+            - quarantined
+        uploaded_by:
+          type: string
+        note:
+          type: string
+        audit_log_id:
+          type: string
+        uploaded_at:
           type: string
           format: date-time
     ReturnReceiptLine:

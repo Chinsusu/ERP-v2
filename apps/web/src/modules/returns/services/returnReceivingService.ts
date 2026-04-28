@@ -1,9 +1,10 @@
-import { ApiError, apiGet, apiPost } from "../../../shared/api/client";
+import { ApiError, apiGet, apiPost, apiPostForm } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import type {
   ApplyReturnDispositionInput,
   InspectReturnInput,
   ReceiveReturnInput,
+  ReturnAttachment,
   ReturnDispositionAction,
   ReturnInspectionCondition,
   ReturnInspectionDisposition,
@@ -15,7 +16,8 @@ import type {
   ReturnReceiptQuery,
   ReturnReceiptStatus,
   ReturnSource,
-  ReturnStockMovement
+  ReturnStockMovement,
+  UploadReturnAttachmentInput
 } from "../types";
 
 type ReturnReceiptApi = components["schemas"]["ReturnReceipt"];
@@ -25,6 +27,7 @@ type ReturnInspectionApi = components["schemas"]["ReturnInspection"];
 type InspectReturnApiRequest = components["schemas"]["InspectReturnRequest"];
 type ReturnDispositionActionApi = components["schemas"]["ReturnDispositionAction"];
 type ApplyReturnDispositionApiRequest = components["schemas"]["ApplyReturnDispositionRequest"];
+type ReturnAttachmentApi = components["schemas"]["ReturnAttachment"];
 
 type ExpectedReturnRecord = {
   orderNo: string;
@@ -241,6 +244,31 @@ export async function applyReturnDisposition(input: ApplyReturnDispositionInput)
   }
 }
 
+export async function uploadReturnAttachment(input: UploadReturnAttachmentInput): Promise<ReturnAttachment> {
+  try {
+    const form = new FormData();
+    form.set("inspection_id", input.inspectionId);
+    form.set("file", input.file);
+    if (input.note?.trim()) {
+      form.set("note", input.note.trim());
+    }
+
+    const attachment = await apiPostForm<ReturnAttachmentApi>(
+      `/returns/${input.receipt.id}/attachments`,
+      form,
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiReturnAttachment(attachment);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return createReturnAttachment(input);
+  }
+}
+
 export function resetPrototypeReturnReceiptsForTest() {
   prototypeReturnReceipts = createPrototypeReturnReceipts();
 }
@@ -368,6 +396,29 @@ export function createReturnDispositionAction(input: ApplyReturnDispositionInput
     note: input.note?.trim() || undefined,
     auditLogId: "audit-return-disposition-prototype",
     decidedAt: "2026-04-26T11:30:00Z"
+  };
+}
+
+export function createReturnAttachment(input: UploadReturnAttachmentInput): ReturnAttachment {
+  const fileName = input.file.name.trim();
+  const fileExt = fileName.includes(".") ? fileName.split(".").pop()?.toLowerCase() : undefined;
+
+  return {
+    id: `attach-${input.receipt.id}-${input.inspectionId}-${fileName.toLowerCase().replace(/[^a-z0-9._-]+/g, "-")}`,
+    receiptId: input.receipt.id,
+    receiptNo: input.receipt.receiptNo,
+    inspectionId: input.inspectionId,
+    fileName,
+    fileExt,
+    mimeType: input.file.type || "application/octet-stream",
+    fileSizeBytes: input.file.size,
+    storageBucket: "erp-return-attachments-dev",
+    storageKey: `returns/${input.receipt.id}/inspections/${input.inspectionId}/${fileName}`,
+    status: "active",
+    uploadedBy: "user-return-inspector",
+    note: input.note?.trim() || undefined,
+    auditLogId: "audit-return-attachment-prototype",
+    uploadedAt: "2026-04-26T11:45:00Z"
   };
 }
 
@@ -537,6 +588,26 @@ function fromApiReturnDispositionAction(action: ReturnDispositionActionApi): Ret
     note: action.note,
     auditLogId: action.audit_log_id,
     decidedAt: action.decided_at
+  };
+}
+
+function fromApiReturnAttachment(attachment: ReturnAttachmentApi): ReturnAttachment {
+  return {
+    id: attachment.id,
+    receiptId: attachment.receipt_id,
+    receiptNo: attachment.receipt_no,
+    inspectionId: attachment.inspection_id,
+    fileName: attachment.file_name,
+    fileExt: attachment.file_ext,
+    mimeType: attachment.mime_type,
+    fileSizeBytes: attachment.file_size_bytes,
+    storageBucket: attachment.storage_bucket,
+    storageKey: attachment.storage_key,
+    status: attachment.status,
+    uploadedBy: attachment.uploaded_by,
+    note: attachment.note,
+    auditLogId: attachment.audit_log_id,
+    uploadedAt: attachment.uploaded_at
   };
 }
 

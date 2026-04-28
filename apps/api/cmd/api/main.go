@@ -6,7 +6,9 @@ import (
 	"errors"
 	"io"
 	"log"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -786,6 +788,24 @@ type returnDispositionActionResponse struct {
 	DecidedAt         string `json:"decided_at"`
 }
 
+type returnAttachmentResponse struct {
+	ID            string `json:"id"`
+	ReceiptID     string `json:"receipt_id"`
+	ReceiptNo     string `json:"receipt_no"`
+	InspectionID  string `json:"inspection_id"`
+	FileName      string `json:"file_name"`
+	FileExt       string `json:"file_ext,omitempty"`
+	MIMEType      string `json:"mime_type"`
+	FileSizeBytes int64  `json:"file_size_bytes"`
+	StorageBucket string `json:"storage_bucket"`
+	StorageKey    string `json:"storage_key"`
+	Status        string `json:"status"`
+	UploadedBy    string `json:"uploaded_by"`
+	Note          string `json:"note,omitempty"`
+	AuditLogID    string `json:"audit_log_id,omitempty"`
+	UploadedAt    string `json:"uploaded_at"`
+}
+
 type receiveReturnRequest struct {
 	WarehouseID       string `json:"warehouse_id"`
 	WarehouseCode     string `json:"warehouse_code"`
@@ -945,6 +965,7 @@ func main() {
 	receiveReturn := returnsapp.NewReceiveReturn(returnReceiptStore, auditLogStore)
 	inspectReturn := returnsapp.NewInspectReturn(returnReceiptStore, auditLogStore)
 	applyReturnDisposition := returnsapp.NewApplyReturnDisposition(returnReceiptStore, auditLogStore)
+	uploadReturnAttachment := returnsapp.NewUploadReturnAttachment(returnReceiptStore, auditLogStore)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
@@ -1392,6 +1413,13 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(returnDispositionHandler(applyReturnDisposition)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/returns/{return_receipt_id}/attachments",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(returnAttachmentHandler(uploadReturnAttachment)),
 		),
 	)
 
@@ -4001,6 +4029,93 @@ func returnDispositionHandler(applyService returnsapp.ApplyReturnDisposition) ht
 	}
 }
 
+func returnAttachmentHandler(uploadService returnsapp.UploadReturnAttachment) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, returnsdomain.ReturnAttachmentMaxFileSizeBytes+(1<<20))
+		if err := r.ParseMultipartForm(8 << 20); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid return attachment payload",
+				map[string]any{"required": "file, inspection_id"},
+			)
+			return
+		}
+		if r.MultipartForm != nil {
+			defer r.MultipartForm.RemoveAll()
+		}
+
+		file, fileHeader, err := r.FormFile("file")
+		if err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid return attachment payload",
+				map[string]any{"required": "file, inspection_id"},
+			)
+			return
+		}
+		defer file.Close()
+
+		fileSizeBytes, err := io.Copy(io.Discard, io.LimitReader(file, returnsdomain.ReturnAttachmentMaxFileSizeBytes+1))
+		if err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid return attachment payload",
+				map[string]any{"field": "file"},
+			)
+			return
+		}
+
+		mimeType := fileHeader.Header.Get("Content-Type")
+		if mimeType == "" || mimeType == "application/octet-stream" {
+			mimeType = mime.TypeByExtension(strings.ToLower(filepath.Ext(fileHeader.Filename)))
+		}
+
+		result, err := uploadService.Execute(r.Context(), returnsapp.UploadReturnAttachmentInput{
+			ReceiptID:     r.PathValue("return_receipt_id"),
+			InspectionID:  r.FormValue("inspection_id"),
+			FileName:      fileHeader.Filename,
+			MIMEType:      mimeType,
+			FileSizeBytes: fileSizeBytes,
+			Note:          r.FormValue("note"),
+			ActorID:       principal.UserID,
+			RequestID:     response.RequestID(r),
+		})
+		if err != nil {
+			writeReturnReceiptError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(
+			w,
+			r,
+			http.StatusCreated,
+			newReturnAttachmentResponse(result.Attachment, result.AuditLogID),
+		)
+	}
+}
+
 func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) availableStockResponse {
 	return availableStockResponse{
 		WarehouseID:      snapshot.WarehouseID,
@@ -4447,6 +4562,29 @@ func newReturnDispositionActionResponse(
 	}
 }
 
+func newReturnAttachmentResponse(
+	attachment returnsdomain.ReturnAttachment,
+	auditLogID string,
+) returnAttachmentResponse {
+	return returnAttachmentResponse{
+		ID:            attachment.ID,
+		ReceiptID:     attachment.ReceiptID,
+		ReceiptNo:     attachment.ReceiptNo,
+		InspectionID:  attachment.InspectionID,
+		FileName:      attachment.FileName,
+		FileExt:       attachment.FileExt,
+		MIMEType:      attachment.MIMEType,
+		FileSizeBytes: attachment.FileSizeBytes,
+		StorageBucket: attachment.StorageBucket,
+		StorageKey:    attachment.StorageKey,
+		Status:        attachment.Status,
+		UploadedBy:    attachment.UploadedBy,
+		Note:          attachment.Note,
+		AuditLogID:    auditLogID,
+		UploadedAt:    attachment.UploadedAt.UTC().Format(time.RFC3339),
+	}
+}
+
 func writeBatchQCTransitionError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, inventoryapp.ErrBatchNotFound):
@@ -4713,6 +4851,33 @@ func writeReturnReceiptError(w http.ResponseWriter, r *http.Request, err error) 
 			"Invalid return disposition payload",
 			map[string]any{"required": "receipt_id, disposition, and actor"},
 		)
+	case errors.Is(err, returnsdomain.ErrReturnAttachmentRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Invalid return attachment payload",
+			map[string]any{"required": "receipt_id, inspection_id, file, and actor"},
+		)
+	case errors.Is(err, returnsdomain.ErrReturnAttachmentInvalidFileType):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Return attachment file type is invalid",
+			map[string]any{"allowed": "image/jpeg, image/png, image/webp, video/mp4, video/quicktime"},
+		)
+	case errors.Is(err, returnsdomain.ErrReturnAttachmentInvalidFileSize):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Return attachment file size is invalid",
+			map[string]any{"max_file_size_bytes": returnsdomain.ReturnAttachmentMaxFileSizeBytes},
+		)
 	case errors.Is(err, returnsdomain.ErrReturnReceiptRequiredField):
 		response.WriteError(
 			w,
@@ -4757,6 +4922,24 @@ func writeReturnReceiptError(w http.ResponseWriter, r *http.Request, err error) 
 			response.ErrorCodeConflict,
 			"Return receipt must be inspected before disposition",
 			map[string]any{"required_status": "inspected"},
+		)
+	case errors.Is(err, returnsapp.ErrReturnInspectionNotFound):
+		response.WriteError(
+			w,
+			r,
+			http.StatusNotFound,
+			response.ErrorCodeNotFound,
+			"Return inspection not found",
+			nil,
+		)
+	case errors.Is(err, returnsapp.ErrReturnAttachmentNotAllowed):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Return attachment must be linked to an inspected return",
+			map[string]any{"required_status": "inspected or dispositioned"},
 		)
 	default:
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Return receipt could not be processed", nil)

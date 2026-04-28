@@ -15,9 +15,11 @@ import {
   returnInspectionConditionTone,
   returnInspectionDispositionOptions,
   returnInspectionDispositionTone,
-  returnInspectionStatusTone
+  returnInspectionStatusTone,
+  uploadReturnAttachment
 } from "../services/returnReceivingService";
 import type {
+  ReturnAttachment,
   ReturnDispositionAction,
   ReturnInspectionCondition,
   ReturnInspectionDisposition,
@@ -37,10 +39,12 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
   const [disposition, setDisposition] = useState<ReturnInspectionDisposition>("reusable");
   const [note, setNote] = useState("");
   const [evidenceLabel, setEvidenceLabel] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [inspectionResult, setInspectionResult] = useState<ReturnInspectionResult | null>(null);
   const [dispositionAction, setDispositionAction] = useState<ReturnDispositionAction | null>(null);
+  const [attachmentResult, setAttachmentResult] = useState<ReturnAttachment | null>(null);
   const [lookupFeedback, setLookupFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
-  const [busyAction, setBusyAction] = useState<"inspect" | "dispose" | null>(null);
+  const [busyAction, setBusyAction] = useState<"inspect" | "dispose" | "attach" | null>(null);
   const selectedReceipt = useMemo(
     () => receipts.find((receipt) => receipt.id === selectedReceiptId) ?? receipts[0] ?? null,
     [receipts, selectedReceiptId]
@@ -106,6 +110,7 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
       setSelectedReceiptId(updatedReceipt.id);
       setInspectionResult(result);
       setDispositionAction(null);
+      setAttachmentResult(null);
       setDisposition(nextDisposition);
       setLookupFeedback({
         tone: returnInspectionStatusTone(result.status),
@@ -150,6 +155,35 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
       setLookupFeedback({
         tone: "danger",
         message: cause instanceof Error ? cause.message : "Return disposition could not be applied"
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleUploadAttachment() {
+    if (!selectedReceipt || !inspectionResult || !attachmentFile || busyAction) {
+      return;
+    }
+
+    setBusyAction("attach");
+    try {
+      const attachment = await uploadReturnAttachment({
+        receipt: selectedReceipt,
+        inspectionId: inspectionResult.id,
+        file: attachmentFile,
+        note
+      });
+      setAttachmentResult(attachment);
+      setEvidenceLabel(attachment.fileName);
+      setLookupFeedback({
+        tone: "success",
+        message: `${attachment.receiptNo} / attachment uploaded`
+      });
+    } catch (cause) {
+      setLookupFeedback({
+        tone: "danger",
+        message: cause instanceof Error ? cause.message : "Return attachment could not be uploaded"
       });
     } finally {
       setBusyAction(null);
@@ -254,6 +288,15 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
             />
           </label>
           <label className="erp-field">
+            <span>Evidence file</span>
+            <input
+              className="erp-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
+              onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
+            />
+          </label>
+          <label className="erp-field">
             <span>Note</span>
             <textarea
               className="erp-input erp-returns-textarea"
@@ -293,6 +336,14 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
           >
             {busyAction === "dispose" ? "Applying..." : "Apply routing"}
           </button>
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={!selectedReceipt || !inspectionResult || !attachmentFile || busyAction !== null}
+            onClick={() => void handleUploadAttachment()}
+          >
+            {busyAction === "attach" ? "Uploading..." : "Attach evidence"}
+          </button>
         </div>
       </div>
 
@@ -323,6 +374,14 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
             <ReturnInspectionFact label="Target" value={dispositionAction.targetLocation} />
             <ReturnInspectionFact label="Stock status" value={dispositionAction.targetStockStatus} />
             <ReturnInspectionFact label="Action" value={dispositionAction.actionCode} />
+          </div>
+        ) : null}
+        {attachmentResult ? (
+          <div className="erp-returns-result-grid erp-returns-disposition-result">
+            <ReturnInspectionFact label="Attachment" value={attachmentResult.fileName} />
+            <ReturnInspectionFact label="Type" value={attachmentResult.mimeType} />
+            <ReturnInspectionFact label="Size" value={`${attachmentResult.fileSizeBytes} bytes`} />
+            <ReturnInspectionFact label="Audit" value={attachmentResult.auditLogId ?? "-"} />
           </div>
         ) : null}
       </div>

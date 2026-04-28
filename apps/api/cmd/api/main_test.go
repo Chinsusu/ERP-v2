@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -1871,6 +1872,144 @@ func TestReturnDispositionHandlerRejectsPendingReceiptAndInvalidDisposition(t *t
 	if invalidRec.Code != http.StatusBadRequest {
 		t.Fatalf("invalid disposition status = %d, want %d: %s", invalidRec.Code, http.StatusBadRequest, invalidRec.Body.String())
 	}
+}
+
+func TestReturnAttachmentHandlerUploadsInspectionEvidence(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	auditStore := audit.NewInMemoryLogStore()
+	_, err := returnsapp.NewInspectReturn(store, auditStore).Execute(context.Background(), returnsapp.InspectReturnInput{
+		ReceiptID:   "rr-260426-0001",
+		Condition:   "intact",
+		Disposition: "reusable",
+		ActorID:     "user-return-inspector",
+		RequestID:   "req-return-inspect",
+	})
+	if err != nil {
+		t.Fatalf("inspect return: %v", err)
+	}
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	if err := writer.WriteField("inspection_id", "inspect-rr-260426-0001-intact"); err != nil {
+		t.Fatalf("write inspection field: %v", err)
+	}
+	if err := writer.WriteField("note", "front photo before putaway"); err != nil {
+		t.Fatalf("write note field: %v", err)
+	}
+	filePart, err := writer.CreateFormFile("file", "return-photo.png")
+	if err != nil {
+		t.Fatalf("create file part: %v", err)
+	}
+	if _, err := filePart.Write([]byte("fake image bytes")); err != nil {
+		t.Fatalf("write file part: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/returns/rr-260426-0001/attachments", &body)
+	req.SetPathValue("return_receipt_id", "rr-260426-0001")
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set(response.HeaderRequestID, "req-return-attachment")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnAttachmentHandler(returnsapp.NewUploadReturnAttachment(store, auditStore)).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[returnAttachmentResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.InspectionID != "inspect-rr-260426-0001-intact" ||
+		payload.Data.MIMEType != "image/png" ||
+		payload.Data.FileSizeBytes == 0 ||
+		payload.Data.AuditLogID == "" {
+		t.Fatalf("payload = %+v, want png attachment metadata and audit", payload.Data)
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "returns.inspection.attachment_uploaded"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestReturnAttachmentHandlerRejectsPendingReceiptAndInvalidFile(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	auditStore := audit.NewInMemoryLogStore()
+	req := newReturnAttachmentRequest(t, "rr-260426-0001", "inspect-rr-260426-0001-intact", "return-photo.png", "fake image bytes")
+	rec := httptest.NewRecorder()
+
+	returnAttachmentHandler(returnsapp.NewUploadReturnAttachment(store, auditStore)).ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("pending status = %d, want %d: %s", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+
+	_, err := returnsapp.NewInspectReturn(store, auditStore).Execute(context.Background(), returnsapp.InspectReturnInput{
+		ReceiptID:   "rr-260426-0001",
+		Condition:   "intact",
+		Disposition: "reusable",
+		ActorID:     "user-return-inspector",
+		RequestID:   "req-return-inspect",
+	})
+	if err != nil {
+		t.Fatalf("inspect return: %v", err)
+	}
+
+	invalid := newReturnAttachmentRequest(t, "rr-260426-0001", "inspect-rr-260426-0001-intact", "return-photo.exe", "binary")
+	invalidRec := httptest.NewRecorder()
+
+	returnAttachmentHandler(returnsapp.NewUploadReturnAttachment(store, auditStore)).ServeHTTP(invalidRec, invalid)
+	if invalidRec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid file status = %d, want %d: %s", invalidRec.Code, http.StatusBadRequest, invalidRec.Body.String())
+	}
+}
+
+func newReturnAttachmentRequest(
+	t *testing.T,
+	receiptID string,
+	inspectionID string,
+	fileName string,
+	content string,
+) *http.Request {
+	t.Helper()
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	if err := writer.WriteField("inspection_id", inspectionID); err != nil {
+		t.Fatalf("write inspection field: %v", err)
+	}
+	filePart, err := writer.CreateFormFile("file", fileName)
+	if err != nil {
+		t.Fatalf("create file part: %v", err)
+	}
+	if _, err := filePart.Write([]byte(content)); err != nil {
+		t.Fatalf("write file part: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/returns/"+receiptID+"/attachments", &body)
+	req.SetPathValue("return_receipt_id", receiptID)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+
+	return req
 }
 
 func TestAuditLogsHandlerReturnsFilteredRows(t *testing.T) {

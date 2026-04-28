@@ -126,6 +126,7 @@ type PrototypeReturnReceiptStore struct {
 	records      map[string]domain.ReturnReceipt
 	inspections  map[string]domain.ReturnInspection
 	dispositions map[string]domain.ReturnDispositionAction
+	attachments  map[string]domain.ReturnAttachment
 	expected     []domain.ExpectedReturn
 }
 
@@ -134,6 +135,7 @@ func NewPrototypeReturnReceiptStore() *PrototypeReturnReceiptStore {
 		records:      make(map[string]domain.ReturnReceipt),
 		inspections:  make(map[string]domain.ReturnInspection),
 		dispositions: make(map[string]domain.ReturnDispositionAction),
+		attachments:  make(map[string]domain.ReturnAttachment),
 	}
 	store.expected = prototypeExpectedReturns()
 	for _, receipt := range prototypeReturnReceipts() {
@@ -232,6 +234,25 @@ func (s *PrototypeReturnReceiptStore) SaveInspection(
 	return nil
 }
 
+func (s *PrototypeReturnReceiptStore) FindInspectionByID(
+	_ context.Context,
+	id string,
+) (domain.ReturnInspection, error) {
+	if s == nil {
+		return domain.ReturnInspection{}, errors.New("return receipt store is required")
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	inspection, ok := s.inspections[strings.TrimSpace(id)]
+	if !ok {
+		return domain.ReturnInspection{}, ErrReturnInspectionNotFound
+	}
+
+	return inspection.Clone(), nil
+}
+
 func (s *PrototypeReturnReceiptStore) SaveDisposition(
 	_ context.Context,
 	receipt domain.ReturnReceipt,
@@ -252,6 +273,31 @@ func (s *PrototypeReturnReceiptStore) SaveDisposition(
 	}
 	s.records[receipt.ID] = receipt.Clone()
 	s.dispositions[action.ID] = action.Clone()
+
+	return nil
+}
+
+func (s *PrototypeReturnReceiptStore) SaveAttachment(
+	_ context.Context,
+	attachment domain.ReturnAttachment,
+) error {
+	if s == nil {
+		return errors.New("return receipt store is required")
+	}
+	if strings.TrimSpace(attachment.ID) == "" {
+		return domain.ErrReturnAttachmentRequiredField
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.records[attachment.ReceiptID]; !ok {
+		return ErrReturnReceiptNotFound
+	}
+	if _, ok := s.inspections[attachment.InspectionID]; !ok {
+		return ErrReturnInspectionNotFound
+	}
+	s.attachments[attachment.ID] = attachment.Clone()
 
 	return nil
 }

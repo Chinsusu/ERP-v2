@@ -3,6 +3,7 @@ import {
   applyDispositionToReceipt,
   applyInspectionToReceipt,
   applyReturnDisposition,
+  createReturnAttachment,
   createReturnDispositionAction,
   createReturnInspection,
   formatReturnInspectionCondition,
@@ -17,7 +18,8 @@ import {
   returnInspectionConditionTone,
   returnInspectionDispositionTone,
   returnInspectionStatusTone,
-  returnReceiptStatusTone
+  returnReceiptStatusTone,
+  uploadReturnAttachment
 } from "./returnReceivingService";
 
 describe("returnReceivingService", () => {
@@ -207,6 +209,46 @@ describe("returnReceivingService", () => {
       actionCode: "route_to_quarantine_hold",
       targetLocation: "return-quarantine-hold",
       targetStockStatus: "qc_hold"
+    });
+  });
+
+  it("creates return attachment metadata after inspection", async () => {
+    const [receipt] = await getReturnReceipts({ warehouseId: "wh-hcm" });
+    const inspection = await inspectReturn({
+      receipt,
+      condition: "intact",
+      disposition: "reusable",
+      note: "usable",
+      evidenceLabel: "photo-001"
+    });
+    const inspectedReceipt = applyInspectionToReceipt(receipt, inspection);
+    const file = new File(["fake image bytes"], "return-photo.png", { type: "image/png" });
+
+    const attachment = await uploadReturnAttachment({
+      receipt: inspectedReceipt,
+      inspectionId: inspection.id,
+      file,
+      note: "front photo"
+    });
+
+    expect(attachment).toMatchObject({
+      receiptNo: "RR-260426-0001",
+      inspectionId: inspection.id,
+      fileName: "return-photo.png",
+      mimeType: "image/png",
+      storageBucket: "erp-return-attachments-dev",
+      status: "active"
+    });
+    expect(
+      createReturnAttachment({
+        receipt: inspectedReceipt,
+        inspectionId: inspection.id,
+        file,
+        note: "front photo"
+      })
+    ).toMatchObject({
+      auditLogId: "audit-return-attachment-prototype",
+      fileSizeBytes: file.size
     });
   });
 
