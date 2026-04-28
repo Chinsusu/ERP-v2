@@ -76,8 +76,8 @@ describe("carrierManifestService", () => {
     });
   });
 
-  it("adds a shipment to a manifest and increases missing count", async () => {
-    await expect(addShipmentToManifest("manifest-hcm-vtp-noon", "ship-hcm-260426-004")).resolves.toMatchObject({
+  it("adds a same-carrier shipment to a manifest and increases missing count", async () => {
+    await expect(addShipmentToManifest("manifest-hcm-vtp-noon", "ship-hcm-vtp-260426-002")).resolves.toMatchObject({
       status: "ready",
       summary: {
         expectedCount: 2,
@@ -85,6 +85,12 @@ describe("carrierManifestService", () => {
         missingCount: 2
       }
     });
+  });
+
+  it("rejects wrong-carrier shipments in prototype fallback", async () => {
+    await expect(addShipmentToManifest("manifest-hcm-vtp-noon", "ship-hcm-260426-004")).rejects.toThrow(
+      "Shipment carrier does not match carrier manifest"
+    );
   });
 
   it("marks draft manifests ready removes shipments and cancels manifests", async () => {

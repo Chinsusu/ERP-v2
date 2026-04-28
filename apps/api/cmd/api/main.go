@@ -4033,6 +4033,8 @@ func writeCarrierManifestError(w http.ResponseWriter, r *http.Request, err error
 		)
 	case errors.Is(err, shippingdomain.ErrManifestShipmentNotPacked):
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Shipment must be packed before adding to manifest", nil)
+	case errors.Is(err, shippingdomain.ErrManifestCarrierMismatch):
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Shipment carrier does not match carrier manifest", nil)
 	case errors.Is(err, shippingdomain.ErrManifestDuplicateShipment):
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Shipment already exists in carrier manifest", nil)
 	case errors.Is(err, shippingdomain.ErrManifestAlreadyCompleted):

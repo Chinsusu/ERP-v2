@@ -735,6 +735,52 @@ func TestAddShipmentToCarrierManifestHandlerUpdatesCounts(t *testing.T) {
 	}
 }
 
+func TestAddShipmentToCarrierManifestHandlerRejectsUnpackedAndWrongCarrier(t *testing.T) {
+	cases := []struct {
+		name       string
+		shipmentID string
+		want       string
+	}{
+		{name: "unpacked", shipmentID: "ship-hcm-260426-099", want: "Shipment must be packed"},
+		{name: "wrong carrier", shipmentID: "ship-hcm-vtp-260426-001", want: "carrier does not match"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := shippingapp.NewPrototypeCarrierManifestStore()
+			auditStore := audit.NewInMemoryLogStore()
+			manifest := mustDraftCarrierManifestForHandler(t)
+			if err := store.Save(context.Background(), manifest); err != nil {
+				t.Fatalf("save manifest: %v", err)
+			}
+			service := shippingapp.NewAddShipmentToCarrierManifest(store, auditStore)
+			body := bytes.NewBufferString(`{"shipment_id":"` + tc.shipmentID + `"}`)
+			req := httptest.NewRequest(
+				http.MethodPost,
+				"/api/v1/shipping/manifests/manifest-hcm-ghn-handler/shipments",
+				body,
+			)
+			req.SetPathValue("manifest_id", manifest.ID)
+			req.Header.Set(response.HeaderRequestID, "req-manifest-add-reject")
+			req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+				Email:       "admin@example.local",
+				Password:    "local-only-mock-password",
+				AccessToken: "local-dev-access-token",
+			}, auth.RoleWarehouseLead)))
+			rec := httptest.NewRecorder()
+
+			addShipmentToCarrierManifestHandler(service).ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusConflict {
+				t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusConflict, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), tc.want) {
+				t.Fatalf("body = %s, want message containing %q", rec.Body.String(), tc.want)
+			}
+		})
+	}
+}
+
 func TestCarrierManifestActionHandlersReadyRemoveAndCancel(t *testing.T) {
 	store := shippingapp.NewPrototypeCarrierManifestStore()
 	auditStore := audit.NewInMemoryLogStore()
