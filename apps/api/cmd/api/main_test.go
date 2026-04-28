@@ -910,6 +910,7 @@ func TestVerifyCarrierManifestScanHandlerReturnsWarningCodes(t *testing.T) {
 	}{
 		{name: "duplicate", code: "GHN260426001", want: "DUPLICATE_SCAN"},
 		{name: "wrong manifest", code: "VTP260426011", want: "MANIFEST_MISMATCH"},
+		{name: "wrong carrier", code: "VTP260426012", want: "MANIFEST_MISMATCH"},
 		{name: "unpacked", code: "GHN260426099", want: "INVALID_STATE"},
 		{name: "unknown", code: "UNKNOWN-CODE", want: "NOT_FOUND"},
 	}
