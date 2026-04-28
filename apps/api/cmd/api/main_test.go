@@ -13,6 +13,7 @@ import (
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
+	returnsdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
 	salesdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/domain"
 	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
@@ -1602,6 +1603,125 @@ func TestReturnReceiptsHandlerCreatesUnknownCase(t *testing.T) {
 	}
 	if payload.Data.TargetLocation != "return-inspection-queue" {
 		t.Fatalf("target location = %q, want return-inspection-queue", payload.Data.TargetLocation)
+	}
+}
+
+func TestReturnInspectionHandlerRecordsReusableInspection(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	auditStore := audit.NewInMemoryLogStore()
+	inspectService := returnsapp.NewInspectReturn(store, auditStore)
+	body := bytes.NewBufferString(`{
+		"condition": "intact",
+		"disposition": "reusable",
+		"note": "seal and box intact",
+		"evidence_label": "photo-001"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/returns/rr-260426-0001/inspect", body)
+	req.SetPathValue("return_receipt_id", "rr-260426-0001")
+	req.Header.Set(response.HeaderRequestID, "req-return-inspect")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnInspectionHandler(inspectService).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[returnInspectionResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.Status != "inspection_recorded" || payload.Data.TargetLocation != "return-area-qc-release" {
+		t.Fatalf("payload = %+v, want reusable inspection recorded", payload.Data)
+	}
+	if payload.Data.AuditLogID == "" {
+		t.Fatal("audit log id is empty")
+	}
+
+	rows, err := returnsapp.NewListReturnReceipts(store).Execute(
+		req.Context(),
+		returnsdomain.NewReturnReceiptFilter("wh-hcm", returnsdomain.ReturnStatusInspected),
+	)
+	if err != nil {
+		t.Fatalf("list return receipts: %v", err)
+	}
+	if len(rows) != 1 || rows[0].TargetLocation != "return-area-qc-release" {
+		t.Fatalf("rows = %+v, want inspected receipt routed to qc release", rows)
+	}
+}
+
+func TestReturnInspectionHandlerRoutesNeedQAInspection(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	inspectService := returnsapp.NewInspectReturn(store, audit.NewInMemoryLogStore())
+	body := bytes.NewBufferString(`{
+		"condition": "missing_accessory",
+		"disposition": "needs_inspection"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/returns/rr-260426-0001/inspect", body)
+	req.SetPathValue("return_receipt_id", "rr-260426-0001")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnInspectionHandler(inspectService).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[returnInspectionResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.Status != "return_qa_hold" || payload.Data.RiskLevel != "high" {
+		t.Fatalf("payload = %+v, want high risk QA hold", payload.Data)
+	}
+	if payload.Data.TargetLocation != "return-qa-hold" {
+		t.Fatalf("target location = %q, want return-qa-hold", payload.Data.TargetLocation)
+	}
+}
+
+func TestReturnInspectionHandlerRejectsInvalidConditionAndMissingReceipt(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	inspectService := returnsapp.NewInspectReturn(store, audit.NewInMemoryLogStore())
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/returns/rr-260426-0001/inspect",
+		bytes.NewBufferString(`{"condition":"sealed_good","disposition":"reusable"}`),
+	)
+	req.SetPathValue("return_receipt_id", "rr-260426-0001")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnInspectionHandler(inspectService).ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid condition status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	missing := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/returns/missing/inspect",
+		bytes.NewBufferString(`{"condition":"intact","disposition":"reusable"}`),
+	)
+	missing.SetPathValue("return_receipt_id", "missing")
+	missing = missing.WithContext(req.Context())
+	missingRec := httptest.NewRecorder()
+
+	returnInspectionHandler(inspectService).ServeHTTP(missingRec, missing)
+	if missingRec.Code != http.StatusNotFound {
+		t.Fatalf("missing receipt status = %d, want %d: %s", missingRec.Code, http.StatusNotFound, missingRec.Body.String())
 	}
 }
 
