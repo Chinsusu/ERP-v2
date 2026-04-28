@@ -117,6 +117,100 @@ func TestInspectReturnRoutesNeedQAItemToHold(t *testing.T) {
 	}
 }
 
+func TestInspectReturnCoversAllConditionDispositionPaths(t *testing.T) {
+	tests := []struct {
+		name          string
+		condition     string
+		disposition   string
+		wantStatus    domain.ReturnInspectionStatus
+		wantLocation  string
+		wantRiskLevel string
+	}{
+		{
+			name:          "intact reusable",
+			condition:     "intact",
+			disposition:   "reusable",
+			wantStatus:    domain.ReturnInspectionStatusRecorded,
+			wantLocation:  "return-area-qc-release",
+			wantRiskLevel: "low",
+		},
+		{
+			name:          "dented box needs QA",
+			condition:     "dented_box",
+			disposition:   "needs_inspection",
+			wantStatus:    domain.ReturnInspectionStatusQAHold,
+			wantLocation:  "return-qa-hold",
+			wantRiskLevel: "medium",
+		},
+		{
+			name:          "seal torn needs QA",
+			condition:     "seal_torn",
+			disposition:   "needs_inspection",
+			wantStatus:    domain.ReturnInspectionStatusQAHold,
+			wantLocation:  "return-qa-hold",
+			wantRiskLevel: "medium",
+		},
+		{
+			name:          "used needs QA",
+			condition:     "used",
+			disposition:   "needs_inspection",
+			wantStatus:    domain.ReturnInspectionStatusQAHold,
+			wantLocation:  "return-qa-hold",
+			wantRiskLevel: "medium",
+		},
+		{
+			name:          "damaged not reusable",
+			condition:     "damaged",
+			disposition:   "not_reusable",
+			wantStatus:    domain.ReturnInspectionStatusRecorded,
+			wantLocation:  "lab-damaged-placeholder",
+			wantRiskLevel: "high",
+		},
+		{
+			name:          "missing accessory not reusable",
+			condition:     "missing_accessory",
+			disposition:   "not_reusable",
+			wantStatus:    domain.ReturnInspectionStatusRecorded,
+			wantLocation:  "lab-damaged-placeholder",
+			wantRiskLevel: "high",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := NewPrototypeReturnReceiptStore()
+			service := NewPrototypeInspectReturnAt(
+				store,
+				audit.NewInMemoryLogStore(),
+				time.Date(2026, 4, 26, 11, 12, 0, 0, time.UTC),
+			)
+
+			result, err := service.Execute(context.Background(), InspectReturnInput{
+				ReceiptID:   "rr-260426-0001",
+				Condition:   tt.condition,
+				Disposition: tt.disposition,
+				ActorID:     "user-return-inspector",
+				RequestID:   "req-return-inspect-coverage",
+			})
+			if err != nil {
+				t.Fatalf("inspect return: %v", err)
+			}
+			if result.Inspection.Status != tt.wantStatus {
+				t.Fatalf("status = %q, want %q", result.Inspection.Status, tt.wantStatus)
+			}
+			if result.Inspection.TargetLocation != tt.wantLocation {
+				t.Fatalf("target location = %q, want %s", result.Inspection.TargetLocation, tt.wantLocation)
+			}
+			if result.Inspection.RiskLevel != tt.wantRiskLevel {
+				t.Fatalf("risk level = %q, want %s", result.Inspection.RiskLevel, tt.wantRiskLevel)
+			}
+			if result.Receipt.Lines[0].Condition != tt.condition {
+				t.Fatalf("line condition = %q, want %s", result.Receipt.Lines[0].Condition, tt.condition)
+			}
+		})
+	}
+}
+
 func TestInspectReturnRejectsUnknownInvalidAndAlreadyInspectedReceipts(t *testing.T) {
 	store := NewPrototypeReturnReceiptStore()
 	service := NewPrototypeInspectReturnAt(
