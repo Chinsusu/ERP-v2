@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -87,28 +88,99 @@ func TestPickTaskAPIActionsSmoke(t *testing.T) {
 
 func TestPickTaskAPIExceptionSmoke(t *testing.T) {
 	authConfig := smokeAuthConfig()
+	cases := []struct {
+		name          string
+		exceptionCode string
+		investigation string
+	}{
+		{
+			name:          "wrong SKU",
+			exceptionCode: "wrong_sku",
+			investigation: "Scanner reported a different SKU",
+		},
+		{
+			name:          "wrong batch",
+			exceptionCode: "wrong_batch",
+			investigation: "Scanner reported a different batch",
+		},
+		{
+			name:          "missing location scan",
+			exceptionCode: "wrong_location",
+			investigation: "Picker could not verify the reserved bin",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := shippingapp.NewPrototypePickTaskStore(mustPrototypePickTask())
+			auditStore := audit.NewInMemoryLogStore()
+			body := bytes.NewBufferString(fmt.Sprintf(
+				`{"line_id":"pick-so-260428-0001-line-01","exception_code":%q,"investigation":%q}`,
+				tc.exceptionCode,
+				tc.investigation,
+			))
+
+			rec := httptest.NewRecorder()
+			req := smokeRequestAsRole(
+				httptest.NewRequest(http.MethodPost, "/api/v1/pick-tasks/pick-so-260428-0001/exception", body),
+				authConfig,
+				auth.RoleWarehouseLead,
+			)
+			req.SetPathValue("pick_task_id", "pick-so-260428-0001")
+			req.Header.Set(response.HeaderRequestID, "req-pick-exception-smoke")
+
+			reportPickTaskExceptionHandler(shippingapp.NewReportPickTaskException(store, auditStore)).ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("exception status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+			}
+			payload := decodeSmokeSuccess[pickTaskResponse](t, rec)
+			if payload.Data.Status != tc.exceptionCode ||
+				payload.Data.Lines[0].Status != tc.exceptionCode ||
+				payload.Data.Lines[0].QtyPicked != "0.000000" ||
+				payload.Data.AuditLogID == "" {
+				t.Fatalf("exception payload = %+v, want %s task and line with audit", payload.Data, tc.exceptionCode)
+			}
+
+			confirmBody := bytes.NewBufferString(`{"line_id":"pick-so-260428-0001-line-01","picked_qty":"3.000000"}`)
+			confirmRec := httptest.NewRecorder()
+			confirmReq := smokeRequestAsRole(
+				httptest.NewRequest(http.MethodPost, "/api/v1/pick-tasks/pick-so-260428-0001/confirm-line", confirmBody),
+				authConfig,
+				auth.RoleWarehouseLead,
+			)
+			confirmReq.SetPathValue("pick_task_id", "pick-so-260428-0001")
+
+			confirmPickTaskLineHandler(shippingapp.NewConfirmPickTaskLine(store, auditStore)).ServeHTTP(confirmRec, confirmReq)
+			if confirmRec.Code != http.StatusConflict {
+				t.Fatalf("confirm exception line status = %d, want %d: %s", confirmRec.Code, http.StatusConflict, confirmRec.Body.String())
+			}
+			errorPayload := decodeSmokeError(t, confirmRec)
+			if errorPayload.Error.Code != response.ErrorCodeConflict {
+				t.Fatalf("confirm exception line code = %s, want %s", errorPayload.Error.Code, response.ErrorCodeConflict)
+			}
+		})
+	}
+}
+
+func TestPickTaskAPIPermissions(t *testing.T) {
+	authConfig := smokeAuthConfig()
 	store := shippingapp.NewPrototypePickTaskStore(mustPrototypePickTask())
 	auditStore := audit.NewInMemoryLogStore()
-	body := bytes.NewBufferString(`{"line_id":"pick-so-260428-0001-line-01","exception_code":"wrong_location","investigation":"Scanner reported a different bin"}`)
 
-	rec := httptest.NewRecorder()
 	req := smokeRequestAsRole(
-		httptest.NewRequest(http.MethodPost, "/api/v1/pick-tasks/pick-so-260428-0001/exception", body),
+		httptest.NewRequest(http.MethodPost, "/api/v1/pick-tasks/pick-so-260428-0001/start", nil),
 		authConfig,
-		auth.RoleWarehouseLead,
+		auth.RoleWarehouseStaff,
 	)
 	req.SetPathValue("pick_task_id", "pick-so-260428-0001")
-	req.Header.Set(response.HeaderRequestID, "req-pick-exception-smoke")
+	rec := httptest.NewRecorder()
 
-	reportPickTaskExceptionHandler(shippingapp.NewReportPickTaskException(store, auditStore)).ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("exception status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	startPickTaskHandler(shippingapp.NewStartPickTask(store, auditStore)).ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("start status = %d, want %d: %s", rec.Code, http.StatusForbidden, rec.Body.String())
 	}
-	payload := decodeSmokeSuccess[pickTaskResponse](t, rec)
-	if payload.Data.Status != "wrong_location" ||
-		payload.Data.Lines[0].Status != "wrong_location" ||
-		payload.Data.Lines[0].QtyPicked != "0.000000" ||
-		payload.Data.AuditLogID == "" {
-		t.Fatalf("exception payload = %+v, want wrong-location task and line with audit", payload.Data)
+	payload := decodeSmokeError(t, rec)
+	if payload.Error.Code != response.ErrorCodeForbidden {
+		t.Fatalf("code = %s, want %s", payload.Error.Code, response.ErrorCodeForbidden)
 	}
 }
