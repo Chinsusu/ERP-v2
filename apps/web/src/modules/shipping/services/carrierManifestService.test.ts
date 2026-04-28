@@ -132,7 +132,9 @@ describe("carrierManifestService", () => {
       verifyCarrierManifestScan({
         manifestId: "manifest-hcm-ghn-morning",
         code: "GHN260426003",
-        stationId: "dock-a"
+        stationId: "dock-a",
+        deviceId: "scanner-01",
+        source: "handheld_scanner"
       })
     ).resolves.toMatchObject({
       resultCode: "MATCHED",
@@ -147,7 +149,9 @@ describe("carrierManifestService", () => {
       scanEvent: {
         code: "GHN260426003",
         resultCode: "MATCHED",
-        stationId: "dock-a"
+        stationId: "dock-a",
+        deviceId: "scanner-01",
+        source: "handheld_scanner"
       }
     });
   });
@@ -226,12 +230,59 @@ describe("carrierManifestService", () => {
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ success: true, data: manifestApi, request_id: "req-remove" }), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              result_code: "MATCHED",
+              severity: "success",
+              message: "Scan matched manifest line",
+              line: manifestApi.lines[0],
+              scan_event: {
+                id: "scan-api-1",
+                manifest_id: "manifest-api-1",
+                code: "GHNAPI1",
+                result_code: "MATCHED",
+                severity: "success",
+                message: "Scan matched manifest line",
+                shipment_id: "ship-api-1",
+                order_no: "SO-API-1",
+                tracking_no: "GHNAPI1",
+                actor_id: "user-handover-operator",
+                station_id: "dock-a",
+                device_id: "scanner-01",
+                source: "handheld_scanner",
+                warehouse_id: "wh-hcm",
+                carrier_code: "GHN",
+                created_at: "2026-04-26T08:10:00Z"
+              },
+              manifest: {
+                ...manifestApi,
+                status: "scanning",
+                summary: { expected_count: 1, scanned_count: 1, missing_count: 0 },
+                lines: [{ ...manifestApi.lines[0], scanned: true }]
+              },
+              audit_log_id: "audit-scan-api"
+            },
+            request_id: "req-scan"
+          }),
+          { status: 200 }
+        )
       );
     vi.stubGlobal("fetch", fetchMock);
 
     const manifests = await getCarrierManifests({ warehouseId: "wh-hcm", date: "2026-04-26" });
     const ready = await markCarrierManifestReady("manifest-api-1");
     await removeShipmentFromManifest("manifest-api-1", "ship-api-1");
+    const scan = await verifyCarrierManifestScan({
+      manifestId: "manifest-api-1",
+      code: "GHNAPI1",
+      stationId: "dock-a",
+      deviceId: "scanner-01",
+      source: "handheld_scanner"
+    });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -264,6 +315,23 @@ describe("carrierManifestService", () => {
         }
       }
     );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      "http://localhost:8080/api/v1/shipping/manifests/manifest-api-1/scan",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer local-dev-access-token"
+        },
+        body: JSON.stringify({
+          code: "GHNAPI1",
+          station_id: "dock-a",
+          device_id: "scanner-01",
+          source: "handheld_scanner"
+        })
+      }
+    );
     expect(manifests[0]).toMatchObject({
       id: "manifest-api-1",
       handoverZoneCode: "handover-a",
@@ -271,5 +339,10 @@ describe("carrierManifestService", () => {
       lines: [{ handoverZoneCode: "handover-a", handoverBinCode: "A01" }]
     });
     expect(ready.status).toBe("ready");
+    expect(scan.scanEvent).toMatchObject({
+      code: "GHNAPI1",
+      deviceId: "scanner-01",
+      source: "handheld_scanner"
+    });
   });
 });

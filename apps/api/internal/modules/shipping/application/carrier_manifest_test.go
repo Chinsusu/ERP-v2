@@ -254,6 +254,8 @@ func TestVerifyCarrierManifestScanMarksExpectedLineAndRecordsEvent(t *testing.T)
 		ManifestID: "manifest-hcm-ghn-morning",
 		Code:       "GHN260426003",
 		StationID:  "dock-a",
+		DeviceID:   "scanner-01",
+		Source:     "handheld_scanner",
 		ActorID:    "user-handover-operator",
 		RequestID:  "req-scan-match",
 	})
@@ -274,6 +276,13 @@ func TestVerifyCarrierManifestScanMarksExpectedLineAndRecordsEvent(t *testing.T)
 	if len(events) != 1 || events[0].ResultCode != domain.ScanResultMatched {
 		t.Fatalf("scan events = %+v, want one matched event", events)
 	}
+	event := events[0]
+	if event.ManifestID != "manifest-hcm-ghn-morning" || event.OrderNo != "SO-260426-003" || event.TrackingNo != "GHN260426003" {
+		t.Fatalf("scan event = %+v, want manifest/order/tracking retained", event)
+	}
+	if event.ActorID != "user-handover-operator" || event.DeviceID != "scanner-01" || event.Source != "handheld_scanner" {
+		t.Fatalf("scan event = %+v, want actor/device/source retained", event)
+	}
 
 	logs, err := auditStore.List(context.Background(), audit.Query{Action: "shipping.manifest.scan_recorded"})
 	if err != nil {
@@ -281,6 +290,12 @@ func TestVerifyCarrierManifestScanMarksExpectedLineAndRecordsEvent(t *testing.T)
 	}
 	if len(logs) != 1 {
 		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+	if logs[0].AfterData["device_id"] != "scanner-01" || logs[0].AfterData["source"] != "handheld_scanner" {
+		t.Fatalf("audit after data = %+v, want device/source retained", logs[0].AfterData)
+	}
+	if logs[0].Metadata["scan_source"] != "handheld_scanner" {
+		t.Fatalf("audit metadata = %+v, want scan source retained", logs[0].Metadata)
 	}
 }
 

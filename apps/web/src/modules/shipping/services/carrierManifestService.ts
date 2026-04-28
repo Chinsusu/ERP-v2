@@ -80,6 +80,8 @@ type CarrierManifestScanEventApi = {
   tracking_no?: string;
   actor_id: string;
   station_id: string;
+  device_id?: string;
+  source: string;
   warehouse_id: string;
   carrier_code: string;
   created_at: string;
@@ -269,9 +271,12 @@ export async function verifyCarrierManifestScan(
 ): Promise<CarrierManifestScanResult> {
   try {
     return fromApiCarrierManifestScanResult(
-      await apiPost<CarrierManifestScanResultApi, { code: string; station_id?: string }>(
+      await apiPost<
+        CarrierManifestScanResultApi,
+        { code: string; station_id?: string; device_id?: string; source?: string }
+      >(
         `/shipping/manifests/${encodeURIComponent(input.manifestId)}/scan`,
-        { code: input.code, station_id: input.stationId },
+        { code: input.code, station_id: input.stationId, device_id: input.deviceId, source: input.source },
         { accessToken: defaultAccessToken }
       )
     );
@@ -393,6 +398,8 @@ function fromApiCarrierManifestScanEvent(event: CarrierManifestScanEventApi): Ca
     trackingNo: event.tracking_no,
     actorId: event.actor_id,
     stationId: event.station_id,
+    deviceId: event.device_id,
+    source: event.source,
     warehouseId: event.warehouse_id,
     carrierCode: event.carrier_code,
     createdAt: event.created_at
@@ -605,7 +612,9 @@ function verifyPrototypeCarrierManifestScan(
         resultCode: "INVALID_STATE",
         severity: "danger",
         message: "Manifest cannot accept scans in its current state",
-        stationId: input.stationId
+        stationId: input.stationId,
+        deviceId: input.deviceId,
+        source: input.source
       });
     }
     if (line.scanned) {
@@ -616,7 +625,9 @@ function verifyPrototypeCarrierManifestScan(
         resultCode: "DUPLICATE_SCAN",
         severity: "warning",
         message: "Shipment was already scanned for this manifest",
-        stationId: input.stationId
+        stationId: input.stationId,
+        deviceId: input.deviceId,
+        source: input.source
       });
     }
 
@@ -638,6 +649,8 @@ function verifyPrototypeCarrierManifestScan(
       severity: "success",
       message: "Scan matched manifest line",
       stationId: input.stationId,
+      deviceId: input.deviceId,
+      source: input.source,
       auditLogId: "audit-manifest-scan-prototype"
     });
   }
@@ -654,7 +667,9 @@ function verifyPrototypeCarrierManifestScan(
       severity: "danger",
       message: "Scan code belongs to a different manifest",
       expectedManifestId: expectedManifest.id,
-      stationId: input.stationId
+      stationId: input.stationId,
+      deviceId: input.deviceId,
+      source: input.source
     });
   }
 
@@ -679,7 +694,9 @@ function verifyPrototypeCarrierManifestScan(
       resultCode: "INVALID_STATE",
       severity: "danger",
       message: "Shipment is not packed and cannot be handed over",
-      stationId: input.stationId
+      stationId: input.stationId,
+      deviceId: input.deviceId,
+      source: input.source
     });
   }
   if (shipment?.carrierCode && shipment.carrierCode !== manifest.carrierCode) {
@@ -700,7 +717,9 @@ function verifyPrototypeCarrierManifestScan(
       resultCode: "MANIFEST_MISMATCH",
       severity: "danger",
       message: "Shipment carrier does not match carrier manifest",
-      stationId: input.stationId
+      stationId: input.stationId,
+      deviceId: input.deviceId,
+      source: input.source
     });
   }
 
@@ -710,7 +729,9 @@ function verifyPrototypeCarrierManifestScan(
     resultCode: "NOT_FOUND",
     severity: "danger",
     message: "Scan code was not found",
-    stationId: input.stationId
+    stationId: input.stationId,
+    deviceId: input.deviceId,
+    source: input.source
   });
 }
 
@@ -730,6 +751,8 @@ function createScanResult({
   message,
   expectedManifestId,
   stationId,
+  deviceId,
+  source,
   auditLogId
 }: {
   code: string;
@@ -740,6 +763,8 @@ function createScanResult({
   message: string;
   expectedManifestId?: string;
   stationId?: string;
+  deviceId?: string;
+  source?: string;
   auditLogId?: string;
 }): CarrierManifestScanResult {
   const scanEvent = {
@@ -755,6 +780,8 @@ function createScanResult({
     trackingNo: line?.trackingNo,
     actorId: "user-handover-operator",
     stationId: stationId || "shipping-handover",
+    deviceId,
+    source: source || "shipping_handover",
     warehouseId: manifest.warehouseId,
     carrierCode: manifest.carrierCode,
     createdAt: "2026-04-26T10:15:00Z"
