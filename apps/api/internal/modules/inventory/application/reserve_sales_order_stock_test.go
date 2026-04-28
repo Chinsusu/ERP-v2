@@ -59,6 +59,9 @@ func TestPrototypeSalesOrderReservationStoreDoesNotPartiallyReserveOnInsufficien
 	if !errors.As(err, &appErr) || appErr.Code != response.ErrorCodeInsufficientStock {
 		t.Fatalf("app err = %+v, want insufficient stock code", appErr)
 	}
+	if appErr.Details["available_qty"] != "5.000000" || appErr.Details["required_qty"] != "6.000000" {
+		t.Fatalf("details = %+v, want available and required quantities", appErr.Details)
+	}
 	if len(store.Reservations()) != 0 {
 		t.Fatalf("reservations = %+v, want no partial reservation", store.Reservations())
 	}

@@ -92,9 +92,13 @@ func reserveSalesOrderLine(
 	}
 
 	snapshots := domain.CalculateAvailableStockAt(rows, input.ReservedAt)
+	bestAvailableQty := decimal.MustQuantity("0")
 	for _, snapshot := range snapshots {
 		if !salesOrderReservationSnapshotMatches(snapshot, input, line) {
 			continue
+		}
+		if quantityAtLeast(snapshot.AvailableQty, bestAvailableQty) {
+			bestAvailableQty = snapshot.AvailableQty
 		}
 		if !quantityAtLeast(snapshot.AvailableQty, requiredQty) {
 			continue
@@ -146,7 +150,7 @@ func reserveSalesOrderLine(
 		}, nil
 	}
 
-	return allocatedSalesOrderLine{}, insufficientStockError(input, line)
+	return allocatedSalesOrderLine{}, insufficientStockError(input, line, bestAvailableQty)
 }
 
 func salesOrderReservationSnapshotMatches(
@@ -177,6 +181,7 @@ func findReservableStockBalanceRow(rows []domain.StockBalanceSnapshot, snapshot 
 func insufficientStockError(
 	input salesapp.SalesOrderStockReservationInput,
 	line salesapp.SalesOrderStockReservationLineInput,
+	availableQty decimal.Decimal,
 ) error {
 	return apperrors.Conflict(
 		response.ErrorCodeInsufficientStock,
@@ -187,6 +192,7 @@ func insufficientStockError(
 			"sales_order_line_id": line.SalesOrderLineID,
 			"sku_code":            line.SKUCode,
 			"required_qty":        line.BaseOrderedQty.String(),
+			"available_qty":       availableQty.String(),
 			"base_uom_code":       line.BaseUOMCode.String(),
 			"warehouse_id":        input.WarehouseID,
 		},
