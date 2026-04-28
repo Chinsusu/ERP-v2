@@ -446,6 +446,64 @@ type availableStockResponse struct {
 	AvailableQty     string `json:"available_qty"`
 }
 
+type stockAdjustmentLineRequest struct {
+	ID           string `json:"id"`
+	ItemID       string `json:"item_id"`
+	SKU          string `json:"sku"`
+	BatchID      string `json:"batch_id"`
+	BatchNo      string `json:"batch_no"`
+	LocationID   string `json:"location_id"`
+	LocationCode string `json:"location_code"`
+	ExpectedQty  string `json:"expected_qty"`
+	CountedQty   string `json:"counted_qty"`
+	BaseUOMCode  string `json:"base_uom_code"`
+	Reason       string `json:"reason"`
+}
+
+type createStockAdjustmentRequest struct {
+	ID            string                       `json:"id"`
+	AdjustmentNo  string                       `json:"adjustment_no"`
+	OrgID         string                       `json:"org_id"`
+	WarehouseID   string                       `json:"warehouse_id"`
+	WarehouseCode string                       `json:"warehouse_code"`
+	SourceType    string                       `json:"source_type"`
+	SourceID      string                       `json:"source_id"`
+	Reason        string                       `json:"reason"`
+	Lines         []stockAdjustmentLineRequest `json:"lines"`
+}
+
+type stockAdjustmentLineResponse struct {
+	ID           string `json:"id"`
+	ItemID       string `json:"item_id,omitempty"`
+	SKU          string `json:"sku"`
+	BatchID      string `json:"batch_id,omitempty"`
+	BatchNo      string `json:"batch_no,omitempty"`
+	LocationID   string `json:"location_id,omitempty"`
+	LocationCode string `json:"location_code,omitempty"`
+	ExpectedQty  string `json:"expected_qty"`
+	CountedQty   string `json:"counted_qty"`
+	DeltaQty     string `json:"delta_qty"`
+	BaseUOMCode  string `json:"base_uom_code"`
+	Reason       string `json:"reason,omitempty"`
+}
+
+type stockAdjustmentResponse struct {
+	ID            string                        `json:"id"`
+	AdjustmentNo  string                        `json:"adjustment_no"`
+	OrgID         string                        `json:"org_id"`
+	WarehouseID   string                        `json:"warehouse_id"`
+	WarehouseCode string                        `json:"warehouse_code,omitempty"`
+	SourceType    string                        `json:"source_type,omitempty"`
+	SourceID      string                        `json:"source_id,omitempty"`
+	Reason        string                        `json:"reason"`
+	Status        string                        `json:"status"`
+	RequestedBy   string                        `json:"requested_by"`
+	Lines         []stockAdjustmentLineResponse `json:"lines"`
+	AuditLogID    string                        `json:"audit_log_id,omitempty"`
+	CreatedAt     string                        `json:"created_at"`
+	UpdatedAt     string                        `json:"updated_at"`
+}
+
 type batchResponse struct {
 	ID         string `json:"id"`
 	OrgID      string `json:"org_id"`
@@ -911,7 +969,10 @@ func main() {
 	}
 	authSessions := auth.NewSessionManager(authConfig, time.Now)
 	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
+	stockAdjustmentStore := inventoryapp.NewPrototypeStockAdjustmentStore()
 	auditLogStore := audit.NewPrototypeLogStore()
+	listStockAdjustments := inventoryapp.NewListStockAdjustments(stockAdjustmentStore)
+	createStockAdjustment := inventoryapp.NewCreateStockAdjustment(stockAdjustmentStore, auditLogStore)
 	batchCatalog := inventoryapp.NewPrototypeBatchCatalog(auditLogStore)
 	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
 	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
@@ -1145,6 +1206,13 @@ func main() {
 			authSessions,
 			auth.PermissionInventoryView,
 			http.HandlerFunc(availableStockHandler(availableStockService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/stock-adjustments",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(stockAdjustmentsHandler(listStockAdjustments, createStockAdjustment)),
 		),
 	)
 	mux.Handle(
@@ -3007,6 +3075,74 @@ func availableStockHandler(service inventoryapp.ListAvailableStock) http.Handler
 	}
 }
 
+func stockAdjustmentsHandler(
+	listService inventoryapp.ListStockAdjustments,
+	createService inventoryapp.CreateStockAdjustment,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionInventoryView) {
+				writePermissionDenied(w, r, auth.PermissionInventoryView)
+				return
+			}
+			rows, err := listService.Execute(r.Context())
+			if err != nil {
+				response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Stock adjustments could not be listed", nil)
+				return
+			}
+			payload := make([]stockAdjustmentResponse, 0, len(rows))
+			for _, row := range rows {
+				payload = append(payload, newStockAdjustmentResponse(row, ""))
+			}
+			response.WriteSuccess(w, r, http.StatusOK, payload)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			var payload createStockAdjustmentRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid stock adjustment payload",
+					nil,
+				)
+				return
+			}
+			result, err := createService.Execute(r.Context(), inventoryapp.CreateStockAdjustmentInput{
+				ID:            payload.ID,
+				AdjustmentNo:  payload.AdjustmentNo,
+				OrgID:         payload.OrgID,
+				WarehouseID:   payload.WarehouseID,
+				WarehouseCode: payload.WarehouseCode,
+				SourceType:    payload.SourceType,
+				SourceID:      payload.SourceID,
+				Reason:        payload.Reason,
+				RequestedBy:   principal.UserID,
+				RequestID:     response.RequestID(r),
+				Lines:         newCreateStockAdjustmentLines(payload.Lines),
+			})
+			if err != nil {
+				writeStockAdjustmentError(w, r, err)
+				return
+			}
+			response.WriteSuccess(w, r, http.StatusCreated, newStockAdjustmentResponse(result.Adjustment, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
 func batchesHandler(catalog *inventoryapp.BatchCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -4140,6 +4276,69 @@ func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) available
 	}
 }
 
+func newCreateStockAdjustmentLines(
+	inputs []stockAdjustmentLineRequest,
+) []inventoryapp.CreateStockAdjustmentLineInput {
+	lines := make([]inventoryapp.CreateStockAdjustmentLineInput, 0, len(inputs))
+	for _, input := range inputs {
+		lines = append(lines, inventoryapp.CreateStockAdjustmentLineInput{
+			ID:           input.ID,
+			ItemID:       input.ItemID,
+			SKU:          input.SKU,
+			BatchID:      input.BatchID,
+			BatchNo:      input.BatchNo,
+			LocationID:   input.LocationID,
+			LocationCode: input.LocationCode,
+			ExpectedQty:  input.ExpectedQty,
+			CountedQty:   input.CountedQty,
+			BaseUOMCode:  input.BaseUOMCode,
+			Reason:       input.Reason,
+		})
+	}
+
+	return lines
+}
+
+func newStockAdjustmentResponse(
+	adjustment domain.StockAdjustment,
+	auditLogID string,
+) stockAdjustmentResponse {
+	payload := stockAdjustmentResponse{
+		ID:            adjustment.ID,
+		AdjustmentNo:  adjustment.AdjustmentNo,
+		OrgID:         adjustment.OrgID,
+		WarehouseID:   adjustment.WarehouseID,
+		WarehouseCode: adjustment.WarehouseCode,
+		SourceType:    adjustment.SourceType,
+		SourceID:      adjustment.SourceID,
+		Reason:        adjustment.Reason,
+		Status:        string(adjustment.Status),
+		RequestedBy:   adjustment.RequestedBy,
+		Lines:         make([]stockAdjustmentLineResponse, 0, len(adjustment.Lines)),
+		AuditLogID:    auditLogID,
+		CreatedAt:     adjustment.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:     adjustment.UpdatedAt.UTC().Format(time.RFC3339),
+	}
+	for _, line := range adjustment.Lines {
+		payload.Lines = append(payload.Lines, stockAdjustmentLineResponse{
+			ID:           line.ID,
+			ItemID:       line.ItemID,
+			SKU:          line.SKU,
+			BatchID:      line.BatchID,
+			BatchNo:      line.BatchNo,
+			LocationID:   line.LocationID,
+			LocationCode: line.LocationCode,
+			ExpectedQty:  line.ExpectedQty.String(),
+			CountedQty:   line.CountedQty.String(),
+			DeltaQty:     line.DeltaQty.String(),
+			BaseUOMCode:  line.BaseUOMCode.String(),
+			Reason:       line.Reason,
+		})
+	}
+
+	return payload
+}
+
 func newBatchResponse(batch domain.Batch) batchResponse {
 	return batchResponse{
 		ID:         batch.ID,
@@ -4627,6 +4826,42 @@ func writeBatchQCTransitionError(w http.ResponseWriter, r *http.Request, err err
 		)
 	default:
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Batch QC transition could not be processed", nil)
+	}
+}
+
+func writeStockAdjustmentError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, domain.ErrStockAdjustmentRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Stock adjustment required field is missing",
+			map[string]any{"required": "warehouse_id, reason, lines, sku, expected_qty, counted_qty, base_uom_code"},
+		)
+	case errors.Is(err, domain.ErrStockAdjustmentInvalidQuantity),
+		errors.Is(err, decimal.ErrInvalidDecimal),
+		errors.Is(err, decimal.ErrInvalidUOMCode):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Stock adjustment quantity or UOM is invalid",
+			nil,
+		)
+	case errors.Is(err, domain.ErrStockAdjustmentNoVariance):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Stock adjustment requires at least one variance",
+			nil,
+		)
+	default:
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Stock adjustment could not be processed", nil)
 	}
 }
 

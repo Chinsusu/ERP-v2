@@ -2686,6 +2686,111 @@ func TestStockMovementHandlerWritesAuditForAdjustment(t *testing.T) {
 	}
 }
 
+func TestStockAdjustmentsHandlerCreatesDraftRequestWithoutStockMovement(t *testing.T) {
+	adjustmentStore := inventoryapp.NewPrototypeStockAdjustmentStore()
+	auditStore := audit.NewInMemoryLogStore()
+	handler := stockAdjustmentsHandler(
+		inventoryapp.NewListStockAdjustments(adjustmentStore),
+		inventoryapp.NewCreateStockAdjustment(adjustmentStore, auditStore),
+	)
+	body := bytes.NewBufferString(`{
+		"adjustment_no": "ADJ-HCM-260428-001",
+		"warehouse_id": "wh-hcm",
+		"warehouse_code": "HCM",
+		"source_type": "stock_count",
+		"source_id": "count-hcm-260428-001",
+		"reason": "cycle count variance",
+		"lines": [
+			{
+				"sku": "serum-30ml",
+				"expected_qty": "20",
+				"counted_qty": "18",
+				"base_uom_code": "EA",
+				"reason": "short count"
+			}
+		]
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/stock-adjustments", body)
+	req.Header.Set(response.HeaderRequestID, "req-stock-adjustment")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+	var payload response.SuccessEnvelope[stockAdjustmentResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode adjustment response: %v", err)
+	}
+	if payload.Data.Status != "draft" ||
+		payload.Data.Lines[0].DeltaQty != "-2.000000" ||
+		payload.Data.AuditLogID == "" {
+		t.Fatalf("payload = %+v, want draft adjustment request with variance", payload.Data)
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/stock-adjustments", nil).WithContext(req.Context())
+	listRec := httptest.NewRecorder()
+	handler.ServeHTTP(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("list status = %d, want %d: %s", listRec.Code, http.StatusOK, listRec.Body.String())
+	}
+	var listPayload response.SuccessEnvelope[[]stockAdjustmentResponse]
+	if err := json.NewDecoder(listRec.Body).Decode(&listPayload); err != nil {
+		t.Fatalf("decode list response: %v", err)
+	}
+	if len(listPayload.Data) != 1 {
+		t.Fatalf("list payload = %+v, want one adjustment", listPayload.Data)
+	}
+
+	movementLogs, err := auditStore.List(req.Context(), audit.Query{Action: "inventory.stock_movement.adjusted"})
+	if err != nil {
+		t.Fatalf("list stock movement audit logs: %v", err)
+	}
+	if len(movementLogs) != 0 {
+		t.Fatalf("stock movement logs = %+v, want no direct stock movement", movementLogs)
+	}
+}
+
+func TestStockAdjustmentsHandlerRejectsNoVariance(t *testing.T) {
+	adjustmentStore := inventoryapp.NewPrototypeStockAdjustmentStore()
+	auditStore := audit.NewInMemoryLogStore()
+	handler := stockAdjustmentsHandler(
+		inventoryapp.NewListStockAdjustments(adjustmentStore),
+		inventoryapp.NewCreateStockAdjustment(adjustmentStore, auditStore),
+	)
+	body := bytes.NewBufferString(`{
+		"warehouse_id": "wh-hcm",
+		"reason": "no variance",
+		"lines": [
+			{
+				"sku": "SERUM-30ML",
+				"expected_qty": "20",
+				"counted_qty": "20",
+				"base_uom_code": "EA"
+			}
+		]
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/stock-adjustments", body)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
 func newTestGoodsReceiptService() (inventoryapp.WarehouseReceivingService, *audit.InMemoryLogStore) {
 	auditStore := audit.NewInMemoryLogStore()
 	service := inventoryapp.NewWarehouseReceivingService(
