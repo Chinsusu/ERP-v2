@@ -85,6 +85,32 @@ describe("salesOrderService", () => {
     });
   });
 
+  it("does not hide API permission errors behind prototype fallback", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: "FORBIDDEN",
+              message: "Permission denied",
+              details: { permission: "sales:view" },
+              request_id: "req-denied"
+            }
+          }),
+          { status: 403 }
+        )
+      )
+    );
+
+    await expect(getSalesOrders()).rejects.toMatchObject({
+      name: "ApiError",
+      status: 403,
+      code: "FORBIDDEN",
+      requestId: "req-denied"
+    });
+  });
+
   it("creates a draft with normalized decimal lines and VND totals", async () => {
     const order = await createSalesOrder({
       customerId: "cus-dl-minh-anh",
@@ -115,6 +141,19 @@ describe("salesOrderService", () => {
       discountAmount: "1000.00",
       totalAmount: "249001.00"
     });
+  });
+
+  it("validates that a sales order has at least one line", async () => {
+    await expect(
+      createSalesOrder({
+        customerId: "cus-dl-minh-anh",
+        channel: "B2B",
+        warehouseId: "wh-hcm-fg",
+        orderDate: "2026-04-28",
+        currencyCode: "VND",
+        lines: []
+      })
+    ).rejects.toThrow("At least one line item is required");
   });
 
   it("replaces draft lines and checks optimistic version", async () => {

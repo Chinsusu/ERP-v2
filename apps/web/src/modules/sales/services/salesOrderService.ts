@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from "../../../shared/api/client";
+import { ApiError, apiGet, apiPatch, apiPost } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import {
   decimalScales,
@@ -113,7 +113,11 @@ export async function getSalesOrders(query: SalesOrderQuery = {}): Promise<Sales
     });
 
     return orders.map(fromApiSalesOrderListItem);
-  } catch {
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
     return filterPrototypeSalesOrders(query);
   }
 }
@@ -125,7 +129,11 @@ export async function getSalesOrder(id: string): Promise<SalesOrder> {
     });
 
     return fromApiSalesOrder(order);
-  } catch {
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
     return getPrototypeSalesOrder(id);
   }
 }
@@ -139,7 +147,11 @@ export async function createSalesOrder(input: CreateSalesOrderInput): Promise<Sa
     );
 
     return fromApiSalesOrder(order);
-  } catch {
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
     return createPrototypeSalesOrder(input);
   }
 }
@@ -153,7 +165,11 @@ export async function updateSalesOrder(id: string, input: UpdateSalesOrderInput)
     );
 
     return fromApiSalesOrder(order);
-  } catch {
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
     return updatePrototypeSalesOrder(id, input);
   }
 }
@@ -167,7 +183,11 @@ export async function confirmSalesOrder(id: string, expectedVersion?: number): P
     );
 
     return fromApiActionResult(result);
-  } catch {
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
     return transitionPrototypeSalesOrder(id, "confirmed", expectedVersion);
   }
 }
@@ -185,7 +205,11 @@ export async function cancelSalesOrder(
     );
 
     return fromApiActionResult(result);
-  } catch {
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
     return transitionPrototypeSalesOrder(id, "cancelled", expectedVersion, reason);
   }
 }
@@ -193,6 +217,14 @@ export async function cancelSalesOrder(
 export function resetPrototypeSalesOrdersForTest() {
   orderSequence = 20;
   prototypeSalesOrders = createPrototypeSalesOrders();
+}
+
+function shouldUsePrototypeFallback(reason: unknown) {
+  if (reason instanceof ApiError) {
+    return false;
+  }
+
+  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
 }
 
 export function salesOrderStatusTone(status: SalesOrderStatus): "success" | "warning" | "danger" | "info" | "normal" {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -16,12 +17,15 @@ import (
 	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	returnsdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
+	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
+	salesdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/domain"
 	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
 	shippingdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/config"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
+	apperrors "github.com/Chinsusu/ERP-v2/apps/api/internal/shared/errors"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
 
@@ -282,6 +286,124 @@ type customerRequest struct {
 
 type changeCustomerStatusRequest struct {
 	Status string `json:"status"`
+}
+
+type salesOrderLineRequest struct {
+	ID                 string `json:"id"`
+	LineNo             int    `json:"line_no"`
+	ItemID             string `json:"item_id"`
+	OrderedQty         string `json:"ordered_qty"`
+	UOMCode            string `json:"uom_code"`
+	UnitPrice          string `json:"unit_price"`
+	CurrencyCode       string `json:"currency_code"`
+	LineDiscountAmount string `json:"line_discount_amount"`
+	BatchID            string `json:"batch_id"`
+	BatchNo            string `json:"batch_no"`
+}
+
+type createSalesOrderRequest struct {
+	ID           string                  `json:"id"`
+	OrderNo      string                  `json:"order_no"`
+	CustomerID   string                  `json:"customer_id"`
+	Channel      string                  `json:"channel"`
+	WarehouseID  string                  `json:"warehouse_id"`
+	OrderDate    string                  `json:"order_date"`
+	CurrencyCode string                  `json:"currency_code"`
+	Note         string                  `json:"note"`
+	Lines        []salesOrderLineRequest `json:"lines"`
+}
+
+type updateSalesOrderRequest struct {
+	CustomerID      string                  `json:"customer_id"`
+	Channel         string                  `json:"channel"`
+	WarehouseID     string                  `json:"warehouse_id"`
+	OrderDate       string                  `json:"order_date"`
+	Note            string                  `json:"note"`
+	ExpectedVersion int                     `json:"expected_version"`
+	Lines           []salesOrderLineRequest `json:"lines"`
+}
+
+type salesOrderActionRequest struct {
+	ExpectedVersion int    `json:"expected_version"`
+	Reason          string `json:"reason"`
+	Note            string `json:"note"`
+}
+
+type salesOrderLineResponse struct {
+	ID                 string `json:"id"`
+	LineNo             int    `json:"line_no"`
+	ItemID             string `json:"item_id"`
+	SKUCode            string `json:"sku_code"`
+	ItemName           string `json:"item_name"`
+	OrderedQty         string `json:"ordered_qty"`
+	UOMCode            string `json:"uom_code"`
+	BaseOrderedQty     string `json:"base_ordered_qty"`
+	BaseUOMCode        string `json:"base_uom_code"`
+	ConversionFactor   string `json:"conversion_factor"`
+	UnitPrice          string `json:"unit_price"`
+	CurrencyCode       string `json:"currency_code"`
+	LineDiscountAmount string `json:"line_discount_amount"`
+	LineAmount         string `json:"line_amount"`
+	ReservedQty        string `json:"reserved_qty"`
+	ShippedQty         string `json:"shipped_qty"`
+	BatchID            string `json:"batch_id,omitempty"`
+	BatchNo            string `json:"batch_no,omitempty"`
+}
+
+type salesOrderListItemResponse struct {
+	ID                string `json:"id"`
+	OrderNo           string `json:"order_no"`
+	CustomerID        string `json:"customer_id"`
+	CustomerCode      string `json:"customer_code,omitempty"`
+	CustomerName      string `json:"customer_name"`
+	Channel           string `json:"channel"`
+	WarehouseID       string `json:"warehouse_id,omitempty"`
+	WarehouseCode     string `json:"warehouse_code,omitempty"`
+	OrderDate         string `json:"order_date"`
+	Status            string `json:"status"`
+	CurrencyCode      string `json:"currency_code"`
+	TotalAmount       string `json:"total_amount"`
+	LineCount         int    `json:"line_count"`
+	ReservedLineCount int    `json:"reserved_line_count"`
+	CreatedAt         string `json:"created_at"`
+	UpdatedAt         string `json:"updated_at"`
+	Version           int    `json:"version"`
+}
+
+type salesOrderResponse struct {
+	ID                string                   `json:"id"`
+	OrderNo           string                   `json:"order_no"`
+	CustomerID        string                   `json:"customer_id"`
+	CustomerCode      string                   `json:"customer_code,omitempty"`
+	CustomerName      string                   `json:"customer_name"`
+	Channel           string                   `json:"channel"`
+	WarehouseID       string                   `json:"warehouse_id,omitempty"`
+	WarehouseCode     string                   `json:"warehouse_code,omitempty"`
+	OrderDate         string                   `json:"order_date"`
+	Status            string                   `json:"status"`
+	CurrencyCode      string                   `json:"currency_code"`
+	SubtotalAmount    string                   `json:"subtotal_amount"`
+	DiscountAmount    string                   `json:"discount_amount"`
+	TaxAmount         string                   `json:"tax_amount"`
+	ShippingFeeAmount string                   `json:"shipping_fee_amount"`
+	NetAmount         string                   `json:"net_amount"`
+	TotalAmount       string                   `json:"total_amount"`
+	Note              string                   `json:"note,omitempty"`
+	Lines             []salesOrderLineResponse `json:"lines"`
+	AuditLogID        string                   `json:"audit_log_id,omitempty"`
+	CreatedAt         string                   `json:"created_at"`
+	UpdatedAt         string                   `json:"updated_at"`
+	ConfirmedAt       string                   `json:"confirmed_at,omitempty"`
+	CancelledAt       string                   `json:"cancelled_at,omitempty"`
+	CancelReason      string                   `json:"cancel_reason,omitempty"`
+	Version           int                      `json:"version"`
+}
+
+type salesOrderActionResultResponse struct {
+	SalesOrder     salesOrderResponse `json:"sales_order"`
+	PreviousStatus string             `json:"previous_status"`
+	CurrentStatus  string             `json:"current_status"`
+	AuditLogID     string             `json:"audit_log_id,omitempty"`
 }
 
 type availableStockResponse struct {
@@ -661,6 +783,8 @@ func main() {
 	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
 	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
 	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditLogStore)
+	salesOrderStore := salesapp.NewPrototypeSalesOrderStore(auditLogStore)
+	salesOrderService := salesapp.NewSalesOrderService(salesOrderStore, partyCatalog, itemCatalog, warehouseCatalog)
 	stockMovementStore := inventoryapp.NewInMemoryStockMovementStore()
 	warehouseReceivingStore := inventoryapp.NewPrototypeWarehouseReceivingStore()
 	warehouseReceiving := inventoryapp.NewWarehouseReceivingService(
@@ -816,6 +940,34 @@ func main() {
 			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(changeCustomerStatusHandler(partyCatalog)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/sales-orders",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(salesOrdersHandler(salesOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/sales-orders/{sales_order_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(salesOrderDetailHandler(salesOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/sales-orders/{sales_order_id}/confirm",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(salesOrderConfirmHandler(salesOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/sales-orders/{sales_order_id}/cancel",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(salesOrderCancelHandler(salesOrderService)),
 		),
 	)
 	mux.Handle(
@@ -2242,6 +2394,197 @@ func changeCustomerStatusHandler(catalog *masterdataapp.PartyCatalog) http.Handl
 	}
 }
 
+func salesOrdersHandler(service salesapp.SalesOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSalesView) {
+			writePermissionDenied(w, r, auth.PermissionSalesView)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			orders, err := service.ListSalesOrders(r.Context(), salesOrderFilterFromRequest(r))
+			if err != nil {
+				writeSalesOrderError(w, r, err)
+				return
+			}
+
+			payload := make([]salesOrderListItemResponse, 0, len(orders))
+			for _, order := range orders {
+				payload = append(payload, newSalesOrderListItemResponse(order))
+			}
+			response.WriteSuccess(w, r, http.StatusOK, payload)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload createSalesOrderRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid sales order payload", nil)
+				return
+			}
+
+			result, err := service.CreateSalesOrder(r.Context(), salesapp.CreateSalesOrderInput{
+				ID:           payload.ID,
+				OrderNo:      payload.OrderNo,
+				CustomerID:   payload.CustomerID,
+				Channel:      payload.Channel,
+				WarehouseID:  payload.WarehouseID,
+				OrderDate:    payload.OrderDate,
+				CurrencyCode: payload.CurrencyCode,
+				Note:         payload.Note,
+				Lines:        salesOrderLineInputs(payload.Lines),
+				ActorID:      principal.UserID,
+				RequestID:    response.RequestID(r),
+			})
+			if err != nil {
+				writeSalesOrderError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusCreated, newSalesOrderResponse(result.SalesOrder, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func salesOrderDetailHandler(service salesapp.SalesOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSalesView) {
+			writePermissionDenied(w, r, auth.PermissionSalesView)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			order, err := service.GetSalesOrder(r.Context(), r.PathValue("sales_order_id"))
+			if err != nil {
+				writeSalesOrderError(w, r, err)
+				return
+			}
+			response.WriteSuccess(w, r, http.StatusOK, newSalesOrderResponse(order, ""))
+		case http.MethodPatch:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload updateSalesOrderRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid sales order payload", nil)
+				return
+			}
+
+			result, err := service.UpdateSalesOrder(r.Context(), salesapp.UpdateSalesOrderInput{
+				ID:              r.PathValue("sales_order_id"),
+				CustomerID:      payload.CustomerID,
+				Channel:         payload.Channel,
+				WarehouseID:     payload.WarehouseID,
+				OrderDate:       payload.OrderDate,
+				Note:            payload.Note,
+				Lines:           salesOrderLineInputs(payload.Lines),
+				ExpectedVersion: payload.ExpectedVersion,
+				ActorID:         principal.UserID,
+				RequestID:       response.RequestID(r),
+			})
+			if err != nil {
+				writeSalesOrderError(w, r, err)
+				return
+			}
+			response.WriteSuccess(w, r, http.StatusOK, newSalesOrderResponse(result.SalesOrder, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func salesOrderConfirmHandler(service salesapp.SalesOrderService) http.HandlerFunc {
+	return salesOrderActionHandler(service, "confirm")
+}
+
+func salesOrderCancelHandler(service salesapp.SalesOrderService) http.HandlerFunc {
+	return salesOrderActionHandler(service, "cancel")
+}
+
+func salesOrderActionHandler(service salesapp.SalesOrderService, action string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSalesView) {
+			writePermissionDenied(w, r, auth.PermissionSalesView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload salesOrderActionRequest
+		if r.Body != nil {
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				if !errors.Is(err, io.EOF) {
+					response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid sales order action payload", nil)
+					return
+				}
+			}
+		}
+
+		input := salesapp.SalesOrderActionInput{
+			ID:              r.PathValue("sales_order_id"),
+			ExpectedVersion: payload.ExpectedVersion,
+			Reason:          payload.Reason,
+			Note:            payload.Note,
+			ActorID:         principal.UserID,
+			RequestID:       response.RequestID(r),
+		}
+		var (
+			result salesapp.SalesOrderActionResult
+			err    error
+		)
+		switch action {
+		case "confirm":
+			result, err = service.ConfirmSalesOrder(r.Context(), input)
+		case "cancel":
+			result, err = service.CancelSalesOrder(r.Context(), input)
+		default:
+			response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		if err != nil {
+			writeSalesOrderError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, salesOrderActionResultResponse{
+			SalesOrder:     newSalesOrderResponse(result.SalesOrder, ""),
+			PreviousStatus: string(result.PreviousStatus),
+			CurrentStatus:  string(result.CurrentStatus),
+			AuditLogID:     result.AuditLogID,
+		})
+	}
+}
+
 func stockMovementHandler(store audit.LogStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -3418,6 +3761,15 @@ func writeCloseReconciliationError(w http.ResponseWriter, r *http.Request, err e
 	}
 }
 
+func writeSalesOrderError(w http.ResponseWriter, r *http.Request, err error) {
+	if appErr, ok := apperrors.As(err); ok {
+		response.WriteError(w, r, appErr.HTTPStatus, appErr.Code, appErr.Message, appErr.Details)
+		return
+	}
+
+	response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Sales order request could not be processed", nil)
+}
+
 func writeCarrierManifestError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, shippingapp.ErrCarrierManifestNotFound), errors.Is(err, shippingapp.ErrPackedShipmentNotFound):
@@ -3920,6 +4272,144 @@ func newCustomerResponse(customer masterdatadomain.Customer, auditLogID string) 
 		UpdatedAt:     customer.UpdatedAt.Format(time.RFC3339),
 		AuditLogID:    auditLogID,
 	}
+}
+
+func salesOrderFilterFromRequest(r *http.Request) salesapp.SalesOrderFilter {
+	statuses := make([]salesdomain.SalesOrderStatus, 0)
+	for _, raw := range r.URL.Query()["status"] {
+		for _, value := range strings.Split(raw, ",") {
+			status := salesdomain.NormalizeSalesOrderStatus(salesdomain.SalesOrderStatus(value))
+			if status != "" {
+				statuses = append(statuses, status)
+			}
+		}
+	}
+
+	return salesapp.SalesOrderFilter{
+		Search:      r.URL.Query().Get("q"),
+		Statuses:    statuses,
+		CustomerID:  r.URL.Query().Get("customer_id"),
+		Channel:     r.URL.Query().Get("channel"),
+		WarehouseID: r.URL.Query().Get("warehouse_id"),
+		DateFrom:    r.URL.Query().Get("date_from"),
+		DateTo:      r.URL.Query().Get("date_to"),
+	}
+}
+
+func salesOrderLineInputs(lines []salesOrderLineRequest) []salesapp.SalesOrderLineInput {
+	if lines == nil {
+		return nil
+	}
+
+	inputs := make([]salesapp.SalesOrderLineInput, 0, len(lines))
+	for _, line := range lines {
+		inputs = append(inputs, salesapp.SalesOrderLineInput{
+			ID:                 line.ID,
+			LineNo:             line.LineNo,
+			ItemID:             line.ItemID,
+			OrderedQty:         line.OrderedQty,
+			UOMCode:            line.UOMCode,
+			UnitPrice:          line.UnitPrice,
+			CurrencyCode:       line.CurrencyCode,
+			LineDiscountAmount: line.LineDiscountAmount,
+			BatchID:            line.BatchID,
+			BatchNo:            line.BatchNo,
+		})
+	}
+
+	return inputs
+}
+
+func newSalesOrderListItemResponse(order salesdomain.SalesOrder) salesOrderListItemResponse {
+	return salesOrderListItemResponse{
+		ID:                order.ID,
+		OrderNo:           order.OrderNo,
+		CustomerID:        order.CustomerID,
+		CustomerCode:      order.CustomerCode,
+		CustomerName:      order.CustomerName,
+		Channel:           order.Channel,
+		WarehouseID:       order.WarehouseID,
+		WarehouseCode:     order.WarehouseCode,
+		OrderDate:         order.OrderDate,
+		Status:            string(order.Status),
+		CurrencyCode:      order.CurrencyCode.String(),
+		TotalAmount:       order.TotalAmount.String(),
+		LineCount:         len(order.Lines),
+		ReservedLineCount: countReservedSalesOrderLines(order),
+		CreatedAt:         order.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:         order.UpdatedAt.UTC().Format(time.RFC3339),
+		Version:           order.Version,
+	}
+}
+
+func newSalesOrderResponse(order salesdomain.SalesOrder, auditLogID string) salesOrderResponse {
+	payload := salesOrderResponse{
+		ID:                order.ID,
+		OrderNo:           order.OrderNo,
+		CustomerID:        order.CustomerID,
+		CustomerCode:      order.CustomerCode,
+		CustomerName:      order.CustomerName,
+		Channel:           order.Channel,
+		WarehouseID:       order.WarehouseID,
+		WarehouseCode:     order.WarehouseCode,
+		OrderDate:         order.OrderDate,
+		Status:            string(order.Status),
+		CurrencyCode:      order.CurrencyCode.String(),
+		SubtotalAmount:    order.SubtotalAmount.String(),
+		DiscountAmount:    order.DiscountAmount.String(),
+		TaxAmount:         order.TaxAmount.String(),
+		ShippingFeeAmount: order.ShippingFeeAmount.String(),
+		NetAmount:         order.NetAmount.String(),
+		TotalAmount:       order.TotalAmount.String(),
+		Note:              order.Note,
+		Lines:             make([]salesOrderLineResponse, 0, len(order.Lines)),
+		AuditLogID:        auditLogID,
+		CreatedAt:         order.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:         order.UpdatedAt.UTC().Format(time.RFC3339),
+		CancelReason:      order.CancelReason,
+		Version:           order.Version,
+	}
+	if !order.ConfirmedAt.IsZero() {
+		payload.ConfirmedAt = order.ConfirmedAt.UTC().Format(time.RFC3339)
+	}
+	if !order.CancelledAt.IsZero() {
+		payload.CancelledAt = order.CancelledAt.UTC().Format(time.RFC3339)
+	}
+	for _, line := range order.Lines {
+		payload.Lines = append(payload.Lines, salesOrderLineResponse{
+			ID:                 line.ID,
+			LineNo:             line.LineNo,
+			ItemID:             line.ItemID,
+			SKUCode:            line.SKUCode,
+			ItemName:           line.ItemName,
+			OrderedQty:         line.OrderedQty.String(),
+			UOMCode:            line.UOMCode.String(),
+			BaseOrderedQty:     line.BaseOrderedQty.String(),
+			BaseUOMCode:        line.BaseUOMCode.String(),
+			ConversionFactor:   line.ConversionFactor.String(),
+			UnitPrice:          line.UnitPrice.String(),
+			CurrencyCode:       line.CurrencyCode.String(),
+			LineDiscountAmount: line.LineDiscountAmount.String(),
+			LineAmount:         line.LineAmount.String(),
+			ReservedQty:        line.ReservedQty.String(),
+			ShippedQty:         line.ShippedQty.String(),
+			BatchID:            line.BatchID,
+			BatchNo:            line.BatchNo,
+		})
+	}
+
+	return payload
+}
+
+func countReservedSalesOrderLines(order salesdomain.SalesOrder) int {
+	count := 0
+	for _, line := range order.Lines {
+		if !line.ReservedQty.IsZero() {
+			count++
+		}
+	}
+
+	return count
 }
 
 func newAuditLogResponse(log audit.Log) auditLogResponse {
