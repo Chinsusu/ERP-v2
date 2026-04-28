@@ -1,3 +1,5 @@
+import { apiGet } from "../../../shared/api/client";
+import type { components, operations } from "../../../shared/api/generated/schema";
 import { getGoodsReceipts } from "../../receiving/services/warehouseReceivingService";
 import type { GoodsReceipt, GoodsReceiptStockMovement } from "../../receiving/types";
 import { getReturnReceipts } from "../../returns/services/returnReceivingService";
@@ -14,12 +16,17 @@ import type {
   WarehouseDailyBoardData,
   WarehouseDailyBoardQuery,
   WarehouseDailyBoardSummary,
+  WarehouseFulfillmentMetrics,
   WarehouseDailyShiftCode,
   WarehouseDailyTask,
   WarehouseDailyTaskPriority,
   WarehouseDailyTaskStatus
 } from "../types";
 
+type WarehouseFulfillmentMetricsApi = components["schemas"]["WarehouseFulfillmentMetrics"];
+type WarehouseFulfillmentMetricsApiQuery = operations["getWarehouseDailyBoardFulfillmentMetrics"]["parameters"]["query"];
+
+const defaultAccessToken = "local-dev-access-token";
 export const defaultWarehouseDailyBoardDate = "2026-04-26";
 export const defaultWarehouseDailyBoardShiftCode: WarehouseDailyShiftCode = "day";
 
@@ -268,31 +275,57 @@ export type WarehouseDailyBoardSources = {
   carrierManifests?: CarrierManifest[];
   returnReceipts?: ReturnReceipt[];
   reconciliations?: EndOfDayReconciliation[];
+  fulfillmentMetrics?: WarehouseFulfillmentMetrics;
 };
 
 export async function getWarehouseDailyBoard(query: WarehouseDailyBoardQuery = {}): Promise<WarehouseDailyBoardData> {
   const date = query.date ?? defaultWarehouseDailyBoardDate;
   const warehouseId = query.warehouseId ?? "";
-  const [goodsReceipts, carrierManifests, returnReceipts] = await Promise.all([
+  const shiftCode = query.shiftCode ?? defaultWarehouseDailyBoardShiftCode;
+  const carrierCode = normalizeCarrierCode(query.carrierCode);
+  const [goodsReceipts, carrierManifests, returnReceipts, fulfillmentMetrics] = await Promise.all([
     getGoodsReceipts(),
-    getCarrierManifests({ warehouseId: warehouseId || undefined, date }),
-    getReturnReceipts({ warehouseId: warehouseId || undefined })
+    getCarrierManifests({ warehouseId: warehouseId || undefined, date, carrierCode: carrierCode || undefined }),
+    getReturnReceipts({ warehouseId: warehouseId || undefined }),
+    getWarehouseFulfillmentMetrics({
+      ...query,
+      date,
+      shiftCode,
+      carrierCode: carrierCode || undefined
+    })
   ]);
 
   return composeWarehouseDailyBoard(
     {
       ...query,
       date,
-      shiftCode: query.shiftCode ?? defaultWarehouseDailyBoardShiftCode
+      shiftCode,
+      carrierCode: carrierCode || undefined
     },
     {
       orderTasks: prototypeWarehouseDailyTasks,
       goodsReceipts,
       carrierManifests,
       returnReceipts,
-      reconciliations: prototypeEndOfDayReconciliations
+      reconciliations: prototypeEndOfDayReconciliations,
+      fulfillmentMetrics
     }
   );
+}
+
+export async function getWarehouseFulfillmentMetrics(
+  query: WarehouseDailyBoardQuery = {}
+): Promise<WarehouseFulfillmentMetrics | undefined> {
+  try {
+    const metrics = await apiGet("/warehouse/daily-board/fulfillment-metrics", {
+      accessToken: defaultAccessToken,
+      query: toFulfillmentMetricsApiQuery(query)
+    });
+
+    return fromFulfillmentMetricsApi(metrics);
+  } catch {
+    return undefined;
+  }
 }
 
 export function composeWarehouseDailyBoard(
@@ -302,6 +335,7 @@ export function composeWarehouseDailyBoard(
   const date = query.date ?? defaultWarehouseDailyBoardDate;
   const warehouseId = query.warehouseId ?? "";
   const shiftCode = query.shiftCode ?? defaultWarehouseDailyBoardShiftCode;
+  const carrierCode = normalizeCarrierCode(query.carrierCode);
   const sourceTasks = [
     ...(sources.orderTasks ?? []),
     ...receivingTasks(sources.goodsReceipts ?? []),
@@ -320,6 +354,9 @@ export function composeWarehouseDailyBoard(
     if (warehouseId && !matchesWarehouseScope(task.warehouseId, warehouseId)) {
       return false;
     }
+    if (carrierCode && task.carrierCode !== carrierCode) {
+      return false;
+    }
 
     return true;
   });
@@ -335,6 +372,17 @@ export function composeWarehouseDailyBoard(
     shiftStatus: hasPriorityZero(baseTasks) ? "open" : "closing",
     owner: warehouseId === "wh-hn" ? "HN Lead" : "Warehouse Lead",
     summary: summarizeWarehouseDailyBoard(baseTasks),
+    fulfillment:
+      sources.fulfillmentMetrics ??
+      summarizeWarehouseFulfillmentMetrics(
+        {
+          warehouseId: warehouseId || undefined,
+          date,
+          shiftCode,
+          carrierCode: carrierCode || undefined
+        },
+        baseTasks
+      ),
     sourceFields: warehouseDailyBoardCounterSources,
     tasks
   };
@@ -444,6 +492,7 @@ function shippingTasks(manifests: CarrierManifest[]): WarehouseDailyTask[] {
       title: shippingTaskTitle(manifest),
       warehouseId: manifest.warehouseId,
       warehouseCode: manifest.warehouseCode,
+      carrierCode: manifest.carrierCode,
       shiftCode: defaultWarehouseDailyBoardShiftCode,
       status: "handover",
       priority: shippingPriority(manifest),
@@ -543,6 +592,63 @@ function returnTaskTitle(receipt: ReturnReceipt) {
   return `Inspect return ${receipt.originalOrderNo ?? receipt.receiptNo}`;
 }
 
+function toFulfillmentMetricsApiQuery(query: WarehouseDailyBoardQuery): WarehouseFulfillmentMetricsApiQuery {
+  return {
+    warehouse_id: query.warehouseId,
+    date: query.date,
+    shift_code: query.shiftCode,
+    carrier_code: normalizeCarrierCode(query.carrierCode) || undefined
+  };
+}
+
+function fromFulfillmentMetricsApi(metrics: WarehouseFulfillmentMetricsApi): WarehouseFulfillmentMetrics {
+  return {
+    warehouseId: metrics.warehouse_id,
+    date: metrics.date,
+    shiftCode: metrics.shift_code,
+    carrierCode: metrics.carrier_code,
+    totalOrders: metrics.total_orders,
+    newOrders: metrics.new_orders,
+    reservedOrders: metrics.reserved_orders,
+    pickingOrders: metrics.picking_orders,
+    packedOrders: metrics.packed_orders,
+    waitingHandoverOrders: metrics.waiting_handover_orders,
+    missingOrders: metrics.missing_orders,
+    handoverOrders: metrics.handover_orders,
+    generatedAt: metrics.generated_at
+  };
+}
+
+export function summarizeWarehouseFulfillmentMetrics(
+  query: WarehouseDailyBoardQuery,
+  tasks: WarehouseDailyTask[]
+): WarehouseFulfillmentMetrics {
+  const date = query.date ?? defaultWarehouseDailyBoardDate;
+  const orderTasks = tasks.filter((task) => task.source === "order_queue");
+  const handoverTasks = tasks.filter((task) => task.source === "shipping");
+  const newOrders = countOrderTasksByStatus(orderTasks, "waiting");
+  const pickingOrders = countOrderTasksByStatus(orderTasks, "picking");
+  const packedOrders = countOrderTasksByStatus(orderTasks, "packed");
+  const waitingHandoverOrders = handoverTasks.length;
+  const missingOrders = handoverTasks.filter((task) => task.priority !== "P2").length;
+
+  return {
+    warehouseId: query.warehouseId,
+    date,
+    shiftCode: query.shiftCode ?? defaultWarehouseDailyBoardShiftCode,
+    carrierCode: normalizeCarrierCode(query.carrierCode) || undefined,
+    totalOrders: newOrders + pickingOrders + packedOrders + waitingHandoverOrders,
+    newOrders,
+    reservedOrders: 0,
+    pickingOrders,
+    packedOrders,
+    waitingHandoverOrders,
+    missingOrders,
+    handoverOrders: 0,
+    generatedAt: `${date}T00:00:00Z`
+  };
+}
+
 export function summarizeWarehouseDailyBoard(tasks: WarehouseDailyTask[]): WarehouseDailyBoardSummary {
   return {
     waiting: countByStatus(tasks, "waiting"),
@@ -618,8 +724,16 @@ function countByStatus(tasks: WarehouseDailyTask[], status: WarehouseDailyTaskSt
   return tasks.filter((task) => task.status === status).length;
 }
 
+function countOrderTasksByStatus(tasks: WarehouseDailyTask[], status: WarehouseDailyTaskStatus) {
+  return tasks.filter((task) => task.status === status).length;
+}
+
 function hasPriorityZero(tasks: WarehouseDailyTask[]) {
   return tasks.some((task) => task.priority === "P0");
+}
+
+function normalizeCarrierCode(carrierCode?: string) {
+  return carrierCode?.trim().toUpperCase() ?? "";
 }
 
 function matchesWarehouseScope(taskWarehouseId: string, queryWarehouseId: string) {

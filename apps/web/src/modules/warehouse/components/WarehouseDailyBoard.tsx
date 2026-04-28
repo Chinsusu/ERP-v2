@@ -9,6 +9,7 @@ import {
   type DataTableColumn,
   type ToastMessage
 } from "@/shared/design-system/components";
+import { carrierOptions } from "../../shipping/services/carrierManifestService";
 import { useWarehouseDailyBoard } from "../hooks/useWarehouseDailyBoard";
 import { ShiftClosingPanel } from "./ShiftClosingPanel";
 import {
@@ -100,15 +101,17 @@ export default function WarehouseDailyBoard() {
   const [warehouseId, setWarehouseId] = useState("");
   const [date, setDate] = useState(defaultWarehouseDailyBoardDate);
   const [shiftCode, setShiftCode] = useState<WarehouseDailyShiftCode>(defaultWarehouseDailyBoardShiftCode);
+  const [carrierCode, setCarrierCode] = useState("");
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("");
   const [scanFeedback, setScanFeedback] = useState<ToastMessage | undefined>();
   const query = useMemo<WarehouseDailyBoardQuery>(
     () => ({
       warehouseId: warehouseId || undefined,
       date,
-      shiftCode
+      shiftCode,
+      carrierCode: carrierCode || undefined
     }),
-    [date, shiftCode, warehouseId]
+    [carrierCode, date, shiftCode, warehouseId]
   );
   const { board, loading } = useWarehouseDailyBoard(query);
   const allTasks = board?.tasks ?? [];
@@ -116,7 +119,23 @@ export default function WarehouseDailyBoard() {
   const exceptions = allTasks.filter((task) => task.priority === "P0" || task.status === "mismatch");
   const selectedWarehouseLabel =
     warehouseOptions.find((option) => option.value === warehouseId)?.label ?? board?.warehouseCode ?? "All warehouses";
+  const selectedCarrierLabel = carrierOptions.find((option) => option.value === carrierCode)?.label ?? "All carriers";
   const activeQueueLabel = queueLabel(queueFilter);
+  const fulfillment = board?.fulfillment;
+  const fulfillmentCards: {
+    key: string;
+    label: string;
+    value: number;
+    tone: "normal" | "success" | "warning" | "danger" | "info";
+  }[] = [
+    { key: "new", label: "New", value: fulfillment?.newOrders ?? 0, tone: "normal" },
+    { key: "reserved", label: "Reserved", value: fulfillment?.reservedOrders ?? 0, tone: "info" },
+    { key: "picking", label: "Picking", value: fulfillment?.pickingOrders ?? 0, tone: "warning" },
+    { key: "packed", label: "Packed", value: fulfillment?.packedOrders ?? 0, tone: "success" },
+    { key: "waiting_handover", label: "Waiting handover", value: fulfillment?.waitingHandoverOrders ?? 0, tone: "info" },
+    { key: "missing", label: "Missing", value: fulfillment?.missingOrders ?? 0, tone: "danger" },
+    { key: "handover", label: "Handed over", value: fulfillment?.handoverOrders ?? 0, tone: "success" }
+  ];
   const queueCards: {
     key: QueueFilter;
     label: string;
@@ -161,6 +180,7 @@ export default function WarehouseDailyBoard() {
         <WarehouseContext label="Date" value={formatBoardDate(date)} />
         <WarehouseContext label="Shift" value={shiftLabel(shiftCode)} />
         <WarehouseContext label="Warehouse" value={board?.warehouseCode ?? selectedWarehouseLabel} />
+        <WarehouseContext label="Carrier" value={selectedCarrierLabel} />
         <WarehouseContext label="Owner" value={board?.owner ?? "Warehouse Lead"} />
         <WarehouseContext label="Shift status" value={statusLabel(board?.shiftStatus ?? "open")} />
       </section>
@@ -195,6 +215,16 @@ export default function WarehouseDailyBoard() {
           </select>
         </label>
         <label className="erp-field">
+          <span>Carrier</span>
+          <select className="erp-input" value={carrierCode} onChange={(event) => setCarrierCode(event.target.value)}>
+            {carrierOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="erp-field">
           <span>Queue</span>
           <select
             className="erp-input"
@@ -222,6 +252,29 @@ export default function WarehouseDailyBoard() {
             onSelect={() => setQueueFilter(card.key)}
           />
         ))}
+      </section>
+
+      <section className="erp-warehouse-fulfillment" aria-label="Fulfillment status metrics">
+        <div className="erp-section-header">
+          <div>
+            <h2 className="erp-section-title">Fulfillment status</h2>
+            <p className="erp-section-description">
+              {fulfillment?.totalOrders ?? 0} orders / {selectedCarrierLabel}
+            </p>
+          </div>
+          <StatusChip tone={!fulfillment ? "info" : fulfillment.missingOrders > 0 ? "danger" : "success"}>
+            {formatMetricTimestamp(fulfillment?.generatedAt)}
+          </StatusChip>
+        </div>
+        <div className="erp-warehouse-fulfillment-grid">
+          {fulfillmentCards.map((card) => (
+            <div className="erp-warehouse-fulfillment-card" key={card.key}>
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              <StatusChip tone={card.tone}>{card.key === "missing" ? "Exception" : "Order"}</StatusChip>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="erp-warehouse-source-strip" aria-label="Counter source fields">
@@ -472,4 +525,15 @@ function formatBoardDate(value: string) {
     month: "2-digit",
     year: "numeric"
   }).format(new Date(`${value}T00:00:00Z`));
+}
+
+function formatMetricTimestamp(value?: string) {
+  if (!value) {
+    return "Loading";
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
 }
