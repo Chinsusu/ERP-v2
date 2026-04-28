@@ -33,9 +33,10 @@ type ListCarrierManifests struct {
 }
 
 type CreateCarrierManifest struct {
-	store    CarrierManifestStore
-	auditLog audit.LogStore
-	clock    func() time.Time
+	store          CarrierManifestStore
+	carrierCatalog CarrierMasterStore
+	auditLog       audit.LogStore
+	clock          func() time.Time
 }
 
 type AddShipmentToCarrierManifest struct {
@@ -118,10 +119,19 @@ func NewListCarrierManifests(store CarrierManifestStore) ListCarrierManifests {
 }
 
 func NewCreateCarrierManifest(store CarrierManifestStore, auditLog audit.LogStore) CreateCarrierManifest {
+	return NewCreateCarrierManifestWithCarrierCatalog(store, auditLog, NewPrototypeCarrierCatalog())
+}
+
+func NewCreateCarrierManifestWithCarrierCatalog(
+	store CarrierManifestStore,
+	auditLog audit.LogStore,
+	carrierCatalog CarrierMasterStore,
+) CreateCarrierManifest {
 	return CreateCarrierManifest{
-		store:    store,
-		auditLog: auditLog,
-		clock:    func() time.Time { return time.Now().UTC() },
+		store:          store,
+		carrierCatalog: carrierCatalog,
+		auditLog:       auditLog,
+		clock:          func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -168,16 +178,20 @@ func (uc CreateCarrierManifest) Execute(
 	if uc.auditLog == nil {
 		return CarrierManifestResult{}, errors.New("audit log store is required")
 	}
+	carrier, err := uc.activeCarrier(ctx, input.CarrierCode)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
 
 	manifest, err := domain.NewCarrierManifest(domain.NewCarrierManifestInput{
 		ID:            input.ID,
-		CarrierCode:   input.CarrierCode,
-		CarrierName:   input.CarrierName,
+		CarrierCode:   carrier.Code,
+		CarrierName:   carrier.Name,
 		WarehouseID:   input.WarehouseID,
 		WarehouseCode: input.WarehouseCode,
 		Date:          input.Date,
 		HandoverBatch: input.HandoverBatch,
-		StagingZone:   input.StagingZone,
+		StagingZone:   carrierHandoverZone(input.StagingZone, carrier),
 		Owner:         input.Owner,
 		CreatedAt:     uc.clock(),
 	})
@@ -193,7 +207,11 @@ func (uc CreateCarrierManifest) Execute(
 		input.RequestID,
 		"shipping.manifest.created",
 		manifest,
-		map[string]any{"source": "carrier manifest create"},
+		map[string]any{
+			"source":              "carrier manifest create",
+			"carrier_sla_profile": carrier.SLAProfile,
+			"handover_zone":       manifest.StagingZone,
+		},
 		manifest.CreatedAt,
 	)
 	if err != nil {
@@ -204,6 +222,30 @@ func (uc CreateCarrierManifest) Execute(
 	}
 
 	return CarrierManifestResult{Manifest: manifest, AuditLogID: log.ID}, nil
+}
+
+func (uc CreateCarrierManifest) activeCarrier(ctx context.Context, carrierCode string) (domain.Carrier, error) {
+	if uc.carrierCatalog == nil {
+		return domain.Carrier{}, errors.New("carrier catalog is required")
+	}
+
+	carrier, err := uc.carrierCatalog.GetCarrierByCode(ctx, carrierCode)
+	if err != nil {
+		return domain.Carrier{}, err
+	}
+	if !carrier.IsActive() {
+		return domain.Carrier{}, ErrCarrierInactive
+	}
+
+	return carrier, nil
+}
+
+func carrierHandoverZone(inputZone string, carrier domain.Carrier) string {
+	if strings.TrimSpace(inputZone) != "" {
+		return inputZone
+	}
+
+	return carrier.HandoverZone
 }
 
 func (uc AddShipmentToCarrierManifest) Execute(

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
@@ -38,7 +39,6 @@ func TestCreateCarrierManifestWritesAudit(t *testing.T) {
 
 	result, err := service.Execute(context.Background(), CreateCarrierManifestInput{
 		CarrierCode:   "NJV",
-		CarrierName:   "Ninja Van",
 		WarehouseID:   "wh-hcm",
 		WarehouseCode: "HCM",
 		Date:          "2026-04-26",
@@ -51,6 +51,9 @@ func TestCreateCarrierManifestWritesAudit(t *testing.T) {
 	if result.Manifest.Status != domain.ManifestStatusDraft {
 		t.Fatalf("status = %q, want draft", result.Manifest.Status)
 	}
+	if result.Manifest.CarrierName != "Ninja Van" || result.Manifest.StagingZone != "handover-c" {
+		t.Fatalf("manifest = %+v, want carrier name and handover zone from carrier master", result.Manifest)
+	}
 	if result.AuditLogID == "" {
 		t.Fatal("audit log id is empty")
 	}
@@ -59,8 +62,40 @@ func TestCreateCarrierManifestWritesAudit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list audit logs: %v", err)
 	}
-	if len(logs) != 1 {
-		t.Fatalf("audit logs = %d, want 1", len(logs))
+	if len(logs) != 1 || logs[0].Metadata["carrier_sla_profile"] != "standard" {
+		t.Fatalf("audit logs = %+v, want one log with carrier SLA profile", logs)
+	}
+}
+
+func TestCreateCarrierManifestRejectsInactiveCarrier(t *testing.T) {
+	service := NewCreateCarrierManifest(NewPrototypeCarrierManifestStore(), audit.NewInMemoryLogStore())
+
+	_, err := service.Execute(context.Background(), CreateCarrierManifestInput{
+		CarrierCode:   "GHTK",
+		WarehouseID:   "wh-hcm",
+		WarehouseCode: "HCM",
+		Date:          "2026-04-26",
+		ActorID:       "user-warehouse-lead",
+		RequestID:     "req-create-manifest-inactive",
+	})
+	if !errors.Is(err, ErrCarrierInactive) {
+		t.Fatalf("err = %v, want inactive carrier", err)
+	}
+}
+
+func TestCreateCarrierManifestRejectsUnknownCarrier(t *testing.T) {
+	service := NewCreateCarrierManifest(NewPrototypeCarrierManifestStore(), audit.NewInMemoryLogStore())
+
+	_, err := service.Execute(context.Background(), CreateCarrierManifestInput{
+		CarrierCode:   "UNKNOWN",
+		WarehouseID:   "wh-hcm",
+		WarehouseCode: "HCM",
+		Date:          "2026-04-26",
+		ActorID:       "user-warehouse-lead",
+		RequestID:     "req-create-manifest-unknown",
+	})
+	if !errors.Is(err, ErrCarrierNotFound) {
+		t.Fatalf("err = %v, want carrier not found", err)
 	}
 }
 

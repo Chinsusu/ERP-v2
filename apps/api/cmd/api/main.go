@@ -3873,6 +3873,8 @@ func writeCarrierManifestError(w http.ResponseWriter, r *http.Request, err error
 	switch {
 	case errors.Is(err, shippingapp.ErrCarrierManifestNotFound), errors.Is(err, shippingapp.ErrPackedShipmentNotFound):
 		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Carrier manifest resource not found", nil)
+	case errors.Is(err, shippingapp.ErrCarrierNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Carrier was not found", nil)
 	case errors.Is(err, shippingdomain.ErrManifestRequiredField):
 		response.WriteError(
 			w,
@@ -3897,6 +3899,8 @@ func writeCarrierManifestError(w http.ResponseWriter, r *http.Request, err error
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Shipment already exists in carrier manifest", nil)
 	case errors.Is(err, shippingdomain.ErrManifestAlreadyCompleted):
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier manifest is already completed", nil)
+	case errors.Is(err, shippingapp.ErrCarrierInactive):
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier is inactive", nil)
 	default:
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier manifest request could not be processed", nil)
 	}
