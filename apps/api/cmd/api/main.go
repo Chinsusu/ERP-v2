@@ -406,6 +406,22 @@ type salesOrderActionResultResponse struct {
 	AuditLogID     string             `json:"audit_log_id,omitempty"`
 }
 
+type warehouseFulfillmentMetricsResponse struct {
+	WarehouseID           string `json:"warehouse_id,omitempty"`
+	Date                  string `json:"date,omitempty"`
+	ShiftCode             string `json:"shift_code,omitempty"`
+	CarrierCode           string `json:"carrier_code,omitempty"`
+	TotalOrders           int    `json:"total_orders"`
+	NewOrders             int    `json:"new_orders"`
+	ReservedOrders        int    `json:"reserved_orders"`
+	PickingOrders         int    `json:"picking_orders"`
+	PackedOrders          int    `json:"packed_orders"`
+	WaitingHandoverOrders int    `json:"waiting_handover_orders"`
+	MissingOrders         int    `json:"missing_orders"`
+	HandoverOrders        int    `json:"handover_orders"`
+	GeneratedAt           string `json:"generated_at"`
+}
+
 type availableStockResponse struct {
 	WarehouseID      string `json:"warehouse_id"`
 	WarehouseCode    string `json:"warehouse_code"`
@@ -1103,6 +1119,14 @@ func main() {
 			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(closeEndOfDayReconciliationHandler(closeEndOfDayReconciliation)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/warehouse/daily-board/fulfillment-metrics",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionWarehouseView,
+			http.HandlerFunc(warehouseDailyBoardFulfillmentMetricsHandler(salesOrderService, listCarrierManifests)),
 		),
 	)
 	mux.Handle(
@@ -3195,6 +3219,78 @@ func closeEndOfDayReconciliationHandler(service inventoryapp.CloseEndOfDayReconc
 	}
 }
 
+func warehouseDailyBoardFulfillmentMetricsHandler(
+	salesService salesapp.SalesOrderService,
+	listManifests shippingapp.ListCarrierManifests,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionWarehouseView) {
+			writePermissionDenied(w, r, auth.PermissionWarehouseView)
+			return
+		}
+
+		warehouseID := strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
+		date := strings.TrimSpace(r.URL.Query().Get("date"))
+		shiftCode := strings.TrimSpace(r.URL.Query().Get("shift_code"))
+		carrierCode := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("carrier_code")))
+
+		salesFilter := salesapp.SalesOrderFilter{WarehouseID: warehouseID}
+		if date != "" {
+			salesFilter.DateFrom = date
+			salesFilter.DateTo = date
+		}
+		orders, err := salesService.ListSalesOrders(r.Context(), salesFilter)
+		if err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusConflict,
+				response.ErrorCodeConflict,
+				"Daily board fulfillment metrics could not be loaded",
+				nil,
+			)
+			return
+		}
+
+		manifests, err := listManifests.Execute(
+			r.Context(),
+			shippingdomain.NewCarrierManifestFilter(warehouseID, date, carrierCode, ""),
+		)
+		if err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusConflict,
+				response.ErrorCodeConflict,
+				"Daily board fulfillment metrics could not be loaded",
+				nil,
+			)
+			return
+		}
+
+		payload := newWarehouseFulfillmentMetricsResponse(
+			orders,
+			manifests,
+			warehouseID,
+			date,
+			shiftCode,
+			carrierCode,
+			time.Now().UTC(),
+		)
+		response.WriteSuccess(w, r, http.StatusOK, payload)
+	}
+}
+
 func carrierManifestsHandler(
 	listService shippingapp.ListCarrierManifests,
 	createService shippingapp.CreateCarrierManifest,
@@ -4733,6 +4829,88 @@ func countReservedSalesOrderLines(order salesdomain.SalesOrder) int {
 	}
 
 	return count
+}
+
+func newWarehouseFulfillmentMetricsResponse(
+	orders []salesdomain.SalesOrder,
+	manifests []shippingdomain.CarrierManifest,
+	warehouseID string,
+	date string,
+	shiftCode string,
+	carrierCode string,
+	generatedAt time.Time,
+) warehouseFulfillmentMetricsResponse {
+	manifestOrderNos := carrierManifestOrderNoSet(manifests)
+	filterByCarrier := strings.TrimSpace(carrierCode) != ""
+	missingOrderNos := carrierManifestMissingOrderNoSet(manifests)
+	payload := warehouseFulfillmentMetricsResponse{
+		WarehouseID:   strings.TrimSpace(warehouseID),
+		Date:          strings.TrimSpace(date),
+		ShiftCode:     strings.TrimSpace(shiftCode),
+		CarrierCode:   strings.TrimSpace(carrierCode),
+		GeneratedAt:   generatedAt.UTC().Format(time.RFC3339),
+		MissingOrders: len(missingOrderNos),
+	}
+
+	for _, order := range orders {
+		if filterByCarrier && !stringSetContains(manifestOrderNos, order.OrderNo) {
+			continue
+		}
+
+		payload.TotalOrders++
+		switch salesdomain.NormalizeSalesOrderStatus(order.Status) {
+		case salesdomain.SalesOrderStatusDraft, salesdomain.SalesOrderStatusConfirmed:
+			payload.NewOrders++
+		case salesdomain.SalesOrderStatusReserved:
+			payload.ReservedOrders++
+		case salesdomain.SalesOrderStatusPicking, salesdomain.SalesOrderStatusPicked, salesdomain.SalesOrderStatusPacking:
+			payload.PickingOrders++
+		case salesdomain.SalesOrderStatusPacked:
+			payload.PackedOrders++
+		case salesdomain.SalesOrderStatusWaitingHandover:
+			payload.WaitingHandoverOrders++
+		case salesdomain.SalesOrderStatusHandedOver:
+			payload.HandoverOrders++
+		case salesdomain.SalesOrderStatusHandoverException:
+			if orderNo := strings.TrimSpace(order.OrderNo); orderNo != "" {
+				missingOrderNos[orderNo] = struct{}{}
+			}
+		}
+	}
+	payload.MissingOrders = len(missingOrderNos)
+
+	return payload
+}
+
+func carrierManifestOrderNoSet(manifests []shippingdomain.CarrierManifest) map[string]struct{} {
+	orderNos := make(map[string]struct{})
+	for _, manifest := range manifests {
+		for _, line := range manifest.Lines {
+			if orderNo := strings.TrimSpace(line.OrderNo); orderNo != "" {
+				orderNos[orderNo] = struct{}{}
+			}
+		}
+	}
+
+	return orderNos
+}
+
+func carrierManifestMissingOrderNoSet(manifests []shippingdomain.CarrierManifest) map[string]struct{} {
+	orderNos := make(map[string]struct{})
+	for _, manifest := range manifests {
+		for _, line := range manifest.MissingLines() {
+			if orderNo := strings.TrimSpace(line.OrderNo); orderNo != "" {
+				orderNos[orderNo] = struct{}{}
+			}
+		}
+	}
+
+	return orderNos
+}
+
+func stringSetContains(values map[string]struct{}, value string) bool {
+	_, ok := values[strings.TrimSpace(value)]
+	return ok
 }
 
 func newAuditLogResponse(log audit.Log) auditLogResponse {
