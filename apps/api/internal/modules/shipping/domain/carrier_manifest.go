@@ -22,6 +22,7 @@ var ErrManifestRequiredField = errors.New("carrier manifest required field is mi
 var ErrManifestDuplicateShipment = errors.New("shipment already exists in carrier manifest")
 var ErrManifestShipmentNotFound = errors.New("shipment was not found in carrier manifest")
 var ErrManifestShipmentNotPacked = errors.New("shipment must be packed before adding to carrier manifest")
+var ErrManifestCarrierMismatch = errors.New("shipment carrier does not match carrier manifest")
 var ErrManifestAlreadyCompleted = errors.New("carrier manifest is already completed")
 var ErrManifestInvalidTransition = errors.New("carrier manifest status transition is invalid")
 var ErrManifestScanCodeRequired = errors.New("manifest scan code is required")
@@ -204,6 +205,9 @@ func (m CarrierManifest) AddShipment(shipment PackedShipment) (CarrierManifest, 
 	}
 	if !shipment.Packed {
 		return CarrierManifest{}, ErrManifestShipmentNotPacked
+	}
+	if shipmentCarrierCode := strings.ToUpper(strings.TrimSpace(shipment.CarrierCode)); shipmentCarrierCode != "" && shipmentCarrierCode != m.CarrierCode {
+		return CarrierManifest{}, ErrManifestCarrierMismatch
 	}
 	for _, line := range m.Lines {
 		if line.ShipmentID == strings.TrimSpace(shipment.ID) {

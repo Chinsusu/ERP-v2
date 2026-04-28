@@ -136,6 +136,40 @@ func TestAddShipmentToCarrierManifestUpdatesCountsAndAudit(t *testing.T) {
 	}
 }
 
+func TestAddShipmentToCarrierManifestRejectsUnpackedAndWrongCarrier(t *testing.T) {
+	ctx := context.Background()
+	store := NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	manifest := draftCarrierManifestForActionTest(t)
+	if err := store.Save(ctx, manifest); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
+	service := NewAddShipmentToCarrierManifest(store, auditStore)
+
+	cases := []struct {
+		name       string
+		shipmentID string
+		want       error
+	}{
+		{name: "unpacked", shipmentID: "ship-hcm-260426-099", want: domain.ErrManifestShipmentNotPacked},
+		{name: "wrong carrier", shipmentID: "ship-hcm-vtp-260426-001", want: domain.ErrManifestCarrierMismatch},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := service.Execute(ctx, AddShipmentToCarrierManifestInput{
+				ManifestID: manifest.ID,
+				ShipmentID: tc.shipmentID,
+				ActorID:    "user-warehouse-lead",
+				RequestID:  "req-add-shipment-reject",
+			})
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("err = %v, want %v", err, tc.want)
+			}
+		})
+	}
+}
+
 func TestCarrierManifestReadyRemoveAndCancelActionsWriteAudit(t *testing.T) {
 	ctx := context.Background()
 	store := NewPrototypeCarrierManifestStore()
