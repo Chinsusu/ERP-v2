@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
@@ -100,12 +101,15 @@ func TestSalesOrderAPISmokePack(t *testing.T) {
 			t.Fatalf("confirm status = %d, want %d: %s", confirmRec.Code, http.StatusOK, confirmRec.Body.String())
 		}
 		confirmed := decodeSmokeSuccess[salesOrderActionResultResponse](t, confirmRec).Data
-		if confirmed.PreviousStatus != "draft" || confirmed.CurrentStatus != "confirmed" || confirmed.SalesOrder.Version != 3 {
-			t.Fatalf("confirmed result = %+v, want confirmed transition", confirmed)
+		if confirmed.PreviousStatus != "draft" || confirmed.CurrentStatus != "reserved" || confirmed.SalesOrder.Version != 4 {
+			t.Fatalf("confirmed result = %+v, want reserved transition", confirmed)
+		}
+		if confirmed.SalesOrder.Lines[0].ReservedQty != "3.000000" || confirmed.SalesOrder.Lines[0].BatchID == "" {
+			t.Fatalf("confirmed reserved line = %+v, want reserved quantity and batch", confirmed.SalesOrder.Lines[0])
 		}
 
 		cancelReq := smokeRequestAsRole(
-			httptest.NewRequest(http.MethodPost, "/api/v1/sales-orders/so-smoke-260428-0001/cancel", bytes.NewBufferString(`{"expected_version":3,"reason":"customer changed order"}`)),
+			httptest.NewRequest(http.MethodPost, "/api/v1/sales-orders/so-smoke-260428-0001/cancel", bytes.NewBufferString(`{"expected_version":4,"reason":"customer changed order"}`)),
 			authConfig,
 			auth.RoleSalesOps,
 		)
@@ -119,7 +123,7 @@ func TestSalesOrderAPISmokePack(t *testing.T) {
 			t.Fatalf("cancel status = %d, want %d: %s", cancelRec.Code, http.StatusOK, cancelRec.Body.String())
 		}
 		cancelled := decodeSmokeSuccess[salesOrderActionResultResponse](t, cancelRec).Data
-		if cancelled.PreviousStatus != "confirmed" || cancelled.CurrentStatus != "cancelled" || cancelled.SalesOrder.CancelReason != "customer changed order" {
+		if cancelled.PreviousStatus != "reserved" || cancelled.CurrentStatus != "cancelled" || cancelled.SalesOrder.CancelReason != "customer changed order" {
 			t.Fatalf("cancelled result = %+v, want cancelled transition with reason", cancelled)
 		}
 
@@ -208,7 +212,7 @@ func newTestSalesOrderAPIService() (salesapp.SalesOrderService, *audit.InMemoryL
 		masterdataapp.NewPrototypePartyCatalog(auditStore),
 		masterdataapp.NewPrototypeItemCatalog(auditStore),
 		masterdataapp.NewPrototypeWarehouseLocationCatalog(auditStore),
-	)
+	).WithStockReserver(inventoryapp.NewPrototypeSalesOrderReservationStore())
 
 	return service, auditStore
 }
