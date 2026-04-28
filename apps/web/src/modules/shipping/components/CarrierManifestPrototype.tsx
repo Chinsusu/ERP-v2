@@ -201,6 +201,7 @@ export function CarrierManifestPrototype() {
   const selectedManifest =
     displayedManifests.find((manifest) => manifest.id === selectedManifestId) ?? displayedManifests[0] ?? null;
   const missingLines = selectedManifest?.missingLines ?? [];
+  const scanIssues = recentScans.filter((scan) => scan.severity !== "success");
   const canConfirmHandover =
     selectedManifest !== null &&
     !actionBusy &&
@@ -331,7 +332,9 @@ export function CarrierManifestPrototype() {
         {
           manifestId: selectedManifest.id,
           code,
-          stationId: `${selectedManifest.warehouseCode.toLowerCase()}-${selectedManifest.handoverZoneCode || selectedManifest.stagingZone}`
+          stationId: `${selectedManifest.warehouseCode.toLowerCase()}-${selectedManifest.handoverZoneCode || selectedManifest.stagingZone}`,
+          deviceId: `${selectedManifest.warehouseCode.toLowerCase()}-handover-ui`,
+          source: "handover_scan_ui"
         },
         displayedManifests
       );
@@ -589,8 +592,25 @@ export function CarrierManifestPrototype() {
         <div className="erp-card erp-card--padded">
           <div className="erp-section-header">
             <h2 className="erp-section-title">Recent scans</h2>
-            {scanResult ? <StatusChip tone={carrierManifestScanSeverityTone(scanResult.severity)}>{scanResult.resultCode}</StatusChip> : null}
+            <StatusChip tone={scanIssues.length === 0 ? "success" : "danger"}>{scanIssues.length} issues</StatusChip>
           </div>
+          {scanIssues.length > 0 ? (
+            <section className="erp-shipping-scan-panel">
+              <div className="erp-shipping-scan-meta">
+                <StatusChip tone="danger">Scan issues</StatusChip>
+                {scanResult ? <StatusChip tone={carrierManifestScanSeverityTone(scanResult.severity)}>{scanResult.resultCode}</StatusChip> : null}
+              </div>
+              <ol className="erp-shipping-scan-list" aria-label="Manifest scan issues">
+                {scanIssues.map((scan) => (
+                  <li key={`issue-${scan.scanEvent.id}`}>
+                    <StatusChip tone={carrierManifestScanSeverityTone(scan.severity)}>{scan.resultCode}</StatusChip>
+                    <strong>{scan.scanEvent.code}</strong>
+                    <span>{scan.expectedManifestId ?? scan.message}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ) : null}
           {recentScans.length > 0 ? (
             <ol className="erp-shipping-scan-list" aria-label="Recent manifest scans">
               {recentScans.map((scan) => (
