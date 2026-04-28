@@ -13,11 +13,19 @@ import {
   getStockCounts,
   submitStockCount
 } from "../services/stockAvailabilityService";
+import {
+  getStockAdjustments,
+  summarizeStockAdjustmentDelta,
+  transitionStockAdjustment
+} from "../services/stockAdjustmentService";
 import type {
   AvailableStockItem,
   AvailableStockQuery,
   BatchQCStatus,
   BatchQCTransition,
+  StockAdjustment,
+  StockAdjustmentAction,
+  StockAdjustmentStatus,
   StockCountSession,
   StockCountStatus
 } from "../types";
@@ -200,6 +208,59 @@ const stockCountColumns: DataTableColumn<StockCountSession>[] = [
   }
 ];
 
+const stockAdjustmentColumns: DataTableColumn<StockAdjustment>[] = [
+  {
+    key: "adjustmentNo",
+    header: "Adjustment",
+    render: (row) => row.adjustmentNo,
+    width: "160px"
+  },
+  {
+    key: "warehouse",
+    header: "Warehouse",
+    render: (row) => row.warehouseCode || row.warehouseId,
+    width: "110px"
+  },
+  {
+    key: "status",
+    header: "Status",
+    render: (row) => (
+      <StatusChip tone={stockAdjustmentStatusTone(row.status)}>{stockAdjustmentStatusLabel(row.status)}</StatusChip>
+    ),
+    width: "140px"
+  },
+  {
+    key: "beforeAfter",
+    header: "Before / after",
+    render: (row) => stockAdjustmentBeforeAfter(row),
+    width: "210px"
+  },
+  {
+    key: "delta",
+    header: "Delta",
+    render: (row) => stockAdjustmentDelta(row),
+    align: "right",
+    width: "130px"
+  },
+  {
+    key: "reason",
+    header: "Reason",
+    render: (row) => row.reason
+  },
+  {
+    key: "requestedBy",
+    header: "Requested",
+    render: (row) => row.requestedBy,
+    width: "150px"
+  },
+  {
+    key: "audit",
+    header: "Audit",
+    render: (row) => row.auditLogId || "-",
+    width: "210px"
+  }
+];
+
 export function AvailableStockPrototype() {
   const [warehouseId, setWarehouseId] = useState("");
   const [locationId, setLocationId] = useState("");
@@ -219,6 +280,11 @@ export function AvailableStockPrototype() {
   const [countedQty, setCountedQty] = useState("");
   const [stockCountSubmitting, setStockCountSubmitting] = useState(false);
   const [stockCountMessage, setStockCountMessage] = useState("");
+  const [stockAdjustments, setStockAdjustments] = useState<StockAdjustment[]>([]);
+  const [stockAdjustmentsLoading, setStockAdjustmentsLoading] = useState(false);
+  const [selectedAdjustmentId, setSelectedAdjustmentId] = useState("");
+  const [adjustmentSubmitting, setAdjustmentSubmitting] = useState(false);
+  const [adjustmentMessage, setAdjustmentMessage] = useState("");
   const query = useMemo<AvailableStockQuery>(
     () => ({
       warehouseId: warehouseId || undefined,
@@ -238,6 +304,14 @@ export function AvailableStockPrototype() {
   const activeOpenStockCount = useMemo(
     () => openStockCounts.find((count) => count.id === selectedStockCountId) ?? openStockCounts[0],
     [openStockCounts, selectedStockCountId]
+  );
+  const actionableAdjustment = useMemo(() => firstActionableAdjustment(stockAdjustments), [stockAdjustments]);
+  const selectedAdjustment = useMemo(
+    () =>
+      stockAdjustments.find((adjustment) => adjustment.id === selectedAdjustmentId) ??
+      actionableAdjustment ??
+      stockAdjustments[0],
+    [actionableAdjustment, selectedAdjustmentId, stockAdjustments]
   );
   const selectedBatch = useMemo(
     () => batchOptions.find((batch) => batch.id === selectedBatchId),
@@ -301,6 +375,27 @@ export function AvailableStockPrototype() {
       .finally(() => {
         if (active) {
           setStockCountsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setStockAdjustmentsLoading(true);
+    getStockAdjustments()
+      .then((rows) => {
+        if (active) {
+          setStockAdjustments(rows);
+          setSelectedAdjustmentId((current) => current || firstActionableAdjustment(rows)?.id || rows[0]?.id || "");
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setStockAdjustmentsLoading(false);
         }
       });
 
@@ -400,6 +495,25 @@ export function AvailableStockPrototype() {
       setStockCountMessage("Could not submit count");
     } finally {
       setStockCountSubmitting(false);
+    }
+  }
+
+  async function handleAdjustmentAction(action: StockAdjustmentAction) {
+    if (!selectedAdjustment) {
+      return;
+    }
+
+    setAdjustmentSubmitting(true);
+    setAdjustmentMessage("");
+    try {
+      const updated = await transitionStockAdjustment(selectedAdjustment.id, action);
+      setSelectedAdjustmentId(updated.id);
+      setStockAdjustments((current) => replaceStockAdjustment(current, updated));
+      setAdjustmentMessage(`${stockAdjustmentActionLabel(action)} recorded`);
+    } catch {
+      setAdjustmentMessage(`Could not ${stockAdjustmentActionLabel(action).toLowerCase()}`);
+    } finally {
+      setAdjustmentSubmitting(false);
     }
   }
 
@@ -528,6 +642,74 @@ export function AvailableStockPrototype() {
           rows={stockCounts}
           getRowKey={(row) => row.id}
           loading={stockCountsLoading}
+        />
+      </section>
+
+      <section className="erp-card erp-card--padded erp-module-table-card">
+        <div className="erp-section-header">
+          <h2 className="erp-section-title">Adjustment approvals</h2>
+          <StatusChip tone={selectedAdjustment ? stockAdjustmentStatusTone(selectedAdjustment.status) : "info"}>
+            {selectedAdjustment ? selectedAdjustment.adjustmentNo : `${stockAdjustments.length} requests`}
+          </StatusChip>
+        </div>
+
+        <div className="erp-stock-adjustment-actions">
+          <label className="erp-field">
+            <span>Request</span>
+            <select
+              className="erp-input"
+              value={selectedAdjustment?.id ?? ""}
+              onChange={(event) => setSelectedAdjustmentId(event.target.value)}
+            >
+              {stockAdjustments.map((adjustment) => (
+                <option key={adjustment.id} value={adjustment.id}>
+                  {adjustment.adjustmentNo} / {stockAdjustmentStatusLabel(adjustment.status)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={!canTransitionAdjustment(selectedAdjustment, "submit") || adjustmentSubmitting}
+            onClick={() => handleAdjustmentAction("submit")}
+          >
+            Submit
+          </button>
+          <button
+            className="erp-button erp-button--primary"
+            type="button"
+            disabled={!canTransitionAdjustment(selectedAdjustment, "approve") || adjustmentSubmitting}
+            onClick={() => handleAdjustmentAction("approve")}
+          >
+            Approve
+          </button>
+          <button
+            className="erp-button erp-button--danger"
+            type="button"
+            disabled={!canTransitionAdjustment(selectedAdjustment, "reject") || adjustmentSubmitting}
+            onClick={() => handleAdjustmentAction("reject")}
+          >
+            Reject
+          </button>
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={!canTransitionAdjustment(selectedAdjustment, "post") || adjustmentSubmitting}
+            onClick={() => handleAdjustmentAction("post")}
+          >
+            Post
+          </button>
+          {adjustmentMessage ? (
+            <StatusChip tone={adjustmentMessage.startsWith("Could") ? "danger" : "success"}>{adjustmentMessage}</StatusChip>
+          ) : null}
+        </div>
+
+        <DataTable
+          columns={stockAdjustmentColumns}
+          rows={stockAdjustments}
+          getRowKey={(row) => row.id}
+          loading={stockAdjustmentsLoading}
         />
       </section>
 
@@ -720,6 +902,118 @@ function stockCountStatusTone(status: StockCountStatus): StatusTone {
     case "open":
     default:
       return "info";
+  }
+}
+
+function firstActionableAdjustment(adjustments: StockAdjustment[]) {
+  return (
+    adjustments.find((adjustment) => adjustment.status === "submitted") ??
+    adjustments.find((adjustment) => adjustment.status === "approved") ??
+    adjustments.find((adjustment) => adjustment.status === "draft")
+  );
+}
+
+function replaceStockAdjustment(rows: StockAdjustment[], updated: StockAdjustment) {
+  if (rows.some((row) => row.id === updated.id)) {
+    return rows.map((row) => (row.id === updated.id ? updated : row));
+  }
+
+  return [updated, ...rows];
+}
+
+function canTransitionAdjustment(adjustment: StockAdjustment | undefined, action: StockAdjustmentAction) {
+  if (!adjustment) {
+    return false;
+  }
+  if (action === "submit") {
+    return adjustment.status === "draft";
+  }
+  if (action === "approve" || action === "reject") {
+    return adjustment.status === "submitted";
+  }
+  if (action === "post") {
+    return adjustment.status === "approved";
+  }
+
+  return false;
+}
+
+function stockAdjustmentActionLabel(action: StockAdjustmentAction) {
+  switch (action) {
+    case "submit":
+      return "Submit";
+    case "approve":
+      return "Approve";
+    case "reject":
+      return "Reject";
+    case "post":
+    default:
+      return "Post";
+  }
+}
+
+function stockAdjustmentBeforeAfter(adjustment: StockAdjustment) {
+  const firstLine = adjustment.lines[0];
+  if (!firstLine) {
+    return "-";
+  }
+  if (adjustment.lines.length > 1) {
+    return `${adjustment.lines.length} lines`;
+  }
+
+  return (
+    <span className="erp-stock-qc-status-flow">
+      <span>{formatQuantity(firstLine.expectedQty, firstLine.baseUomCode)}</span>
+      <span>to</span>
+      <span>{formatQuantity(firstLine.countedQty, firstLine.baseUomCode)}</span>
+    </span>
+  );
+}
+
+function stockAdjustmentDelta(adjustment: StockAdjustment) {
+  if (adjustment.lines.length === 0) {
+    return "-";
+  }
+  if (adjustment.lines.length === 1) {
+    const line = adjustment.lines[0];
+    return formatQuantity(line.deltaQty, line.baseUomCode);
+  }
+
+  const summary = summarizeStockAdjustmentDelta(adjustment);
+  return summary.baseUomCode ? formatQuantity(summary.deltaQty, summary.baseUomCode) : `${adjustment.lines.length} lines`;
+}
+
+function stockAdjustmentStatusLabel(status: StockAdjustmentStatus) {
+  switch (status) {
+    case "draft":
+      return "Draft";
+    case "submitted":
+      return "Submitted";
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "posted":
+      return "Posted";
+    case "cancelled":
+    default:
+      return "Cancelled";
+  }
+}
+
+function stockAdjustmentStatusTone(status: StockAdjustmentStatus): StatusTone {
+  switch (status) {
+    case "approved":
+    case "posted":
+      return "success";
+    case "submitted":
+    case "draft":
+      return "warning";
+    case "rejected":
+    case "cancelled":
+      return "danger";
+    default:
+      return "normal";
   }
 }
 
