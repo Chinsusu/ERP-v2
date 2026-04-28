@@ -569,6 +569,28 @@ func (s SalesOrderService) MarkSalesOrderPacked(
 	})
 }
 
+func (s SalesOrderService) MarkSalesOrderHandedOver(
+	ctx context.Context,
+	input SalesOrderActionInput,
+) (SalesOrderActionResult, error) {
+	return s.transition(ctx, input, "sales.order.handed_over", func(
+		order salesdomain.SalesOrder,
+		actorID string,
+		changedAt time.Time,
+	) (salesdomain.SalesOrder, error) {
+		if order.Status == salesdomain.SalesOrderStatusPacked {
+			waitingHandover, err := order.MarkWaitingHandover(actorID, changedAt)
+			if err != nil {
+				return salesdomain.SalesOrder{}, err
+			}
+
+			return waitingHandover.MarkHandedOver(actorID, changedAt)
+		}
+
+		return order.MarkHandedOver(actorID, changedAt)
+	})
+}
+
 func (s SalesOrderService) cancelAndReleaseSalesOrder(
 	ctx context.Context,
 	input SalesOrderActionInput,
@@ -1384,5 +1406,126 @@ func prototypeSalesOrders() []salesdomain.SalesOrder {
 		panic(fmt.Sprintf("invalid prototype packing order start pack: %v", err))
 	}
 
-	return []salesdomain.SalesOrder{draft, confirmed, packing}
+	return append([]salesdomain.SalesOrder{draft, confirmed, packing}, prototypeHandoverSalesOrders(baseTime)...)
+}
+
+func prototypeHandoverSalesOrders(baseTime time.Time) []salesdomain.SalesOrder {
+	return []salesdomain.SalesOrder{
+		mustPrototypeWaitingHandoverSalesOrder(
+			"so-260426-001",
+			"SO-260426-001",
+			"cus-mp-shopee",
+			"CUS-MP-SHOPEE",
+			"Shopee Marketplace",
+			"item-serum-30ml",
+			"SERUM-30ML",
+			"Hydrating Serum 30ml",
+			"12",
+			baseTime.Add(-48*time.Hour),
+		),
+		mustPrototypeWaitingHandoverSalesOrder(
+			"so-260426-002",
+			"SO-260426-002",
+			"cus-mp-tiktok",
+			"CUS-MP-TIKTOK",
+			"TikTok Shop",
+			"item-cream-50g",
+			"CREAM-50G",
+			"Repair Cream 50g",
+			"3",
+			baseTime.Add(-47*time.Hour),
+		),
+		mustPrototypeWaitingHandoverSalesOrder(
+			"so-260426-003",
+			"SO-260426-003",
+			"cus-dl-minh-anh",
+			"CUS-DL-MINHANH",
+			"Minh Anh Distributor",
+			"item-serum-30ml",
+			"SERUM-30ML",
+			"Hydrating Serum 30ml",
+			"2",
+			baseTime.Add(-46*time.Hour),
+		),
+	}
+}
+
+func mustPrototypeWaitingHandoverSalesOrder(
+	id string,
+	orderNo string,
+	customerID string,
+	customerCode string,
+	customerName string,
+	itemID string,
+	skuCode string,
+	itemName string,
+	qty string,
+	createdAt time.Time,
+) salesdomain.SalesOrder {
+	order, err := salesdomain.NewSalesOrderDocument(salesdomain.NewSalesOrderDocumentInput{
+		ID:            id,
+		OrgID:         defaultSalesOrderOrgID,
+		OrderNo:       orderNo,
+		CustomerID:    customerID,
+		CustomerCode:  customerCode,
+		CustomerName:  customerName,
+		Channel:       "MP",
+		WarehouseID:   "wh-hcm",
+		WarehouseCode: "HCM",
+		OrderDate:     "2026-04-26",
+		CurrencyCode:  decimal.CurrencyVND.String(),
+		Lines: []salesdomain.NewSalesOrderLineInput{
+			{
+				ID:               id + "-line-01",
+				LineNo:           1,
+				ItemID:           itemID,
+				SKUCode:          skuCode,
+				ItemName:         itemName,
+				OrderedQty:       decimal.MustQuantity(qty),
+				UOMCode:          "EA",
+				BaseOrderedQty:   decimal.MustQuantity(qty),
+				BaseUOMCode:      "EA",
+				ConversionFactor: decimal.MustQuantity("1"),
+				UnitPrice:        decimal.MustUnitPrice("125000"),
+				CurrencyCode:     decimal.CurrencyVND.String(),
+				ReservedQty:      decimal.MustQuantity(qty),
+			},
+		},
+		CreatedAt: createdAt,
+		CreatedBy: "user-sales",
+		UpdatedAt: createdAt,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype handover sales order: %v", err))
+	}
+	order, err = order.Confirm("user-sales", createdAt.Add(5*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype handover order confirm: %v", err))
+	}
+	order, err = order.MarkReserved("user-sales", createdAt.Add(10*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype handover order reserve: %v", err))
+	}
+	order, err = order.StartPicking("user-picker", createdAt.Add(15*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype handover order start pick: %v", err))
+	}
+	order, err = order.MarkPicked("user-picker", createdAt.Add(20*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype handover order picked: %v", err))
+	}
+	order, err = order.StartPacking("user-packer", createdAt.Add(25*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype handover order start pack: %v", err))
+	}
+	order, err = order.MarkPacked("user-packer", createdAt.Add(30*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype handover order packed: %v", err))
+	}
+	order, err = order.MarkWaitingHandover("user-handover-operator", createdAt.Add(35*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype handover order waiting: %v", err))
+	}
+
+	return order
 }

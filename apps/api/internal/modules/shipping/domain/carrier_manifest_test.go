@@ -203,6 +203,30 @@ func TestCarrierManifestScansByOrderOrTrackingCode(t *testing.T) {
 	}
 }
 
+func TestCarrierManifestConfirmHandoverRequiresAllLinesScanned(t *testing.T) {
+	manifest := CarrierManifest{
+		ID:     "manifest-hcm-ghn-morning",
+		Status: ManifestStatusScanning,
+		Lines: []CarrierManifestLine{
+			{ID: "line-001", ShipmentID: "ship-001", OrderNo: "SO-001", TrackingNo: "GHN001", Scanned: true},
+			{ID: "line-002", ShipmentID: "ship-002", OrderNo: "SO-002", TrackingNo: "GHN002"},
+		},
+	}
+
+	if _, err := manifest.ConfirmHandover(); !errors.Is(err, ErrManifestMissingOrders) {
+		t.Fatalf("err = %v, want missing orders", err)
+	}
+
+	manifest.Lines[1].Scanned = true
+	confirmed, err := manifest.ConfirmHandover()
+	if err != nil {
+		t.Fatalf("confirm handover: %v", err)
+	}
+	if confirmed.Status != ManifestStatusHandedOver {
+		t.Fatalf("status = %q, want handed_over", confirmed.Status)
+	}
+}
+
 func TestCarrierManifestScanRejectsDuplicateUnknownAndInvalidState(t *testing.T) {
 	manifest := CarrierManifest{
 		ID:     "manifest-hcm-ghn-morning",

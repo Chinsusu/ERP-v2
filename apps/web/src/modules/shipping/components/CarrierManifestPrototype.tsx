@@ -10,6 +10,7 @@ import {
   carrierManifestStatusOptions,
   carrierManifestStatusTone,
   carrierOptions,
+  confirmCarrierManifestHandover,
   createCarrierManifest,
   defaultCarrierManifestDate,
   markCarrierManifestReady,
@@ -372,17 +373,16 @@ export function CarrierManifestPrototype() {
     window.setTimeout(() => scanInputRef.current?.select(), 0);
   }
 
-  function handleConfirmHandover() {
+  async function handleConfirmHandover() {
     if (!selectedManifest || !canConfirmHandover) {
       return;
     }
 
-    const handedOver: CarrierManifest = {
-      ...selectedManifest,
-      status: "handed_over"
-    };
-    patchManifest(handedOver);
-    setFeedback(`Confirmed handover for ${handedOver.id}`);
+    await runManifestAction(async () => {
+      const handedOver = await confirmCarrierManifestHandover(selectedManifest.id);
+      patchManifest(handedOver);
+      setFeedback(`Confirmed handover for ${handedOver.id}`);
+    });
   }
 
   function handleMissingAction(action: "find" | "report", orderNo: string) {
