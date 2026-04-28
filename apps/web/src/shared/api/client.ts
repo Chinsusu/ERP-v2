@@ -102,6 +102,19 @@ export async function apiPatch<TData, TBody>(
   return apiWrite<TData, TBody>("PATCH", path, body, options);
 }
 
+export async function apiDelete<TData>(path: string, options: ApiWriteOptions = {}): Promise<TData> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "DELETE",
+    headers: authHeaders(options)
+  });
+  if (!response.ok) {
+    throw await createApiError(response);
+  }
+
+  const payload = (await response.json()) as ApiSuccessResponse<TData>;
+  return payload.data;
+}
+
 function authHeaders(options: { accessToken?: string }) {
   if (!options.accessToken) {
     return undefined;
