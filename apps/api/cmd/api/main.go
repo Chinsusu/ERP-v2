@@ -472,6 +472,72 @@ type createStockAdjustmentRequest struct {
 	Lines         []stockAdjustmentLineRequest `json:"lines"`
 }
 
+type stockCountLineRequest struct {
+	ID           string `json:"id"`
+	ItemID       string `json:"item_id"`
+	SKU          string `json:"sku"`
+	BatchID      string `json:"batch_id"`
+	BatchNo      string `json:"batch_no"`
+	LocationID   string `json:"location_id"`
+	LocationCode string `json:"location_code"`
+	ExpectedQty  string `json:"expected_qty"`
+	BaseUOMCode  string `json:"base_uom_code"`
+}
+
+type createStockCountRequest struct {
+	ID            string                  `json:"id"`
+	CountNo       string                  `json:"count_no"`
+	OrgID         string                  `json:"org_id"`
+	WarehouseID   string                  `json:"warehouse_id"`
+	WarehouseCode string                  `json:"warehouse_code"`
+	Scope         string                  `json:"scope"`
+	Lines         []stockCountLineRequest `json:"lines"`
+}
+
+type submitStockCountLineRequest struct {
+	ID         string `json:"id"`
+	SKU        string `json:"sku"`
+	CountedQty string `json:"counted_qty"`
+	Note       string `json:"note"`
+}
+
+type submitStockCountRequest struct {
+	Lines []submitStockCountLineRequest `json:"lines"`
+}
+
+type stockCountLineResponse struct {
+	ID           string `json:"id"`
+	ItemID       string `json:"item_id,omitempty"`
+	SKU          string `json:"sku"`
+	BatchID      string `json:"batch_id,omitempty"`
+	BatchNo      string `json:"batch_no,omitempty"`
+	LocationID   string `json:"location_id,omitempty"`
+	LocationCode string `json:"location_code,omitempty"`
+	ExpectedQty  string `json:"expected_qty"`
+	CountedQty   string `json:"counted_qty"`
+	DeltaQty     string `json:"delta_qty"`
+	BaseUOMCode  string `json:"base_uom_code"`
+	Counted      bool   `json:"counted"`
+	Note         string `json:"note,omitempty"`
+}
+
+type stockCountResponse struct {
+	ID            string                   `json:"id"`
+	CountNo       string                   `json:"count_no"`
+	OrgID         string                   `json:"org_id"`
+	WarehouseID   string                   `json:"warehouse_id"`
+	WarehouseCode string                   `json:"warehouse_code,omitempty"`
+	Scope         string                   `json:"scope"`
+	Status        string                   `json:"status"`
+	CreatedBy     string                   `json:"created_by"`
+	SubmittedBy   string                   `json:"submitted_by,omitempty"`
+	Lines         []stockCountLineResponse `json:"lines"`
+	AuditLogID    string                   `json:"audit_log_id,omitempty"`
+	CreatedAt     string                   `json:"created_at"`
+	UpdatedAt     string                   `json:"updated_at"`
+	SubmittedAt   string                   `json:"submitted_at,omitempty"`
+}
+
 type stockAdjustmentLineResponse struct {
 	ID           string `json:"id"`
 	ItemID       string `json:"item_id,omitempty"`
@@ -970,9 +1036,13 @@ func main() {
 	authSessions := auth.NewSessionManager(authConfig, time.Now)
 	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
 	stockAdjustmentStore := inventoryapp.NewPrototypeStockAdjustmentStore()
+	stockCountStore := inventoryapp.NewPrototypeStockCountStore()
 	auditLogStore := audit.NewPrototypeLogStore()
 	listStockAdjustments := inventoryapp.NewListStockAdjustments(stockAdjustmentStore)
 	createStockAdjustment := inventoryapp.NewCreateStockAdjustment(stockAdjustmentStore, auditLogStore)
+	listStockCounts := inventoryapp.NewListStockCounts(stockCountStore)
+	createStockCount := inventoryapp.NewCreateStockCount(stockCountStore, auditLogStore)
+	submitStockCount := inventoryapp.NewSubmitStockCount(stockCountStore, auditLogStore)
 	batchCatalog := inventoryapp.NewPrototypeBatchCatalog(auditLogStore)
 	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
 	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
@@ -1213,6 +1283,20 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(stockAdjustmentsHandler(listStockAdjustments, createStockAdjustment)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/stock-counts",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(stockCountsHandler(listStockCounts, createStockCount)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/stock-counts/{stock_count_id}/submit",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(stockCountSubmitHandler(submitStockCount)),
 		),
 	)
 	mux.Handle(
@@ -3143,6 +3227,100 @@ func stockAdjustmentsHandler(
 	}
 }
 
+func stockCountsHandler(
+	listService inventoryapp.ListStockCounts,
+	createService inventoryapp.CreateStockCount,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionInventoryView) {
+				writePermissionDenied(w, r, auth.PermissionInventoryView)
+				return
+			}
+			rows, err := listService.Execute(r.Context())
+			if err != nil {
+				response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Stock counts could not be listed", nil)
+				return
+			}
+			payload := make([]stockCountResponse, 0, len(rows))
+			for _, row := range rows {
+				payload = append(payload, newStockCountResponse(row, ""))
+			}
+			response.WriteSuccess(w, r, http.StatusOK, payload)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			var payload createStockCountRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid stock count payload", nil)
+				return
+			}
+			result, err := createService.Execute(r.Context(), inventoryapp.CreateStockCountInput{
+				ID:            payload.ID,
+				CountNo:       payload.CountNo,
+				OrgID:         payload.OrgID,
+				WarehouseID:   payload.WarehouseID,
+				WarehouseCode: payload.WarehouseCode,
+				Scope:         payload.Scope,
+				CreatedBy:     principal.UserID,
+				RequestID:     response.RequestID(r),
+				Lines:         newCreateStockCountLines(payload.Lines),
+			})
+			if err != nil {
+				writeStockCountError(w, r, err)
+				return
+			}
+			response.WriteSuccess(w, r, http.StatusCreated, newStockCountResponse(result.Session, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func stockCountSubmitHandler(submitService inventoryapp.SubmitStockCount) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		var payload submitStockCountRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid stock count submit payload", nil)
+			return
+		}
+		result, err := submitService.Execute(r.Context(), inventoryapp.SubmitStockCountInput{
+			ID:          r.PathValue("stock_count_id"),
+			SubmittedBy: principal.UserID,
+			RequestID:   response.RequestID(r),
+			Lines:       newSubmitStockCountLines(payload.Lines),
+		})
+		if err != nil {
+			writeStockCountError(w, r, err)
+			return
+		}
+		response.WriteSuccess(w, r, http.StatusOK, newStockCountResponse(result.Session, result.AuditLogID))
+	}
+}
+
 func batchesHandler(catalog *inventoryapp.BatchCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -4299,6 +4477,77 @@ func newCreateStockAdjustmentLines(
 	return lines
 }
 
+func newCreateStockCountLines(inputs []stockCountLineRequest) []inventoryapp.CreateStockCountLineInput {
+	lines := make([]inventoryapp.CreateStockCountLineInput, 0, len(inputs))
+	for _, input := range inputs {
+		lines = append(lines, inventoryapp.CreateStockCountLineInput{
+			ID:           input.ID,
+			ItemID:       input.ItemID,
+			SKU:          input.SKU,
+			BatchID:      input.BatchID,
+			BatchNo:      input.BatchNo,
+			LocationID:   input.LocationID,
+			LocationCode: input.LocationCode,
+			ExpectedQty:  input.ExpectedQty,
+			BaseUOMCode:  input.BaseUOMCode,
+		})
+	}
+
+	return lines
+}
+
+func newSubmitStockCountLines(inputs []submitStockCountLineRequest) []inventoryapp.SubmitStockCountLineInput {
+	lines := make([]inventoryapp.SubmitStockCountLineInput, 0, len(inputs))
+	for _, input := range inputs {
+		lines = append(lines, inventoryapp.SubmitStockCountLineInput{
+			ID:         input.ID,
+			SKU:        input.SKU,
+			CountedQty: input.CountedQty,
+			Note:       input.Note,
+		})
+	}
+
+	return lines
+}
+
+func newStockCountResponse(session domain.StockCountSession, auditLogID string) stockCountResponse {
+	payload := stockCountResponse{
+		ID:            session.ID,
+		CountNo:       session.CountNo,
+		OrgID:         session.OrgID,
+		WarehouseID:   session.WarehouseID,
+		WarehouseCode: session.WarehouseCode,
+		Scope:         session.Scope,
+		Status:        string(session.Status),
+		CreatedBy:     session.CreatedBy,
+		SubmittedBy:   session.SubmittedBy,
+		Lines:         make([]stockCountLineResponse, 0, len(session.Lines)),
+		AuditLogID:    auditLogID,
+		CreatedAt:     session.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:     session.UpdatedAt.UTC().Format(time.RFC3339),
+		SubmittedAt:   timeString(session.SubmittedAt),
+	}
+	for _, line := range session.Lines {
+		payload.Lines = append(payload.Lines, stockCountLineResponse{
+			ID:           line.ID,
+			ItemID:       line.ItemID,
+			SKU:          line.SKU,
+			BatchID:      line.BatchID,
+			BatchNo:      line.BatchNo,
+			LocationID:   line.LocationID,
+			LocationCode: line.LocationCode,
+			ExpectedQty:  line.ExpectedQty.String(),
+			CountedQty:   line.CountedQty.String(),
+			DeltaQty:     line.DeltaQty.String(),
+			BaseUOMCode:  line.BaseUOMCode.String(),
+			Counted:      line.Counted,
+			Note:         line.Note,
+		})
+	}
+
+	return payload
+}
+
 func newStockAdjustmentResponse(
 	adjustment domain.StockAdjustment,
 	auditLogID string,
@@ -4862,6 +5111,32 @@ func writeStockAdjustmentError(w http.ResponseWriter, r *http.Request, err error
 		)
 	default:
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Stock adjustment could not be processed", nil)
+	}
+}
+
+func writeStockCountError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, inventoryapp.ErrStockCountNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Stock count not found", nil)
+	case errors.Is(err, domain.ErrStockCountRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Stock count required field is missing",
+			map[string]any{"required": "warehouse_id, lines, sku, expected_qty, base_uom_code, counted_qty"},
+		)
+	case errors.Is(err, domain.ErrStockCountInvalidQuantity),
+		errors.Is(err, decimal.ErrInvalidDecimal),
+		errors.Is(err, decimal.ErrInvalidUOMCode):
+		response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Stock count quantity or UOM is invalid", nil)
+	case errors.Is(err, domain.ErrStockCountInvalidStatus):
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Stock count status transition is not allowed", nil)
+	case errors.Is(err, domain.ErrStockCountLineNotFound):
+		response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Stock count line not found", nil)
+	default:
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Stock count could not be processed", nil)
 	}
 }
 

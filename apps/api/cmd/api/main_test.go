@@ -2791,6 +2791,80 @@ func TestStockAdjustmentsHandlerRejectsNoVariance(t *testing.T) {
 	}
 }
 
+func TestStockCountsHandlerCreatesAndSubmitsVarianceReview(t *testing.T) {
+	stockCountStore := inventoryapp.NewPrototypeStockCountStore()
+	auditStore := audit.NewInMemoryLogStore()
+	listService := inventoryapp.NewListStockCounts(stockCountStore)
+	createService := inventoryapp.NewCreateStockCount(stockCountStore, auditStore)
+	submitService := inventoryapp.NewSubmitStockCount(stockCountStore, auditStore)
+	principalContext := auth.WithPrincipal(context.Background(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead))
+
+	createReq := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/stock-counts",
+		bytes.NewBufferString(`{
+			"id": "count-hcm-001",
+			"count_no": "CNT-HCM-001",
+			"warehouse_id": "wh-hcm",
+			"scope": "cycle_count",
+			"lines": [
+				{"id": "line-serum", "sku": "SERUM-30ML", "expected_qty": "20", "base_uom_code": "EA"}
+			]
+		}`),
+	).WithContext(principalContext)
+	createReq.Header.Set(response.HeaderRequestID, "req-stock-count-create")
+	createRec := httptest.NewRecorder()
+
+	stockCountsHandler(listService, createService).ServeHTTP(createRec, createReq)
+
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, want %d: %s", createRec.Code, http.StatusCreated, createRec.Body.String())
+	}
+	var createPayload response.SuccessEnvelope[stockCountResponse]
+	if err := json.NewDecoder(createRec.Body).Decode(&createPayload); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+	if createPayload.Data.Status != "open" || createPayload.Data.AuditLogID == "" {
+		t.Fatalf("create payload = %+v, want open stock count with audit", createPayload.Data)
+	}
+
+	submitReq := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/stock-counts/count-hcm-001/submit",
+		bytes.NewBufferString(`{"lines":[{"id":"line-serum","counted_qty":"18","note":"short count"}]}`),
+	).WithContext(principalContext)
+	submitReq.SetPathValue("stock_count_id", "count-hcm-001")
+	submitReq.Header.Set(response.HeaderRequestID, "req-stock-count-submit")
+	submitRec := httptest.NewRecorder()
+
+	stockCountSubmitHandler(submitService).ServeHTTP(submitRec, submitReq)
+
+	if submitRec.Code != http.StatusOK {
+		t.Fatalf("submit status = %d, want %d: %s", submitRec.Code, http.StatusOK, submitRec.Body.String())
+	}
+	var submitPayload response.SuccessEnvelope[stockCountResponse]
+	if err := json.NewDecoder(submitRec.Body).Decode(&submitPayload); err != nil {
+		t.Fatalf("decode submit response: %v", err)
+	}
+	if submitPayload.Data.Status != "variance_review" ||
+		submitPayload.Data.Lines[0].DeltaQty != "-2.000000" ||
+		submitPayload.Data.AuditLogID == "" {
+		t.Fatalf("submit payload = %+v, want variance review", submitPayload.Data)
+	}
+
+	logs, err := auditStore.List(context.Background(), audit.Query{EntityID: "count-hcm-001"})
+	if err != nil {
+		t.Fatalf("list stock count audit logs: %v", err)
+	}
+	if len(logs) != 2 {
+		t.Fatalf("audit logs = %+v, want create and submit logs", logs)
+	}
+}
+
 func newTestGoodsReceiptService() (inventoryapp.WarehouseReceivingService, *audit.InMemoryLogStore) {
 	auditStore := audit.NewInMemoryLogStore()
 	service := inventoryapp.NewWarehouseReceivingService(
