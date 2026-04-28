@@ -68,7 +68,7 @@ export async function signInMockUser(email: string, password: string) {
     maxAge: localAuthPolicy.accessTokenMaxAgeSeconds,
     path: "/",
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
+    secure: process.env.AUTH_COOKIE_SECURE === "true"
   });
 
   return { ok: true } as const;
