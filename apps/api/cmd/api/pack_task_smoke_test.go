@@ -11,6 +11,7 @@ import (
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
 	salesdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/domain"
 	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
+	shippingdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
@@ -161,6 +162,84 @@ func TestPackTaskAPIExceptionSmoke(t *testing.T) {
 	}
 }
 
+func TestPackTaskAPIRejectsInvalidPackingSmoke(t *testing.T) {
+	authConfig := smokeAuthConfig()
+	cases := []struct {
+		name       string
+		body       string
+		wantStatus int
+		wantCode   response.ErrorCode
+	}{
+		{
+			name:       "short pack",
+			body:       `{"lines":[{"line_id":"pack-so-260428-0003-line-01","packed_qty":"2"}]}`,
+			wantStatus: http.StatusBadRequest,
+			wantCode:   response.ErrorCodeValidation,
+		},
+		{
+			name:       "wrong line",
+			body:       `{"lines":[{"line_id":"pack-so-260428-0003-line-99","packed_qty":"3"}]}`,
+			wantStatus: http.StatusConflict,
+			wantCode:   response.ErrorCodeConflict,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			packStore := shippingapp.NewPrototypePackTaskStore(mustPrototypePackTask())
+			auditStore := audit.NewInMemoryLogStore()
+
+			startRec := httptest.NewRecorder()
+			startReq := smokeRequestAsRole(
+				httptest.NewRequest(http.MethodPost, "/api/v1/pack-tasks/pack-so-260428-0003/start", nil),
+				authConfig,
+				auth.RoleWarehouseLead,
+			)
+			startReq.SetPathValue("pack_task_id", "pack-so-260428-0003")
+			startPackTaskHandler(shippingapp.NewStartPackTask(packStore, auditStore)).ServeHTTP(startRec, startReq)
+			if startRec.Code != http.StatusOK {
+				t.Fatalf("start status = %d, want %d: %s", startRec.Code, http.StatusOK, startRec.Body.String())
+			}
+
+			confirmRec := httptest.NewRecorder()
+			confirmReq := smokeRequestAsRole(
+				httptest.NewRequest(http.MethodPost, "/api/v1/pack-tasks/pack-so-260428-0003/confirm", bytes.NewBufferString(tc.body)),
+				authConfig,
+				auth.RoleWarehouseLead,
+			)
+			confirmReq.SetPathValue("pack_task_id", "pack-so-260428-0003")
+			confirmPackTaskHandler(
+				shippingapp.NewConfirmPackTask(packStore, auditStore, salesOrderPackerAdapter{service: newTestPackTaskSalesOrderService(auditStore)}),
+			).ServeHTTP(confirmRec, confirmReq)
+			if confirmRec.Code != tc.wantStatus {
+				t.Fatalf("confirm status = %d, want %d: %s", confirmRec.Code, tc.wantStatus, confirmRec.Body.String())
+			}
+			errorPayload := decodeSmokeError(t, confirmRec)
+			if errorPayload.Error.Code != tc.wantCode {
+				t.Fatalf("confirm code = %s, want %s", errorPayload.Error.Code, tc.wantCode)
+			}
+
+			stored, err := packStore.GetPackTask(confirmReq.Context(), "pack-so-260428-0003")
+			if err != nil {
+				t.Fatalf("get pack task: %v", err)
+			}
+			if stored.Status != shippingdomain.PackTaskStatusInProgress ||
+				stored.Lines[0].Status != shippingdomain.PackTaskLineStatusPending ||
+				stored.Lines[0].QtyPacked.String() != "0.000000" {
+				t.Fatalf("stored task = %+v, want unchanged in-progress pack task", stored)
+			}
+
+			logs, err := auditStore.List(confirmReq.Context(), audit.Query{Action: "shipping.pack_task.confirmed"})
+			if err != nil {
+				t.Fatalf("list audit logs: %v", err)
+			}
+			if len(logs) != 0 {
+				t.Fatalf("confirmed audit logs = %+v, want none", logs)
+			}
+		})
+	}
+}
+
 func TestPackTaskAPIPermissions(t *testing.T) {
 	authConfig := smokeAuthConfig()
 	packStore := shippingapp.NewPrototypePackTaskStore(mustPrototypePackTask())
@@ -181,6 +260,26 @@ func TestPackTaskAPIPermissions(t *testing.T) {
 	payload := decodeSmokeError(t, rec)
 	if payload.Error.Code != response.ErrorCodeForbidden {
 		t.Fatalf("code = %s, want %s", payload.Error.Code, response.ErrorCodeForbidden)
+	}
+
+	confirmBody := bytes.NewBufferString(`{"lines":[{"line_id":"pack-so-260428-0003-line-01","packed_qty":"3"}]}`)
+	confirmReq := smokeRequestAsRole(
+		httptest.NewRequest(http.MethodPost, "/api/v1/pack-tasks/pack-so-260428-0003/confirm", confirmBody),
+		authConfig,
+		auth.RoleWarehouseStaff,
+	)
+	confirmReq.SetPathValue("pack_task_id", "pack-so-260428-0003")
+	confirmRec := httptest.NewRecorder()
+
+	confirmPackTaskHandler(
+		shippingapp.NewConfirmPackTask(packStore, auditStore, salesOrderPackerAdapter{service: newTestPackTaskSalesOrderService(auditStore)}),
+	).ServeHTTP(confirmRec, confirmReq)
+	if confirmRec.Code != http.StatusForbidden {
+		t.Fatalf("confirm status = %d, want %d: %s", confirmRec.Code, http.StatusForbidden, confirmRec.Body.String())
+	}
+	confirmPayload := decodeSmokeError(t, confirmRec)
+	if confirmPayload.Error.Code != response.ErrorCodeForbidden {
+		t.Fatalf("confirm code = %s, want %s", confirmPayload.Error.Code, response.ErrorCodeForbidden)
 	}
 }
 
