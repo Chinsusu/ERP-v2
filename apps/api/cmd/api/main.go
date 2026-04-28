@@ -553,6 +553,7 @@ type carrierManifestResponse struct {
 	AuditLogID       string                         `json:"audit_log_id,omitempty"`
 	Summary          carrierManifestSummaryResponse `json:"summary"`
 	Lines            []carrierManifestLineResponse  `json:"lines"`
+	MissingLines     []carrierManifestLineResponse  `json:"missing_lines"`
 	CreatedAt        string                         `json:"created_at,omitempty"`
 }
 
@@ -822,6 +823,7 @@ func main() {
 	removeShipmentFromCarrierManifest := shippingapp.NewRemoveShipmentFromCarrierManifest(carrierManifestStore, auditLogStore)
 	markCarrierManifestReadyToScan := shippingapp.NewMarkCarrierManifestReadyToScan(carrierManifestStore, auditLogStore)
 	cancelCarrierManifest := shippingapp.NewCancelCarrierManifest(carrierManifestStore, auditLogStore)
+	reportCarrierManifestMissingOrders := shippingapp.NewReportCarrierManifestMissingOrders(carrierManifestStore, auditLogStore)
 	verifyCarrierManifestScan := shippingapp.NewVerifyCarrierManifestScan(carrierManifestStore, auditLogStore)
 	pickTaskStore := shippingapp.NewPrototypePickTaskStore(mustPrototypePickTask())
 	listPickTasks := shippingapp.NewListPickTasks(pickTaskStore)
@@ -1219,6 +1221,14 @@ func main() {
 			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(cancelCarrierManifestHandler(cancelCarrierManifest)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/shipping/manifests/{manifest_id}/exceptions",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(reportCarrierManifestMissingOrdersHandler(reportCarrierManifestMissingOrders)),
 		),
 	)
 	mux.Handle(
@@ -3348,6 +3358,17 @@ func cancelCarrierManifestHandler(service shippingapp.CancelCarrierManifest) htt
 	})
 }
 
+func reportCarrierManifestMissingOrdersHandler(service shippingapp.ReportCarrierManifestMissingOrders) http.HandlerFunc {
+	return carrierManifestActionHandler(func(r *http.Request, actorID string, payload cancelCarrierManifestRequest) (shippingapp.CarrierManifestResult, error) {
+		return service.Execute(r.Context(), shippingapp.CarrierManifestActionInput{
+			ManifestID: r.PathValue("manifest_id"),
+			ActorID:    actorID,
+			RequestID:  response.RequestID(r),
+			Reason:     payload.Reason,
+		})
+	})
+}
+
 type carrierManifestAction func(*http.Request, string, cancelCarrierManifestRequest) (shippingapp.CarrierManifestResult, error)
 
 func carrierManifestActionHandler(action carrierManifestAction) http.HandlerFunc {
@@ -3747,26 +3768,35 @@ func newCarrierManifestResponse(manifest shippingdomain.CarrierManifest, auditLo
 			ScannedCount:  summary.ScannedCount,
 			MissingCount:  summary.MissingCount,
 		},
-		Lines: make([]carrierManifestLineResponse, 0, len(manifest.Lines)),
+		Lines:        make([]carrierManifestLineResponse, 0, len(manifest.Lines)),
+		MissingLines: make([]carrierManifestLineResponse, 0, summary.MissingCount),
 	}
 	if !manifest.CreatedAt.IsZero() {
 		payload.CreatedAt = manifest.CreatedAt.UTC().Format(time.RFC3339)
 	}
 	for _, line := range manifest.Lines {
-		payload.Lines = append(payload.Lines, carrierManifestLineResponse{
-			ID:               line.ID,
-			ShipmentID:       line.ShipmentID,
-			OrderNo:          line.OrderNo,
-			TrackingNo:       line.TrackingNo,
-			PackageCode:      line.PackageCode,
-			StagingZone:      line.StagingZone,
-			HandoverZoneCode: line.HandoverZoneCode,
-			HandoverBinCode:  line.HandoverBinCode,
-			Scanned:          line.Scanned,
-		})
+		lineResponse := newCarrierManifestLineResponse(line)
+		payload.Lines = append(payload.Lines, lineResponse)
+		if !line.Scanned {
+			payload.MissingLines = append(payload.MissingLines, lineResponse)
+		}
 	}
 
 	return payload
+}
+
+func newCarrierManifestLineResponse(line shippingdomain.CarrierManifestLine) carrierManifestLineResponse {
+	return carrierManifestLineResponse{
+		ID:               line.ID,
+		ShipmentID:       line.ShipmentID,
+		OrderNo:          line.OrderNo,
+		TrackingNo:       line.TrackingNo,
+		PackageCode:      line.PackageCode,
+		StagingZone:      line.StagingZone,
+		HandoverZoneCode: line.HandoverZoneCode,
+		HandoverBinCode:  line.HandoverBinCode,
+		Scanned:          line.Scanned,
+	}
 }
 
 func newCarrierManifestScanResponse(result shippingapp.CarrierManifestScanResult) carrierManifestScanResponse {
@@ -4047,6 +4077,8 @@ func writeCarrierManifestError(w http.ResponseWriter, r *http.Request, err error
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Shipment already exists in carrier manifest", nil)
 	case errors.Is(err, shippingdomain.ErrManifestAlreadyCompleted):
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier manifest is already completed", nil)
+	case errors.Is(err, shippingdomain.ErrManifestNoMissingOrders):
+		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier manifest has no missing orders", nil)
 	case errors.Is(err, shippingdomain.ErrManifestInvalidTransition):
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Carrier manifest status transition is invalid", nil)
 	case errors.Is(err, shippingapp.ErrCarrierInactive):

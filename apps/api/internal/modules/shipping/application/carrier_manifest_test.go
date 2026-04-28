@@ -245,6 +245,69 @@ func TestCarrierManifestReadyRemoveAndCancelActionsWriteAudit(t *testing.T) {
 	}
 }
 
+func TestReportCarrierManifestMissingOrdersMarksExceptionAndAuditsMissingLines(t *testing.T) {
+	ctx := context.Background()
+	store := NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	service := NewReportCarrierManifestMissingOrders(store, auditStore)
+
+	result, err := service.Execute(ctx, CarrierManifestActionInput{
+		ManifestID: "manifest-hcm-ghn-morning",
+		ActorID:    "user-handover-operator",
+		RequestID:  "req-missing-manifest",
+		Reason:     "physical tote missing one order",
+	})
+	if err != nil {
+		t.Fatalf("report missing orders: %v", err)
+	}
+	if result.Manifest.Status != domain.ManifestStatusException || result.AuditLogID == "" {
+		t.Fatalf("result = %+v, want exception manifest with audit", result)
+	}
+	missingLines := result.Manifest.MissingLines()
+	if len(missingLines) != 1 || missingLines[0].OrderNo != "SO-260426-003" || missingLines[0].TrackingNo != "GHN260426003" {
+		t.Fatalf("missing lines = %+v, want SO-260426-003/GHN260426003", missingLines)
+	}
+
+	stored, err := store.Get(ctx, "manifest-hcm-ghn-morning")
+	if err != nil {
+		t.Fatalf("get stored manifest: %v", err)
+	}
+	if stored.Status != domain.ManifestStatusException {
+		t.Fatalf("stored status = %q, want exception", stored.Status)
+	}
+
+	logs, err := auditStore.List(ctx, audit.Query{Action: "shipping.manifest.missing_exception_reported"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].Metadata["missing_count"] != 1 {
+		t.Fatalf("audit logs = %+v, want missing exception count", logs)
+	}
+}
+
+func TestReportCarrierManifestMissingOrdersRejectsCleanManifest(t *testing.T) {
+	ctx := context.Background()
+	store := NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	if _, err := NewVerifyCarrierManifestScan(store, auditStore).Execute(ctx, VerifyCarrierManifestScanInput{
+		ManifestID: "manifest-hcm-ghn-morning",
+		Code:       "GHN260426003",
+		ActorID:    "user-handover-operator",
+		RequestID:  "req-clean-manifest-scan",
+	}); err != nil {
+		t.Fatalf("scan missing line: %v", err)
+	}
+
+	_, err := NewReportCarrierManifestMissingOrders(store, auditStore).Execute(ctx, CarrierManifestActionInput{
+		ManifestID: "manifest-hcm-ghn-morning",
+		ActorID:    "user-handover-operator",
+		RequestID:  "req-clean-missing-manifest",
+	})
+	if !errors.Is(err, domain.ErrManifestNoMissingOrders) {
+		t.Fatalf("err = %v, want no missing orders", err)
+	}
+}
+
 func TestVerifyCarrierManifestScanMarksExpectedLineAndRecordsEvent(t *testing.T) {
 	store := NewPrototypeCarrierManifestStore()
 	auditStore := audit.NewInMemoryLogStore()
