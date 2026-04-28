@@ -8,6 +8,7 @@ import (
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 	apperrors "github.com/Chinsusu/ERP-v2/apps/api/internal/shared/errors"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
@@ -105,6 +106,59 @@ func TestPrototypeSalesOrderReservationStoreReleasesActiveReservations(t *testin
 	}
 }
 
+func TestPrototypeSalesOrderReservationStoreRecordsReserveAndReleaseAudit(t *testing.T) {
+	ctx := context.Background()
+	auditStore := audit.NewInMemoryLogStore()
+	store := NewPrototypeSalesOrderReservationStoreWithRows([]domain.StockBalanceSnapshot{
+		reservableRow("SERUM-30ML", "item-serum-30ml", "20", "2"),
+	}, auditStore)
+
+	_, err := store.ReserveSalesOrder(ctx, salesReservationInput([]salesapp.SalesOrderStockReservationLineInput{
+		reservationLine("line-serum", "item-serum-30ml", "SERUM-30ML", "4"),
+	}))
+	if err != nil {
+		t.Fatalf("reserve sales order: %v", err)
+	}
+	reservation := store.Reservations()[0]
+	logs, err := auditStore.List(ctx, audit.Query{EntityID: reservation.ID})
+	if err != nil {
+		t.Fatalf("list reserve audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].Action != stockReservationReservedAction || logs[0].ActorID != "user-sales" {
+		t.Fatalf("reserve audit logs = %+v, want one actor-stamped reserve log", logs)
+	}
+	if logs[0].AfterData["status"] != "active" ||
+		logs[0].AfterData["reserved_qty"] != "4.000000" ||
+		logs[0].Metadata["reason"] != "sales order confirm" {
+		t.Fatalf("reserve audit log = %+v, want after data and reason", logs[0])
+	}
+
+	_, err = store.ReleaseSalesOrder(ctx, salesapp.SalesOrderStockReleaseInput{
+		OrgID:        "org-my-pham",
+		SalesOrderID: "so-reserve",
+		OrderNo:      "SO-RESERVE",
+		ActorID:      "user-sales",
+		Reason:       "customer changed order",
+		RequestID:    "req-release",
+		ReleasedAt:   time.Date(2026, 4, 28, 13, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatalf("release sales order: %v", err)
+	}
+	logs, err = auditStore.List(ctx, audit.Query{EntityID: reservation.ID})
+	if err != nil {
+		t.Fatalf("list release audit logs: %v", err)
+	}
+	if len(logs) != 2 || logs[0].Action != stockReservationReleasedAction {
+		t.Fatalf("reservation audit logs = %+v, want release log first", logs)
+	}
+	if logs[0].BeforeData["status"] != "active" ||
+		logs[0].AfterData["status"] != "released" ||
+		logs[0].Metadata["reason"] != "customer changed order" {
+		t.Fatalf("release audit log = %+v, want before/after status and reason", logs[0])
+	}
+}
+
 func TestPrototypeSalesOrderReservationStoreBlocksNotSellableBatches(t *testing.T) {
 	for _, qcStatus := range []domain.QCStatus{domain.QCStatusHold, domain.QCStatusFail} {
 		t.Run(string(qcStatus), func(t *testing.T) {
@@ -151,6 +205,7 @@ func salesReservationInput(lines []salesapp.SalesOrderStockReservationLineInput)
 		WarehouseID:   "wh-hcm-fg",
 		WarehouseCode: "WH-HCM-FG",
 		ActorID:       "user-sales",
+		Reason:        "sales order confirm",
 		RequestID:     "req-reserve",
 		ReservedAt:    time.Date(2026, 4, 28, 12, 0, 0, 0, time.UTC),
 		Lines:         lines,
