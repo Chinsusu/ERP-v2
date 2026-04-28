@@ -1391,6 +1391,47 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /warehouse/daily-board/fulfillment-metrics:
+    get:
+      summary: Get warehouse daily board fulfillment metrics
+      operationId: getWarehouseDailyBoardFulfillmentMetrics
+      tags:
+        - warehouse
+      parameters:
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: shift_code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: carrier_code
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Warehouse daily board fulfillment metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseFulfillmentMetricsSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /sales-orders:
     get:
       summary: List sales orders
@@ -3694,12 +3735,70 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/EndOfDayReconciliation"
+    WarehouseFulfillmentMetricsSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/WarehouseFulfillmentMetrics"
     CloseEndOfDayReconciliationRequest:
       type: object
       properties:
         exception_note:
           type: string
           maxLength: 500
+    WarehouseFulfillmentMetrics:
+      type: object
+      required:
+        - total_orders
+        - new_orders
+        - reserved_orders
+        - picking_orders
+        - packed_orders
+        - waiting_handover_orders
+        - missing_orders
+        - handover_orders
+        - generated_at
+      properties:
+        warehouse_id:
+          type: string
+        date:
+          type: string
+          format: date
+        shift_code:
+          type: string
+        carrier_code:
+          type: string
+        total_orders:
+          type: integer
+          minimum: 0
+        new_orders:
+          type: integer
+          minimum: 0
+        reserved_orders:
+          type: integer
+          minimum: 0
+        picking_orders:
+          type: integer
+          minimum: 0
+        packed_orders:
+          type: integer
+          minimum: 0
+        waiting_handover_orders:
+          type: integer
+          minimum: 0
+        missing_orders:
+          type: integer
+          minimum: 0
+        handover_orders:
+          type: integer
+          minimum: 0
+        generated_at:
+          type: string
+          format: date-time
     EndOfDayReconciliation:
       type: object
       required:
