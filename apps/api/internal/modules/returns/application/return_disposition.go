@@ -90,7 +90,7 @@ func (uc ApplyReturnDisposition) Execute(
 	}
 
 	updatedReceipt := receipt.ApplyDisposition(action)
-	movements, err := uc.newReturnRestockMovements(updatedReceipt, action, input.ActorID)
+	movements, err := uc.newReturnStockMovements(updatedReceipt, action, input.ActorID)
 	if err != nil {
 		return ReturnDispositionResult{}, err
 	}
@@ -121,12 +121,20 @@ func (uc ApplyReturnDisposition) Execute(
 	}, nil
 }
 
-func (uc ApplyReturnDisposition) newReturnRestockMovements(
+type returnStockMovementSpec struct {
+	movementNoSuffix string
+	movementType     inventorydomain.MovementType
+	stockStatus      inventorydomain.StockStatus
+	reason           string
+}
+
+func (uc ApplyReturnDisposition) newReturnStockMovements(
 	receipt domain.ReturnReceipt,
 	action domain.ReturnDispositionAction,
 	actorID string,
 ) ([]inventorydomain.StockMovement, error) {
-	if action.Disposition != domain.ReturnDispositionReusable {
+	spec, ok := returnStockMovementSpecForDisposition(action.Disposition)
+	if !ok {
 		return nil, nil
 	}
 	if uc.stockMovement == nil {
@@ -141,8 +149,8 @@ func (uc ApplyReturnDisposition) newReturnRestockMovements(
 		}
 		baseQuantity := decimal.MustQuantity(strconv.Itoa(quantity))
 		movement, err := inventorydomain.NewStockMovement(inventorydomain.NewStockMovementInput{
-			MovementNo:       fmt.Sprintf("%s-RESTOCK-%03d", receipt.ReceiptNo, index+1),
-			MovementType:     inventorydomain.MovementReturnRestock,
+			MovementNo:       fmt.Sprintf("%s-%s-%03d", receipt.ReceiptNo, spec.movementNoSuffix, index+1),
+			MovementType:     spec.movementType,
 			OrgID:            "org-my-pham",
 			ItemID:           returnStockItemID(line),
 			WarehouseID:      receipt.WarehouseID,
@@ -151,11 +159,11 @@ func (uc ApplyReturnDisposition) newReturnRestockMovements(
 			SourceQuantity:   baseQuantity,
 			SourceUOMCode:    "EA",
 			ConversionFactor: decimal.MustQuantity("1"),
-			StockStatus:      inventorydomain.StockStatusAvailable,
+			StockStatus:      spec.stockStatus,
 			SourceDocType:    returnStockSourceDocType,
 			SourceDocID:      receipt.ID,
 			SourceDocLineID:  line.ID,
-			Reason:           "return reusable restock",
+			Reason:           spec.reason,
 			CreatedBy:        actorID,
 			MovementAt:       action.DecidedAt,
 		})
@@ -166,6 +174,29 @@ func (uc ApplyReturnDisposition) newReturnRestockMovements(
 	}
 
 	return movements, nil
+}
+
+func returnStockMovementSpecForDisposition(
+	disposition domain.ReturnDisposition,
+) (returnStockMovementSpec, bool) {
+	switch disposition {
+	case domain.ReturnDispositionReusable:
+		return returnStockMovementSpec{
+			movementNoSuffix: "RESTOCK",
+			movementType:     inventorydomain.MovementReturnRestock,
+			stockStatus:      inventorydomain.StockStatusAvailable,
+			reason:           "return reusable restock",
+		}, true
+	case domain.ReturnDispositionNeedsInspection:
+		return returnStockMovementSpec{
+			movementNoSuffix: "QCHOLD",
+			movementType:     inventorydomain.MovementReturnReceipt,
+			stockStatus:      inventorydomain.StockStatusQCHold,
+			reason:           "return quarantine hold",
+		}, true
+	default:
+		return returnStockMovementSpec{}, false
+	}
 }
 
 func returnStockItemID(line domain.ReturnReceiptLine) string {
@@ -184,6 +215,9 @@ func newReturnStockMovementSummary(
 	line := domain.ReturnReceiptLine{SKU: "UNKNOWN-SKU", Quantity: 1}
 	if len(receipt.Lines) > 0 {
 		line = receipt.Lines[0]
+	}
+	if line.Quantity <= 0 {
+		line.Quantity = 1
 	}
 
 	return &domain.ReturnStockMovement{

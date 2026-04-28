@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
+	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	returnsdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
@@ -1833,8 +1834,13 @@ func TestReturnDispositionHandlerRoutesQAHold(t *testing.T) {
 	if payload.Data.TargetLocation != "return-quarantine-hold" || payload.Data.TargetStockStatus != "qc_hold" {
 		t.Fatalf("payload = %+v, want quarantine hold", payload.Data)
 	}
-	if movementStore.Count() != 0 {
-		t.Fatalf("stock movement count = %d, want 0 for qa hold", movementStore.Count())
+	if movementStore.Count() != 1 {
+		t.Fatalf("stock movement count = %d, want 1 for qa hold", movementStore.Count())
+	}
+	movements := movementStore.Movements()
+	if movements[0].MovementType != inventorydomain.MovementReturnReceipt ||
+		movements[0].StockStatus != inventorydomain.StockStatusQCHold {
+		t.Fatalf("movement = %+v, want return receipt qc hold", movements[0])
 	}
 }
 

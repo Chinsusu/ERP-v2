@@ -168,7 +168,7 @@ func PrototypeReturnMasterData() ReturnMasterData {
 				Label:                 "Needs inspection",
 				Description:           "Requires inspection or QA hold before stock movement.",
 				InventoryDisposition:  "restock_quarantine",
-				TargetStockStatus:     "quarantine",
+				TargetStockStatus:     "qc_hold",
 				TargetLocationType:    "return_inspection",
 				CreatesAvailableStock: false,
 				RequiresApproval:      true,
