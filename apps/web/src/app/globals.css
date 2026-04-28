@@ -1220,6 +1220,182 @@ textarea {
   line-height: var(--erp-line-height-helper);
 }
 
+.erp-packing-page {
+  display: grid;
+  gap: 16px;
+}
+
+.erp-packing-page .erp-page-header,
+.erp-packing-page .erp-module-table-card {
+  margin-bottom: 0;
+}
+
+.erp-packing-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(180px, 220px) minmax(180px, 240px);
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-packing-kpis {
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+}
+
+.erp-packing-workspace {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.05fr) minmax(380px, 0.95fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.erp-packing-station-card,
+.erp-packing-queue-card {
+  min-width: 0;
+}
+
+.erp-packing-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.erp-packing-fact {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-packing-fact span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+}
+
+.erp-packing-fact strong {
+  overflow-wrap: anywhere;
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-body);
+}
+
+.erp-packing-scan-primary {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--erp-section-bg);
+  border: 2px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-packing-scan-primary--success {
+  border-color: var(--erp-success);
+  background: var(--erp-success-bg);
+}
+
+.erp-packing-scan-primary--warning {
+  border-color: var(--erp-warning);
+  background: var(--erp-warning-bg);
+}
+
+.erp-packing-scan-primary--danger {
+  border-color: var(--erp-danger);
+  background: var(--erp-danger-bg);
+}
+
+.erp-packing-scan-primary--info {
+  border-color: var(--erp-info);
+  background: var(--erp-info-bg);
+}
+
+.erp-packing-scan-primary span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-table);
+}
+
+.erp-packing-scan-primary input {
+  min-height: 58px;
+  min-width: 0;
+  padding: 0 16px;
+  color: var(--erp-text);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius);
+  font-size: 20px;
+  font-weight: 700;
+  outline: none;
+}
+
+.erp-packing-scan-primary input:focus {
+  border-color: var(--erp-red);
+  box-shadow: 0 0 0 2px rgba(213, 12, 45, 0.14);
+}
+
+.erp-packing-scan-primary input:disabled {
+  color: var(--erp-text-muted);
+  background: var(--erp-neutral-bg);
+}
+
+.erp-packing-scan-primary small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-packing-scan-primary small strong {
+  color: var(--erp-text);
+}
+
+.erp-packing-note textarea {
+  min-height: 86px;
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: var(--erp-line-height-body);
+}
+
+.erp-packing-note {
+  margin-top: 12px;
+}
+
+.erp-packing-exception-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.erp-packing-task-cell,
+.erp-packing-line-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.erp-packing-task-cell strong,
+.erp-packing-task-cell small,
+.erp-packing-line-cell strong,
+.erp-packing-line-cell small {
+  overflow-wrap: anywhere;
+}
+
+.erp-packing-task-cell small,
+.erp-packing-line-cell small {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
 .erp-shipping-page .erp-page-header,
 .erp-shipping-page .erp-module-table-card {
   margin-bottom: 0;
@@ -3277,6 +3453,10 @@ textarea {
   .erp-picking-kpis,
   .erp-picking-workspace,
   .erp-picking-meta-grid,
+  .erp-packing-toolbar,
+  .erp-packing-kpis,
+  .erp-packing-workspace,
+  .erp-packing-meta-grid,
   .erp-shipping-toolbar,
   .erp-shipping-kpis,
   .erp-shipping-handover-grid,
@@ -3331,6 +3511,7 @@ textarea {
   .erp-shipping-scan-actions,
   .erp-shipping-missing-actions,
   .erp-picking-exception-actions,
+  .erp-packing-exception-actions,
   .erp-sales-actions,
   .erp-receiving-actions,
   .erp-returns-actions,
@@ -3341,6 +3522,7 @@ textarea {
   .erp-shipping-scan-actions .erp-button,
   .erp-shipping-missing-actions .erp-button,
   .erp-picking-exception-actions .erp-button,
+  .erp-packing-exception-actions .erp-button,
   .erp-sales-actions .erp-button,
   .erp-receiving-actions .erp-button,
   .erp-returns-actions .erp-button,

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { CarrierManifestPrototype } from "./CarrierManifestPrototype";
+import { PackingPrototype } from "./PackingPrototype";
 import { PickingPrototype } from "./PickingPrototype";
 
-type ShippingView = "picking" | "handover";
+type ShippingView = "picking" | "packing" | "handover";
 
 export function ShippingOperationsPrototype() {
   const [view, setView] = useState<ShippingView>("picking");
@@ -20,6 +21,13 @@ export function ShippingOperationsPrototype() {
           Picking
         </button>
         <button
+          className={`erp-shipping-tab ${view === "packing" ? "erp-shipping-tab--active" : ""}`}
+          type="button"
+          onClick={() => setView("packing")}
+        >
+          Packing
+        </button>
+        <button
           className={`erp-shipping-tab ${view === "handover" ? "erp-shipping-tab--active" : ""}`}
           type="button"
           onClick={() => setView("handover")}
@@ -27,7 +35,9 @@ export function ShippingOperationsPrototype() {
           Carrier handover
         </button>
       </nav>
-      {view === "picking" ? <PickingPrototype /> : <CarrierManifestPrototype />}
+      {view === "picking" ? <PickingPrototype /> : null}
+      {view === "packing" ? <PackingPrototype /> : null}
+      {view === "handover" ? <CarrierManifestPrototype /> : null}
     </section>
   );
 }
