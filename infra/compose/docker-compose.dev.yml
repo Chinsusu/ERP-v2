@@ -180,6 +180,11 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV:-dev}
+        NEXT_PUBLIC_APP_VERSION: ${NEXT_PUBLIC_APP_VERSION:-dev}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8088/api/v1}
+        NEXT_PUBLIC_MOCK_AUTH_STATE: ${NEXT_PUBLIC_MOCK_AUTH_STATE:-signed-in}
     environment: *web-environment
     depends_on:
       api:

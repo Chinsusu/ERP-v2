@@ -155,6 +155,11 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV:-staging}
+        NEXT_PUBLIC_APP_VERSION: ${NEXT_PUBLIC_APP_VERSION:-staging}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://staging-erp.example.vn/api/v1}
+        NEXT_PUBLIC_MOCK_AUTH_STATE: ${NEXT_PUBLIC_MOCK_AUTH_STATE:-signed-in}
     environment: *web-environment
     depends_on:
       api:
