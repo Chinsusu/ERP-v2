@@ -215,46 +215,85 @@ func TestPackTaskActionsStartConfirmAndException(t *testing.T) {
 }
 
 func TestReportPackTaskExceptionBlocksConfirm(t *testing.T) {
-	ctx := context.Background()
-	pickStore := NewPrototypePickTaskStore()
-	auditStore := audit.NewInMemoryLogStore()
-	pickTask := completedPickTaskForPackTask(t, pickStore, auditStore)
-	packStore := NewPrototypePackTaskStore()
-	generated, err := NewGeneratePackTaskAfterPick(packStore, auditStore).Execute(ctx, GeneratePackTaskAfterPickInput{
-		SalesOrder: pickedSalesOrderForPackTask(t),
-		PickTask:   pickTask,
-		ActorID:    "user-warehouse-lead",
-		RequestID:  "req-generate-pack-for-exception",
-	})
-	if err != nil {
-		t.Fatalf("generate pack task: %v", err)
+	cases := []struct {
+		name          string
+		exceptionCode string
+		investigation string
+	}{
+		{
+			name:          "missing stock",
+			exceptionCode: "missing_stock",
+			investigation: "Packed quantity did not match the order line",
+		},
+		{
+			name:          "wrong SKU",
+			exceptionCode: "wrong_sku",
+			investigation: "Scanner reported a different SKU",
+		},
+		{
+			name:          "wrong batch",
+			exceptionCode: "wrong_batch",
+			investigation: "Scanner reported a different batch",
+		},
 	}
 
-	result, err := NewReportPackTaskException(packStore, auditStore).Execute(ctx, ReportPackTaskExceptionInput{
-		PackTaskID:    generated.PackTask.ID,
-		LineID:        generated.PackTask.Lines[0].ID,
-		ExceptionCode: "pack_exception",
-		ActorID:       "user-packer",
-		RequestID:     "req-pack-exception",
-		Investigation: "Packed quantity did not match the order line",
-	})
-	if err != nil {
-		t.Fatalf("report pack exception: %v", err)
-	}
-	if result.PackTask.Status != domain.PackTaskStatusPackException ||
-		result.PackTask.Lines[0].Status != domain.PackTaskLineStatusPackException ||
-		result.AuditLogID == "" {
-		t.Fatalf("result = %+v, want pack exception task and line with audit", result)
-	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			pickStore := NewPrototypePickTaskStore()
+			auditStore := audit.NewInMemoryLogStore()
+			pickTask := completedPickTaskForPackTask(t, pickStore, auditStore)
+			packStore := NewPrototypePackTaskStore()
+			generated, err := NewGeneratePackTaskAfterPick(packStore, auditStore).Execute(ctx, GeneratePackTaskAfterPickInput{
+				SalesOrder: pickedSalesOrderForPackTask(t),
+				PickTask:   pickTask,
+				ActorID:    "user-warehouse-lead",
+				RequestID:  "req-generate-pack-for-exception",
+			})
+			if err != nil {
+				t.Fatalf("generate pack task: %v", err)
+			}
 
-	packer := &fakePackTaskSalesOrderPacker{order: pickedSalesOrderForPackTask(t)}
-	_, err = NewConfirmPackTask(packStore, auditStore, packer).Execute(ctx, ConfirmPackTaskInput{
-		PackTaskID: generated.PackTask.ID,
-		ActorID:    "user-packer",
-		RequestID:  "req-confirm-after-pack-exception",
-	})
-	if !errors.Is(err, domain.ErrPackTaskInvalidTransition) {
-		t.Fatalf("confirm exception task err = %v, want invalid transition", err)
+			result, err := NewReportPackTaskException(packStore, auditStore).Execute(ctx, ReportPackTaskExceptionInput{
+				PackTaskID:    generated.PackTask.ID,
+				LineID:        generated.PackTask.Lines[0].ID,
+				ExceptionCode: tc.exceptionCode,
+				ActorID:       "user-packer",
+				RequestID:     "req-pack-exception",
+				Investigation: tc.investigation,
+			})
+			if err != nil {
+				t.Fatalf("report pack exception: %v", err)
+			}
+			if result.PackTask.Status != domain.PackTaskStatusPackException ||
+				result.PackTask.Lines[0].Status != domain.PackTaskLineStatusPackException ||
+				result.AuditLogID == "" {
+				t.Fatalf("result = %+v, want pack exception task and line with audit", result)
+			}
+
+			logs, err := auditStore.List(ctx, audit.Query{Action: "shipping.pack_task.exception_reported"})
+			if err != nil {
+				t.Fatalf("list audit logs: %v", err)
+			}
+			if len(logs) != 1 ||
+				logs[0].Metadata["exception_code"] != tc.exceptionCode ||
+				logs[0].Metadata["exception_status"] != string(domain.PackTaskStatusPackException) {
+				t.Fatalf("audit logs = %+v, want one exception log with specific code", logs)
+			}
+
+			packer := &fakePackTaskSalesOrderPacker{order: pickedSalesOrderForPackTask(t)}
+			_, err = NewConfirmPackTask(packStore, auditStore, packer).Execute(ctx, ConfirmPackTaskInput{
+				PackTaskID: generated.PackTask.ID,
+				ActorID:    "user-packer",
+				RequestID:  "req-confirm-after-pack-exception",
+			})
+			if !errors.Is(err, domain.ErrPackTaskInvalidTransition) {
+				t.Fatalf("confirm exception task err = %v, want invalid transition", err)
+			}
+			if packer.calls != 0 {
+				t.Fatalf("sales order pack calls = %d, want 0", packer.calls)
+			}
+		})
 	}
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -87,46 +88,76 @@ func TestPackTaskAPIActionsSmoke(t *testing.T) {
 
 func TestPackTaskAPIExceptionSmoke(t *testing.T) {
 	authConfig := smokeAuthConfig()
-	packStore := shippingapp.NewPrototypePackTaskStore(mustPrototypePackTask())
-	auditStore := audit.NewInMemoryLogStore()
-
-	body := bytes.NewBufferString(`{"line_id":"pack-so-260428-0003-line-01","exception_code":"pack_exception","investigation":"Packed quantity did not match the order line"}`)
-	rec := httptest.NewRecorder()
-	req := smokeRequestAsRole(
-		httptest.NewRequest(http.MethodPost, "/api/v1/pack-tasks/pack-so-260428-0003/exception", body),
-		authConfig,
-		auth.RoleWarehouseLead,
-	)
-	req.SetPathValue("pack_task_id", "pack-so-260428-0003")
-	req.Header.Set(response.HeaderRequestID, "req-pack-exception-smoke")
-	reportPackTaskExceptionHandler(shippingapp.NewReportPackTaskException(packStore, auditStore)).ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("exception status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-	payload := decodeSmokeSuccess[packTaskResponse](t, rec)
-	if payload.Data.Status != "pack_exception" ||
-		payload.Data.Lines[0].Status != "pack_exception" ||
-		payload.Data.Lines[0].QtyPacked != "0.000000" ||
-		payload.Data.AuditLogID == "" {
-		t.Fatalf("exception payload = %+v, want pack exception task and line with audit", payload.Data)
+	cases := []struct {
+		name          string
+		exceptionCode string
+		investigation string
+	}{
+		{
+			name:          "missing stock",
+			exceptionCode: "missing_stock",
+			investigation: "Packed quantity did not match the order line",
+		},
+		{
+			name:          "wrong SKU",
+			exceptionCode: "wrong_sku",
+			investigation: "Scanner reported a different SKU",
+		},
+		{
+			name:          "wrong batch",
+			exceptionCode: "wrong_batch",
+			investigation: "Scanner reported a different batch",
+		},
 	}
 
-	confirmRec := httptest.NewRecorder()
-	confirmReq := smokeRequestAsRole(
-		httptest.NewRequest(http.MethodPost, "/api/v1/pack-tasks/pack-so-260428-0003/confirm", nil),
-		authConfig,
-		auth.RoleWarehouseLead,
-	)
-	confirmReq.SetPathValue("pack_task_id", "pack-so-260428-0003")
-	confirmPackTaskHandler(
-		shippingapp.NewConfirmPackTask(packStore, auditStore, salesOrderPackerAdapter{service: newTestPackTaskSalesOrderService(auditStore)}),
-	).ServeHTTP(confirmRec, confirmReq)
-	if confirmRec.Code != http.StatusConflict {
-		t.Fatalf("confirm exception status = %d, want %d: %s", confirmRec.Code, http.StatusConflict, confirmRec.Body.String())
-	}
-	errorPayload := decodeSmokeError(t, confirmRec)
-	if errorPayload.Error.Code != response.ErrorCodeConflict {
-		t.Fatalf("confirm exception code = %s, want %s", errorPayload.Error.Code, response.ErrorCodeConflict)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			packStore := shippingapp.NewPrototypePackTaskStore(mustPrototypePackTask())
+			auditStore := audit.NewInMemoryLogStore()
+
+			body := bytes.NewBufferString(fmt.Sprintf(
+				`{"line_id":"pack-so-260428-0003-line-01","exception_code":%q,"investigation":%q}`,
+				tc.exceptionCode,
+				tc.investigation,
+			))
+			rec := httptest.NewRecorder()
+			req := smokeRequestAsRole(
+				httptest.NewRequest(http.MethodPost, "/api/v1/pack-tasks/pack-so-260428-0003/exception", body),
+				authConfig,
+				auth.RoleWarehouseLead,
+			)
+			req.SetPathValue("pack_task_id", "pack-so-260428-0003")
+			req.Header.Set(response.HeaderRequestID, "req-pack-exception-smoke")
+			reportPackTaskExceptionHandler(shippingapp.NewReportPackTaskException(packStore, auditStore)).ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("exception status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+			}
+			payload := decodeSmokeSuccess[packTaskResponse](t, rec)
+			if payload.Data.Status != "pack_exception" ||
+				payload.Data.Lines[0].Status != "pack_exception" ||
+				payload.Data.Lines[0].QtyPacked != "0.000000" ||
+				payload.Data.AuditLogID == "" {
+				t.Fatalf("exception payload = %+v, want pack exception task and line with audit", payload.Data)
+			}
+
+			confirmRec := httptest.NewRecorder()
+			confirmReq := smokeRequestAsRole(
+				httptest.NewRequest(http.MethodPost, "/api/v1/pack-tasks/pack-so-260428-0003/confirm", nil),
+				authConfig,
+				auth.RoleWarehouseLead,
+			)
+			confirmReq.SetPathValue("pack_task_id", "pack-so-260428-0003")
+			confirmPackTaskHandler(
+				shippingapp.NewConfirmPackTask(packStore, auditStore, salesOrderPackerAdapter{service: newTestPackTaskSalesOrderService(auditStore)}),
+			).ServeHTTP(confirmRec, confirmReq)
+			if confirmRec.Code != http.StatusConflict {
+				t.Fatalf("confirm exception status = %d, want %d: %s", confirmRec.Code, http.StatusConflict, confirmRec.Body.String())
+			}
+			errorPayload := decodeSmokeError(t, confirmRec)
+			if errorPayload.Error.Code != response.ErrorCodeConflict {
+				t.Fatalf("confirm exception code = %s, want %s", errorPayload.Error.Code, response.ErrorCodeConflict)
+			}
+		})
 	}
 }
 
