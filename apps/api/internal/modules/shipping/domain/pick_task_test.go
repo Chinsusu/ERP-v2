@@ -101,6 +101,53 @@ func TestPickTaskCannotCompleteUntilAllLinesPicked(t *testing.T) {
 	}
 }
 
+func TestPickTaskLineExceptionBlocksPickingAndComplete(t *testing.T) {
+	task, err := NewPickTask(validNewPickTaskInput())
+	if err != nil {
+		t.Fatalf("new pick task: %v", err)
+	}
+	assigned, err := task.Assign("user-picker", time.Date(2026, 4, 28, 14, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("assign task: %v", err)
+	}
+	started, err := assigned.Start("user-picker", time.Date(2026, 4, 28, 14, 5, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("start task: %v", err)
+	}
+
+	reported, err := started.ReportLineException(
+		started.Lines[0].ID,
+		PickTaskLineStatusWrongBatch,
+		"user-picker",
+		time.Date(2026, 4, 28, 14, 6, 0, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatalf("report line exception: %v", err)
+	}
+	if reported.Status != PickTaskStatusWrongBatch ||
+		reported.Lines[0].Status != PickTaskLineStatusWrongBatch ||
+		reported.Lines[0].QtyPicked != "0.000000" {
+		t.Fatalf("reported task = %+v, want wrong batch task and line without picked qty", reported)
+	}
+	if _, err := reported.MarkLinePicked(reported.Lines[0].ID, "3", "user-picker", time.Date(2026, 4, 28, 14, 7, 0, 0, time.UTC)); !errors.Is(err, ErrPickTaskInvalidTransition) {
+		t.Fatalf("mark exception line picked err = %v, want invalid transition", err)
+	}
+	if _, err := reported.Complete("user-picker", time.Date(2026, 4, 28, 14, 8, 0, 0, time.UTC)); !errors.Is(err, ErrPickTaskInvalidTransition) {
+		t.Fatalf("complete exception task err = %v, want invalid transition", err)
+	}
+}
+
+func TestPickTaskLineExceptionRejectsInvalidStatus(t *testing.T) {
+	task, err := NewPickTask(validNewPickTaskInput())
+	if err != nil {
+		t.Fatalf("new pick task: %v", err)
+	}
+
+	if _, err := task.ReportLineException(task.Lines[0].ID, PickTaskLineStatusPending, "user-picker", time.Date(2026, 4, 28, 14, 0, 0, 0, time.UTC)); !errors.Is(err, ErrPickTaskInvalidStatus) {
+		t.Fatalf("report pending line exception err = %v, want invalid status", err)
+	}
+}
+
 func validNewPickTaskInput() NewPickTaskInput {
 	createdAt := time.Date(2026, 4, 28, 13, 0, 0, 0, time.UTC)
 	return NewPickTaskInput{

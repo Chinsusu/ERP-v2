@@ -259,6 +259,67 @@ func TestReportPickTaskExceptionIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestReportPickTaskLineExceptionBlocksConfirm(t *testing.T) {
+	ctx := context.Background()
+	store := NewPrototypePickTaskStore()
+	auditStore := audit.NewInMemoryLogStore()
+	task := generatePickTaskForActionTest(t, store, auditStore)
+	lineID := task.Lines[0].ID
+	exceptions := NewReportPickTaskException(store, auditStore)
+
+	result, err := exceptions.Execute(ctx, ReportPickTaskExceptionInput{
+		PickTaskID:    task.ID,
+		LineID:        lineID,
+		ExceptionCode: "wrong_location",
+		ActorID:       "user-picker",
+		RequestID:     "req-pick-line-exception",
+		Investigation: "Picker scanned a different bin",
+	})
+	if err != nil {
+		t.Fatalf("report pick line exception: %v", err)
+	}
+	if result.PickTask.Status != domain.PickTaskStatusWrongLocation ||
+		result.PickTask.Lines[0].Status != domain.PickTaskLineStatusWrongLocation ||
+		result.PickTask.Lines[0].QtyPicked.String() != "0.000000" ||
+		result.AuditLogID == "" {
+		t.Fatalf("result = %+v, want wrong-location task and line with audit", result)
+	}
+
+	repeated, err := exceptions.Execute(ctx, ReportPickTaskExceptionInput{
+		PickTaskID:    task.ID,
+		LineID:        lineID,
+		ExceptionCode: "wrong_location",
+		ActorID:       "user-picker",
+		RequestID:     "req-pick-line-exception",
+	})
+	if err != nil {
+		t.Fatalf("repeat report pick line exception: %v", err)
+	}
+	if repeated.PickTask.Lines[0].Status != domain.PickTaskLineStatusWrongLocation || repeated.AuditLogID != "" {
+		t.Fatalf("repeated = %+v, want idempotent line exception without audit", repeated)
+	}
+
+	logs, err := auditStore.List(ctx, audit.Query{Action: "shipping.pick_task.exception_reported"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].Metadata["line_id"] != lineID {
+		t.Fatalf("audit logs = %+v, want one exception log with line metadata", logs)
+	}
+
+	confirm := NewConfirmPickTaskLine(store, auditStore)
+	_, err = confirm.Execute(ctx, ConfirmPickTaskLineInput{
+		PickTaskID: task.ID,
+		LineID:     lineID,
+		PickedQty:  "3.000000",
+		ActorID:    "user-picker",
+		RequestID:  "req-confirm-exception-line",
+	})
+	if !errors.Is(err, domain.ErrPickTaskInvalidTransition) {
+		t.Fatalf("confirm exception line err = %v, want invalid transition", err)
+	}
+}
+
 func TestPickTaskActionsRejectInvalidTransitionsAndExceptionCodes(t *testing.T) {
 	ctx := context.Background()
 	store := NewPrototypePickTaskStore()
