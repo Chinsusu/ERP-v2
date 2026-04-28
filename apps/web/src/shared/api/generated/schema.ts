@@ -628,6 +628,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sales-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List sales orders */
+        get: operations["listSalesOrders"];
+        put?: never;
+        /** Create a sales order */
+        post: operations["createSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sales-orders/{sales_order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get sales order detail */
+        get: operations["getSalesOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update editable sales order fields and lines */
+        patch: operations["updateSalesOrder"];
+        trace?: never;
+    };
+    "/sales-orders/{sales_order_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm a draft sales order */
+        post: operations["confirmSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sales-orders/{sales_order_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a sales order through the sales state machine */
+        post: operations["cancelSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shipping/manifests": {
         parameters: {
             query?: never;
@@ -837,6 +907,11 @@ export interface components {
          * @example 64000.000000
          */
         UnitCostAmount: string;
+        /**
+         * @description Decimal string for unit price values, stored as numeric(18,4).
+         * @example 125000.0000
+         */
+        UnitPriceAmount: string;
         /**
          * @description Decimal string for quantities, stored as numeric(18,6).
          * @example 10.500000
@@ -1508,6 +1583,143 @@ export interface components {
             variance_quantity: number;
             reason?: string;
             owner: string;
+        };
+        /** @enum {string} */
+        SalesOrderStatus: "draft" | "confirmed" | "reserved" | "picking" | "picked" | "packing" | "packed" | "waiting_handover" | "handed_over" | "delivered" | "returned" | "closed" | "cancelled" | "reservation_failed" | "pick_exception" | "pack_exception" | "handover_exception";
+        SalesOrderListSuccessResponse: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["SalesOrderListItem"][];
+            pagination: components["schemas"]["Pagination"];
+            /** @example req_lq7z2t9c */
+            request_id: string;
+        };
+        SalesOrderSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SalesOrder"];
+        };
+        SalesOrderActionSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SalesOrderActionResult"];
+        };
+        SalesOrderListItem: {
+            id: string;
+            order_no: string;
+            customer_id: string;
+            customer_code?: string;
+            customer_name: string;
+            channel: string;
+            warehouse_id?: string;
+            warehouse_code?: string;
+            /** Format: date */
+            order_date: string;
+            status: components["schemas"]["SalesOrderStatus"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            total_amount: components["schemas"]["MoneyAmount"];
+            line_count: number;
+            reserved_line_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version?: number;
+        };
+        SalesOrder: {
+            id: string;
+            order_no: string;
+            customer_id: string;
+            customer_code?: string;
+            customer_name: string;
+            channel: string;
+            warehouse_id?: string;
+            warehouse_code?: string;
+            /** Format: date */
+            order_date: string;
+            status: components["schemas"]["SalesOrderStatus"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            subtotal_amount: components["schemas"]["MoneyAmount"];
+            discount_amount: components["schemas"]["MoneyAmount"];
+            tax_amount: components["schemas"]["MoneyAmount"];
+            shipping_fee_amount: components["schemas"]["MoneyAmount"];
+            net_amount: components["schemas"]["MoneyAmount"];
+            total_amount: components["schemas"]["MoneyAmount"];
+            note?: string;
+            lines: components["schemas"]["SalesOrderLine"][];
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            confirmed_at?: string;
+            /** Format: date-time */
+            cancelled_at?: string;
+            cancel_reason?: string;
+            version: number;
+        };
+        SalesOrderLine: {
+            id: string;
+            line_no: number;
+            item_id: string;
+            sku_code: string;
+            item_name: string;
+            ordered_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_ordered_qty: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            conversion_factor?: components["schemas"]["Quantity"];
+            unit_price: components["schemas"]["UnitPriceAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            line_discount_amount: components["schemas"]["MoneyAmount"];
+            line_amount: components["schemas"]["MoneyAmount"];
+            reserved_qty: components["schemas"]["Quantity"];
+            shipped_qty: components["schemas"]["Quantity"];
+            batch_id?: string;
+            batch_no?: string;
+        };
+        CreateSalesOrderRequest: {
+            customer_id: string;
+            channel: string;
+            warehouse_id?: string;
+            /** Format: date */
+            order_date: string;
+            currency_code: components["schemas"]["CurrencyCode"];
+            note?: string;
+            lines: components["schemas"]["CreateSalesOrderLineRequest"][];
+        };
+        UpdateSalesOrderRequest: {
+            customer_id?: string;
+            channel?: string;
+            warehouse_id?: string;
+            /** Format: date */
+            order_date?: string;
+            note?: string;
+            expected_version?: number;
+            lines?: components["schemas"]["UpdateSalesOrderLineRequest"][];
+        };
+        CreateSalesOrderLineRequest: {
+            item_id: string;
+            ordered_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            unit_price: components["schemas"]["UnitPriceAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            line_discount_amount?: components["schemas"]["MoneyAmount"];
+        };
+        UpdateSalesOrderLineRequest: components["schemas"]["CreateSalesOrderLineRequest"] & {
+            id?: string;
+            line_no?: number;
+        };
+        SalesOrderActionRequest: {
+            expected_version?: number;
+            note?: string;
+        };
+        CancelSalesOrderRequest: {
+            reason: string;
+            expected_version?: number;
+        };
+        SalesOrderActionResult: {
+            sales_order: components["schemas"]["SalesOrder"];
+            previous_status: components["schemas"]["SalesOrderStatus"];
+            current_status: components["schemas"]["SalesOrderStatus"];
+            audit_log_id?: string;
         };
         /** @enum {string} */
         ReturnReceiptStatus: "pending_inspection";
@@ -3070,6 +3282,190 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EndOfDayReconciliationSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listSalesOrders: {
+        parameters: {
+            query?: {
+                /** @description Page number for page-based pagination. */
+                page?: components["parameters"]["PageParam"];
+                /** @description Number of records returned per page. */
+                page_size?: components["parameters"]["PageSizeParam"];
+                /** @description Quick search term for code, name, phone, or other whitelisted fields. */
+                q?: components["parameters"]["SearchParam"];
+                /** @description Comma-separated sales order statuses. */
+                status?: string;
+                customer_id?: string;
+                channel?: string;
+                warehouse_id?: string;
+                date_from?: string;
+                date_to?: string;
+                sort?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sales order rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderListSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSalesOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Sales order created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sales_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sales order detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sales_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSalesOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Sales order updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    confirmSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sales_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SalesOrderActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Sales order confirmed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    cancelSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sales_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelSalesOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Sales order cancelled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderActionSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];
