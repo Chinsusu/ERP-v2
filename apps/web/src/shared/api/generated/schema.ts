@@ -801,6 +801,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/return-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List return reason, condition, and disposition master data */
+        get: operations["listReturnReasons"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/returns/receipts": {
         parameters: {
             query?: never;
@@ -1798,6 +1815,46 @@ export interface components {
         ReturnSource: "SHIPPER" | "CARRIER" | "CUSTOMER" | "MARKETPLACE" | "UNKNOWN";
         /** @enum {string} */
         ReturnDisposition: "reusable" | "not_reusable" | "needs_inspection";
+        ReturnMasterDataSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["ReturnMasterData"];
+        };
+        ReturnMasterData: {
+            reasons: components["schemas"]["ReturnReasonMaster"][];
+            conditions: components["schemas"]["ReturnConditionMaster"][];
+            dispositions: components["schemas"]["ReturnDispositionMaster"][];
+        };
+        ReturnReasonMaster: {
+            code: string;
+            label: string;
+            description: string;
+            active: boolean;
+            sort_order: number;
+        };
+        ReturnConditionMaster: {
+            /** @enum {string} */
+            code: "sealed_good" | "opened_good" | "damaged" | "expired" | "suspected_quality_issue";
+            label: string;
+            description: string;
+            default_disposition: components["schemas"]["ReturnDisposition"];
+            /** @enum {string} */
+            inventory_disposition: "restock_available" | "restock_quarantine" | "scrap" | "return_to_supplier" | "hold_investigation";
+            requires_qa: boolean;
+            active: boolean;
+            sort_order: number;
+        };
+        ReturnDispositionMaster: {
+            code: components["schemas"]["ReturnDisposition"];
+            label: string;
+            description: string;
+            /** @enum {string} */
+            inventory_disposition: "restock_available" | "restock_quarantine" | "scrap" | "return_to_supplier" | "hold_investigation";
+            target_stock_status: string;
+            target_location_type: string;
+            creates_available_stock: boolean;
+            requires_approval: boolean;
+            active: boolean;
+            sort_order: number;
+        };
         ReturnReceiptListSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["ReturnReceipt"][];
         };
@@ -3759,6 +3816,29 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listReturnReasons: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Return master data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnMasterDataSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
         };
     };
