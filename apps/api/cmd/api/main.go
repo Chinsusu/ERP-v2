@@ -804,6 +804,13 @@ func main() {
 	createCarrierManifest := shippingapp.NewCreateCarrierManifest(carrierManifestStore, auditLogStore)
 	addShipmentToCarrierManifest := shippingapp.NewAddShipmentToCarrierManifest(carrierManifestStore, auditLogStore)
 	verifyCarrierManifestScan := shippingapp.NewVerifyCarrierManifestScan(carrierManifestStore, auditLogStore)
+	pickTaskStore := shippingapp.NewPrototypePickTaskStore(mustPrototypePickTask())
+	listPickTasks := shippingapp.NewListPickTasks(pickTaskStore)
+	getPickTask := shippingapp.NewGetPickTask(pickTaskStore)
+	startPickTask := shippingapp.NewStartPickTask(pickTaskStore, auditLogStore)
+	confirmPickTaskLine := shippingapp.NewConfirmPickTaskLine(pickTaskStore, auditLogStore)
+	completePickTask := shippingapp.NewCompletePickTask(pickTaskStore, auditLogStore)
+	reportPickTaskException := shippingapp.NewReportPickTaskException(pickTaskStore, auditLogStore)
 	returnReceiptStore := returnsapp.NewPrototypeReturnReceiptStore()
 	listReturnReceipts := returnsapp.NewListReturnReceipts(returnReceiptStore)
 	receiveReturn := returnsapp.NewReceiveReturn(returnReceiptStore, auditLogStore)
@@ -1064,6 +1071,52 @@ func main() {
 			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(closeEndOfDayReconciliationHandler(closeEndOfDayReconciliation)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/pick-tasks",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(pickTasksHandler(listPickTasks)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/pick-tasks/{pick_task_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(pickTaskDetailHandler(getPickTask)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/pick-tasks/{pick_task_id}/start",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(startPickTaskHandler(startPickTask)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/pick-tasks/{pick_task_id}/confirm-line",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(confirmPickTaskLineHandler(confirmPickTaskLine)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/pick-tasks/{pick_task_id}/complete",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(completePickTaskHandler(completePickTask)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/pick-tasks/{pick_task_id}/exception",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(reportPickTaskExceptionHandler(reportPickTaskException)),
 		),
 	)
 	mux.Handle(

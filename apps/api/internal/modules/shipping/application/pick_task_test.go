@@ -117,6 +117,178 @@ func TestGeneratePickTaskFromReservedOrderRejectsDuplicateTaskForOrder(t *testin
 	}
 }
 
+func TestPickTaskActionsStartConfirmAndCompleteIdempotently(t *testing.T) {
+	ctx := context.Background()
+	store := NewPrototypePickTaskStore()
+	auditStore := audit.NewInMemoryLogStore()
+	task := generatePickTaskForActionTest(t, store, auditStore)
+	lineID := task.Lines[0].ID
+
+	start := NewStartPickTask(store, auditStore)
+	confirm := NewConfirmPickTaskLine(store, auditStore)
+	complete := NewCompletePickTask(store, auditStore)
+
+	started, err := start.Execute(ctx, PickTaskActionInput{
+		PickTaskID: task.ID,
+		ActorID:    "user-picker",
+		RequestID:  "req-start-pick",
+	})
+	if err != nil {
+		t.Fatalf("start pick task: %v", err)
+	}
+	if started.PickTask.Status != domain.PickTaskStatusInProgress ||
+		started.PickTask.AssignedTo != "user-picker" ||
+		started.AuditLogID == "" {
+		t.Fatalf("started = %+v, want in-progress auto-assigned task with audit", started)
+	}
+	startedAgain, err := start.Execute(ctx, PickTaskActionInput{
+		PickTaskID: task.ID,
+		ActorID:    "user-picker",
+		RequestID:  "req-start-pick",
+	})
+	if err != nil {
+		t.Fatalf("repeat start pick task: %v", err)
+	}
+	if startedAgain.PickTask.Status != domain.PickTaskStatusInProgress || startedAgain.AuditLogID != "" {
+		t.Fatalf("repeat start = %+v, want idempotent no-op without audit", startedAgain)
+	}
+
+	confirmed, err := confirm.Execute(ctx, ConfirmPickTaskLineInput{
+		PickTaskID: task.ID,
+		LineID:     lineID,
+		PickedQty:  "3.000000",
+		ActorID:    "user-picker",
+		RequestID:  "req-confirm-pick-line",
+	})
+	if err != nil {
+		t.Fatalf("confirm pick line: %v", err)
+	}
+	if confirmed.PickTask.Lines[0].Status != domain.PickTaskLineStatusPicked ||
+		confirmed.PickTask.Lines[0].QtyPicked.String() != "3.000000" ||
+		confirmed.AuditLogID == "" {
+		t.Fatalf("confirmed = %+v, want picked line with audit", confirmed)
+	}
+	confirmedAgain, err := confirm.Execute(ctx, ConfirmPickTaskLineInput{
+		PickTaskID: task.ID,
+		LineID:     lineID,
+		PickedQty:  "3",
+		ActorID:    "user-picker",
+		RequestID:  "req-confirm-pick-line",
+	})
+	if err != nil {
+		t.Fatalf("repeat confirm pick line: %v", err)
+	}
+	if confirmedAgain.AuditLogID != "" || confirmedAgain.PickTask.Lines[0].Status != domain.PickTaskLineStatusPicked {
+		t.Fatalf("repeat confirm = %+v, want idempotent no-op without audit", confirmedAgain)
+	}
+
+	completed, err := complete.Execute(ctx, PickTaskActionInput{
+		PickTaskID: task.ID,
+		ActorID:    "user-picker",
+		RequestID:  "req-complete-pick",
+	})
+	if err != nil {
+		t.Fatalf("complete pick task: %v", err)
+	}
+	if completed.PickTask.Status != domain.PickTaskStatusCompleted || completed.AuditLogID == "" {
+		t.Fatalf("completed = %+v, want completed task with audit", completed)
+	}
+	completedAgain, err := complete.Execute(ctx, PickTaskActionInput{
+		PickTaskID: task.ID,
+		ActorID:    "user-picker",
+		RequestID:  "req-complete-pick",
+	})
+	if err != nil {
+		t.Fatalf("repeat complete pick task: %v", err)
+	}
+	if completedAgain.PickTask.Status != domain.PickTaskStatusCompleted || completedAgain.AuditLogID != "" {
+		t.Fatalf("repeat complete = %+v, want idempotent no-op without audit", completedAgain)
+	}
+
+	logs, err := auditStore.List(ctx, audit.Query{EntityID: task.ID})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 4 {
+		t.Fatalf("audit logs = %d, want create/start/line/complete", len(logs))
+	}
+}
+
+func TestReportPickTaskExceptionIsIdempotent(t *testing.T) {
+	ctx := context.Background()
+	store := NewPrototypePickTaskStore()
+	auditStore := audit.NewInMemoryLogStore()
+	task := generatePickTaskForActionTest(t, store, auditStore)
+	service := NewReportPickTaskException(store, auditStore)
+
+	result, err := service.Execute(ctx, ReportPickTaskExceptionInput{
+		PickTaskID:    task.ID,
+		ExceptionCode: "wrong_batch",
+		ActorID:       "user-picker",
+		RequestID:     "req-pick-exception",
+		Investigation: "Scanned batch does not match reserved batch",
+	})
+	if err != nil {
+		t.Fatalf("report pick exception: %v", err)
+	}
+	if result.PickTask.Status != domain.PickTaskStatusWrongBatch || result.AuditLogID == "" {
+		t.Fatalf("result = %+v, want wrong batch status with audit", result)
+	}
+
+	repeated, err := service.Execute(ctx, ReportPickTaskExceptionInput{
+		PickTaskID:    task.ID,
+		ExceptionCode: "wrong_batch",
+		ActorID:       "user-picker",
+		RequestID:     "req-pick-exception",
+	})
+	if err != nil {
+		t.Fatalf("repeat report pick exception: %v", err)
+	}
+	if repeated.PickTask.Status != domain.PickTaskStatusWrongBatch || repeated.AuditLogID != "" {
+		t.Fatalf("repeated = %+v, want idempotent no-op without audit", repeated)
+	}
+
+	_, err = service.Execute(ctx, ReportPickTaskExceptionInput{
+		PickTaskID:    task.ID,
+		ExceptionCode: "wrong_location",
+		ActorID:       "user-picker",
+		RequestID:     "req-change-pick-exception",
+	})
+	if !errors.Is(err, domain.ErrPickTaskInvalidTransition) {
+		t.Fatalf("change exception err = %v, want invalid transition", err)
+	}
+}
+
+func TestPickTaskActionsRejectInvalidTransitionsAndExceptionCodes(t *testing.T) {
+	ctx := context.Background()
+	store := NewPrototypePickTaskStore()
+	auditStore := audit.NewInMemoryLogStore()
+	task := generatePickTaskForActionTest(t, store, auditStore)
+	confirm := NewConfirmPickTaskLine(store, auditStore)
+
+	_, err := confirm.Execute(ctx, ConfirmPickTaskLineInput{
+		PickTaskID: task.ID,
+		LineID:     task.Lines[0].ID,
+		PickedQty:  "3.000000",
+		ActorID:    "user-picker",
+		RequestID:  "req-confirm-before-start",
+	})
+	if !errors.Is(err, domain.ErrPickTaskInvalidTransition) {
+		t.Fatalf("confirm before start err = %v, want invalid transition", err)
+	}
+
+	exceptions := NewReportPickTaskException(store, auditStore)
+	_, err = exceptions.Execute(ctx, ReportPickTaskExceptionInput{
+		PickTaskID:    task.ID,
+		ExceptionCode: "not_a_pick_exception",
+		ActorID:       "user-picker",
+		RequestID:     "req-invalid-exception",
+	})
+	if !errors.Is(err, domain.ErrPickTaskInvalidStatus) {
+		t.Fatalf("invalid exception err = %v, want invalid status", err)
+	}
+}
+
 func draftSalesOrderForPickTask(t *testing.T) salesdomain.SalesOrder {
 	t.Helper()
 	order, err := salesdomain.NewSalesOrderDocument(salesdomain.NewSalesOrderDocumentInput{
@@ -171,6 +343,29 @@ func reservedSalesOrderForPickTask(t *testing.T) salesdomain.SalesOrder {
 	}
 
 	return reserved
+}
+
+func generatePickTaskForActionTest(
+	t *testing.T,
+	store *PrototypePickTaskStore,
+	auditStore audit.LogStore,
+) domain.PickTask {
+	t.Helper()
+	order := reservedSalesOrderForPickTask(t)
+	result, err := NewGeneratePickTaskFromReservedOrder(store, auditStore).Execute(
+		context.Background(),
+		GeneratePickTaskFromReservedOrderInput{
+			SalesOrder:   order,
+			Reservations: []inventorydomain.StockReservation{stockReservationForPickTask(t, order, order.Lines[0])},
+			ActorID:      "user-warehouse-lead",
+			RequestID:    "req-generate-pick-for-action",
+		},
+	)
+	if err != nil {
+		t.Fatalf("generate pick task: %v", err)
+	}
+
+	return result.PickTask
 }
 
 func stockReservationForPickTask(
