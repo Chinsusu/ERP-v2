@@ -929,6 +929,21 @@ func (s *PrototypeCarrierManifestStore) Save(_ context.Context, manifest domain.
 	return nil
 }
 
+func (s *PrototypeCarrierManifestStore) SavePackedShipment(shipment domain.PackedShipment) error {
+	if s == nil {
+		return errors.New("carrier manifest store is required")
+	}
+	if strings.TrimSpace(shipment.ID) == "" {
+		return errors.New("packed shipment id is required")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.packedShipments[shipment.ID] = shipment
+
+	return nil
+}
+
 func (s *PrototypeCarrierManifestStore) GetPackedShipment(
 	_ context.Context,
 	id string,
