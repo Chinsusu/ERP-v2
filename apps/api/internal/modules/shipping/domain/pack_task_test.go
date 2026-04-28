@@ -93,6 +93,25 @@ func TestPackTaskCannotCompleteUntilAllLinesPacked(t *testing.T) {
 	}
 }
 
+func TestPackTaskReportLineException(t *testing.T) {
+	task, err := NewPackTask(validNewPackTaskInput())
+	if err != nil {
+		t.Fatalf("new pack task: %v", err)
+	}
+
+	reported, err := task.ReportLineException(task.Lines[0].ID, "user-packer", time.Date(2026, 4, 28, 15, 5, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("report line exception: %v", err)
+	}
+	if reported.Status != PackTaskStatusPackException || reported.Lines[0].Status != PackTaskLineStatusPackException {
+		t.Fatalf("reported = %+v, want pack exception task and line", reported)
+	}
+
+	if _, err := reported.ReportLineException(task.Lines[0].ID, "user-packer", time.Date(2026, 4, 28, 15, 6, 0, 0, time.UTC)); !errors.Is(err, ErrPackTaskInvalidTransition) {
+		t.Fatalf("repeat line exception err = %v, want invalid transition", err)
+	}
+}
+
 func validNewPackTaskInput() NewPackTaskInput {
 	createdAt := time.Date(2026, 4, 28, 14, 45, 0, 0, time.UTC)
 	return NewPackTaskInput{
