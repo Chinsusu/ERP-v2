@@ -9,6 +9,7 @@ import (
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	salesdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 	apperrors "github.com/Chinsusu/ERP-v2/apps/api/internal/shared/errors"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
@@ -156,6 +157,89 @@ func TestConfirmAndCancelSalesOrderUseStateMachineAndAudit(t *testing.T) {
 	}
 }
 
+func TestConfirmSalesOrderReservesStockWhenConfigured(t *testing.T) {
+	service, _, auditStore := newTestSalesOrderService()
+	reserver := &recordingSalesOrderStockReserver{}
+	service = service.WithStockReserver(reserver)
+	ctx := context.Background()
+	created, err := service.CreateSalesOrder(ctx, validCreateSalesOrderInput("so-test-reserve"))
+	if err != nil {
+		t.Fatalf("create sales order: %v", err)
+	}
+
+	reserved, err := service.ConfirmSalesOrder(ctx, SalesOrderActionInput{
+		ID:              created.SalesOrder.ID,
+		ExpectedVersion: 1,
+		ActorID:         "user-sales",
+		RequestID:       "req-sales-reserve",
+	})
+	if err != nil {
+		t.Fatalf("confirm and reserve sales order: %v", err)
+	}
+
+	if reserved.PreviousStatus != salesdomain.SalesOrderStatusDraft ||
+		reserved.CurrentStatus != salesdomain.SalesOrderStatusReserved ||
+		reserved.SalesOrder.Version != 3 {
+		t.Fatalf("reserve result = %+v, want draft -> reserved version 3", reserved)
+	}
+	if reserved.SalesOrder.Lines[0].ReservedQty != "2.000000" ||
+		reserved.SalesOrder.Lines[0].BatchID != "batch-reserved" {
+		t.Fatalf("reserved line = %+v, want full reserved qty and batch", reserved.SalesOrder.Lines[0])
+	}
+	if reserver.calls != 1 || reserver.inputs[0].Lines[0].BaseOrderedQty != "2.000000" {
+		t.Fatalf("reserver calls = %d inputs = %+v, want one base qty reservation", reserver.calls, reserver.inputs)
+	}
+	logs, err := auditStore.List(ctx, audit.Query{EntityID: created.SalesOrder.ID})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 2 || logs[1].Action != "sales.order.reserved" || logs[1].AfterData["status"] != "reserved" {
+		t.Fatalf("audit logs = %+v, want reserved audit", logs)
+	}
+}
+
+func TestConfirmSalesOrderRollsBackWhenReservationFails(t *testing.T) {
+	service, store, auditStore := newTestSalesOrderService()
+	service = service.WithStockReserver(&recordingSalesOrderStockReserver{
+		err: apperrors.Conflict(
+			response.ErrorCodeInsufficientStock,
+			"Insufficient stock for sales order reservation",
+			errors.New("insufficient stock"),
+			nil,
+		),
+	})
+	ctx := context.Background()
+	created, err := service.CreateSalesOrder(ctx, validCreateSalesOrderInput("so-test-reserve-fail"))
+	if err != nil {
+		t.Fatalf("create sales order: %v", err)
+	}
+
+	_, err = service.ConfirmSalesOrder(ctx, SalesOrderActionInput{
+		ID:              created.SalesOrder.ID,
+		ExpectedVersion: 1,
+		ActorID:         "user-sales",
+		RequestID:       "req-sales-reserve-fail",
+	})
+	var appErr apperrors.AppError
+	if !errors.As(err, &appErr) || appErr.Code != response.ErrorCodeInsufficientStock {
+		t.Fatalf("err = %v app = %+v, want insufficient stock code", err, appErr)
+	}
+	stored, err := store.Get(ctx, created.SalesOrder.ID)
+	if err != nil {
+		t.Fatalf("get stored order: %v", err)
+	}
+	if stored.Status != salesdomain.SalesOrderStatusDraft || stored.Version != 1 {
+		t.Fatalf("stored order status/version = %s/%d, want rollback to draft/1", stored.Status, stored.Version)
+	}
+	logs, err := auditStore.List(ctx, audit.Query{EntityID: created.SalesOrder.ID})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit log count = %d, want only create audit after reservation failure", len(logs))
+	}
+}
+
 func TestSalesOrderRejectsUpdateAfterConfirm(t *testing.T) {
 	service, _, _ := newTestSalesOrderService()
 	ctx := context.Background()
@@ -283,4 +367,35 @@ func (s failingAuditStore) Record(context.Context, audit.Log) error {
 
 func (s failingAuditStore) List(context.Context, audit.Query) ([]audit.Log, error) {
 	return nil, s.err
+}
+
+type recordingSalesOrderStockReserver struct {
+	calls  int
+	inputs []SalesOrderStockReservationInput
+	err    error
+}
+
+func (r *recordingSalesOrderStockReserver) ReserveSalesOrder(
+	_ context.Context,
+	input SalesOrderStockReservationInput,
+) (SalesOrderStockReservationResult, error) {
+	r.calls++
+	r.inputs = append(r.inputs, input)
+	if r.err != nil {
+		return SalesOrderStockReservationResult{}, r.err
+	}
+
+	lines := make([]SalesOrderReservedLine, 0, len(input.Lines))
+	for _, line := range input.Lines {
+		lines = append(lines, SalesOrderReservedLine{
+			SalesOrderLineID: line.SalesOrderLineID,
+			ReservedQty:      decimal.MustQuantity(line.BaseOrderedQty.String()),
+			BatchID:          "batch-reserved",
+			BatchNo:          "LOT-RESERVED",
+			BinID:            "bin-reserved",
+			BinCode:          "PICK-01",
+		})
+	}
+
+	return SalesOrderStockReservationResult{Lines: lines}, nil
 }

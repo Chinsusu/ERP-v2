@@ -54,11 +54,16 @@ type SalesOrderWarehouseReader interface {
 	GetWarehouse(ctx context.Context, id string) (domain.Warehouse, error)
 }
 
+type SalesOrderStockReserver interface {
+	ReserveSalesOrder(ctx context.Context, input SalesOrderStockReservationInput) (SalesOrderStockReservationResult, error)
+}
+
 type SalesOrderService struct {
 	store         SalesOrderStore
 	customerRead  SalesOrderCustomerReader
 	itemRead      SalesOrderItemReader
 	warehouseRead SalesOrderWarehouseReader
+	stockReserver SalesOrderStockReserver
 	clock         func() time.Time
 }
 
@@ -134,6 +139,41 @@ type SalesOrderActionResult struct {
 	AuditLogID     string
 }
 
+type SalesOrderStockReservationInput struct {
+	OrgID         string
+	SalesOrderID  string
+	OrderNo       string
+	WarehouseID   string
+	WarehouseCode string
+	ActorID       string
+	RequestID     string
+	ReservedAt    time.Time
+	Lines         []SalesOrderStockReservationLineInput
+}
+
+type SalesOrderStockReservationLineInput struct {
+	SalesOrderLineID string
+	LineNo           int
+	ItemID           string
+	SKUCode          string
+	OrderedQty       decimal.Decimal
+	BaseOrderedQty   decimal.Decimal
+	BaseUOMCode      decimal.UOMCode
+}
+
+type SalesOrderStockReservationResult struct {
+	Lines []SalesOrderReservedLine
+}
+
+type SalesOrderReservedLine struct {
+	SalesOrderLineID string
+	ReservedQty      decimal.Decimal
+	BatchID          string
+	BatchNo          string
+	BinID            string
+	BinCode          string
+}
+
 type PrototypeSalesOrderStore struct {
 	mu       sync.RWMutex
 	records  map[string]salesdomain.SalesOrder
@@ -159,6 +199,11 @@ func NewSalesOrderService(
 		warehouseRead: warehouseRead,
 		clock:         func() time.Time { return time.Now().UTC() },
 	}
+}
+
+func (s SalesOrderService) WithStockReserver(reserver SalesOrderStockReserver) SalesOrderService {
+	s.stockReserver = reserver
+	return s
 }
 
 func NewPrototypeSalesOrderStore(auditLog audit.LogStore) *PrototypeSalesOrderStore {
@@ -381,6 +426,10 @@ func (s SalesOrderService) ConfirmSalesOrder(
 	ctx context.Context,
 	input SalesOrderActionInput,
 ) (SalesOrderActionResult, error) {
+	if s.stockReserver != nil {
+		return s.confirmAndReserveSalesOrder(ctx, input)
+	}
+
 	return s.transition(ctx, input, "sales.order.confirmed", func(
 		order salesdomain.SalesOrder,
 		actorID string,
@@ -388,6 +437,84 @@ func (s SalesOrderService) ConfirmSalesOrder(
 	) (salesdomain.SalesOrder, error) {
 		return order.Confirm(actorID, changedAt)
 	})
+}
+
+func (s SalesOrderService) confirmAndReserveSalesOrder(
+	ctx context.Context,
+	input SalesOrderActionInput,
+) (SalesOrderActionResult, error) {
+	if err := s.ensureReadyForWrite(); err != nil {
+		return SalesOrderActionResult{}, err
+	}
+	if err := requireActor(input.ActorID); err != nil {
+		return SalesOrderActionResult{}, err
+	}
+
+	var result SalesOrderActionResult
+	err := s.store.WithinTx(ctx, func(txCtx context.Context, tx SalesOrderTx) error {
+		current, err := tx.GetForUpdate(txCtx, input.ID)
+		if err != nil {
+			return mapSalesOrderError(err, map[string]any{"sales_order_id": strings.TrimSpace(input.ID)})
+		}
+		if err := ensureExpectedVersion(current, input.ExpectedVersion); err != nil {
+			return err
+		}
+
+		now := s.now()
+		confirmed, err := current.Confirm(input.ActorID, now)
+		if err != nil {
+			return mapSalesOrderError(err, map[string]any{
+				"sales_order_id": current.ID,
+				"status":         string(current.Status),
+			})
+		}
+
+		reservationResult, err := s.stockReserver.ReserveSalesOrder(
+			txCtx,
+			newSalesOrderStockReservationInput(confirmed, input, now),
+		)
+		if err != nil {
+			return mapSalesOrderError(err, map[string]any{"sales_order_id": current.ID})
+		}
+		reserved, err := applySalesOrderReservations(confirmed, reservationResult, input.ActorID, now)
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(input.Note) != "" {
+			reserved.Note = strings.TrimSpace(input.Note)
+		}
+		if err := tx.Save(txCtx, reserved); err != nil {
+			return err
+		}
+		log, err := newSalesOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			"sales.order.reserved",
+			reserved,
+			salesOrderAuditData(current),
+			salesOrderAuditData(reserved),
+			now,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, log); err != nil {
+			return err
+		}
+		result = SalesOrderActionResult{
+			SalesOrder:     reserved,
+			PreviousStatus: current.Status,
+			CurrentStatus:  reserved.Status,
+			AuditLogID:     log.ID,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return SalesOrderActionResult{}, err
+	}
+
+	return result, nil
 }
 
 func (s SalesOrderService) CancelSalesOrder(
@@ -782,6 +909,81 @@ func mapMasterDataReadError(err error, details map[string]any) error {
 	}
 
 	return apperrors.NotFound(response.ErrorCodeNotFound, "Referenced master data was not found", err, details)
+}
+
+func newSalesOrderStockReservationInput(
+	order salesdomain.SalesOrder,
+	action SalesOrderActionInput,
+	reservedAt time.Time,
+) SalesOrderStockReservationInput {
+	lines := make([]SalesOrderStockReservationLineInput, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		lines = append(lines, SalesOrderStockReservationLineInput{
+			SalesOrderLineID: line.ID,
+			LineNo:           line.LineNo,
+			ItemID:           line.ItemID,
+			SKUCode:          line.SKUCode,
+			OrderedQty:       line.OrderedQty,
+			BaseOrderedQty:   line.BaseOrderedQty,
+			BaseUOMCode:      line.BaseUOMCode,
+		})
+	}
+
+	return SalesOrderStockReservationInput{
+		OrgID:         order.OrgID,
+		SalesOrderID:  order.ID,
+		OrderNo:       order.OrderNo,
+		WarehouseID:   order.WarehouseID,
+		WarehouseCode: order.WarehouseCode,
+		ActorID:       action.ActorID,
+		RequestID:     action.RequestID,
+		ReservedAt:    reservedAt.UTC(),
+		Lines:         lines,
+	}
+}
+
+func applySalesOrderReservations(
+	order salesdomain.SalesOrder,
+	result SalesOrderStockReservationResult,
+	actorID string,
+	reservedAt time.Time,
+) (salesdomain.SalesOrder, error) {
+	reservationsByLine := make(map[string]SalesOrderReservedLine, len(result.Lines))
+	for _, line := range result.Lines {
+		reservationsByLine[strings.TrimSpace(line.SalesOrderLineID)] = line
+	}
+
+	updated := order.Clone()
+	for index, line := range updated.Lines {
+		reservation, ok := reservationsByLine[line.ID]
+		if !ok {
+			return salesdomain.SalesOrder{}, apperrors.Conflict(
+				response.ErrorCodeInsufficientStock,
+				"Sales order reservation did not cover every line",
+				nil,
+				map[string]any{"sales_order_line_id": line.ID},
+			)
+		}
+		reservedQty, err := decimal.ParseQuantity(reservation.ReservedQty.String())
+		if err != nil || reservedQty != line.BaseOrderedQty {
+			return salesdomain.SalesOrder{}, apperrors.Conflict(
+				response.ErrorCodeInsufficientStock,
+				"Sales order reservation quantity does not match ordered quantity",
+				err,
+				map[string]any{
+					"sales_order_line_id": line.ID,
+					"ordered_qty":         line.BaseOrderedQty.String(),
+					"reserved_qty":        reservation.ReservedQty.String(),
+				},
+			)
+		}
+		line.ReservedQty = reservedQty
+		line.BatchID = reservation.BatchID
+		line.BatchNo = reservation.BatchNo
+		updated.Lines[index] = line
+	}
+
+	return updated.MarkReserved(actorID, reservedAt)
 }
 
 func newSalesOrderAuditLog(
