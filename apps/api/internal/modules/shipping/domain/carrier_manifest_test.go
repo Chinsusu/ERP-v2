@@ -65,11 +65,54 @@ func TestCarrierManifestAddShipmentUpdatesExpectedAndMissingCounts(t *testing.T)
 		t.Fatalf("add shipment: %v", err)
 	}
 
-	if updated.Status != ManifestStatusReady {
-		t.Fatalf("status = %q, want ready", updated.Status)
+	if updated.Status != ManifestStatusDraft {
+		t.Fatalf("status = %q, want draft until ready-to-scan action", updated.Status)
 	}
 	if got := updated.Summary(); got.ExpectedCount != 1 || got.ScannedCount != 0 || got.MissingCount != 1 {
 		t.Fatalf("summary = %+v, want 1 expected, 0 scanned, 1 missing", got)
+	}
+}
+
+func TestCarrierManifestReadyRemoveAndCancel(t *testing.T) {
+	manifest, err := NewCarrierManifest(NewCarrierManifestInput{
+		CarrierCode: "GHN",
+		WarehouseID: "wh-hcm",
+		Date:        "2026-04-26",
+	})
+	if err != nil {
+		t.Fatalf("new manifest: %v", err)
+	}
+
+	if _, err := manifest.MarkReadyToScan(); !errors.Is(err, ErrManifestRequiredField) {
+		t.Fatalf("ready empty manifest err = %v, want required field", err)
+	}
+
+	withShipment, err := manifest.AddShipment(PackedShipment{ID: "ship-001", OrderNo: "SO-001", Packed: true})
+	if err != nil {
+		t.Fatalf("add shipment: %v", err)
+	}
+	ready, err := withShipment.MarkReadyToScan()
+	if err != nil {
+		t.Fatalf("mark ready: %v", err)
+	}
+	if ready.Status != ManifestStatusReady {
+		t.Fatalf("ready status = %q, want ready", ready.Status)
+	}
+
+	removed, err := ready.RemoveShipment("ship-001")
+	if err != nil {
+		t.Fatalf("remove shipment: %v", err)
+	}
+	if removed.Status != ManifestStatusDraft || len(removed.Lines) != 0 {
+		t.Fatalf("removed manifest = %+v, want empty draft manifest", removed)
+	}
+
+	cancelled, err := removed.Cancel()
+	if err != nil {
+		t.Fatalf("cancel manifest: %v", err)
+	}
+	if cancelled.Status != ManifestStatusCancelled {
+		t.Fatalf("cancelled status = %q, want cancelled", cancelled.Status)
 	}
 }
 

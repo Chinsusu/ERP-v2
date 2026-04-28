@@ -14,6 +14,7 @@ import (
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
+	shippingdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
@@ -692,14 +693,18 @@ func TestCarrierManifestsHandlerRejectsInvalidCarrierMaster(t *testing.T) {
 func TestAddShipmentToCarrierManifestHandlerUpdatesCounts(t *testing.T) {
 	store := shippingapp.NewPrototypeCarrierManifestStore()
 	auditStore := audit.NewInMemoryLogStore()
+	manifest := mustDraftCarrierManifestForHandler(t)
+	if err := store.Save(context.Background(), manifest); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
 	service := shippingapp.NewAddShipmentToCarrierManifest(store, auditStore)
 	body := bytes.NewBufferString(`{"shipment_id":"ship-hcm-260426-004"}`)
 	req := httptest.NewRequest(
 		http.MethodPost,
-		"/api/v1/shipping/manifests/manifest-hcm-ghn-morning/shipments",
+		"/api/v1/shipping/manifests/manifest-hcm-ghn-handler/shipments",
 		body,
 	)
-	req.SetPathValue("manifest_id", "manifest-hcm-ghn-morning")
+	req.SetPathValue("manifest_id", manifest.ID)
 	req.Header.Set(response.HeaderRequestID, "req-manifest-add")
 	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
 		Email:       "admin@example.local",
@@ -718,8 +723,84 @@ func TestAddShipmentToCarrierManifestHandlerUpdatesCounts(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if payload.Data.Summary.ExpectedCount != 4 || payload.Data.Summary.MissingCount != 2 {
-		t.Fatalf("summary = %+v, want expected 4 missing 2", payload.Data.Summary)
+	if payload.Data.Status != "draft" || payload.Data.Summary.ExpectedCount != 1 || payload.Data.Summary.MissingCount != 1 {
+		t.Fatalf("manifest = %+v, want draft with expected 1 missing 1", payload.Data)
+	}
+}
+
+func TestCarrierManifestActionHandlersReadyRemoveAndCancel(t *testing.T) {
+	store := shippingapp.NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	manifest := mustDraftCarrierManifestForHandler(t)
+	if err := store.Save(context.Background(), manifest); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
+	if _, err := shippingapp.NewAddShipmentToCarrierManifest(store, auditStore).Execute(context.Background(), shippingapp.AddShipmentToCarrierManifestInput{
+		ManifestID: manifest.ID,
+		ShipmentID: "ship-hcm-260426-004",
+		ActorID:    "user-warehouse-lead",
+		RequestID:  "req-seed-manifest-line",
+	}); err != nil {
+		t.Fatalf("seed manifest line: %v", err)
+	}
+
+	readyReq := httptest.NewRequest(http.MethodPost, "/api/v1/shipping/manifests/manifest-hcm-ghn-handler/ready", nil)
+	readyReq.SetPathValue("manifest_id", manifest.ID)
+	readyReq.Header.Set(response.HeaderRequestID, "req-manifest-ready")
+	readyReq = readyReq.WithContext(auth.WithPrincipal(readyReq.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	readyRec := httptest.NewRecorder()
+
+	markCarrierManifestReadyToScanHandler(shippingapp.NewMarkCarrierManifestReadyToScan(store, auditStore)).ServeHTTP(readyRec, readyReq)
+	if readyRec.Code != http.StatusOK {
+		t.Fatalf("ready status = %d, want %d: %s", readyRec.Code, http.StatusOK, readyRec.Body.String())
+	}
+	var readyPayload response.SuccessEnvelope[carrierManifestResponse]
+	if err := json.NewDecoder(readyRec.Body).Decode(&readyPayload); err != nil {
+		t.Fatalf("decode ready response: %v", err)
+	}
+	if readyPayload.Data.Status != "ready" || readyPayload.Data.AuditLogID == "" {
+		t.Fatalf("ready payload = %+v, want ready with audit", readyPayload.Data)
+	}
+
+	removeReq := httptest.NewRequest(http.MethodDelete, "/api/v1/shipping/manifests/manifest-hcm-ghn-handler/shipments/ship-hcm-260426-004", nil)
+	removeReq.SetPathValue("manifest_id", manifest.ID)
+	removeReq.SetPathValue("shipment_id", "ship-hcm-260426-004")
+	removeReq.Header.Set(response.HeaderRequestID, "req-manifest-remove")
+	removeReq = removeReq.WithContext(readyReq.Context())
+	removeRec := httptest.NewRecorder()
+
+	removeShipmentFromCarrierManifestHandler(shippingapp.NewRemoveShipmentFromCarrierManifest(store, auditStore)).ServeHTTP(removeRec, removeReq)
+	if removeRec.Code != http.StatusOK {
+		t.Fatalf("remove status = %d, want %d: %s", removeRec.Code, http.StatusOK, removeRec.Body.String())
+	}
+	var removePayload response.SuccessEnvelope[carrierManifestResponse]
+	if err := json.NewDecoder(removeRec.Body).Decode(&removePayload); err != nil {
+		t.Fatalf("decode remove response: %v", err)
+	}
+	if removePayload.Data.Status != "draft" || removePayload.Data.Summary.ExpectedCount != 0 || removePayload.Data.AuditLogID == "" {
+		t.Fatalf("remove payload = %+v, want empty draft with audit", removePayload.Data)
+	}
+
+	cancelReq := httptest.NewRequest(http.MethodPost, "/api/v1/shipping/manifests/manifest-hcm-ghn-handler/cancel", bytes.NewBufferString(`{"reason":"carrier pickup moved"}`))
+	cancelReq.SetPathValue("manifest_id", manifest.ID)
+	cancelReq.Header.Set(response.HeaderRequestID, "req-manifest-cancel")
+	cancelReq = cancelReq.WithContext(readyReq.Context())
+	cancelRec := httptest.NewRecorder()
+
+	cancelCarrierManifestHandler(shippingapp.NewCancelCarrierManifest(store, auditStore)).ServeHTTP(cancelRec, cancelReq)
+	if cancelRec.Code != http.StatusOK {
+		t.Fatalf("cancel status = %d, want %d: %s", cancelRec.Code, http.StatusOK, cancelRec.Body.String())
+	}
+	var cancelPayload response.SuccessEnvelope[carrierManifestResponse]
+	if err := json.NewDecoder(cancelRec.Body).Decode(&cancelPayload); err != nil {
+		t.Fatalf("decode cancel response: %v", err)
+	}
+	if cancelPayload.Data.Status != "cancelled" || cancelPayload.Data.AuditLogID == "" {
+		t.Fatalf("cancel payload = %+v, want cancelled with audit", cancelPayload.Data)
 	}
 }
 
@@ -1611,4 +1692,25 @@ func newTestGoodsReceiptService() (inventoryapp.WarehouseReceivingService, *audi
 	)
 
 	return service, auditStore
+}
+
+func mustDraftCarrierManifestForHandler(t *testing.T) shippingdomain.CarrierManifest {
+	t.Helper()
+
+	manifest, err := shippingdomain.NewCarrierManifest(shippingdomain.NewCarrierManifestInput{
+		ID:            "manifest-hcm-ghn-handler",
+		CarrierCode:   "GHN",
+		CarrierName:   "GHN Express",
+		WarehouseID:   "wh-hcm",
+		WarehouseCode: "HCM",
+		Date:          "2026-04-28",
+		HandoverBatch: "afternoon",
+		StagingZone:   "handover-a",
+		Owner:         "Warehouse Lead",
+	})
+	if err != nil {
+		t.Fatalf("new carrier manifest: %v", err)
+	}
+
+	return manifest
 }
