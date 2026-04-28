@@ -1391,6 +1391,223 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /sales-orders:
+    get:
+      summary: List sales orders
+      operationId: listSalesOrders
+      tags:
+        - sales
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated sales order statuses.
+        - name: customer_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: channel
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            default: -order_date,order_no
+      responses:
+        "200":
+          description: Sales order rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesOrderListSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create a sales order
+      operationId: createSalesOrder
+      tags:
+        - sales
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSalesOrderRequest"
+      responses:
+        "201":
+          description: Sales order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesOrderSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /sales-orders/{sales_order_id}:
+    get:
+      summary: Get sales order detail
+      operationId: getSalesOrder
+      tags:
+        - sales
+      parameters:
+        - name: sales_order_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Sales order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesOrderSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update editable sales order fields and lines
+      operationId: updateSalesOrder
+      tags:
+        - sales
+      parameters:
+        - name: sales_order_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSalesOrderRequest"
+      responses:
+        "200":
+          description: Sales order updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesOrderSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /sales-orders/{sales_order_id}/confirm:
+    post:
+      summary: Confirm a draft sales order
+      operationId: confirmSalesOrder
+      tags:
+        - sales
+      parameters:
+        - name: sales_order_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalesOrderActionRequest"
+      responses:
+        "200":
+          description: Sales order confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesOrderActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /sales-orders/{sales_order_id}/cancel:
+    post:
+      summary: Cancel a sales order through the sales state machine
+      operationId: cancelSalesOrder
+      tags:
+        - sales
+      parameters:
+        - name: sales_order_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelSalesOrderRequest"
+      responses:
+        "200":
+          description: Sales order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesOrderActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /shipping/manifests:
     get:
       summary: List carrier manifests
@@ -2002,6 +2219,11 @@ components:
       pattern: "^[-]?[0-9]+(\\.[0-9]{1,6})?$"
       description: Decimal string for unit cost values, stored as numeric(18,6).
       example: "64000.000000"
+    UnitPriceAmount:
+      type: string
+      pattern: "^[-]?[0-9]+(\\.[0-9]{1,4})?$"
+      description: Decimal string for unit price values, stored as numeric(18,4).
+      example: "125000.0000"
     Quantity:
       type: string
       pattern: "^[-]?[0-9]+(\\.[0-9]{1,6})?$"
@@ -3525,6 +3747,373 @@ components:
         reason:
           type: string
         owner:
+          type: string
+    SalesOrderStatus:
+      type: string
+      enum:
+        - draft
+        - confirmed
+        - reserved
+        - picking
+        - picked
+        - packing
+        - packed
+        - waiting_handover
+        - handed_over
+        - delivered
+        - returned
+        - closed
+        - cancelled
+        - reservation_failed
+        - pick_exception
+        - pack_exception
+        - handover_exception
+    SalesOrderListSuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+        - request_id
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SalesOrderListItem"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        request_id:
+          type: string
+          example: req_lq7z2t9c
+    SalesOrderSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SalesOrder"
+    SalesOrderActionSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SalesOrderActionResult"
+    SalesOrderListItem:
+      type: object
+      required:
+        - id
+        - order_no
+        - customer_id
+        - customer_name
+        - channel
+        - order_date
+        - status
+        - currency_code
+        - total_amount
+        - line_count
+        - reserved_line_count
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+        order_no:
+          type: string
+        customer_id:
+          type: string
+        customer_code:
+          type: string
+        customer_name:
+          type: string
+        channel:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        order_date:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/SalesOrderStatus"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        total_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        line_count:
+          type: integer
+          minimum: 0
+        reserved_line_count:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+    SalesOrder:
+      type: object
+      required:
+        - id
+        - order_no
+        - customer_id
+        - customer_name
+        - channel
+        - order_date
+        - status
+        - currency_code
+        - subtotal_amount
+        - discount_amount
+        - tax_amount
+        - shipping_fee_amount
+        - net_amount
+        - total_amount
+        - lines
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        order_no:
+          type: string
+        customer_id:
+          type: string
+        customer_code:
+          type: string
+        customer_name:
+          type: string
+        channel:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        order_date:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/SalesOrderStatus"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        subtotal_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        discount_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        tax_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        shipping_fee_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        net_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        total_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        note:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/SalesOrderLine"
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        confirmed_at:
+          type: string
+          format: date-time
+        cancelled_at:
+          type: string
+          format: date-time
+        cancel_reason:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+    SalesOrderLine:
+      type: object
+      required:
+        - id
+        - line_no
+        - item_id
+        - sku_code
+        - item_name
+        - ordered_qty
+        - uom_code
+        - base_ordered_qty
+        - base_uom_code
+        - unit_price
+        - currency_code
+        - line_discount_amount
+        - line_amount
+        - reserved_qty
+        - shipped_qty
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+          minimum: 1
+        item_id:
+          type: string
+        sku_code:
+          type: string
+        item_name:
+          type: string
+        ordered_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_ordered_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        conversion_factor:
+          $ref: "#/components/schemas/Quantity"
+        unit_price:
+          $ref: "#/components/schemas/UnitPriceAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        line_discount_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        line_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        reserved_qty:
+          $ref: "#/components/schemas/Quantity"
+        shipped_qty:
+          $ref: "#/components/schemas/Quantity"
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+    CreateSalesOrderRequest:
+      type: object
+      required:
+        - customer_id
+        - channel
+        - order_date
+        - currency_code
+        - lines
+      properties:
+        customer_id:
+          type: string
+        channel:
+          type: string
+        warehouse_id:
+          type: string
+        order_date:
+          type: string
+          format: date
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        note:
+          type: string
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateSalesOrderLineRequest"
+    UpdateSalesOrderRequest:
+      type: object
+      properties:
+        customer_id:
+          type: string
+        channel:
+          type: string
+        warehouse_id:
+          type: string
+        order_date:
+          type: string
+          format: date
+        note:
+          type: string
+        expected_version:
+          type: integer
+          minimum: 1
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/UpdateSalesOrderLineRequest"
+    CreateSalesOrderLineRequest:
+      type: object
+      required:
+        - item_id
+        - ordered_qty
+        - uom_code
+        - unit_price
+        - currency_code
+      properties:
+        item_id:
+          type: string
+        ordered_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        unit_price:
+          $ref: "#/components/schemas/UnitPriceAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        line_discount_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    UpdateSalesOrderLineRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateSalesOrderLineRequest"
+        - type: object
+          properties:
+            id:
+              type: string
+            line_no:
+              type: integer
+              minimum: 1
+    SalesOrderActionRequest:
+      type: object
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        note:
+          type: string
+    CancelSalesOrderRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        expected_version:
+          type: integer
+          minimum: 1
+    SalesOrderActionResult:
+      type: object
+      required:
+        - sales_order
+        - previous_status
+        - current_status
+      properties:
+        sales_order:
+          $ref: "#/components/schemas/SalesOrder"
+        previous_status:
+          $ref: "#/components/schemas/SalesOrderStatus"
+        current_status:
+          $ref: "#/components/schemas/SalesOrderStatus"
+        audit_log_id:
           type: string
     ReturnReceiptStatus:
       type: string
