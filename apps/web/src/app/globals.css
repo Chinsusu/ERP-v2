@@ -2182,6 +2182,12 @@ textarea {
   gap: 10px;
 }
 
+.erp-returns-disposition-result {
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--erp-border-soft);
+}
+
 .erp-returns-page .erp-ds-table {
   min-width: 960px;
 }

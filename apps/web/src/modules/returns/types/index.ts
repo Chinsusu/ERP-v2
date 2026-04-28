@@ -10,11 +10,11 @@ export type ReturnInspectionCondition =
   | "seal_torn"
   | "used"
   | "damaged"
-  | "qa_required";
+  | "missing_accessory";
 
-export type ReturnInspectionDisposition = "usable" | "not_usable" | "qa_hold";
+export type ReturnInspectionDisposition = ReturnDisposition;
 
-export type ReturnInspectionStatus = "INSPECTION_RECORDED" | "RETURN_QA_HOLD";
+export type ReturnInspectionStatus = "inspection_recorded" | "return_qa_hold";
 
 export type ReturnReceiptLine = {
   id: string;
@@ -72,10 +72,24 @@ export type ReturnInspectionResult = {
   status: ReturnInspectionStatus;
   targetLocation: string;
   riskLevel: "low" | "medium" | "high";
-  inspector: string;
+  inspectorId: string;
   note?: string;
   evidenceLabel?: string;
   inspectedAt: string;
+};
+
+export type ReturnDispositionAction = {
+  id: string;
+  receiptId: string;
+  receiptNo: string;
+  disposition: ReturnDisposition;
+  targetLocation: string;
+  targetStockStatus: "return_pending" | "damaged" | "qc_hold";
+  actionCode: "route_to_putaway" | "route_to_lab_or_damaged" | "route_to_quarantine_hold";
+  actorId: string;
+  note?: string;
+  auditLogId?: string;
+  decidedAt: string;
 };
 
 export type InspectReturnInput = {
@@ -84,6 +98,12 @@ export type InspectReturnInput = {
   disposition: ReturnInspectionDisposition;
   note?: string;
   evidenceLabel?: string;
+};
+
+export type ApplyReturnDispositionInput = {
+  receipt: ReturnReceipt;
+  disposition: ReturnDisposition;
+  note?: string;
 };
 
 export type ReturnReceiptQuery = {
