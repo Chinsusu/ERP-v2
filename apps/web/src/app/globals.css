@@ -1240,6 +1240,193 @@ textarea {
   color: var(--erp-text-secondary);
 }
 
+.erp-sales-page {
+  display: grid;
+  gap: 16px;
+}
+
+.erp-sales-page > * {
+  min-width: 0;
+}
+
+.erp-sales-page .erp-page-header {
+  margin-bottom: 0;
+}
+
+.erp-sales-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(160px, 220px) minmax(140px, 180px) minmax(200px, 260px);
+  gap: 12px;
+  align-items: end;
+  min-width: 0;
+  padding: 12px;
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-sales-kpis {
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+}
+
+.erp-sales-workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.9fr) minmax(460px, 1.1fr);
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+.erp-sales-create,
+.erp-sales-detail {
+  min-width: 0;
+}
+
+.erp-sales-form-grid,
+.erp-sales-line-editor {
+  display: grid;
+  gap: 12px;
+  align-items: end;
+}
+
+.erp-sales-form-grid {
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+}
+
+.erp-sales-line-editor {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.erp-sales-line-editor .erp-field:first-child,
+.erp-sales-line-editor .erp-button {
+  grid-column: 1 / -1;
+}
+
+.erp-sales-line-editor .erp-button {
+  justify-self: end;
+}
+
+.erp-sales-note-field {
+  grid-column: span 2;
+}
+
+.erp-sales-draft-lines {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.erp-sales-draft-lines li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-sales-draft-lines span,
+.erp-sales-draft-lines strong,
+.erp-sales-draft-lines small,
+.erp-sales-order-cell strong,
+.erp-sales-order-cell small {
+  overflow-wrap: anywhere;
+}
+
+.erp-sales-draft-lines span,
+.erp-sales-order-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.erp-sales-draft-lines small,
+.erp-sales-order-cell small,
+.erp-sales-empty-line,
+.erp-sales-feedback {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-sales-empty-line {
+  margin: 14px 0 0;
+}
+
+.erp-sales-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.erp-sales-fact {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-sales-fact span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+}
+
+.erp-sales-fact strong {
+  overflow-wrap: anywhere;
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-body);
+}
+
+.erp-sales-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.erp-sales-subsection {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.erp-sales-subsection .erp-section-title {
+  font-size: var(--erp-font-size-body);
+}
+
+.erp-sales-feedback {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-sales-feedback--success {
+  color: var(--erp-success);
+  background: var(--erp-success-bg);
+}
+
+.erp-sales-feedback--warning {
+  color: var(--erp-warning);
+  background: var(--erp-warning-bg);
+}
+
+.erp-sales-feedback--danger {
+  color: var(--erp-danger);
+  background: var(--erp-danger-bg);
+}
+
 .erp-receiving-page {
   display: grid;
   gap: 16px;
@@ -2836,7 +3023,9 @@ textarea {
     height: auto;
     display: flex;
     gap: 12px;
+    max-width: 100%;
     overflow-x: auto;
+    contain: inline-size;
     border-right: 0;
     border-bottom: 1px solid var(--erp-border-card);
     padding: 12px;
@@ -2895,6 +3084,13 @@ textarea {
   .erp-shipping-detail-grid,
   .erp-shipping-add-box,
   .erp-shipping-scan-list li,
+  .erp-sales-toolbar,
+  .erp-sales-kpis,
+  .erp-sales-workspace,
+  .erp-sales-form-grid,
+  .erp-sales-line-editor,
+  .erp-sales-draft-lines li,
+  .erp-sales-detail-grid,
   .erp-receiving-toolbar,
   .erp-receiving-kpis,
   .erp-receiving-workspace,
@@ -2928,8 +3124,13 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .erp-sales-note-field {
+    grid-column: auto;
+  }
+
   .erp-shipping-scan-actions,
   .erp-shipping-missing-actions,
+  .erp-sales-actions,
   .erp-receiving-actions,
   .erp-returns-actions,
   .erp-subcontract-actions {
@@ -2938,6 +3139,7 @@ textarea {
 
   .erp-shipping-scan-actions .erp-button,
   .erp-shipping-missing-actions .erp-button,
+  .erp-sales-actions .erp-button,
   .erp-receiving-actions .erp-button,
   .erp-returns-actions .erp-button,
   .erp-subcontract-actions .erp-button {
