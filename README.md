@@ -28,6 +28,33 @@ Start with:
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md`
 - `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
 
+## Sprint 2 Kickoff
+
+Sprint 1 foundation is tagged as `v0.1.0-foundation`.
+
+Sprint 2 is **Order Fulfillment Core**. The target demo flow is:
+
+```text
+Sales Order
+→ Reserve Stock
+→ Pick
+→ Pack
+→ Carrier Manifest
+→ Scan Handover ĐVVC
+→ Warehouse Daily Board cập nhật dữ liệu thật
+```
+
+Sprint 2 branch:
+
+```text
+sprint/2-order-fulfillment-core
+```
+
+Sprint 2 source documents:
+
+- `docs/41_ERP_Coding_Task_Board_Sprint2_Order_Fulfillment_Core_MyPham_v1.md`
+- `docs/42_ERP_Sprint2_Changelog_Order_Fulfillment_Core_MyPham_v1.md`
+
 ## Local Setup
 
 Required tools:
