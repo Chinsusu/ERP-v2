@@ -198,6 +198,36 @@ func TestPrototypeSalesOrderReservationStoreBlocksNotSellableBatches(t *testing.
 	}
 }
 
+func TestPrototypeSalesOrderReservationStoreDoesNotReserveQCHoldReturnStock(t *testing.T) {
+	store := NewPrototypeSalesOrderReservationStoreWithRows([]domain.StockBalanceSnapshot{
+		{
+			WarehouseID:   "wh-hcm-fg",
+			WarehouseCode: "WH-HCM-FG",
+			LocationID:    "bin-return-qc",
+			LocationCode:  "RET-QC-01",
+			ItemID:        "item-serum-30ml",
+			SKU:           "SERUM-30ML",
+			BatchID:       "batch-return-qc",
+			BatchNo:       "RET-QC-001",
+			BatchQCStatus: domain.QCStatusPass,
+			BatchStatus:   domain.BatchStatusActive,
+			BaseUOMCode:   decimal.MustUOMCode("EA"),
+			StockStatus:   domain.StockStatusQCHold,
+			QtyOnHand:     decimal.MustQuantity("10"),
+		},
+	})
+
+	_, err := store.ReserveSalesOrder(context.Background(), salesReservationInput([]salesapp.SalesOrderStockReservationLineInput{
+		reservationLine("line-serum", "item-serum-30ml", "SERUM-30ML", "1"),
+	}))
+	if !errors.Is(err, ErrBatchNotSellable) {
+		t.Fatalf("err = %v, want batch not sellable for qc hold stock", err)
+	}
+	if reservations := store.Reservations(); len(reservations) != 0 {
+		t.Fatalf("reservations = %+v, want none for qc hold stock", reservations)
+	}
+}
+
 func TestPrototypeSalesOrderReservationStorePreventsConcurrentOversell(t *testing.T) {
 	store := NewPrototypeSalesOrderReservationStoreWithRows([]domain.StockBalanceSnapshot{
 		reservableRow("SERUM-30ML", "item-serum-30ml", "5", "0"),
