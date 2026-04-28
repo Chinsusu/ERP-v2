@@ -20,8 +20,10 @@ const ManifestStatusCancelled CarrierManifestStatus = "cancelled"
 
 var ErrManifestRequiredField = errors.New("carrier manifest required field is missing")
 var ErrManifestDuplicateShipment = errors.New("shipment already exists in carrier manifest")
+var ErrManifestShipmentNotFound = errors.New("shipment was not found in carrier manifest")
 var ErrManifestShipmentNotPacked = errors.New("shipment must be packed before adding to carrier manifest")
 var ErrManifestAlreadyCompleted = errors.New("carrier manifest is already completed")
+var ErrManifestInvalidTransition = errors.New("carrier manifest status transition is invalid")
 var ErrManifestScanCodeRequired = errors.New("manifest scan code is required")
 var ErrManifestScanNotFound = errors.New("manifest scan code was not found")
 var ErrManifestScanInvalidState = errors.New("manifest cannot accept scan in current state")
@@ -171,8 +173,11 @@ func NormalizeManifestStatus(status CarrierManifestStatus) CarrierManifestStatus
 }
 
 func (m CarrierManifest) AddShipment(shipment PackedShipment) (CarrierManifest, error) {
-	if m.Status == ManifestStatusCompleted {
+	if isCarrierManifestClosed(m.Status) {
 		return CarrierManifest{}, ErrManifestAlreadyCompleted
+	}
+	if m.Status != ManifestStatusDraft && m.Status != ManifestStatusReady {
+		return CarrierManifest{}, ErrManifestInvalidTransition
 	}
 	if !shipment.Packed {
 		return CarrierManifest{}, ErrManifestShipmentNotPacked
@@ -192,9 +197,70 @@ func (m CarrierManifest) AddShipment(shipment PackedShipment) (CarrierManifest, 
 		PackageCode: strings.TrimSpace(shipment.PackageCode),
 		StagingZone: strings.TrimSpace(shipment.StagingZone),
 	})
-	if next.Status == ManifestStatusDraft {
-		next.Status = ManifestStatusReady
+
+	return next, nil
+}
+
+func (m CarrierManifest) RemoveShipment(shipmentID string) (CarrierManifest, error) {
+	shipmentID = strings.TrimSpace(shipmentID)
+	if shipmentID == "" {
+		return CarrierManifest{}, ErrManifestRequiredField
 	}
+	if isCarrierManifestClosed(m.Status) {
+		return CarrierManifest{}, ErrManifestAlreadyCompleted
+	}
+	if m.Status != ManifestStatusDraft && m.Status != ManifestStatusReady {
+		return CarrierManifest{}, ErrManifestInvalidTransition
+	}
+
+	next := m.Clone()
+	lines := make([]CarrierManifestLine, 0, len(next.Lines))
+	removed := false
+	for _, line := range next.Lines {
+		if strings.TrimSpace(line.ShipmentID) == shipmentID {
+			removed = true
+			continue
+		}
+		lines = append(lines, line)
+	}
+	if !removed {
+		return CarrierManifest{}, ErrManifestShipmentNotFound
+	}
+	next.Lines = lines
+	if len(next.Lines) == 0 {
+		next.Status = ManifestStatusDraft
+	}
+
+	return next, nil
+}
+
+func (m CarrierManifest) MarkReadyToScan() (CarrierManifest, error) {
+	if m.Status == ManifestStatusReady || m.Status == ManifestStatusScanning {
+		return m.Clone(), nil
+	}
+	if m.Status != ManifestStatusDraft {
+		return CarrierManifest{}, ErrManifestInvalidTransition
+	}
+	if len(m.Lines) == 0 {
+		return CarrierManifest{}, ErrManifestRequiredField
+	}
+
+	next := m.Clone()
+	next.Status = ManifestStatusReady
+
+	return next, nil
+}
+
+func (m CarrierManifest) Cancel() (CarrierManifest, error) {
+	if m.Status == ManifestStatusCancelled {
+		return m.Clone(), nil
+	}
+	if m.Status == ManifestStatusCompleted || m.Status == ManifestStatusHandedOver {
+		return CarrierManifest{}, ErrManifestAlreadyCompleted
+	}
+
+	next := m.Clone()
+	next.Status = ManifestStatusCancelled
 
 	return next, nil
 }
@@ -223,6 +289,12 @@ func (m CarrierManifest) MarkLineScanned(code string) (CarrierManifest, CarrierM
 	}
 
 	return next, next.Lines[lineIndex], nil
+}
+
+func isCarrierManifestClosed(status CarrierManifestStatus) bool {
+	return status == ManifestStatusCompleted ||
+		status == ManifestStatusHandedOver ||
+		status == ManifestStatusCancelled
 }
 
 func (m CarrierManifest) FindLineByScanCode(code string) (int, CarrierManifestLine, bool) {

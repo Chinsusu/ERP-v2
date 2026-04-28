@@ -102,10 +102,14 @@ func TestCreateCarrierManifestRejectsUnknownCarrier(t *testing.T) {
 func TestAddShipmentToCarrierManifestUpdatesCountsAndAudit(t *testing.T) {
 	store := NewPrototypeCarrierManifestStore()
 	auditStore := audit.NewInMemoryLogStore()
+	manifest := draftCarrierManifestForActionTest(t)
+	if err := store.Save(context.Background(), manifest); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
 	service := NewAddShipmentToCarrierManifest(store, auditStore)
 
 	result, err := service.Execute(context.Background(), AddShipmentToCarrierManifestInput{
-		ManifestID: "manifest-hcm-ghn-morning",
+		ManifestID: manifest.ID,
 		ShipmentID: "ship-hcm-260426-004",
 		ActorID:    "user-warehouse-lead",
 		RequestID:  "req-add-shipment",
@@ -113,8 +117,8 @@ func TestAddShipmentToCarrierManifestUpdatesCountsAndAudit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("add shipment: %v", err)
 	}
-	if got := result.Manifest.Summary(); got.ExpectedCount != 4 || got.ScannedCount != 2 || got.MissingCount != 2 {
-		t.Fatalf("summary = %+v, want 4 expected, 2 scanned, 2 missing", got)
+	if got := result.Manifest.Summary(); got.ExpectedCount != 1 || got.ScannedCount != 0 || got.MissingCount != 1 {
+		t.Fatalf("summary = %+v, want 1 expected, 0 scanned, 1 missing", got)
 	}
 
 	logs, err := auditStore.List(context.Background(), audit.Query{Action: "shipping.manifest.shipment_added"})
@@ -123,6 +127,80 @@ func TestAddShipmentToCarrierManifestUpdatesCountsAndAudit(t *testing.T) {
 	}
 	if len(logs) != 1 {
 		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestCarrierManifestReadyRemoveAndCancelActionsWriteAudit(t *testing.T) {
+	ctx := context.Background()
+	store := NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	manifest := draftCarrierManifestForActionTest(t)
+	if err := store.Save(ctx, manifest); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
+	added, err := NewAddShipmentToCarrierManifest(store, auditStore).Execute(ctx, AddShipmentToCarrierManifestInput{
+		ManifestID: manifest.ID,
+		ShipmentID: "ship-hcm-260426-004",
+		ActorID:    "user-warehouse-lead",
+		RequestID:  "req-add-shipment-for-action",
+	})
+	if err != nil {
+		t.Fatalf("add shipment: %v", err)
+	}
+	if added.Manifest.Status != domain.ManifestStatusDraft {
+		t.Fatalf("added status = %q, want draft before ready action", added.Manifest.Status)
+	}
+
+	ready, err := NewMarkCarrierManifestReadyToScan(store, auditStore).Execute(ctx, CarrierManifestActionInput{
+		ManifestID: manifest.ID,
+		ActorID:    "user-warehouse-lead",
+		RequestID:  "req-ready-manifest",
+	})
+	if err != nil {
+		t.Fatalf("ready manifest: %v", err)
+	}
+	if ready.Manifest.Status != domain.ManifestStatusReady || ready.AuditLogID == "" {
+		t.Fatalf("ready = %+v, want ready manifest with audit", ready)
+	}
+
+	removed, err := NewRemoveShipmentFromCarrierManifest(store, auditStore).Execute(ctx, RemoveShipmentFromCarrierManifestInput{
+		ManifestID: manifest.ID,
+		ShipmentID: "ship-hcm-260426-004",
+		ActorID:    "user-warehouse-lead",
+		RequestID:  "req-remove-shipment",
+	})
+	if err != nil {
+		t.Fatalf("remove shipment: %v", err)
+	}
+	if removed.Manifest.Status != domain.ManifestStatusDraft || len(removed.Manifest.Lines) != 0 || removed.AuditLogID == "" {
+		t.Fatalf("removed = %+v, want empty draft manifest with audit", removed)
+	}
+
+	cancelled, err := NewCancelCarrierManifest(store, auditStore).Execute(ctx, CarrierManifestActionInput{
+		ManifestID: manifest.ID,
+		ActorID:    "user-warehouse-lead",
+		RequestID:  "req-cancel-manifest",
+		Reason:     "carrier pickup moved",
+	})
+	if err != nil {
+		t.Fatalf("cancel manifest: %v", err)
+	}
+	if cancelled.Manifest.Status != domain.ManifestStatusCancelled || cancelled.AuditLogID == "" {
+		t.Fatalf("cancelled = %+v, want cancelled manifest with audit", cancelled)
+	}
+
+	for _, action := range []string{
+		"shipping.manifest.ready_to_scan",
+		"shipping.manifest.shipment_removed",
+		"shipping.manifest.cancelled",
+	} {
+		logs, err := auditStore.List(ctx, audit.Query{Action: action})
+		if err != nil {
+			t.Fatalf("list audit logs for %s: %v", action, err)
+		}
+		if len(logs) != 1 {
+			t.Fatalf("%s logs = %d, want 1", action, len(logs))
+		}
 	}
 }
 
@@ -197,4 +275,25 @@ func TestVerifyCarrierManifestScanReturnsClearWarningCodes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func draftCarrierManifestForActionTest(t *testing.T) domain.CarrierManifest {
+	t.Helper()
+
+	manifest, err := domain.NewCarrierManifest(domain.NewCarrierManifestInput{
+		ID:            "manifest-hcm-ghn-action-test",
+		CarrierCode:   "GHN",
+		CarrierName:   "GHN Express",
+		WarehouseID:   "wh-hcm",
+		WarehouseCode: "HCM",
+		Date:          "2026-04-28",
+		HandoverBatch: "afternoon",
+		StagingZone:   "handover-a",
+		Owner:         "Warehouse Lead",
+	})
+	if err != nil {
+		t.Fatalf("new carrier manifest: %v", err)
+	}
+
+	return manifest
 }
