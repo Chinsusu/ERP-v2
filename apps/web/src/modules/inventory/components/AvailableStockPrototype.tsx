@@ -1,15 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { DataTable, StatusChip, type DataTableColumn } from "@/shared/design-system/components";
+import { DataTable, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
+import { decimalScales, normalizeDecimalInput } from "@/shared/format/numberFormat";
 import { useAvailableStock } from "../hooks/useAvailableStock";
 import {
   availabilityTone,
+  createStockCount,
   createBatchQCTransition,
   formatQuantity,
-  getBatchQCTransitions
+  getBatchQCTransitions,
+  getStockCounts,
+  submitStockCount
 } from "../services/stockAvailabilityService";
-import type { AvailableStockItem, AvailableStockQuery, BatchQCStatus, BatchQCTransition } from "../types";
+import type {
+  AvailableStockItem,
+  AvailableStockQuery,
+  BatchQCStatus,
+  BatchQCTransition,
+  StockCountSession,
+  StockCountStatus
+} from "../types";
 
 const warehouseOptions = [
   { label: "All warehouses", value: "" },
@@ -136,6 +147,59 @@ const transitionColumns: DataTableColumn<BatchQCTransition>[] = [
   }
 ];
 
+const stockCountColumns: DataTableColumn<StockCountSession>[] = [
+  {
+    key: "countNo",
+    header: "Count",
+    render: (row) => row.countNo,
+    width: "150px"
+  },
+  {
+    key: "warehouse",
+    header: "Warehouse",
+    render: (row) => row.warehouseCode || row.warehouseId,
+    width: "110px"
+  },
+  {
+    key: "status",
+    header: "Status",
+    render: (row) => <StatusChip tone={stockCountStatusTone(row.status)}>{stockCountStatusLabel(row.status)}</StatusChip>,
+    width: "150px"
+  },
+  {
+    key: "line",
+    header: "Line",
+    render: (row) => stockCountLineLabel(row)
+  },
+  {
+    key: "expected",
+    header: "Expected",
+    render: (row) => stockCountLineQuantity(row, "expectedQty"),
+    align: "right",
+    width: "130px"
+  },
+  {
+    key: "counted",
+    header: "Counted",
+    render: (row) => stockCountLineQuantity(row, "countedQty"),
+    align: "right",
+    width: "130px"
+  },
+  {
+    key: "delta",
+    header: "Delta",
+    render: (row) => stockCountLineQuantity(row, "deltaQty"),
+    align: "right",
+    width: "130px"
+  },
+  {
+    key: "updated",
+    header: "Updated",
+    render: (row) => formatDateTime(row.updatedAt),
+    width: "170px"
+  }
+];
+
 export function AvailableStockPrototype() {
   const [warehouseId, setWarehouseId] = useState("");
   const [locationId, setLocationId] = useState("");
@@ -148,6 +212,13 @@ export function AvailableStockPrototype() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [transitionSubmitting, setTransitionSubmitting] = useState(false);
   const [transitionMessage, setTransitionMessage] = useState("");
+  const [stockCounts, setStockCounts] = useState<StockCountSession[]>([]);
+  const [stockCountsLoading, setStockCountsLoading] = useState(false);
+  const [selectedStockKey, setSelectedStockKey] = useState("");
+  const [selectedStockCountId, setSelectedStockCountId] = useState("");
+  const [countedQty, setCountedQty] = useState("");
+  const [stockCountSubmitting, setStockCountSubmitting] = useState(false);
+  const [stockCountMessage, setStockCountMessage] = useState("");
   const query = useMemo<AvailableStockQuery>(
     () => ({
       warehouseId: warehouseId || undefined,
@@ -158,6 +229,16 @@ export function AvailableStockPrototype() {
   );
   const { items, loading, summary } = useAvailableStock(query);
   const batchOptions = useMemo(() => uniqueBatchOptions(items), [items]);
+  const stockOptions = useMemo(() => items.filter((item) => item.physicalQty !== "0.000000"), [items]);
+  const selectedStock = useMemo(
+    () => stockOptions.find((item) => stockRowKey(item) === selectedStockKey),
+    [selectedStockKey, stockOptions]
+  );
+  const openStockCounts = useMemo(() => stockCounts.filter((count) => count.status === "open"), [stockCounts]);
+  const activeOpenStockCount = useMemo(
+    () => openStockCounts.find((count) => count.id === selectedStockCountId) ?? openStockCounts[0],
+    [openStockCounts, selectedStockCountId]
+  );
   const selectedBatch = useMemo(
     () => batchOptions.find((batch) => batch.id === selectedBatchId),
     [batchOptions, selectedBatchId]
@@ -170,6 +251,17 @@ export function AvailableStockPrototype() {
     }
     setSelectedBatchId(batchOptions[0]?.id ?? "");
   }, [batchOptions, selectedBatchId]);
+
+  useEffect(() => {
+    if (selectedStockKey && stockOptions.some((item) => stockRowKey(item) === selectedStockKey)) {
+      return;
+    }
+    setSelectedStockKey(stockOptions[0] ? stockRowKey(stockOptions[0]) : "");
+  }, [selectedStockKey, stockOptions]);
+
+  useEffect(() => {
+    setCountedQty(selectedStock?.physicalQty ?? "");
+  }, [selectedStock?.physicalQty, selectedStockKey]);
 
   useEffect(() => {
     let active = true;
@@ -196,6 +288,27 @@ export function AvailableStockPrototype() {
     };
   }, [selectedBatchId]);
 
+  useEffect(() => {
+    let active = true;
+    setStockCountsLoading(true);
+    getStockCounts()
+      .then((rows) => {
+        if (active) {
+          setStockCounts(rows);
+          setSelectedStockCountId((current) => current || rows.find((row) => row.status === "open")?.id || "");
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setStockCountsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   async function handleTransitionSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedBatchId || transitionReason.trim() === "") {
@@ -218,6 +331,75 @@ export function AvailableStockPrototype() {
       setTransitionMessage("Could not record");
     } finally {
       setTransitionSubmitting(false);
+    }
+  }
+
+  async function handleCreateStockCount() {
+    if (!selectedStock) {
+      return;
+    }
+
+    setStockCountSubmitting(true);
+    setStockCountMessage("");
+    try {
+      const created = await createStockCount({
+        warehouseId: selectedStock.warehouseId,
+        warehouseCode: selectedStock.warehouseCode,
+        scope: "cycle-count",
+        lines: [
+          {
+            sku: selectedStock.sku,
+            batchId: selectedStock.batchId,
+            batchNo: selectedStock.batchNo,
+            locationId: selectedStock.locationId,
+            locationCode: selectedStock.locationCode,
+            expectedQty: selectedStock.physicalQty,
+            baseUomCode: selectedStock.baseUomCode
+          }
+        ]
+      });
+      setSelectedStockCountId(created.id);
+      setCountedQty(selectedStock.physicalQty);
+      setStockCounts(await getStockCounts());
+      setStockCountMessage("Count opened");
+    } catch {
+      setStockCountMessage("Could not open count");
+    } finally {
+      setStockCountSubmitting(false);
+    }
+  }
+
+  async function handleSubmitStockCount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!activeOpenStockCount) {
+      return;
+    }
+
+    let normalizedCountedQty: string;
+    try {
+      normalizedCountedQty = normalizeDecimalInput(countedQty, decimalScales.quantity);
+    } catch {
+      setStockCountMessage("Invalid counted qty");
+      return;
+    }
+
+    setStockCountSubmitting(true);
+    setStockCountMessage("");
+    try {
+      const submitted = await submitStockCount(activeOpenStockCount.id, {
+        lines: activeOpenStockCount.lines.map((line, index) => ({
+          id: line.id,
+          countedQty: index === 0 ? normalizedCountedQty : line.expectedQty,
+          note: "cycle count"
+        }))
+      });
+      setSelectedStockCountId(submitted.id);
+      setStockCounts(await getStockCounts());
+      setStockCountMessage(submitted.status === "variance_review" ? "Variance review" : "Submitted");
+    } catch {
+      setStockCountMessage("Could not submit count");
+    } finally {
+      setStockCountSubmitting(false);
     }
   }
 
@@ -282,6 +464,70 @@ export function AvailableStockPrototype() {
           rows={items}
           getRowKey={(row) => `${row.warehouseId}:${row.locationId ?? "-"}:${row.sku}:${row.batchId ?? "-"}:${row.baseUomCode}`}
           loading={loading}
+        />
+      </section>
+
+      <section className="erp-card erp-card--padded erp-module-table-card">
+        <div className="erp-section-header">
+          <h2 className="erp-section-title">Stock counts</h2>
+          <StatusChip tone={activeOpenStockCount ? "warning" : "info"}>
+            {activeOpenStockCount ? activeOpenStockCount.countNo : `${stockCounts.length} sessions`}
+          </StatusChip>
+        </div>
+
+        <form className="erp-stock-count-form" onSubmit={handleSubmitStockCount}>
+          <label className="erp-field">
+            <span>Stock row</span>
+            <select
+              className="erp-input"
+              value={selectedStockKey}
+              onChange={(event) => setSelectedStockKey(event.target.value)}
+            >
+              {stockOptions.map((item) => (
+                <option key={stockRowKey(item)} value={stockRowKey(item)}>
+                  {stockRowLabel(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="erp-field">
+            <span>Counted qty</span>
+            <input
+              className="erp-input"
+              inputMode="decimal"
+              type="text"
+              value={countedQty}
+              placeholder="128.000000"
+              onChange={(event) => setCountedQty(event.target.value)}
+            />
+          </label>
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={!selectedStock || stockCountSubmitting}
+            onClick={handleCreateStockCount}
+          >
+            Open count
+          </button>
+          <button
+            className="erp-button erp-button--primary"
+            type="submit"
+            disabled={!activeOpenStockCount || countedQty.trim() === "" || stockCountSubmitting}
+          >
+            Submit count
+          </button>
+          {stockCountMessage ? (
+            <StatusChip tone={stockCountMessage.includes("Could") || stockCountMessage.includes("Invalid") ? "danger" : "success"}>
+              {stockCountMessage}
+            </StatusChip>
+          ) : null}
+        </form>
+
+        <DataTable
+          columns={stockCountColumns}
+          rows={stockCounts}
+          getRowKey={(row) => row.id}
+          loading={stockCountsLoading}
         />
       </section>
 
@@ -416,6 +662,65 @@ function uniqueBatchOptions(items: AvailableStockItem[]) {
   }
 
   return Array.from(batches.values()).sort((left, right) => left.batchNo.localeCompare(right.batchNo));
+}
+
+function stockRowKey(item: AvailableStockItem) {
+  return `${item.warehouseId}:${item.locationId ?? "-"}:${item.sku}:${item.batchId ?? "-"}:${item.baseUomCode}`;
+}
+
+function stockRowLabel(item: AvailableStockItem) {
+  return `${item.warehouseCode} / ${item.locationCode ?? "-"} / ${item.sku} / ${item.batchNo ?? "-"}`;
+}
+
+function stockCountLineLabel(count: StockCountSession) {
+  const firstLine = count.lines[0];
+  if (!firstLine) {
+    return "-";
+  }
+  if (count.lines.length > 1) {
+    return `${count.lines.length} lines`;
+  }
+
+  return `${firstLine.sku} / ${firstLine.batchNo ?? "-"} / ${firstLine.locationCode ?? "-"}`;
+}
+
+function stockCountLineQuantity(
+  count: StockCountSession,
+  field: "expectedQty" | "countedQty" | "deltaQty"
+) {
+  const firstLine = count.lines[0];
+  if (!firstLine) {
+    return "-";
+  }
+  if (count.lines.length > 1) {
+    return `${count.lines.length} lines`;
+  }
+
+  return formatQuantity(firstLine[field], firstLine.baseUomCode);
+}
+
+function stockCountStatusLabel(status: StockCountStatus) {
+  switch (status) {
+    case "open":
+      return "Open";
+    case "submitted":
+      return "Submitted";
+    case "variance_review":
+    default:
+      return "Variance review";
+  }
+}
+
+function stockCountStatusTone(status: StockCountStatus): StatusTone {
+  switch (status) {
+    case "submitted":
+      return "success";
+    case "variance_review":
+      return "warning";
+    case "open":
+    default:
+      return "info";
+  }
 }
 
 function qcStatusLabel(status: BatchQCStatus) {

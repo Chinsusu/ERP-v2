@@ -603,6 +603,14 @@ textarea {
   margin-bottom: 16px;
 }
 
+.erp-stock-count-form {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(150px, 180px) auto auto auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
 .erp-stock-qc-reason {
   min-width: 0;
 }
@@ -3519,6 +3527,7 @@ textarea {
   }
 
   .erp-stock-toolbar,
+  .erp-stock-count-form,
   .erp-stock-qc-form,
   .erp-audit-toolbar,
   .erp-audit-kpis,
