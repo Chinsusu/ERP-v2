@@ -240,6 +240,146 @@ func TestConfirmSalesOrderRollsBackWhenReservationFails(t *testing.T) {
 	}
 }
 
+func TestCancelReservedSalesOrderReleasesStockWhenConfigured(t *testing.T) {
+	service, _, auditStore := newTestSalesOrderService()
+	reserver := &recordingSalesOrderStockReserver{}
+	service = service.WithStockReserver(reserver)
+	ctx := context.Background()
+	created, err := service.CreateSalesOrder(ctx, validCreateSalesOrderInput("so-test-cancel-release"))
+	if err != nil {
+		t.Fatalf("create sales order: %v", err)
+	}
+	confirmed, err := service.ConfirmSalesOrder(ctx, SalesOrderActionInput{
+		ID:              created.SalesOrder.ID,
+		ExpectedVersion: 1,
+		ActorID:         "user-sales",
+	})
+	if err != nil {
+		t.Fatalf("confirm sales order: %v", err)
+	}
+
+	cancelled, err := service.CancelSalesOrder(ctx, SalesOrderActionInput{
+		ID:              created.SalesOrder.ID,
+		ExpectedVersion: confirmed.SalesOrder.Version,
+		Reason:          "customer changed order",
+		ActorID:         "user-sales",
+		RequestID:       "req-sales-cancel-release",
+	})
+	if err != nil {
+		t.Fatalf("cancel reserved sales order: %v", err)
+	}
+
+	if cancelled.PreviousStatus != salesdomain.SalesOrderStatusReserved ||
+		cancelled.CurrentStatus != salesdomain.SalesOrderStatusCancelled ||
+		cancelled.SalesOrder.Version != 4 {
+		t.Fatalf("cancel result = %+v, want reserved -> cancelled version 4", cancelled)
+	}
+	if reserver.releaseCalls != 1 || reserver.releaseInputs[0].Reason != "customer changed order" {
+		t.Fatalf("release calls = %d inputs = %+v, want one release with reason", reserver.releaseCalls, reserver.releaseInputs)
+	}
+	logs, err := auditStore.List(ctx, audit.Query{EntityID: created.SalesOrder.ID})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 3 || logs[2].Action != "sales.order.cancelled" {
+		t.Fatalf("audit logs = %+v, want cancelled audit after release", logs)
+	}
+}
+
+func TestCancelReservedSalesOrderRollsBackWhenReleaseFails(t *testing.T) {
+	service, store, auditStore := newTestSalesOrderService()
+	reserver := &recordingSalesOrderStockReserver{}
+	service = service.WithStockReserver(reserver)
+	ctx := context.Background()
+	created, err := service.CreateSalesOrder(ctx, validCreateSalesOrderInput("so-test-cancel-release-fail"))
+	if err != nil {
+		t.Fatalf("create sales order: %v", err)
+	}
+	confirmed, err := service.ConfirmSalesOrder(ctx, SalesOrderActionInput{
+		ID:              created.SalesOrder.ID,
+		ExpectedVersion: 1,
+		ActorID:         "user-sales",
+	})
+	if err != nil {
+		t.Fatalf("confirm sales order: %v", err)
+	}
+	reserver.releaseErr = apperrors.Conflict(
+		response.ErrorCodeConflict,
+		"Reserved stock could not be released",
+		errors.New("release failed"),
+		nil,
+	)
+
+	_, err = service.CancelSalesOrder(ctx, SalesOrderActionInput{
+		ID:              created.SalesOrder.ID,
+		ExpectedVersion: confirmed.SalesOrder.Version,
+		Reason:          "customer changed order",
+		ActorID:         "user-sales",
+		RequestID:       "req-sales-cancel-release-fail",
+	})
+	var appErr apperrors.AppError
+	if !errors.As(err, &appErr) || appErr.Code != response.ErrorCodeConflict {
+		t.Fatalf("err = %v app = %+v, want release conflict", err, appErr)
+	}
+	stored, err := store.Get(ctx, created.SalesOrder.ID)
+	if err != nil {
+		t.Fatalf("get stored order: %v", err)
+	}
+	if stored.Status != salesdomain.SalesOrderStatusReserved || stored.Version != 3 {
+		t.Fatalf("stored order status/version = %s/%d, want rollback to reserved/3", stored.Status, stored.Version)
+	}
+	logs, err := auditStore.List(ctx, audit.Query{EntityID: created.SalesOrder.ID})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 2 {
+		t.Fatalf("audit log count = %d, want create/reserved after release failure", len(logs))
+	}
+}
+
+func TestCancelReservedSalesOrderRejectsMissingActiveReservation(t *testing.T) {
+	service, store, auditStore := newTestSalesOrderService()
+	service = service.WithStockReserver(&missingActiveReservationStockReserver{})
+	ctx := context.Background()
+	created, err := service.CreateSalesOrder(ctx, validCreateSalesOrderInput("so-test-cancel-missing-reservation"))
+	if err != nil {
+		t.Fatalf("create sales order: %v", err)
+	}
+	confirmed, err := service.ConfirmSalesOrder(ctx, SalesOrderActionInput{
+		ID:              created.SalesOrder.ID,
+		ExpectedVersion: 1,
+		ActorID:         "user-sales",
+	})
+	if err != nil {
+		t.Fatalf("confirm sales order: %v", err)
+	}
+
+	_, err = service.CancelSalesOrder(ctx, SalesOrderActionInput{
+		ID:              created.SalesOrder.ID,
+		ExpectedVersion: confirmed.SalesOrder.Version,
+		Reason:          "customer changed order",
+		ActorID:         "user-sales",
+	})
+	var appErr apperrors.AppError
+	if !errors.As(err, &appErr) || appErr.Code != response.ErrorCodeConflict {
+		t.Fatalf("err = %v app = %+v, want missing reservation conflict", err, appErr)
+	}
+	stored, err := store.Get(ctx, created.SalesOrder.ID)
+	if err != nil {
+		t.Fatalf("get stored order: %v", err)
+	}
+	if stored.Status != salesdomain.SalesOrderStatusReserved || stored.Version != 3 {
+		t.Fatalf("stored order status/version = %s/%d, want reserved/3", stored.Status, stored.Version)
+	}
+	logs, err := auditStore.List(ctx, audit.Query{EntityID: created.SalesOrder.ID})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 2 {
+		t.Fatalf("audit log count = %d, want no cancel audit", len(logs))
+	}
+}
+
 func TestSalesOrderRejectsUpdateAfterConfirm(t *testing.T) {
 	service, _, _ := newTestSalesOrderService()
 	ctx := context.Background()
@@ -370,9 +510,12 @@ func (s failingAuditStore) List(context.Context, audit.Query) ([]audit.Log, erro
 }
 
 type recordingSalesOrderStockReserver struct {
-	calls  int
-	inputs []SalesOrderStockReservationInput
-	err    error
+	calls         int
+	inputs        []SalesOrderStockReservationInput
+	err           error
+	releaseCalls  int
+	releaseInputs []SalesOrderStockReleaseInput
+	releaseErr    error
 }
 
 func (r *recordingSalesOrderStockReserver) ReserveSalesOrder(
@@ -398,4 +541,31 @@ func (r *recordingSalesOrderStockReserver) ReserveSalesOrder(
 	}
 
 	return SalesOrderStockReservationResult{Lines: lines}, nil
+}
+
+func (r *recordingSalesOrderStockReserver) ReleaseSalesOrder(
+	_ context.Context,
+	input SalesOrderStockReleaseInput,
+) (SalesOrderStockReleaseResult, error) {
+	r.releaseCalls++
+	r.releaseInputs = append(r.releaseInputs, input)
+	if r.releaseErr != nil {
+		return SalesOrderStockReleaseResult{}, r.releaseErr
+	}
+
+	return SalesOrderStockReleaseResult{ReleasedReservationCount: 1}, nil
+}
+
+type missingActiveReservationStockReserver struct {
+	recordingSalesOrderStockReserver
+}
+
+func (r *missingActiveReservationStockReserver) ReleaseSalesOrder(
+	_ context.Context,
+	input SalesOrderStockReleaseInput,
+) (SalesOrderStockReleaseResult, error) {
+	r.releaseCalls++
+	r.releaseInputs = append(r.releaseInputs, input)
+
+	return SalesOrderStockReleaseResult{}, nil
 }
