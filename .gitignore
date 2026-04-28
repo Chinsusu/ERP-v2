@@ -3,6 +3,8 @@ Credential.txt
 .env
 .env.*
 !.env.example
+infra/env/*.env
+!infra/env/*.env.example
 
 # OS/editor
 .DS_Store
