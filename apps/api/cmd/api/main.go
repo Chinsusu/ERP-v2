@@ -811,6 +811,12 @@ func main() {
 	confirmPickTaskLine := shippingapp.NewConfirmPickTaskLine(pickTaskStore, auditLogStore)
 	completePickTask := shippingapp.NewCompletePickTask(pickTaskStore, auditLogStore)
 	reportPickTaskException := shippingapp.NewReportPickTaskException(pickTaskStore, auditLogStore)
+	packTaskStore := shippingapp.NewPrototypePackTaskStore(mustPrototypePackTask())
+	listPackTasks := shippingapp.NewListPackTasks(packTaskStore)
+	getPackTask := shippingapp.NewGetPackTask(packTaskStore)
+	startPackTask := shippingapp.NewStartPackTask(packTaskStore, auditLogStore)
+	confirmPackTask := shippingapp.NewConfirmPackTask(packTaskStore, auditLogStore, salesOrderPackerAdapter{service: salesOrderService})
+	reportPackTaskException := shippingapp.NewReportPackTaskException(packTaskStore, auditLogStore)
 	returnReceiptStore := returnsapp.NewPrototypeReturnReceiptStore()
 	listReturnReceipts := returnsapp.NewListReturnReceipts(returnReceiptStore)
 	receiveReturn := returnsapp.NewReceiveReturn(returnReceiptStore, auditLogStore)
@@ -1117,6 +1123,44 @@ func main() {
 			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(reportPickTaskExceptionHandler(reportPickTaskException)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/pack-tasks",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(packTasksHandler(listPackTasks)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/pack-tasks/{pack_task_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(packTaskDetailHandler(getPackTask)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/pack-tasks/{pack_task_id}/start",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(startPackTaskHandler(startPackTask)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/pack-tasks/{pack_task_id}/confirm",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(confirmPackTaskHandler(confirmPackTask)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/pack-tasks/{pack_task_id}/exception",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(reportPackTaskExceptionHandler(reportPackTaskException)),
 		),
 	)
 	mux.Handle(

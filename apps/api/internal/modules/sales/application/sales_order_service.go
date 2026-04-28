@@ -556,6 +556,19 @@ func (s SalesOrderService) CancelSalesOrder(
 	})
 }
 
+func (s SalesOrderService) MarkSalesOrderPacked(
+	ctx context.Context,
+	input SalesOrderActionInput,
+) (SalesOrderActionResult, error) {
+	return s.transition(ctx, input, "sales.order.packed", func(
+		order salesdomain.SalesOrder,
+		actorID string,
+		changedAt time.Time,
+	) (salesdomain.SalesOrder, error) {
+		return order.MarkPacked(actorID, changedAt)
+	})
+}
+
 func (s SalesOrderService) cancelAndReleaseSalesOrder(
 	ctx context.Context,
 	input SalesOrderActionInput,
@@ -1312,6 +1325,64 @@ func prototypeSalesOrders() []salesdomain.SalesOrder {
 	if err != nil {
 		panic(fmt.Sprintf("invalid prototype sales order transition: %v", err))
 	}
+	packing, err := salesdomain.NewSalesOrderDocument(salesdomain.NewSalesOrderDocumentInput{
+		ID:            "so-260428-0003",
+		OrgID:         defaultSalesOrderOrgID,
+		OrderNo:       "SO-260428-0003",
+		CustomerID:    "cus-mp-tiktok",
+		CustomerCode:  "CUS-MP-TIKTOK",
+		CustomerName:  "TikTok Shop",
+		Channel:       "MP",
+		WarehouseID:   "wh-hcm-fg",
+		WarehouseCode: "WH-HCM-FG",
+		OrderDate:     "2026-04-28",
+		CurrencyCode:  decimal.CurrencyVND.String(),
+		Lines: []salesdomain.NewSalesOrderLineInput{
+			{
+				ID:               "so-260428-0003-line-01",
+				LineNo:           1,
+				ItemID:           "item-serum-30ml",
+				SKUCode:          "SERUM-30ML",
+				ItemName:         "Hydrating Serum 30ml",
+				OrderedQty:       decimal.MustQuantity("3"),
+				UOMCode:          "EA",
+				BaseOrderedQty:   decimal.MustQuantity("3"),
+				BaseUOMCode:      "EA",
+				ConversionFactor: decimal.MustQuantity("1"),
+				UnitPrice:        decimal.MustUnitPrice("125000"),
+				CurrencyCode:     decimal.CurrencyVND.String(),
+				ReservedQty:      decimal.MustQuantity("3"),
+				BatchID:          "batch-serum-2604a",
+				BatchNo:          "LOT-2604A",
+			},
+		},
+		CreatedAt: baseTime.Add(45 * time.Minute),
+		CreatedBy: "user-sales",
+		UpdatedAt: baseTime.Add(45 * time.Minute),
+	})
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype packing sales order: %v", err))
+	}
+	packing, err = packing.Confirm("user-sales", baseTime.Add(50*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype packing order confirm: %v", err))
+	}
+	packing, err = packing.MarkReserved("user-sales", baseTime.Add(55*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype packing order reserve: %v", err))
+	}
+	packing, err = packing.StartPicking("user-picker", baseTime.Add(60*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype packing order start pick: %v", err))
+	}
+	packing, err = packing.MarkPicked("user-picker", baseTime.Add(65*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype packing order picked: %v", err))
+	}
+	packing, err = packing.StartPacking("user-packer", baseTime.Add(70*time.Minute))
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype packing order start pack: %v", err))
+	}
 
-	return []salesdomain.SalesOrder{draft, confirmed}
+	return []salesdomain.SalesOrder{draft, confirmed, packing}
 }
