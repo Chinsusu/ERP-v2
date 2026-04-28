@@ -905,6 +905,85 @@ func TestReportCarrierManifestMissingOrdersHandlerMarksException(t *testing.T) {
 	}
 }
 
+func TestWarehouseDailyBoardFulfillmentMetricsHandlerSummarizesOrderStates(t *testing.T) {
+	salesService, _ := newTestSalesOrderAPIService()
+	manifestStore := shippingapp.NewPrototypeCarrierManifestStore()
+	handler := warehouseDailyBoardFulfillmentMetricsHandler(
+		salesService,
+		shippingapp.NewListCarrierManifests(manifestStore),
+	)
+	authConfig := auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}
+
+	cases := []struct {
+		name            string
+		path            string
+		wantTotal       int
+		wantNew         int
+		wantPicking     int
+		wantWaiting     int
+		wantMissing     int
+		wantCarrierCode string
+	}{
+		{
+			name:            "carrier handover day",
+			path:            "/api/v1/warehouse/daily-board/fulfillment-metrics?warehouse_id=wh-hcm&date=2026-04-26&shift_code=day&carrier_code=GHN",
+			wantTotal:       3,
+			wantWaiting:     3,
+			wantMissing:     1,
+			wantCarrierCode: "GHN",
+		},
+		{
+			name:        "sales operation day",
+			path:        "/api/v1/warehouse/daily-board/fulfillment-metrics?warehouse_id=wh-hcm-fg&date=2026-04-28",
+			wantTotal:   3,
+			wantNew:     2,
+			wantPicking: 1,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			req.Header.Set(response.HeaderRequestID, "req-warehouse-fulfillment-metrics")
+			req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(authConfig, auth.RoleWarehouseLead)))
+			rec := httptest.NewRecorder()
+
+			handler.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+			}
+			var payload response.SuccessEnvelope[warehouseFulfillmentMetricsResponse]
+			if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if payload.Data.TotalOrders != tc.wantTotal ||
+				payload.Data.NewOrders != tc.wantNew ||
+				payload.Data.PickingOrders != tc.wantPicking ||
+				payload.Data.WaitingHandoverOrders != tc.wantWaiting ||
+				payload.Data.MissingOrders != tc.wantMissing ||
+				payload.Data.CarrierCode != tc.wantCarrierCode {
+				t.Fatalf("metrics = %+v, want total/new/picking/waiting/missing/carrier = %d/%d/%d/%d/%d/%s",
+					payload.Data,
+					tc.wantTotal,
+					tc.wantNew,
+					tc.wantPicking,
+					tc.wantWaiting,
+					tc.wantMissing,
+					tc.wantCarrierCode,
+				)
+			}
+			if payload.Data.GeneratedAt == "" {
+				t.Fatal("generated_at is empty")
+			}
+		})
+	}
+}
+
 func TestConfirmCarrierManifestHandoverHandlerMarksManifestHandedOver(t *testing.T) {
 	store := shippingapp.NewPrototypeCarrierManifestStore()
 	auditStore := audit.NewInMemoryLogStore()

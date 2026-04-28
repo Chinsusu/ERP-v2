@@ -628,6 +628,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/warehouse/daily-board/fulfillment-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get warehouse daily board fulfillment metrics */
+        get: operations["getWarehouseDailyBoardFulfillmentMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sales-orders": {
         parameters: {
             query?: never;
@@ -1571,8 +1588,28 @@ export interface components {
         EndOfDayReconciliationSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["EndOfDayReconciliation"];
         };
+        WarehouseFulfillmentMetricsSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["WarehouseFulfillmentMetrics"];
+        };
         CloseEndOfDayReconciliationRequest: {
             exception_note?: string;
+        };
+        WarehouseFulfillmentMetrics: {
+            warehouse_id?: string;
+            /** Format: date */
+            date?: string;
+            shift_code?: string;
+            carrier_code?: string;
+            total_orders: number;
+            new_orders: number;
+            reserved_orders: number;
+            picking_orders: number;
+            packed_orders: number;
+            waiting_handover_orders: number;
+            missing_orders: number;
+            handover_orders: number;
+            /** Format: date-time */
+            generated_at: string;
         };
         EndOfDayReconciliation: {
             id: string;
@@ -3330,6 +3367,34 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getWarehouseDailyBoardFulfillmentMetrics: {
+        parameters: {
+            query?: {
+                warehouse_id?: string;
+                date?: string;
+                shift_code?: string;
+                carrier_code?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse daily board fulfillment metrics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseFulfillmentMetricsSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
         };
     };
