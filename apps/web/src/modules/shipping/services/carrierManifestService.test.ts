@@ -4,6 +4,7 @@ import {
   cancelCarrierManifest,
   carrierManifestScanSeverityTone,
   carrierManifestStatusTone,
+  confirmCarrierManifestHandover,
   createCarrierManifest,
   getCarrierManifests,
   markCarrierManifestReady,
@@ -156,6 +157,21 @@ describe("carrierManifestService", () => {
     });
   });
 
+  it("confirms handover only after all manifest lines are scanned", async () => {
+    await expect(confirmCarrierManifestHandover("manifest-hcm-ghn-morning")).rejects.toThrow("missing orders");
+
+    await verifyCarrierManifestScan({
+      manifestId: "manifest-hcm-ghn-morning",
+      code: "GHN260426003"
+    });
+
+    await expect(confirmCarrierManifestHandover("manifest-hcm-ghn-morning")).resolves.toMatchObject({
+      status: "handed_over",
+      auditLogId: "audit-manifest-handed-over-prototype",
+      summary: { missingCount: 0 }
+    });
+  });
+
   it("returns clear warning codes for duplicate wrong manifest unpacked and unknown scans", async () => {
     await expect(verifyCarrierManifestScan({ manifestId: "manifest-hcm-ghn-morning", code: "GHN260426001" })).resolves.toMatchObject({
       resultCode: "DUPLICATE_SCAN"
@@ -270,6 +286,23 @@ describe("carrierManifestService", () => {
           }),
           { status: 200 }
         )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              ...manifestApi,
+              status: "handed_over",
+              summary: { expected_count: 1, scanned_count: 1, missing_count: 0 },
+              lines: [{ ...manifestApi.lines[0], scanned: true }],
+              missing_lines: [],
+              audit_log_id: "audit-confirm-api"
+            },
+            request_id: "req-confirm"
+          }),
+          { status: 200 }
+        )
       );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -283,6 +316,7 @@ describe("carrierManifestService", () => {
       deviceId: "scanner-01",
       source: "handheld_scanner"
     });
+    const handedOver = await confirmCarrierManifestHandover("manifest-api-1");
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -332,6 +366,18 @@ describe("carrierManifestService", () => {
         })
       }
     );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      "http://localhost:8080/api/v1/shipping/manifests/manifest-api-1/confirm-handover",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer local-dev-access-token"
+        },
+        body: "{}"
+      }
+    );
     expect(manifests[0]).toMatchObject({
       id: "manifest-api-1",
       handoverZoneCode: "handover-a",
@@ -344,6 +390,11 @@ describe("carrierManifestService", () => {
       code: "GHNAPI1",
       deviceId: "scanner-01",
       source: "handheld_scanner"
+    });
+    expect(handedOver).toMatchObject({
+      status: "handed_over",
+      auditLogId: "audit-confirm-api",
+      missingLines: []
     });
   });
 });

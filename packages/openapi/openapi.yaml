@@ -1780,6 +1780,41 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /shipping/manifests/{manifest_id}/confirm-handover:
+    post:
+      summary: Confirm carrier manifest handover
+      operationId: confirmCarrierManifestHandover
+      tags:
+        - shipping
+      parameters:
+        - name: manifest_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarrierManifestActionRequest"
+      responses:
+        "200":
+          description: Carrier manifest handed over
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarrierManifestSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /returns/receipts:
     get:
       summary: List return receipts

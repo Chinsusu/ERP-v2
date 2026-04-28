@@ -8,12 +8,14 @@ import (
 	"sync"
 	"time"
 
+	salesdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 )
 
 var ErrCarrierManifestNotFound = errors.New("carrier manifest not found")
 var ErrPackedShipmentNotFound = errors.New("packed shipment not found")
+var ErrCarrierManifestSalesOrderHandoverRequired = errors.New("sales order handover updater is required")
 
 type CarrierManifestStore interface {
 	List(ctx context.Context, filter domain.CarrierManifestFilter) ([]domain.CarrierManifest, error)
@@ -26,6 +28,10 @@ type CarrierManifestStore interface {
 		code string,
 	) (domain.CarrierManifest, domain.CarrierManifestLine, error)
 	RecordScanEvent(ctx context.Context, event CarrierManifestScanEvent) error
+}
+
+type CarrierManifestSalesOrderHandover interface {
+	MarkSalesOrderHandedOver(ctx context.Context, input CarrierManifestSalesOrderHandoverInput) (salesdomain.SalesOrder, error)
 }
 
 type ListCarrierManifests struct {
@@ -67,6 +73,13 @@ type ReportCarrierManifestMissingOrders struct {
 	store    CarrierManifestStore
 	auditLog audit.LogStore
 	clock    func() time.Time
+}
+
+type ConfirmCarrierManifestHandover struct {
+	store       CarrierManifestStore
+	auditLog    audit.LogStore
+	salesOrders CarrierManifestSalesOrderHandover
+	clock       func() time.Time
 }
 
 type VerifyCarrierManifestScan struct {
@@ -124,9 +137,18 @@ type VerifyCarrierManifestScanInput struct {
 	RequestID  string
 }
 
+type CarrierManifestSalesOrderHandoverInput struct {
+	OrderNo    string
+	ShipmentID string
+	TrackingNo string
+	ActorID    string
+	RequestID  string
+}
+
 type CarrierManifestResult struct {
-	Manifest   domain.CarrierManifest
-	AuditLogID string
+	Manifest    domain.CarrierManifest
+	SalesOrders []salesdomain.SalesOrder
+	AuditLogID  string
 }
 
 type CarrierManifestScanEvent struct {
@@ -233,6 +255,19 @@ func NewReportCarrierManifestMissingOrders(
 		store:    store,
 		auditLog: auditLog,
 		clock:    func() time.Time { return time.Now().UTC() },
+	}
+}
+
+func NewConfirmCarrierManifestHandover(
+	store CarrierManifestStore,
+	auditLog audit.LogStore,
+	salesOrders CarrierManifestSalesOrderHandover,
+) ConfirmCarrierManifestHandover {
+	return ConfirmCarrierManifestHandover{
+		store:       store,
+		auditLog:    auditLog,
+		salesOrders: salesOrders,
+		clock:       func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -573,6 +608,73 @@ func (uc ReportCarrierManifestMissingOrders) Execute(
 	}
 
 	return CarrierManifestResult{Manifest: updated, AuditLogID: log.ID}, nil
+}
+
+func (uc ConfirmCarrierManifestHandover) Execute(
+	ctx context.Context,
+	input CarrierManifestActionInput,
+) (CarrierManifestResult, error) {
+	if uc.store == nil {
+		return CarrierManifestResult{}, errors.New("carrier manifest store is required")
+	}
+	if uc.auditLog == nil {
+		return CarrierManifestResult{}, errors.New("audit log store is required")
+	}
+	if uc.salesOrders == nil {
+		return CarrierManifestResult{}, ErrCarrierManifestSalesOrderHandoverRequired
+	}
+
+	manifest, err := uc.store.Get(ctx, input.ManifestID)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	updated, err := manifest.ConfirmHandover()
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	if manifest.Status == updated.Status {
+		return CarrierManifestResult{Manifest: updated}, nil
+	}
+
+	handedOverOrders := make([]salesdomain.SalesOrder, 0, len(updated.Lines))
+	for _, line := range updated.Lines {
+		order, err := uc.salesOrders.MarkSalesOrderHandedOver(ctx, CarrierManifestSalesOrderHandoverInput{
+			OrderNo:    line.OrderNo,
+			ShipmentID: line.ShipmentID,
+			TrackingNo: line.TrackingNo,
+			ActorID:    input.ActorID,
+			RequestID:  input.RequestID,
+		})
+		if err != nil {
+			return CarrierManifestResult{}, err
+		}
+		handedOverOrders = append(handedOverOrders, order)
+	}
+	if err := uc.store.Save(ctx, updated); err != nil {
+		return CarrierManifestResult{}, err
+	}
+
+	log, err := newManifestAuditLog(
+		input.ActorID,
+		input.RequestID,
+		"shipping.manifest.handed_over",
+		updated,
+		map[string]any{
+			"source":                   "carrier manifest confirm handover",
+			"handed_over_order_nos":    manifestLineOrderNos(updated.Lines),
+			"handed_over_tracking_nos": manifestLineTrackingNos(updated.Lines),
+			"handed_over_order_count":  len(handedOverOrders),
+		},
+		uc.clock(),
+	)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	if err := uc.auditLog.Record(ctx, log); err != nil {
+		return CarrierManifestResult{}, err
+	}
+
+	return CarrierManifestResult{Manifest: updated, SalesOrders: handedOverOrders, AuditLogID: log.ID}, nil
 }
 
 func (uc VerifyCarrierManifestScan) Execute(

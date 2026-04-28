@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
@@ -18,6 +19,10 @@ import (
 )
 
 type salesOrderPackerAdapter struct {
+	service salesapp.SalesOrderService
+}
+
+type salesOrderHandoverAdapter struct {
 	service salesapp.SalesOrderService
 }
 
@@ -35,6 +40,32 @@ func (a salesOrderPackerAdapter) MarkSalesOrderPacked(
 	}
 
 	return result.SalesOrder, nil
+}
+
+func (a salesOrderHandoverAdapter) MarkSalesOrderHandedOver(
+	ctx context.Context,
+	input shippingapp.CarrierManifestSalesOrderHandoverInput,
+) (salesdomain.SalesOrder, error) {
+	rows, err := a.service.ListSalesOrders(ctx, salesapp.SalesOrderFilter{Search: input.OrderNo})
+	if err != nil {
+		return salesdomain.SalesOrder{}, err
+	}
+	for _, order := range rows {
+		if strings.EqualFold(order.OrderNo, strings.TrimSpace(input.OrderNo)) {
+			result, err := a.service.MarkSalesOrderHandedOver(ctx, salesapp.SalesOrderActionInput{
+				ID:        order.ID,
+				ActorID:   input.ActorID,
+				RequestID: input.RequestID,
+			})
+			if err != nil {
+				return salesdomain.SalesOrder{}, err
+			}
+
+			return result.SalesOrder, nil
+		}
+	}
+
+	return salesdomain.SalesOrder{}, salesapp.ErrSalesOrderNotFound
 }
 
 type packTaskLineResponse struct {

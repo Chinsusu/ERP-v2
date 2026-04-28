@@ -157,6 +157,38 @@ func TestConfirmAndCancelSalesOrderUseStateMachineAndAudit(t *testing.T) {
 	}
 }
 
+func TestMarkSalesOrderHandedOverAdvancesWaitingOrder(t *testing.T) {
+	service, store, auditStore := newTestSalesOrderService()
+	ctx := context.Background()
+	order, err := store.Get(ctx, "so-260426-003")
+	if err != nil {
+		t.Fatalf("get prototype handover order: %v", err)
+	}
+	if order.Status != salesdomain.SalesOrderStatusWaitingHandover {
+		t.Fatalf("prototype status = %s, want waiting_handover", order.Status)
+	}
+
+	result, err := service.MarkSalesOrderHandedOver(ctx, SalesOrderActionInput{
+		ID:        "so-260426-003",
+		ActorID:   "user-handover-operator",
+		RequestID: "req-sales-handover",
+	})
+	if err != nil {
+		t.Fatalf("mark handed over: %v", err)
+	}
+	if result.SalesOrder.Status != salesdomain.SalesOrderStatusHandedOver {
+		t.Fatalf("status = %s, want handed_over", result.SalesOrder.Status)
+	}
+
+	logs, err := auditStore.List(ctx, audit.Query{Action: "sales.order.handed_over"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].AfterData["status"] != string(salesdomain.SalesOrderStatusHandedOver) {
+		t.Fatalf("audit logs = %+v, want handed over status", logs)
+	}
+}
+
 func TestConfirmSalesOrderReservesStockWhenConfigured(t *testing.T) {
 	service, _, auditStore := newTestSalesOrderService()
 	reserver := &recordingSalesOrderStockReserver{}
