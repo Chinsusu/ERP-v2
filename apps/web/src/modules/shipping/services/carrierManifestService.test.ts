@@ -184,6 +184,11 @@ describe("carrierManifestService", () => {
       resultCode: "MANIFEST_MISMATCH",
       message: "Shipment carrier does not match carrier manifest"
     });
+    await expect(verifyCarrierManifestScan({ manifestId: "manifest-hcm-ghn-morning", code: "GHN260426004" })).resolves.toMatchObject({
+      resultCode: "MANIFEST_MISMATCH",
+      message: "Packed shipment is not expected on this manifest",
+      line: { trackingNo: "GHN260426004" }
+    });
     await expect(verifyCarrierManifestScan({ manifestId: "manifest-hcm-ghn-morning", code: "GHN260426099" })).resolves.toMatchObject({
       resultCode: "INVALID_STATE"
     });

@@ -763,6 +763,29 @@ function verifyPrototypeCarrierManifestScan(
       source: input.source
     });
   }
+  if (shipment) {
+    return createScanResult({
+      code,
+      manifest,
+      line: {
+        id: `line-${shipment.shipmentId}`,
+        shipmentId: shipment.shipmentId,
+        orderNo: shipment.orderNo,
+        trackingNo: shipment.trackingNo,
+        packageCode: shipment.packageCode,
+        stagingZone: shipment.stagingZone,
+        handoverZoneCode: shipment.handoverZoneCode,
+        handoverBinCode: shipment.handoverBinCode,
+        scanned: false
+      },
+      resultCode: "MANIFEST_MISMATCH",
+      severity: "danger",
+      message: "Packed shipment is not expected on this manifest",
+      stationId: input.stationId,
+      deviceId: input.deviceId,
+      source: input.source
+    });
+  }
 
   return createScanResult({
     code,
