@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DataTable,
   EmptyState,
@@ -13,12 +13,14 @@ import { carrierOptions } from "../../shipping/services/carrierManifestService";
 import { useWarehouseDailyBoard } from "../hooks/useWarehouseDailyBoard";
 import { ShiftClosingPanel } from "./ShiftClosingPanel";
 import {
+  buildWarehouseFulfillmentDrillDownHref,
   defaultWarehouseDailyBoardShiftCode,
   defaultWarehouseDailyBoardDate,
   warehouseShiftOptions,
   warehouseOptions,
   warehouseTaskTone
 } from "../services/warehouseDailyBoardService";
+import type { WarehouseFulfillmentDrillDownKey } from "../services/warehouseDailyBoardService";
 import type { WarehouseDailyBoardQuery, WarehouseDailyShiftCode, WarehouseDailyTask, WarehouseDailyTaskStatus } from "../types";
 
 type QueueFilter = "" | WarehouseDailyTaskStatus | "overdue";
@@ -123,18 +125,61 @@ export default function WarehouseDailyBoard() {
   const activeQueueLabel = queueLabel(queueFilter);
   const fulfillment = board?.fulfillment;
   const fulfillmentCards: {
-    key: string;
+    key: WarehouseFulfillmentDrillDownKey;
     label: string;
     value: number;
     tone: "normal" | "success" | "warning" | "danger" | "info";
+    href: string;
   }[] = [
-    { key: "new", label: "New", value: fulfillment?.newOrders ?? 0, tone: "normal" },
-    { key: "reserved", label: "Reserved", value: fulfillment?.reservedOrders ?? 0, tone: "info" },
-    { key: "picking", label: "Picking", value: fulfillment?.pickingOrders ?? 0, tone: "warning" },
-    { key: "packed", label: "Packed", value: fulfillment?.packedOrders ?? 0, tone: "success" },
-    { key: "waiting_handover", label: "Waiting handover", value: fulfillment?.waitingHandoverOrders ?? 0, tone: "info" },
-    { key: "missing", label: "Missing", value: fulfillment?.missingOrders ?? 0, tone: "danger" },
-    { key: "handover", label: "Handed over", value: fulfillment?.handoverOrders ?? 0, tone: "success" }
+    {
+      key: "new",
+      label: "New",
+      value: fulfillment?.newOrders ?? 0,
+      tone: "normal",
+      href: buildWarehouseFulfillmentDrillDownHref("new", query)
+    },
+    {
+      key: "reserved",
+      label: "Reserved",
+      value: fulfillment?.reservedOrders ?? 0,
+      tone: "info",
+      href: buildWarehouseFulfillmentDrillDownHref("reserved", query)
+    },
+    {
+      key: "picking",
+      label: "Picking",
+      value: fulfillment?.pickingOrders ?? 0,
+      tone: "warning",
+      href: buildWarehouseFulfillmentDrillDownHref("picking", query)
+    },
+    {
+      key: "packed",
+      label: "Packed",
+      value: fulfillment?.packedOrders ?? 0,
+      tone: "success",
+      href: buildWarehouseFulfillmentDrillDownHref("packed", query)
+    },
+    {
+      key: "waiting_handover",
+      label: "Waiting handover",
+      value: fulfillment?.waitingHandoverOrders ?? 0,
+      tone: "info",
+      href: buildWarehouseFulfillmentDrillDownHref("waiting_handover", query)
+    },
+    {
+      key: "missing",
+      label: "Missing",
+      value: fulfillment?.missingOrders ?? 0,
+      tone: "danger",
+      href: buildWarehouseFulfillmentDrillDownHref("missing", query)
+    },
+    {
+      key: "handover",
+      label: "Handed over",
+      value: fulfillment?.handoverOrders ?? 0,
+      tone: "success",
+      href: buildWarehouseFulfillmentDrillDownHref("handover", query)
+    }
   ];
   const queueCards: {
     key: QueueFilter;
@@ -157,6 +202,37 @@ export default function WarehouseDailyBoard() {
     },
     { key: "overdue", label: "P0 exceptions", value: board?.summary.overdue ?? 0, tone: "danger", helper: "Resolve" }
   ];
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextWarehouseId = filterOptionValue(params.get("warehouse_id"), warehouseOptions);
+    const nextShiftCode = filterOptionValue(params.get("shift_code"), warehouseShiftOptions);
+    const nextCarrierCode = filterOptionValue(params.get("carrier_code"), carrierOptions);
+    const nextQueue = queueFilterFromParam(params.get("queue"));
+    const nextDate = params.get("date");
+
+    if (nextWarehouseId !== null) {
+      setWarehouseId(nextWarehouseId);
+    }
+    if (nextDate) {
+      setDate(nextDate);
+    }
+    if (nextShiftCode !== null) {
+      setShiftCode(nextShiftCode as WarehouseDailyShiftCode);
+    }
+    if (nextCarrierCode !== null) {
+      setCarrierCode(nextCarrierCode);
+    }
+    if (nextQueue !== null) {
+      setQueueFilter(nextQueue);
+      window.setTimeout(scrollTaskBoardIntoView, 0);
+    }
+  }, []);
+
+  function openQueue(nextQueue: QueueFilter) {
+    setQueueFilter(nextQueue);
+    window.setTimeout(scrollTaskBoardIntoView, 0);
+  }
 
   return (
     <section className="erp-module-page erp-warehouse-page">
@@ -249,7 +325,7 @@ export default function WarehouseDailyBoard() {
             label={card.label}
             tone={card.tone}
             value={card.value}
-            onSelect={() => setQueueFilter(card.key)}
+            onSelect={() => openQueue(card.key)}
           />
         ))}
       </section>
@@ -268,11 +344,11 @@ export default function WarehouseDailyBoard() {
         </div>
         <div className="erp-warehouse-fulfillment-grid">
           {fulfillmentCards.map((card) => (
-            <div className="erp-warehouse-fulfillment-card" key={card.key}>
+            <a className="erp-warehouse-fulfillment-card" href={card.href} key={card.key}>
               <span>{card.label}</span>
               <strong>{card.value}</strong>
               <StatusChip tone={card.tone}>{card.key === "missing" ? "Exception" : "Order"}</StatusChip>
-            </div>
+            </a>
           ))}
         </div>
       </section>
@@ -334,7 +410,7 @@ export default function WarehouseDailyBoard() {
         <ShiftClosingPanel query={{ warehouseId: warehouseId || undefined, date, shiftCode }} />
       </div>
 
-      <section className="erp-card erp-card--padded erp-module-table-card">
+      <section className="erp-card erp-card--padded erp-module-table-card" id="task-board" tabIndex={-1}>
         <div className="erp-section-header">
           <div>
             <h2 className="erp-section-title">Task board</h2>
@@ -404,6 +480,36 @@ function filterTasksByQueue(tasks: WarehouseDailyTask[], queueFilter: QueueFilte
   }
 
   return tasks;
+}
+
+function queueFilterFromParam(value: string | null): QueueFilter | null {
+  if (value === "overdue" || statusOptions().includes(value as WarehouseDailyTaskStatus)) {
+    return value as QueueFilter;
+  }
+
+  return null;
+}
+
+function statusOptions() {
+  return queueOptions
+    .map((option) => option.value)
+    .filter((value): value is WarehouseDailyTaskStatus => value !== "" && value !== "overdue");
+}
+
+function filterOptionValue<TValue extends string>(
+  value: string | null,
+  options: readonly { value: TValue; label: string }[]
+): TValue | null {
+  if (value === null) {
+    return null;
+  }
+
+  return options.some((option) => option.value === value) ? (value as TValue) : null;
+}
+
+function scrollTaskBoardIntoView() {
+  document.getElementById("task-board")?.scrollIntoView({ block: "start" });
+  document.getElementById("task-board")?.focus({ preventScroll: true });
 }
 
 function queueLabel(queueFilter: QueueFilter) {
