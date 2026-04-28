@@ -15,6 +15,12 @@ import {
 import type { ReturnDisposition, ReturnReceipt, ReturnReceiptQuery, ReturnSource } from "../types";
 import { ReturnInspectionPanel } from "./ReturnInspectionPanel";
 
+type ScanFeedback = {
+  tone: StatusTone;
+  result: "PASS" | "CHECK" | "FAIL";
+  message: string;
+};
+
 const receiptColumns: DataTableColumn<ReturnReceipt>[] = [
   {
     key: "receipt",
@@ -74,7 +80,7 @@ export function ReturnReceivingPrototype() {
   const [packageCondition, setPackageCondition] = useState("sealed");
   const [disposition, setDisposition] = useState<ReturnDisposition>("needs_inspection");
   const [scanCode, setScanCode] = useState("");
-  const [feedback, setFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<ScanFeedback | null>(null);
   const [localReceipts, setLocalReceipts] = useState<ReturnReceipt[]>([]);
   const [busy, setBusy] = useState(false);
   const query = useMemo<ReturnReceiptQuery>(
@@ -84,7 +90,7 @@ export function ReturnReceivingPrototype() {
     }),
     [warehouseId]
   );
-  const { receipts, loading } = useReturnReceipts(query);
+  const { receipts, loading, error } = useReturnReceipts(query);
   const displayedReceipts = useMemo(() => {
     const localMatches = localReceipts.filter((receipt) => matchesReceiptQuery(receipt, query));
     const localIds = new Set(localMatches.map((receipt) => receipt.id));
@@ -125,16 +131,18 @@ export function ReturnReceivingPrototype() {
       });
       setLocalReceipts((current) => [receipt, ...current.filter((candidate) => candidate.id !== receipt.id)]);
       setFeedback({
-        tone: receipt.unknownCase ? "warning" : receipt.stockMovement ? "success" : "info",
-        message: receipt.stockMovement
-          ? `${receipt.receiptNo} / ${receipt.stockMovement.movementType}`
-          : `${receipt.receiptNo} / ${receipt.targetLocation}`
+        tone: receipt.unknownCase ? "warning" : "success",
+        result: receipt.unknownCase ? "CHECK" : "PASS",
+        message: receipt.unknownCase
+          ? `${receipt.receiptNo} / investigate unknown return`
+          : `${receipt.receiptNo} / ${receipt.originalOrderNo ?? receipt.trackingNo ?? receipt.scanCode}`
       });
       setScanCode("");
       window.setTimeout(() => scanInputRef.current?.focus(), 0);
     } catch (error) {
       setFeedback({
         tone: "danger",
+        result: "FAIL",
         message: error instanceof Error ? error.message : "Return receipt could not be created"
       });
       window.setTimeout(() => scanInputRef.current?.select(), 0);
@@ -212,7 +220,7 @@ export function ReturnReceivingPrototype() {
       <section className="erp-returns-receiving-grid" id="return-receiving">
         <div className="erp-card erp-card--padded erp-returns-receiving-card">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Return receiving</h2>
+            <h2 className="erp-section-title">Return scan</h2>
             <StatusChip tone={busy ? "warning" : "info"}>{warehouse.code}</StatusChip>
           </div>
 
@@ -237,11 +245,17 @@ export function ReturnReceivingPrototype() {
               ref={scanInputRef}
               type="text"
               value={scanCode}
+              autoComplete="off"
+              disabled={busy}
+              aria-invalid={feedback?.result === "FAIL" ? "true" : undefined}
               placeholder="SO-260426-001 / GHN260426001 / RET-260426-001"
               onChange={(event) => setScanCode(event.target.value)}
               onKeyDown={handleScanKeyDown}
             />
-            <small>{feedback ? feedback.message : `${formatReturnDisposition(disposition)} / ${source}`}</small>
+            <span className="erp-returns-scan-feedback" role="status" aria-live="polite">
+              {feedback ? <StatusChip tone={feedback.tone}>{feedback.result}</StatusChip> : null}
+              <small>{feedback ? feedback.message : `${formatReturnDisposition(disposition)} / ${source}`}</small>
+            </span>
           </label>
 
           <div className="erp-returns-actions">
@@ -304,6 +318,7 @@ export function ReturnReceivingPrototype() {
           rows={displayedReceipts}
           getRowKey={(row) => row.id}
           loading={loading}
+          error={error?.message}
         />
       </section>
     </section>

@@ -2149,10 +2149,23 @@ textarea {
   box-shadow: 0 0 0 2px rgba(213, 12, 45, 0.14);
 }
 
+.erp-returns-scan-primary input:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .erp-returns-scan-primary small {
   color: var(--erp-text-secondary);
   font-size: var(--erp-font-size-helper);
   line-height: var(--erp-line-height-helper);
+}
+
+.erp-returns-scan-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-height: 24px;
 }
 
 .erp-returns-actions {
@@ -2167,6 +2180,10 @@ textarea {
   display: grid;
   grid-template-columns: repeat(2, minmax(140px, 1fr));
   gap: 10px;
+}
+
+.erp-returns-page .erp-ds-table {
+  min-width: 960px;
 }
 
 .erp-returns-fact {
@@ -3395,6 +3412,19 @@ textarea {
   display: grid;
   gap: 2px;
   min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .erp-returns-toolbar,
+  .erp-returns-receiving-grid,
+  .erp-returns-inspection-grid,
+  .erp-returns-note-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .erp-returns-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 767px) {

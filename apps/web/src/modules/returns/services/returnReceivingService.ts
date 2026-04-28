@@ -1,3 +1,5 @@
+import { ApiError, apiGet, apiPost } from "../../../shared/api/client";
+import type { components, operations } from "../../../shared/api/generated/schema";
 import type {
   InspectReturnInput,
   ReceiveReturnInput,
@@ -14,8 +16,13 @@ import type {
   ReturnStockMovement
 } from "../types";
 
+type ReturnReceiptApi = components["schemas"]["ReturnReceipt"];
+type ReturnReceiptApiQuery = operations["listReturnReceipts"]["parameters"]["query"];
+type ScanReturnApiRequest = components["schemas"]["ScanReturnRequest"];
+
 type ExpectedReturnRecord = {
   orderNo: string;
+  orderStatus: "handed_over" | "delivered" | "waiting_handover";
   trackingNo: string;
   returnCode: string;
   shipmentId: string;
@@ -31,6 +38,8 @@ type ExpectedReturnRecord = {
   warehouseCode: string;
   source: ReturnSource;
 };
+
+const defaultAccessToken = "local-dev-access-token";
 
 export const returnWarehouseOptions = [
   { label: "HCM", value: "wh-hcm", code: "HCM" },
@@ -66,46 +75,12 @@ export const returnInspectionDispositionOptions: { label: string; value: ReturnI
   { label: "QA hold", value: "qa_hold" }
 ];
 
-export const prototypeReturnReceipts: ReturnReceipt[] = [
-  createReturnReceipt({
-    id: "rr-260426-0001",
-    receiptNo: "RR-260426-0001",
-    warehouseId: "wh-hcm",
-    warehouseCode: "HCM",
-    source: "CARRIER",
-    receivedBy: "Return Inspector",
-    receivedAt: "2026-04-26T08:30:00Z",
-    packageCondition: "sealed bag",
-    status: "pending_inspection",
-    disposition: "needs_inspection",
-    targetLocation: "return-inspection-queue",
-    originalOrderNo: "SO-260425-099",
-    trackingNo: "GHN260425099",
-    returnCode: "RET-260425-099",
-    channel: "Website",
-    batchNo: "CREAM-260425-A",
-    deliveredAt: "2026-04-24",
-    returnReason: "Customer reported wrong shade",
-    scanCode: "GHN260425099",
-    customerName: "Tran Binh",
-    unknownCase: false,
-    lines: [
-      {
-        id: "line-cream-50ml",
-        sku: "CREAM-50ML",
-        productName: "Repair Cream 50ml",
-        quantity: 1,
-        condition: "sealed bag"
-      }
-    ],
-    investigationNote: "Customer reported wrong shade",
-    createdAt: "2026-04-26T08:30:00Z"
-  })
-];
+export let prototypeReturnReceipts: ReturnReceipt[] = createPrototypeReturnReceipts();
 
 const expectedReturnRecords: ExpectedReturnRecord[] = [
   {
     orderNo: "SO-260426-001",
+    orderStatus: "handed_over",
     trackingNo: "GHN260426001",
     returnCode: "RET-260426-001",
     shipmentId: "ship-hcm-260426-001",
@@ -123,6 +98,7 @@ const expectedReturnRecords: ExpectedReturnRecord[] = [
   },
   {
     orderNo: "SO-260426-004",
+    orderStatus: "delivered",
     trackingNo: "GHN260426004",
     returnCode: "RET-260426-004",
     shipmentId: "ship-hcm-260426-004",
@@ -140,6 +116,7 @@ const expectedReturnRecords: ExpectedReturnRecord[] = [
   },
   {
     orderNo: "SO-260426-HN-011",
+    orderStatus: "handed_over",
     trackingNo: "GHNHN260426001",
     returnCode: "RET-HN-260426-011",
     shipmentId: "ship-hn-260426-001",
@@ -154,27 +131,67 @@ const expectedReturnRecords: ExpectedReturnRecord[] = [
     warehouseId: "wh-hn",
     warehouseCode: "HN",
     source: "MARKETPLACE"
+  },
+  {
+    orderNo: "SO-260426-009",
+    orderStatus: "waiting_handover",
+    trackingNo: "GHN260426009",
+    returnCode: "RET-260426-009",
+    shipmentId: "ship-hcm-260426-009",
+    customerName: "Vu Nhi",
+    sku: "SERUM-30ML",
+    productName: "Hydrating Serum 30ml",
+    quantity: 1,
+    channel: "Website",
+    batchNo: "SER-260426-WAIT",
+    deliveredAt: "",
+    returnReason: "Premature return scan",
+    warehouseId: "wh-hcm",
+    warehouseCode: "HCM",
+    source: "CARRIER"
   }
 ];
 
-let receiptSequence = 1;
-
 export async function getReturnReceipts(query: ReturnReceiptQuery = {}): Promise<ReturnReceipt[]> {
-  return prototypeReturnReceipts
-    .filter((receipt) => {
-      if (query.warehouseId && receipt.warehouseId !== query.warehouseId) {
-        return false;
-      }
-      if (query.status && receipt.status !== query.status) {
-        return false;
-      }
+  try {
+    const receipts = await apiGet("/returns/receipts", {
+      accessToken: defaultAccessToken,
+      query: toApiQuery(query)
+    });
 
-      return true;
-    })
-    .sort(sortReceipts);
+    return receipts.map(fromApiReturnReceipt).sort(sortReceipts);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return filterPrototypeReturnReceipts(query);
+  }
 }
 
 export async function receiveReturn(input: ReceiveReturnInput): Promise<ReturnReceipt> {
+  try {
+    const receipt = await apiPost<ReturnReceiptApi, ScanReturnApiRequest>(
+      "/returns/scan",
+      toApiScanInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiReturnReceipt(receipt);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return receivePrototypeReturn(input);
+  }
+}
+
+export function resetPrototypeReturnReceiptsForTest() {
+  prototypeReturnReceipts = createPrototypeReturnReceipts();
+}
+
+function receivePrototypeReturn(input: ReceiveReturnInput): ReturnReceipt {
   const scanCode = normalizeReturnScanCode(input.code);
   if (scanCode === "") {
     throw new Error("Return scan code is required");
@@ -182,16 +199,35 @@ export async function receiveReturn(input: ReceiveReturnInput): Promise<ReturnRe
 
   const disposition = normalizeDisposition(input.disposition);
   const expected = expectedReturnRecords.find((candidate) => matchesExpectedReturn(candidate, scanCode));
+  if (expected && !isReturnReceivableOrderStatus(expected.orderStatus)) {
+    throw new Error("Order status is not eligible for return receiving");
+  }
   const warehouse = returnWarehouseOptions.find((option) => option.value === (expected?.warehouseId ?? input.warehouseId));
   const warehouseId = expected?.warehouseId ?? input.warehouseId;
   const warehouseCode = expected?.warehouseCode ?? warehouse?.code ?? input.warehouseCode;
   const packageCondition = input.packageCondition.trim() || "pending inspection";
   const receiptNo = expected ? `RR-${expected.orderNo.replace("SO-", "")}` : `RR-UNKNOWN-${scanCode}`;
-  const id = `${receiptNo.toLowerCase()}-${receiptSequence++}`;
+  const duplicateIdentifiers = [
+    receiptNo,
+    scanCode,
+    expected?.orderNo,
+    expected?.trackingNo,
+    expected?.returnCode,
+    expected?.shipmentId
+  ];
+  if (
+    prototypeReturnReceipts.some((receipt) =>
+      duplicateIdentifiers.some((identifier) => matchesReturnReceiptCode(receipt, identifier ?? ""))
+    )
+  ) {
+    throw new Error("Return receipt already exists for this scan");
+  }
+
+  const id = receiptNo.toLowerCase();
   const lines = createReceiptLines(expected, packageCondition);
   const stockMovement = disposition === "reusable" ? createReturnReceiptMovement(id, warehouseId, lines[0]) : undefined;
 
-  return createReturnReceipt({
+  const receipt = createReturnReceipt({
     id,
     receiptNo,
     warehouseId,
@@ -219,6 +255,9 @@ export async function receiveReturn(input: ReceiveReturnInput): Promise<ReturnRe
     auditLogId: "audit-return-receipt-prototype",
     createdAt: "2026-04-26T10:30:00Z"
   });
+  prototypeReturnReceipts = [receipt, ...prototypeReturnReceipts.filter((candidate) => candidate.id !== receipt.id)];
+
+  return createReturnReceipt(receipt);
 }
 
 export function returnReceiptStatusTone(status: ReturnReceiptStatus): "warning" | "normal" {
@@ -322,6 +361,131 @@ export function formatReturnInspectionDisposition(disposition: ReturnInspectionD
 
 export function formatReturnDisposition(disposition: ReturnDisposition) {
   return returnDispositionOptions.find((option) => option.value === disposition)?.label ?? disposition;
+}
+
+function shouldUsePrototypeFallback(reason: unknown) {
+  if (reason instanceof ApiError) {
+    return false;
+  }
+
+  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
+}
+
+function fromApiReturnReceipt(receipt: ReturnReceiptApi): ReturnReceipt {
+  return createReturnReceipt({
+    id: receipt.id,
+    receiptNo: receipt.receipt_no,
+    warehouseId: receipt.warehouse_id,
+    warehouseCode: receipt.warehouse_code,
+    source: receipt.source,
+    receivedBy: receipt.received_by,
+    receivedAt: receipt.received_at,
+    packageCondition: receipt.package_condition,
+    status: receipt.status,
+    disposition: receipt.disposition,
+    targetLocation: receipt.target_location,
+    originalOrderNo: receipt.original_order_no,
+    trackingNo: receipt.tracking_no,
+    returnCode: receipt.return_code,
+    scanCode: receipt.scan_code,
+    customerName: receipt.customer_name,
+    unknownCase: receipt.unknown_case,
+    lines: receipt.lines.map((line) => ({
+      id: line.id,
+      sku: line.sku,
+      productName: line.product_name,
+      quantity: line.quantity,
+      condition: line.condition
+    })),
+    stockMovement: receipt.stock_movement
+      ? {
+          id: receipt.stock_movement.id,
+          movementType: receipt.stock_movement.movement_type,
+          sku: receipt.stock_movement.sku,
+          warehouseId: receipt.stock_movement.warehouse_id,
+          quantity: receipt.stock_movement.quantity,
+          targetStockStatus: receipt.stock_movement.target_stock_status,
+          sourceDocId: receipt.stock_movement.source_doc_id
+        }
+      : undefined,
+    investigationNote: receipt.investigation_note,
+    auditLogId: receipt.audit_log_id,
+    createdAt: receipt.created_at
+  });
+}
+
+function toApiQuery(query: ReturnReceiptQuery): ReturnReceiptApiQuery {
+  return {
+    warehouse_id: query.warehouseId,
+    status: query.status
+  };
+}
+
+function toApiScanInput(input: ReceiveReturnInput): ScanReturnApiRequest {
+  return {
+    warehouse_id: input.warehouseId,
+    warehouse_code: input.warehouseCode,
+    source: input.source,
+    code: input.code,
+    package_condition: input.packageCondition,
+    disposition: input.disposition,
+    investigation_note: input.investigationNote
+  };
+}
+
+function filterPrototypeReturnReceipts(query: ReturnReceiptQuery): ReturnReceipt[] {
+  return prototypeReturnReceipts
+    .filter((receipt) => {
+      if (query.warehouseId && receipt.warehouseId !== query.warehouseId) {
+        return false;
+      }
+      if (query.status && receipt.status !== query.status) {
+        return false;
+      }
+
+      return true;
+    })
+    .map(createReturnReceipt)
+    .sort(sortReceipts);
+}
+
+function createPrototypeReturnReceipts(): ReturnReceipt[] {
+  return [
+    createReturnReceipt({
+      id: "rr-260426-0001",
+      receiptNo: "RR-260426-0001",
+      warehouseId: "wh-hcm",
+      warehouseCode: "HCM",
+      source: "CARRIER",
+      receivedBy: "Return Inspector",
+      receivedAt: "2026-04-26T08:30:00Z",
+      packageCondition: "sealed bag",
+      status: "pending_inspection",
+      disposition: "needs_inspection",
+      targetLocation: "return-inspection-queue",
+      originalOrderNo: "SO-260425-099",
+      trackingNo: "GHN260425099",
+      returnCode: "RET-260425-099",
+      channel: "Website",
+      batchNo: "CREAM-260425-A",
+      deliveredAt: "2026-04-24",
+      returnReason: "Customer reported wrong shade",
+      scanCode: "GHN260425099",
+      customerName: "Tran Binh",
+      unknownCase: false,
+      lines: [
+        {
+          id: "line-cream-50ml",
+          sku: "CREAM-50ML",
+          productName: "Repair Cream 50ml",
+          quantity: 1,
+          condition: "sealed bag"
+        }
+      ],
+      investigationNote: "Customer reported wrong shade",
+      createdAt: "2026-04-26T08:30:00Z"
+    })
+  ];
 }
 
 function createReturnReceipt(input: ReturnReceipt): ReturnReceipt {
@@ -435,6 +599,10 @@ function normalizeDisposition(disposition: ReturnDisposition): ReturnDisposition
   }
 
   return "needs_inspection";
+}
+
+function isReturnReceivableOrderStatus(status: ExpectedReturnRecord["orderStatus"]) {
+  return status === "handed_over" || status === "delivered";
 }
 
 function normalizeReturnScanCode(code: string) {
