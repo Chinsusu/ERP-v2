@@ -160,6 +160,10 @@ describe("carrierManifestService", () => {
       resultCode: "MANIFEST_MISMATCH",
       expectedManifestId: "manifest-hcm-vtp-noon"
     });
+    await expect(verifyCarrierManifestScan({ manifestId: "manifest-hcm-ghn-morning", code: "VTP260426012" })).resolves.toMatchObject({
+      resultCode: "MANIFEST_MISMATCH",
+      message: "Shipment carrier does not match carrier manifest"
+    });
     await expect(verifyCarrierManifestScan({ manifestId: "manifest-hcm-ghn-morning", code: "GHN260426099" })).resolves.toMatchObject({
       resultCode: "INVALID_STATE"
     });

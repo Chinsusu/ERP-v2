@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
@@ -314,6 +315,30 @@ func TestVerifyCarrierManifestScanReturnsClearWarningCodes(t *testing.T) {
 				t.Fatalf("result code = %q, want %q", result.Code, tc.want)
 			}
 		})
+	}
+}
+
+func TestVerifyCarrierManifestScanRejectsPackedShipmentWithWrongCarrier(t *testing.T) {
+	store := NewPrototypeCarrierManifestStore()
+	service := NewVerifyCarrierManifestScan(store, audit.NewInMemoryLogStore())
+
+	result, err := service.Execute(context.Background(), VerifyCarrierManifestScanInput{
+		ManifestID: "manifest-hcm-ghn-morning",
+		Code:       "VTP260426012",
+		StationID:  "dock-a",
+		ActorID:    "user-handover-operator",
+		RequestID:  "req-scan-wrong-carrier",
+	})
+	if err != nil {
+		t.Fatalf("verify scan: %v", err)
+	}
+	if result.Code != domain.ScanResultManifestMismatch ||
+		result.Severity != "danger" ||
+		!strings.Contains(result.Message, "carrier") {
+		t.Fatalf("result = %+v, want carrier mismatch", result)
+	}
+	if result.Line == nil || result.Line.TrackingNo != "VTP260426012" {
+		t.Fatalf("line = %+v, want wrong-carrier shipment context", result.Line)
 	}
 }
 

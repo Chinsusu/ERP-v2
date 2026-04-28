@@ -682,6 +682,27 @@ function verifyPrototypeCarrierManifestScan(
       stationId: input.stationId
     });
   }
+  if (shipment?.carrierCode && shipment.carrierCode !== manifest.carrierCode) {
+    return createScanResult({
+      code,
+      manifest,
+      line: {
+        id: `line-${shipment.shipmentId}`,
+        shipmentId: shipment.shipmentId,
+        orderNo: shipment.orderNo,
+        trackingNo: shipment.trackingNo,
+        packageCode: shipment.packageCode,
+        stagingZone: shipment.stagingZone,
+        handoverZoneCode: shipment.handoverZoneCode,
+        handoverBinCode: shipment.handoverBinCode,
+        scanned: false
+      },
+      resultCode: "MANIFEST_MISMATCH",
+      severity: "danger",
+      message: "Shipment carrier does not match carrier manifest",
+      stationId: input.stationId
+    });
+  }
 
   return createScanResult({
     code,
