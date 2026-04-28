@@ -616,8 +616,11 @@ func TestCarrierManifestsHandlerCreatesManifestAndWritesAudit(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if payload.Data.Status != "draft" || payload.Data.AuditLogID == "" {
-		t.Fatalf("manifest response = %+v, want draft with audit log", payload.Data)
+	if payload.Data.Status != "draft" ||
+		payload.Data.CarrierName != "Ninja Van" ||
+		payload.Data.StagingZone != "handover-c" ||
+		payload.Data.AuditLogID == "" {
+		t.Fatalf("manifest response = %+v, want draft with carrier master defaults and audit log", payload.Data)
 	}
 
 	logs, err := auditStore.List(req.Context(), audit.Query{Action: "shipping.manifest.created"})
@@ -626,6 +629,63 @@ func TestCarrierManifestsHandlerCreatesManifestAndWritesAudit(t *testing.T) {
 	}
 	if len(logs) != 1 {
 		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestCarrierManifestsHandlerRejectsInvalidCarrierMaster(t *testing.T) {
+	cases := []struct {
+		name        string
+		carrierCode string
+		wantStatus  int
+		wantCode    response.ErrorCode
+	}{
+		{
+			name:        "inactive",
+			carrierCode: "GHTK",
+			wantStatus:  http.StatusConflict,
+			wantCode:    response.ErrorCodeConflict,
+		},
+		{
+			name:        "unknown",
+			carrierCode: "UNKNOWN",
+			wantStatus:  http.StatusNotFound,
+			wantCode:    response.ErrorCodeNotFound,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := shippingapp.NewPrototypeCarrierManifestStore()
+			listService := shippingapp.NewListCarrierManifests(store)
+			createService := shippingapp.NewCreateCarrierManifest(store, audit.NewInMemoryLogStore())
+			body := bytes.NewBufferString(`{
+				"carrier_code": "` + tc.carrierCode + `",
+				"warehouse_id": "wh-hcm",
+				"warehouse_code": "HCM",
+				"date": "2026-04-26"
+			}`)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/shipping/manifests", body)
+			req.Header.Set(response.HeaderRequestID, "req-manifest-create-invalid-carrier")
+			req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+				Email:       "admin@example.local",
+				Password:    "local-only-mock-password",
+				AccessToken: "local-dev-access-token",
+			}, auth.RoleWarehouseLead)))
+			rec := httptest.NewRecorder()
+
+			carrierManifestsHandler(listService, createService).ServeHTTP(rec, req)
+
+			if rec.Code != tc.wantStatus {
+				t.Fatalf("status = %d, want %d: %s", rec.Code, tc.wantStatus, rec.Body.String())
+			}
+			var payload response.ErrorEnvelope
+			if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if payload.Error.Code != tc.wantCode {
+				t.Fatalf("code = %s, want %s", payload.Error.Code, tc.wantCode)
+			}
+		})
 	}
 }
 
