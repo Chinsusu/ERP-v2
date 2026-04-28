@@ -1958,6 +1958,41 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+  /returns/{return_receipt_id}/inspect:
+    post:
+      summary: Inspect a received return and record its disposition
+      operationId: inspectReturn
+      tags:
+        - returns
+      parameters:
+        - name: return_receipt_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InspectReturnRequest"
+      responses:
+        "200":
+          description: Return inspection recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnInspectionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   responses:
     BadRequest:
@@ -4335,6 +4370,7 @@ components:
       type: string
       enum:
         - pending_inspection
+        - inspected
     ReturnSource:
       type: string
       enum:
@@ -4349,6 +4385,20 @@ components:
         - reusable
         - not_reusable
         - needs_inspection
+    ReturnInspectionCondition:
+      type: string
+      enum:
+        - intact
+        - dented_box
+        - seal_torn
+        - used
+        - damaged
+        - missing_accessory
+    ReturnInspectionStatus:
+      type: string
+      enum:
+        - inspection_recorded
+        - return_qa_hold
     ReturnMasterDataSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
@@ -4496,6 +4546,15 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/ReturnReceipt"
+    ReturnInspectionSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ReturnInspection"
     ReceiveReturnRequest:
       type: object
       required:
@@ -4516,6 +4575,20 @@ components:
         disposition:
           $ref: "#/components/schemas/ReturnDisposition"
         investigation_note:
+          type: string
+    InspectReturnRequest:
+      type: object
+      required:
+        - condition
+        - disposition
+      properties:
+        condition:
+          $ref: "#/components/schemas/ReturnInspectionCondition"
+        disposition:
+          $ref: "#/components/schemas/ReturnDisposition"
+        note:
+          type: string
+        evidence_label:
           type: string
     ScanReturnRequest:
       type: object
@@ -4603,6 +4676,51 @@ components:
         audit_log_id:
           type: string
         created_at:
+          type: string
+          format: date-time
+    ReturnInspection:
+      type: object
+      required:
+        - id
+        - receipt_id
+        - receipt_no
+        - condition
+        - disposition
+        - status
+        - target_location
+        - risk_level
+        - inspector_id
+        - inspected_at
+      properties:
+        id:
+          type: string
+        receipt_id:
+          type: string
+        receipt_no:
+          type: string
+        condition:
+          $ref: "#/components/schemas/ReturnInspectionCondition"
+        disposition:
+          $ref: "#/components/schemas/ReturnDisposition"
+        status:
+          $ref: "#/components/schemas/ReturnInspectionStatus"
+        target_location:
+          type: string
+        risk_level:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+        inspector_id:
+          type: string
+        note:
+          type: string
+        evidence_label:
+          type: string
+        audit_log_id:
+          type: string
+        inspected_at:
           type: string
           format: date-time
     ReturnReceiptLine:

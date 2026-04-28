@@ -853,6 +853,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/returns/{return_receipt_id}/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inspect a received return and record its disposition */
+        post: operations["inspectReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1827,11 +1844,15 @@ export interface components {
             audit_log_id?: string;
         };
         /** @enum {string} */
-        ReturnReceiptStatus: "pending_inspection";
+        ReturnReceiptStatus: "pending_inspection" | "inspected";
         /** @enum {string} */
         ReturnSource: "SHIPPER" | "CARRIER" | "CUSTOMER" | "MARKETPLACE" | "UNKNOWN";
         /** @enum {string} */
         ReturnDisposition: "reusable" | "not_reusable" | "needs_inspection";
+        /** @enum {string} */
+        ReturnInspectionCondition: "intact" | "dented_box" | "seal_torn" | "used" | "damaged" | "missing_accessory";
+        /** @enum {string} */
+        ReturnInspectionStatus: "inspection_recorded" | "return_qa_hold";
         ReturnMasterDataSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["ReturnMasterData"];
         };
@@ -1878,6 +1899,9 @@ export interface components {
         ReturnReceiptSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["ReturnReceipt"];
         };
+        ReturnInspectionSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["ReturnInspection"];
+        };
         ReceiveReturnRequest: {
             warehouse_id: string;
             warehouse_code?: string;
@@ -1886,6 +1910,12 @@ export interface components {
             package_condition?: string;
             disposition: components["schemas"]["ReturnDisposition"];
             investigation_note?: string;
+        };
+        InspectReturnRequest: {
+            condition: components["schemas"]["ReturnInspectionCondition"];
+            disposition: components["schemas"]["ReturnDisposition"];
+            note?: string;
+            evidence_label?: string;
         };
         ScanReturnRequest: {
             warehouse_id: string;
@@ -1921,6 +1951,23 @@ export interface components {
             audit_log_id?: string;
             /** Format: date-time */
             created_at: string;
+        };
+        ReturnInspection: {
+            id: string;
+            receipt_id: string;
+            receipt_no: string;
+            condition: components["schemas"]["ReturnInspectionCondition"];
+            disposition: components["schemas"]["ReturnDisposition"];
+            status: components["schemas"]["ReturnInspectionStatus"];
+            target_location: string;
+            /** @enum {string} */
+            risk_level: "low" | "medium" | "high";
+            inspector_id: string;
+            note?: string;
+            evidence_label?: string;
+            audit_log_id?: string;
+            /** Format: date-time */
+            inspected_at: string;
         };
         ReturnReceiptLine: {
             id: string;
@@ -3947,6 +3994,37 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    inspectReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                return_receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InspectReturnRequest"];
+            };
+        };
+        responses: {
+            /** @description Return inspection recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnInspectionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
         };
     };

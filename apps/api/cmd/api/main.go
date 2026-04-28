@@ -756,6 +756,22 @@ type returnReceiptResponse struct {
 	CreatedAt         string                       `json:"created_at"`
 }
 
+type returnInspectionResponse struct {
+	ID             string `json:"id"`
+	ReceiptID      string `json:"receipt_id"`
+	ReceiptNo      string `json:"receipt_no"`
+	Condition      string `json:"condition"`
+	Disposition    string `json:"disposition"`
+	Status         string `json:"status"`
+	TargetLocation string `json:"target_location"`
+	RiskLevel      string `json:"risk_level"`
+	InspectorID    string `json:"inspector_id"`
+	Note           string `json:"note,omitempty"`
+	EvidenceLabel  string `json:"evidence_label,omitempty"`
+	AuditLogID     string `json:"audit_log_id,omitempty"`
+	InspectedAt    string `json:"inspected_at"`
+}
+
 type receiveReturnRequest struct {
 	WarehouseID       string `json:"warehouse_id"`
 	WarehouseCode     string `json:"warehouse_code"`
@@ -764,6 +780,13 @@ type receiveReturnRequest struct {
 	PackageCondition  string `json:"package_condition"`
 	Disposition       string `json:"disposition"`
 	InvestigationNote string `json:"investigation_note"`
+}
+
+type inspectReturnRequest struct {
+	Condition     string `json:"condition"`
+	Disposition   string `json:"disposition"`
+	Note          string `json:"note"`
+	EvidenceLabel string `json:"evidence_label"`
 }
 
 type returnMasterDataResponse struct {
@@ -901,6 +924,7 @@ func main() {
 	listReturnMasterData := returnsapp.NewListReturnMasterData()
 	listReturnReceipts := returnsapp.NewListReturnReceipts(returnReceiptStore)
 	receiveReturn := returnsapp.NewReceiveReturn(returnReceiptStore, auditLogStore)
+	inspectReturn := returnsapp.NewInspectReturn(returnReceiptStore, auditLogStore)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
@@ -1334,6 +1358,13 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(returnReceiptsHandler(listReturnReceipts, receiveReturn)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/returns/{return_receipt_id}/inspect",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(returnInspectionHandler(inspectReturn)),
 		),
 	)
 
@@ -3841,6 +3872,58 @@ func returnReceiptsHandler(
 	}
 }
 
+func returnInspectionHandler(inspectService returnsapp.InspectReturn) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		var payload inspectReturnRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid return inspection payload",
+				nil,
+			)
+			return
+		}
+
+		result, err := inspectService.Execute(r.Context(), returnsapp.InspectReturnInput{
+			ReceiptID:     r.PathValue("return_receipt_id"),
+			Condition:     payload.Condition,
+			Disposition:   payload.Disposition,
+			Note:          payload.Note,
+			EvidenceLabel: payload.EvidenceLabel,
+			ActorID:       principal.UserID,
+			RequestID:     response.RequestID(r),
+		})
+		if err != nil {
+			writeReturnReceiptError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(
+			w,
+			r,
+			http.StatusOK,
+			newReturnInspectionResponse(result.Inspection, result.AuditLogID),
+		)
+	}
+}
+
 func newAvailableStockResponse(snapshot domain.AvailableStockSnapshot) availableStockResponse {
 	return availableStockResponse{
 		WarehouseID:      snapshot.WarehouseID,
@@ -4247,6 +4330,27 @@ func newReturnReceiptResponse(receipt returnsdomain.ReturnReceipt, auditLogID st
 	return payload
 }
 
+func newReturnInspectionResponse(
+	inspection returnsdomain.ReturnInspection,
+	auditLogID string,
+) returnInspectionResponse {
+	return returnInspectionResponse{
+		ID:             inspection.ID,
+		ReceiptID:      inspection.ReceiptID,
+		ReceiptNo:      inspection.ReceiptNo,
+		Condition:      string(inspection.Condition),
+		Disposition:    string(inspection.Disposition),
+		Status:         string(inspection.Status),
+		TargetLocation: inspection.TargetLocation,
+		RiskLevel:      inspection.RiskLevel,
+		InspectorID:    inspection.InspectorID,
+		Note:           inspection.Note,
+		EvidenceLabel:  inspection.EvidenceLabel,
+		AuditLogID:     auditLogID,
+		InspectedAt:    inspection.InspectedAt.UTC().Format(time.RFC3339),
+	}
+}
+
 func writeBatchQCTransitionError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, inventoryapp.ErrBatchNotFound):
@@ -4459,6 +4563,15 @@ func writeCarrierManifestError(w http.ResponseWriter, r *http.Request, err error
 
 func writeReturnReceiptError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
+	case errors.Is(err, returnsapp.ErrReturnReceiptNotFound):
+		response.WriteError(
+			w,
+			r,
+			http.StatusNotFound,
+			response.ErrorCodeNotFound,
+			"Return receipt not found",
+			nil,
+		)
 	case errors.Is(err, returnsdomain.ErrReturnReceiptScanCodeRequired):
 		response.WriteError(
 			w,
@@ -4476,6 +4589,24 @@ func writeReturnReceiptError(w http.ResponseWriter, r *http.Request, err error) 
 			response.ErrorCodeValidation,
 			"Return disposition is invalid",
 			map[string]any{"allowed": "reusable, not_reusable, needs_inspection"},
+		)
+	case errors.Is(err, returnsdomain.ErrReturnInspectionInvalidCondition):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Return inspection condition is invalid",
+			map[string]any{"allowed": "intact, dented_box, seal_torn, used, damaged, missing_accessory"},
+		)
+	case errors.Is(err, returnsdomain.ErrReturnInspectionRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Invalid return inspection payload",
+			map[string]any{"required": "receipt_id, condition, disposition, and inspector"},
 		)
 	case errors.Is(err, returnsdomain.ErrReturnReceiptRequiredField):
 		response.WriteError(
@@ -4503,6 +4634,15 @@ func writeReturnReceiptError(w http.ResponseWriter, r *http.Request, err error) 
 			response.ErrorCodeConflict,
 			"Return receipt already exists for this scan",
 			nil,
+		)
+	case errors.Is(err, returnsapp.ErrReturnReceiptNotInspectable):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Return receipt is not pending inspection",
+			map[string]any{"required_status": "pending_inspection"},
 		)
 	default:
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Return receipt could not be processed", nil)

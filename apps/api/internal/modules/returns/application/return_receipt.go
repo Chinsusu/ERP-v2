@@ -14,6 +14,7 @@ import (
 var ErrExpectedReturnNotFound = errors.New("expected return not found")
 var ErrExpectedReturnOrderNotReturnable = errors.New("expected return order status is not returnable")
 var ErrReturnReceiptDuplicate = errors.New("return receipt already exists")
+var ErrReturnReceiptNotFound = errors.New("return receipt not found")
 
 type ReturnReceiptStore interface {
 	List(ctx context.Context, filter domain.ReturnReceiptFilter) ([]domain.ReturnReceipt, error)
@@ -121,14 +122,16 @@ func (uc ReceiveReturn) Execute(ctx context.Context, input ReceiveReturnInput) (
 }
 
 type PrototypeReturnReceiptStore struct {
-	mu       sync.RWMutex
-	records  map[string]domain.ReturnReceipt
-	expected []domain.ExpectedReturn
+	mu          sync.RWMutex
+	records     map[string]domain.ReturnReceipt
+	inspections map[string]domain.ReturnInspection
+	expected    []domain.ExpectedReturn
 }
 
 func NewPrototypeReturnReceiptStore() *PrototypeReturnReceiptStore {
 	store := &PrototypeReturnReceiptStore{
-		records: make(map[string]domain.ReturnReceipt),
+		records:     make(map[string]domain.ReturnReceipt),
+		inspections: make(map[string]domain.ReturnInspection),
 	}
 	store.expected = prototypeExpectedReturns()
 	for _, receipt := range prototypeReturnReceipts() {
@@ -180,6 +183,49 @@ func (s *PrototypeReturnReceiptStore) Save(_ context.Context, receipt domain.Ret
 		}
 	}
 	s.records[receipt.ID] = receipt.Clone()
+
+	return nil
+}
+
+func (s *PrototypeReturnReceiptStore) FindReceiptByID(
+	_ context.Context,
+	id string,
+) (domain.ReturnReceipt, error) {
+	if s == nil {
+		return domain.ReturnReceipt{}, errors.New("return receipt store is required")
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	receipt, ok := s.records[strings.TrimSpace(id)]
+	if !ok {
+		return domain.ReturnReceipt{}, ErrReturnReceiptNotFound
+	}
+
+	return receipt.Clone(), nil
+}
+
+func (s *PrototypeReturnReceiptStore) SaveInspection(
+	_ context.Context,
+	receipt domain.ReturnReceipt,
+	inspection domain.ReturnInspection,
+) error {
+	if s == nil {
+		return errors.New("return receipt store is required")
+	}
+	if strings.TrimSpace(receipt.ID) == "" || strings.TrimSpace(inspection.ID) == "" {
+		return domain.ErrReturnInspectionRequiredField
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.records[receipt.ID]; !ok {
+		return ErrReturnReceiptNotFound
+	}
+	s.records[receipt.ID] = receipt.Clone()
+	s.inspections[inspection.ID] = inspection.Clone()
 
 	return nil
 }
