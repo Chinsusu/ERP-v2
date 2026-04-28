@@ -34,6 +34,7 @@ var ErrReturnReceiptInvalidDisposition = errors.New("return receipt disposition 
 
 type ExpectedReturn struct {
 	OrderNo       string
+	OrderStatus   string
 	TrackingNo    string
 	ReturnCode    string
 	ShipmentID    string
@@ -229,6 +230,15 @@ func NormalizeReturnDisposition(disposition ReturnDisposition) ReturnDisposition
 
 func NormalizeReturnScanCode(code string) string {
 	return strings.ToUpper(strings.TrimSpace(code))
+}
+
+func IsReturnReceivableOrderStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "handed_over", "delivered":
+		return true
+	default:
+		return false
+	}
 }
 
 func (expected ExpectedReturn) MatchesScanCode(code string) bool {

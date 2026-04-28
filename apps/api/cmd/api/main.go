@@ -1323,6 +1323,13 @@ func main() {
 		),
 	)
 	mux.Handle(
+		"/api/v1/returns/scan",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(returnScanHandler(receiveReturn)),
+		),
+	)
+	mux.Handle(
 		"/api/v1/returns/receipts",
 		auth.RequireSessionToken(
 			authSessions,
@@ -3702,6 +3709,58 @@ func returnMasterDataHandler(service returnsapp.ListReturnMasterData) http.Handl
 	}
 }
 
+func returnScanHandler(receiveService returnsapp.ReceiveReturn) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		var payload receiveReturnRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid return scan payload",
+				nil,
+			)
+			return
+		}
+		if strings.TrimSpace(payload.Disposition) == "" {
+			payload.Disposition = string(returnsdomain.ReturnDispositionNeedsInspection)
+		}
+
+		result, err := receiveService.Execute(r.Context(), returnsapp.ReceiveReturnInput{
+			WarehouseID:       payload.WarehouseID,
+			WarehouseCode:     payload.WarehouseCode,
+			Source:            payload.Source,
+			ScanCode:          payload.Code,
+			PackageCondition:  payload.PackageCondition,
+			Disposition:       payload.Disposition,
+			InvestigationNote: payload.InvestigationNote,
+			ActorID:           principal.UserID,
+			RequestID:         response.RequestID(r),
+		})
+		if err != nil {
+			writeReturnReceiptError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusCreated, newReturnReceiptResponse(result.Receipt, result.AuditLogID))
+	}
+}
+
 func returnReceiptsHandler(
 	listService returnsapp.ListReturnReceipts,
 	receiveService returnsapp.ReceiveReturn,
@@ -4426,6 +4485,24 @@ func writeReturnReceiptError(w http.ResponseWriter, r *http.Request, err error) 
 			response.ErrorCodeValidation,
 			"Invalid return receiving payload",
 			map[string]any{"required": "warehouse_id"},
+		)
+	case errors.Is(err, returnsapp.ErrExpectedReturnOrderNotReturnable):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Order status is not eligible for return receiving",
+			map[string]any{"allowed_order_status": "handed_over, delivered"},
+		)
+	case errors.Is(err, returnsapp.ErrReturnReceiptDuplicate):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Return receipt already exists for this scan",
+			nil,
 		)
 	default:
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Return receipt could not be processed", nil)

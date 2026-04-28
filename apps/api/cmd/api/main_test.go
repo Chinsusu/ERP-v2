@@ -1299,6 +1299,98 @@ func TestReturnMasterDataHandlerListsReasonConditionAndDispositionSeed(t *testin
 	}
 }
 
+func TestReturnScanHandlerCreatesPendingInspectionWithDefaultDisposition(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	receiveService := returnsapp.NewReceiveReturn(store, audit.NewInMemoryLogStore())
+	body := bytes.NewBufferString(`{
+		"warehouse_id": "wh-hcm",
+		"warehouse_code": "HCM",
+		"source": "CARRIER",
+		"code": "GHN260426001",
+		"package_condition": "sealed"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/returns/scan", body)
+	req.Header.Set(response.HeaderRequestID, "req-return-scan")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnScanHandler(receiveService).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	var payload response.SuccessEnvelope[returnReceiptResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.OriginalOrderNo != "SO-260426-001" {
+		t.Fatalf("order no = %q, want SO-260426-001", payload.Data.OriginalOrderNo)
+	}
+	if payload.Data.Disposition != "needs_inspection" || payload.Data.Status != "pending_inspection" {
+		t.Fatalf("payload = %+v, want pending inspection with needs_inspection", payload.Data)
+	}
+}
+
+func TestReturnScanHandlerRejectsOrderBeforeHandoverOrDelivery(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	receiveService := returnsapp.NewReceiveReturn(store, audit.NewInMemoryLogStore())
+	body := bytes.NewBufferString(`{
+		"warehouse_id": "wh-hcm",
+		"code": "GHN260426009"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/returns/scan", body)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnScanHandler(receiveService).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+}
+
+func TestReturnScanHandlerRejectsDuplicateReturn(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	receiveService := returnsapp.NewReceiveReturn(store, audit.NewInMemoryLogStore())
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/returns/scan",
+		bytes.NewBufferString(`{"warehouse_id":"wh-hcm","code":"GHN260426001"}`),
+	)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	returnScanHandler(receiveService).ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("first status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	duplicate := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/returns/scan",
+		bytes.NewBufferString(`{"warehouse_id":"wh-hcm","code":"SO-260426-001"}`),
+	)
+	duplicate = duplicate.WithContext(req.Context())
+	duplicateRec := httptest.NewRecorder()
+	returnScanHandler(receiveService).ServeHTTP(duplicateRec, duplicate)
+	if duplicateRec.Code != http.StatusConflict {
+		t.Fatalf("duplicate status = %d, want %d: %s", duplicateRec.Code, http.StatusConflict, duplicateRec.Body.String())
+	}
+}
+
 func TestReturnReceiptsHandlerReturnsFilteredRows(t *testing.T) {
 	store := returnsapp.NewPrototypeReturnReceiptStore()
 	listService := returnsapp.NewListReturnReceipts(store)

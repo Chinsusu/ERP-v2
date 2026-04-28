@@ -1875,6 +1875,33 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+  /returns/scan:
+    post:
+      summary: Scan an order, tracking number, or return code and create a pending return receipt
+      operationId: scanReturn
+      tags:
+        - returns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanReturnRequest"
+      responses:
+        "201":
+          description: Return receipt created from scan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnReceiptSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /returns/receipts:
     get:
       summary: List return receipts
@@ -4475,6 +4502,26 @@ components:
         - warehouse_id
         - code
         - disposition
+      properties:
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        source:
+          $ref: "#/components/schemas/ReturnSource"
+        code:
+          type: string
+        package_condition:
+          type: string
+        disposition:
+          $ref: "#/components/schemas/ReturnDisposition"
+        investigation_note:
+          type: string
+    ScanReturnRequest:
+      type: object
+      required:
+        - warehouse_id
+        - code
       properties:
         warehouse_id:
           type: string

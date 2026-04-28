@@ -12,6 +12,8 @@ import (
 )
 
 var ErrExpectedReturnNotFound = errors.New("expected return not found")
+var ErrExpectedReturnOrderNotReturnable = errors.New("expected return order status is not returnable")
+var ErrReturnReceiptDuplicate = errors.New("return receipt already exists")
 
 type ReturnReceiptStore interface {
 	List(ctx context.Context, filter domain.ReturnReceiptFilter) ([]domain.ReturnReceipt, error)
@@ -80,6 +82,9 @@ func (uc ReceiveReturn) Execute(ctx context.Context, input ReceiveReturnInput) (
 	var expected *domain.ExpectedReturn
 	found, err := uc.store.FindExpectedReturnByCode(ctx, input.ScanCode)
 	if err == nil {
+		if !domain.IsReturnReceivableOrderStatus(found.OrderStatus) {
+			return ReturnReceiptResult{}, ErrExpectedReturnOrderNotReturnable
+		}
 		expected = &found
 	} else if !errors.Is(err, ErrExpectedReturnNotFound) {
 		return ReturnReceiptResult{}, err
@@ -169,9 +174,40 @@ func (s *PrototypeReturnReceiptStore) Save(_ context.Context, receipt domain.Ret
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	for _, existing := range s.records {
+		if returnReceiptDuplicates(existing, receipt) {
+			return ErrReturnReceiptDuplicate
+		}
+	}
 	s.records[receipt.ID] = receipt.Clone()
 
 	return nil
+}
+
+func returnReceiptDuplicates(existing domain.ReturnReceipt, receipt domain.ReturnReceipt) bool {
+	if strings.TrimSpace(existing.ID) != "" && strings.TrimSpace(existing.ID) == strings.TrimSpace(receipt.ID) {
+		return true
+	}
+	if sameReturnIdentifier(existing.ScanCode, receipt.ScanCode) {
+		return true
+	}
+
+	for _, left := range []string{existing.OriginalOrderNo, existing.TrackingNo, existing.ReturnCode} {
+		for _, right := range []string{receipt.OriginalOrderNo, receipt.TrackingNo, receipt.ReturnCode} {
+			if sameReturnIdentifier(left, right) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func sameReturnIdentifier(left string, right string) bool {
+	normalizedLeft := domain.NormalizeReturnScanCode(left)
+	normalizedRight := domain.NormalizeReturnScanCode(right)
+
+	return normalizedLeft != "" && normalizedLeft == normalizedRight
 }
 
 func (s *PrototypeReturnReceiptStore) FindExpectedReturnByCode(
@@ -246,6 +282,7 @@ func prototypeReturnReceipts() []domain.ReturnReceipt {
 		InvestigationNote: "Customer reported wrong shade",
 		ExpectedReturn: &domain.ExpectedReturn{
 			OrderNo:       "SO-260425-099",
+			OrderStatus:   "delivered",
 			TrackingNo:    "GHN260425099",
 			ReturnCode:    "RET-260425-099",
 			CustomerName:  "Tran Binh",
@@ -269,6 +306,7 @@ func prototypeExpectedReturns() []domain.ExpectedReturn {
 	return []domain.ExpectedReturn{
 		{
 			OrderNo:       "SO-260426-001",
+			OrderStatus:   "handed_over",
 			TrackingNo:    "GHN260426001",
 			ReturnCode:    "RET-260426-001",
 			ShipmentID:    "ship-hcm-260426-001",
@@ -282,6 +320,7 @@ func prototypeExpectedReturns() []domain.ExpectedReturn {
 		},
 		{
 			OrderNo:       "SO-260426-004",
+			OrderStatus:   "delivered",
 			TrackingNo:    "GHN260426004",
 			ReturnCode:    "RET-260426-004",
 			ShipmentID:    "ship-hcm-260426-004",
@@ -295,6 +334,7 @@ func prototypeExpectedReturns() []domain.ExpectedReturn {
 		},
 		{
 			OrderNo:       "SO-260426-HN-011",
+			OrderStatus:   "handed_over",
 			TrackingNo:    "GHNHN260426001",
 			ReturnCode:    "RET-HN-260426-011",
 			ShipmentID:    "ship-hn-260426-001",
@@ -305,6 +345,20 @@ func prototypeExpectedReturns() []domain.ExpectedReturn {
 			WarehouseID:   "wh-hn",
 			WarehouseCode: "HN",
 			Source:        domain.ReturnSourceMarketplace,
+		},
+		{
+			OrderNo:       "SO-260426-009",
+			OrderStatus:   "waiting_handover",
+			TrackingNo:    "GHN260426009",
+			ReturnCode:    "RET-260426-009",
+			ShipmentID:    "ship-hcm-260426-009",
+			CustomerName:  "Vu Nhi",
+			SKU:           "SERUM-30ML",
+			ProductName:   "Hydrating Serum 30ml",
+			Quantity:      1,
+			WarehouseID:   "wh-hcm",
+			WarehouseCode: "HCM",
+			Source:        domain.ReturnSourceCarrier,
 		},
 	}
 }

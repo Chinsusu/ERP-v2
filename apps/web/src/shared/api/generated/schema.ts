@@ -818,6 +818,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/returns/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Scan an order, tracking number, or return code and create a pending return receipt */
+        post: operations["scanReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/returns/receipts": {
         parameters: {
             query?: never;
@@ -1868,6 +1885,15 @@ export interface components {
             code: string;
             package_condition?: string;
             disposition: components["schemas"]["ReturnDisposition"];
+            investigation_note?: string;
+        };
+        ScanReturnRequest: {
+            warehouse_id: string;
+            warehouse_code?: string;
+            source?: components["schemas"]["ReturnSource"];
+            code: string;
+            package_condition?: string;
+            disposition?: components["schemas"]["ReturnDisposition"];
             investigation_note?: string;
         };
         ReturnReceipt: {
@@ -3837,6 +3863,34 @@ export interface operations {
                     "application/json": components["schemas"]["ReturnMasterDataSuccessResponse"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    scanReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanReturnRequest"];
+            };
+        };
+        responses: {
+            /** @description Return receipt created from scan */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnReceiptSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];

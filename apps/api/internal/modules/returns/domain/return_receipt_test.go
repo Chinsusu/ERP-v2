@@ -134,3 +134,17 @@ func TestExpectedReturnMatchesOrderTrackingReturnCodeOrShipment(t *testing.T) {
 		}
 	}
 }
+
+func TestIsReturnReceivableOrderStatus(t *testing.T) {
+	for _, status := range []string{"handed_over", "delivered", " HANDED_OVER "} {
+		if !IsReturnReceivableOrderStatus(status) {
+			t.Fatalf("status %q should be return receivable", status)
+		}
+	}
+
+	for _, status := range []string{"draft", "waiting_handover", "packed", ""} {
+		if IsReturnReceivableOrderStatus(status) {
+			t.Fatalf("status %q should not be return receivable", status)
+		}
+	}
+}
