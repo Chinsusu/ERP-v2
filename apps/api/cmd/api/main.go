@@ -784,7 +784,7 @@ func main() {
 	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
 	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditLogStore)
 	salesOrderStore := salesapp.NewPrototypeSalesOrderStore(auditLogStore)
-	salesOrderReservationStore := inventoryapp.NewPrototypeSalesOrderReservationStore()
+	salesOrderReservationStore := inventoryapp.NewPrototypeSalesOrderReservationStore(auditLogStore)
 	salesOrderService := salesapp.NewSalesOrderService(salesOrderStore, partyCatalog, itemCatalog, warehouseCatalog).
 		WithStockReserver(salesOrderReservationStore)
 	stockMovementStore := inventoryapp.NewInMemoryStockMovementStore()
