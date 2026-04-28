@@ -147,6 +147,7 @@ type SalesOrderStockReservationInput struct {
 	WarehouseID   string
 	WarehouseCode string
 	ActorID       string
+	Reason        string
 	RequestID     string
 	ReservedAt    time.Time
 	Lines         []SalesOrderStockReservationLineInput
@@ -1037,6 +1038,7 @@ func newSalesOrderStockReservationInput(
 		WarehouseID:   order.WarehouseID,
 		WarehouseCode: order.WarehouseCode,
 		ActorID:       action.ActorID,
+		Reason:        firstNonBlank(action.Reason, "sales order confirm"),
 		RequestID:     action.RequestID,
 		ReservedAt:    reservedAt.UTC(),
 		Lines:         lines,

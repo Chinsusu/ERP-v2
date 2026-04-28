@@ -10,6 +10,7 @@ import (
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 	apperrors "github.com/Chinsusu/ERP-v2/apps/api/internal/shared/errors"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
@@ -18,22 +19,38 @@ import (
 var ErrInsufficientStock = errors.New("insufficient stock")
 var ErrBatchNotSellable = errors.New("batch is not sellable")
 
+const (
+	stockReservationReservedAction = "inventory.stock_reservation.reserved"
+	stockReservationReleasedAction = "inventory.stock_reservation.released"
+	stockReservationEntityType     = "inventory.stock_reservation"
+)
+
 type PrototypeSalesOrderReservationStore struct {
 	mu           sync.Mutex
 	rows         []domain.StockBalanceSnapshot
 	reservations []domain.StockReservation
+	auditLog     audit.LogStore
 }
 
-func NewPrototypeSalesOrderReservationStore() *PrototypeSalesOrderReservationStore {
-	return &PrototypeSalesOrderReservationStore{rows: prototypeSalesOrderReservationRows()}
+func NewPrototypeSalesOrderReservationStore(auditStores ...audit.LogStore) *PrototypeSalesOrderReservationStore {
+	return &PrototypeSalesOrderReservationStore{
+		rows:     prototypeSalesOrderReservationRows(),
+		auditLog: firstStockReservationAuditStore(auditStores),
+	}
 }
 
-func NewPrototypeSalesOrderReservationStoreWithRows(rows []domain.StockBalanceSnapshot) *PrototypeSalesOrderReservationStore {
-	return &PrototypeSalesOrderReservationStore{rows: cloneStockBalanceRows(rows)}
+func NewPrototypeSalesOrderReservationStoreWithRows(
+	rows []domain.StockBalanceSnapshot,
+	auditStores ...audit.LogStore,
+) *PrototypeSalesOrderReservationStore {
+	return &PrototypeSalesOrderReservationStore{
+		rows:     cloneStockBalanceRows(rows),
+		auditLog: firstStockReservationAuditStore(auditStores),
+	}
 }
 
 func (s *PrototypeSalesOrderReservationStore) ReserveSalesOrder(
-	_ context.Context,
+	ctx context.Context,
 	input salesapp.SalesOrderStockReservationInput,
 ) (salesapp.SalesOrderStockReservationResult, error) {
 	if s == nil {
@@ -59,6 +76,21 @@ func (s *PrototypeSalesOrderReservationStore) ReserveSalesOrder(
 		}
 		reservations = append(reservations, allocated.reservation)
 		resultLines = append(resultLines, allocated.line)
+	}
+	for _, reservation := range reservations {
+		if err := s.recordStockReservationAudit(
+			ctx,
+			input.ActorID,
+			input.RequestID,
+			stockReservationReservedAction,
+			reservation,
+			nil,
+			stockReservationAuditData(reservation),
+			stockReservationAuditMetadata(input.OrderNo, input.Reason, "sales order reservation service"),
+			reservation.ReservedAt,
+		); err != nil {
+			return salesapp.SalesOrderStockReservationResult{}, err
+		}
 	}
 
 	s.rows = rows
@@ -88,7 +120,7 @@ func (s *PrototypeSalesOrderReservationStore) Rows() []domain.StockBalanceSnapsh
 }
 
 func (s *PrototypeSalesOrderReservationStore) ReleaseSalesOrder(
-	_ context.Context,
+	ctx context.Context,
 	input salesapp.SalesOrderStockReleaseInput,
 ) (salesapp.SalesOrderStockReleaseResult, error) {
 	if s == nil {
@@ -103,6 +135,7 @@ func (s *PrototypeSalesOrderReservationStore) ReleaseSalesOrder(
 
 	rows := cloneStockBalanceRows(s.rows)
 	reservations := append([]domain.StockReservation(nil), s.reservations...)
+	changes := make([]stockReservationAuditChange, 0)
 	releasedCount := 0
 	for index, reservation := range reservations {
 		if reservation.SalesOrderID != strings.TrimSpace(input.SalesOrderID) || reservation.Status != domain.ReservationStatusActive {
@@ -122,13 +155,34 @@ func (s *PrototypeSalesOrderReservationStore) ReleaseSalesOrder(
 		}
 		rows[rowIndex].QtyReserved = updatedReservedQty
 		reservations[index] = released
+		changes = append(changes, stockReservationAuditChange{before: reservation, after: released})
 		releasedCount++
+	}
+	for _, change := range changes {
+		if err := s.recordStockReservationAudit(
+			ctx,
+			input.ActorID,
+			input.RequestID,
+			stockReservationReleasedAction,
+			change.after,
+			stockReservationAuditData(change.before),
+			stockReservationAuditData(change.after),
+			stockReservationAuditMetadata(input.OrderNo, input.Reason, "sales order reservation service"),
+			change.after.ReleasedAt,
+		); err != nil {
+			return salesapp.SalesOrderStockReleaseResult{}, err
+		}
 	}
 
 	s.rows = rows
 	s.reservations = reservations
 
 	return salesapp.SalesOrderStockReleaseResult{ReleasedReservationCount: releasedCount}, nil
+}
+
+type stockReservationAuditChange struct {
+	before domain.StockReservation
+	after  domain.StockReservation
 }
 
 type allocatedSalesOrderLine struct {
@@ -388,6 +442,106 @@ func newReservationID(salesOrderID string, salesOrderLineID string) string {
 
 func newReservationNo(orderNo string, lineNo int) string {
 	return fmt.Sprintf("RSV-%s-%02d", strings.ToUpper(strings.TrimSpace(orderNo)), lineNo)
+}
+
+func (s *PrototypeSalesOrderReservationStore) recordStockReservationAudit(
+	ctx context.Context,
+	actorID string,
+	requestID string,
+	action string,
+	reservation domain.StockReservation,
+	beforeData map[string]any,
+	afterData map[string]any,
+	metadata map[string]any,
+	createdAt time.Time,
+) error {
+	if s.auditLog == nil {
+		return errors.New("audit log store is required")
+	}
+
+	log, err := audit.NewLog(audit.NewLogInput{
+		ID:         newStockReservationAuditID(action, reservation.ID, createdAt),
+		OrgID:      reservation.OrgID,
+		ActorID:    strings.TrimSpace(actorID),
+		Action:     action,
+		EntityType: stockReservationEntityType,
+		EntityID:   reservation.ID,
+		RequestID:  strings.TrimSpace(requestID),
+		BeforeData: beforeData,
+		AfterData:  afterData,
+		Metadata:   metadata,
+		CreatedAt:  createdAt,
+	})
+	if err != nil {
+		return err
+	}
+
+	return s.auditLog.Record(ctx, log)
+}
+
+func newStockReservationAuditID(action string, reservationID string, createdAt time.Time) string {
+	actionSuffix := strings.TrimPrefix(strings.TrimSpace(action), "inventory.stock_reservation.")
+	return fmt.Sprintf(
+		"audit-%s-%s-%d",
+		strings.TrimSpace(reservationID),
+		strings.ReplaceAll(actionSuffix, ".", "-"),
+		createdAt.UTC().UnixNano(),
+	)
+}
+
+func stockReservationAuditData(reservation domain.StockReservation) map[string]any {
+	data := map[string]any{
+		"reservation_no":      reservation.ReservationNo,
+		"sales_order_id":      reservation.SalesOrderID,
+		"sales_order_line_id": reservation.SalesOrderLineID,
+		"item_id":             reservation.ItemID,
+		"sku_code":            reservation.SKUCode,
+		"batch_id":            reservation.BatchID,
+		"batch_no":            reservation.BatchNo,
+		"warehouse_id":        reservation.WarehouseID,
+		"warehouse_code":      reservation.WarehouseCode,
+		"bin_id":              reservation.BinID,
+		"bin_code":            reservation.BinCode,
+		"stock_status":        string(reservation.StockStatus),
+		"reserved_qty":        reservation.ReservedQty.String(),
+		"base_uom_code":       reservation.BaseUOMCode.String(),
+		"status":              string(reservation.Status),
+		"reserved_by":         reservation.ReservedBy,
+		"reserved_at":         reservation.ReservedAt.UTC().Format(time.RFC3339),
+	}
+	if !reservation.ReleasedAt.IsZero() {
+		data["released_at"] = reservation.ReleasedAt.UTC().Format(time.RFC3339)
+		data["released_by"] = reservation.ReleasedBy
+	}
+	if !reservation.ConsumedAt.IsZero() {
+		data["consumed_at"] = reservation.ConsumedAt.UTC().Format(time.RFC3339)
+		data["consumed_by"] = reservation.ConsumedBy
+	}
+
+	return data
+}
+
+func stockReservationAuditMetadata(orderNo string, reason string, source string) map[string]any {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		reason = "sales order reservation"
+	}
+
+	return map[string]any{
+		"order_no": strings.TrimSpace(orderNo),
+		"reason":   reason,
+		"source":   strings.TrimSpace(source),
+	}
+}
+
+func firstStockReservationAuditStore(stores []audit.LogStore) audit.LogStore {
+	for _, store := range stores {
+		if store != nil {
+			return store
+		}
+	}
+
+	return audit.NewInMemoryLogStore()
 }
 
 func cloneStockBalanceRows(rows []domain.StockBalanceSnapshot) []domain.StockBalanceSnapshot {

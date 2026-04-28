@@ -134,6 +134,18 @@ func TestSalesOrderAPISmokePack(t *testing.T) {
 		if len(logs) != 4 {
 			t.Fatalf("audit log count = %d, want 4", len(logs))
 		}
+		reservationLogs, err := auditStore.List(cancelReq.Context(), audit.Query{
+			Action: "inventory.stock_reservation.released",
+			Limit:  1,
+		})
+		if err != nil {
+			t.Fatalf("list reservation audit logs: %v", err)
+		}
+		if len(reservationLogs) != 1 ||
+			reservationLogs[0].AfterData["status"] != "released" ||
+			reservationLogs[0].Metadata["reason"] != "customer changed order" {
+			t.Fatalf("reservation audit logs = %+v, want released reservation with reason", reservationLogs)
+		}
 	})
 
 	t.Run("validates required lines", func(t *testing.T) {
@@ -283,7 +295,7 @@ func newTestSalesOrderAPIService() (salesapp.SalesOrderService, *audit.InMemoryL
 		masterdataapp.NewPrototypePartyCatalog(auditStore),
 		masterdataapp.NewPrototypeItemCatalog(auditStore),
 		masterdataapp.NewPrototypeWarehouseLocationCatalog(auditStore),
-	).WithStockReserver(inventoryapp.NewPrototypeSalesOrderReservationStore())
+	).WithStockReserver(inventoryapp.NewPrototypeSalesOrderReservationStore(auditStore))
 
 	return service, auditStore
 }
