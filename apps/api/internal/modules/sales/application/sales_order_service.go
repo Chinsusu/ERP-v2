@@ -56,6 +56,7 @@ type SalesOrderWarehouseReader interface {
 
 type SalesOrderStockReserver interface {
 	ReserveSalesOrder(ctx context.Context, input SalesOrderStockReservationInput) (SalesOrderStockReservationResult, error)
+	ReleaseSalesOrder(ctx context.Context, input SalesOrderStockReleaseInput) (SalesOrderStockReleaseResult, error)
 }
 
 type SalesOrderService struct {
@@ -172,6 +173,20 @@ type SalesOrderReservedLine struct {
 	BatchNo          string
 	BinID            string
 	BinCode          string
+}
+
+type SalesOrderStockReleaseInput struct {
+	OrgID        string
+	SalesOrderID string
+	OrderNo      string
+	ActorID      string
+	Reason       string
+	RequestID    string
+	ReleasedAt   time.Time
+}
+
+type SalesOrderStockReleaseResult struct {
+	ReleasedReservationCount int
 }
 
 type PrototypeSalesOrderStore struct {
@@ -527,6 +542,9 @@ func (s SalesOrderService) CancelSalesOrder(
 			map[string]any{"field": "reason"},
 		)
 	}
+	if s.stockReserver != nil {
+		return s.cancelAndReleaseSalesOrder(ctx, input)
+	}
 
 	return s.transition(ctx, input, "sales.order.cancelled", func(
 		order salesdomain.SalesOrder,
@@ -535,6 +553,89 @@ func (s SalesOrderService) CancelSalesOrder(
 	) (salesdomain.SalesOrder, error) {
 		return order.CancelWithReason(actorID, input.Reason, changedAt)
 	})
+}
+
+func (s SalesOrderService) cancelAndReleaseSalesOrder(
+	ctx context.Context,
+	input SalesOrderActionInput,
+) (SalesOrderActionResult, error) {
+	if err := s.ensureReadyForWrite(); err != nil {
+		return SalesOrderActionResult{}, err
+	}
+	if err := requireActor(input.ActorID); err != nil {
+		return SalesOrderActionResult{}, err
+	}
+
+	var result SalesOrderActionResult
+	err := s.store.WithinTx(ctx, func(txCtx context.Context, tx SalesOrderTx) error {
+		current, err := tx.GetForUpdate(txCtx, input.ID)
+		if err != nil {
+			return mapSalesOrderError(err, map[string]any{"sales_order_id": strings.TrimSpace(input.ID)})
+		}
+		if err := ensureExpectedVersion(current, input.ExpectedVersion); err != nil {
+			return err
+		}
+
+		now := s.now()
+		if current.Status == salesdomain.SalesOrderStatusReserved {
+			releaseResult, err := s.stockReserver.ReleaseSalesOrder(
+				txCtx,
+				newSalesOrderStockReleaseInput(current, input, now),
+			)
+			if err != nil {
+				return mapSalesOrderError(err, map[string]any{"sales_order_id": current.ID})
+			}
+			if releaseResult.ReleasedReservationCount == 0 {
+				return apperrors.Conflict(
+					response.ErrorCodeConflict,
+					"Reserved stock could not be released",
+					errors.New("no active stock reservation found for sales order"),
+					map[string]any{"sales_order_id": current.ID},
+				)
+			}
+		}
+		cancelled, err := current.CancelWithReason(input.ActorID, input.Reason, now)
+		if err != nil {
+			return mapSalesOrderError(err, map[string]any{
+				"sales_order_id": current.ID,
+				"status":         string(current.Status),
+			})
+		}
+		if strings.TrimSpace(input.Note) != "" {
+			cancelled.Note = strings.TrimSpace(input.Note)
+		}
+		if err := tx.Save(txCtx, cancelled); err != nil {
+			return err
+		}
+		log, err := newSalesOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			"sales.order.cancelled",
+			cancelled,
+			salesOrderAuditData(current),
+			salesOrderAuditData(cancelled),
+			now,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, log); err != nil {
+			return err
+		}
+		result = SalesOrderActionResult{
+			SalesOrder:     cancelled,
+			PreviousStatus: current.Status,
+			CurrentStatus:  cancelled.Status,
+			AuditLogID:     log.ID,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return SalesOrderActionResult{}, err
+	}
+
+	return result, nil
 }
 
 func (s SalesOrderService) transition(
@@ -939,6 +1040,22 @@ func newSalesOrderStockReservationInput(
 		RequestID:     action.RequestID,
 		ReservedAt:    reservedAt.UTC(),
 		Lines:         lines,
+	}
+}
+
+func newSalesOrderStockReleaseInput(
+	order salesdomain.SalesOrder,
+	action SalesOrderActionInput,
+	releasedAt time.Time,
+) SalesOrderStockReleaseInput {
+	return SalesOrderStockReleaseInput{
+		OrgID:        order.OrgID,
+		SalesOrderID: order.ID,
+		OrderNo:      order.OrderNo,
+		ActorID:      action.ActorID,
+		Reason:       action.Reason,
+		RequestID:    action.RequestID,
+		ReleasedAt:   releasedAt.UTC(),
 	}
 }
 

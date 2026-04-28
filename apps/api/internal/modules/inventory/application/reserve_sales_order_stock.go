@@ -77,6 +77,60 @@ func (s *PrototypeSalesOrderReservationStore) Reservations() []domain.StockReser
 	return append([]domain.StockReservation(nil), s.reservations...)
 }
 
+func (s *PrototypeSalesOrderReservationStore) Rows() []domain.StockBalanceSnapshot {
+	if s == nil {
+		return nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return cloneStockBalanceRows(s.rows)
+}
+
+func (s *PrototypeSalesOrderReservationStore) ReleaseSalesOrder(
+	_ context.Context,
+	input salesapp.SalesOrderStockReleaseInput,
+) (salesapp.SalesOrderStockReleaseResult, error) {
+	if s == nil {
+		return salesapp.SalesOrderStockReleaseResult{}, errors.New("sales order reservation store is required")
+	}
+	if strings.TrimSpace(input.ActorID) == "" {
+		return salesapp.SalesOrderStockReleaseResult{}, domain.ErrStockReservationActorRequired
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	rows := cloneStockBalanceRows(s.rows)
+	reservations := append([]domain.StockReservation(nil), s.reservations...)
+	releasedCount := 0
+	for index, reservation := range reservations {
+		if reservation.SalesOrderID != strings.TrimSpace(input.SalesOrderID) || reservation.Status != domain.ReservationStatusActive {
+			continue
+		}
+		released, err := reservation.Release(input.ActorID, releasedAt(input.ReleasedAt))
+		if err != nil {
+			return salesapp.SalesOrderStockReleaseResult{}, err
+		}
+		rowIndex := findReservationStockBalanceRow(rows, reservation)
+		if rowIndex < 0 {
+			return salesapp.SalesOrderStockReleaseResult{}, errors.New("reserved stock balance row is missing")
+		}
+		updatedReservedQty, err := decimal.SubtractQuantity(rows[rowIndex].QtyReserved, reservation.ReservedQty)
+		if err != nil || updatedReservedQty.IsNegative() {
+			return salesapp.SalesOrderStockReleaseResult{}, errors.New("reserved stock balance would become negative")
+		}
+		rows[rowIndex].QtyReserved = updatedReservedQty
+		reservations[index] = released
+		releasedCount++
+	}
+
+	s.rows = rows
+	s.reservations = reservations
+
+	return salesapp.SalesOrderStockReleaseResult{ReleasedReservationCount: releasedCount}, nil
+}
+
 type allocatedSalesOrderLine struct {
 	reservation domain.StockReservation
 	line        salesapp.SalesOrderReservedLine
@@ -177,6 +231,21 @@ func findReservableStockBalanceRow(rows []domain.StockBalanceSnapshot, snapshot 
 			strings.EqualFold(strings.TrimSpace(row.SKU), strings.TrimSpace(snapshot.SKU)) &&
 			strings.TrimSpace(row.BatchID) == strings.TrimSpace(snapshot.BatchID) &&
 			row.BaseUOMCode == snapshot.BaseUOMCode &&
+			row.StockStatus == domain.StockStatusAvailable {
+			return index
+		}
+	}
+
+	return -1
+}
+
+func findReservationStockBalanceRow(rows []domain.StockBalanceSnapshot, reservation domain.StockReservation) int {
+	for index, row := range rows {
+		if strings.TrimSpace(row.WarehouseID) == strings.TrimSpace(reservation.WarehouseID) &&
+			strings.TrimSpace(row.LocationID) == strings.TrimSpace(reservation.BinID) &&
+			strings.EqualFold(strings.TrimSpace(row.SKU), strings.TrimSpace(reservation.SKUCode)) &&
+			strings.TrimSpace(row.BatchID) == strings.TrimSpace(reservation.BatchID) &&
+			row.BaseUOMCode == reservation.BaseUOMCode &&
 			row.StockStatus == domain.StockStatusAvailable {
 			return index
 		}
@@ -298,6 +367,14 @@ func quantityAtLeast(available decimal.Decimal, required decimal.Decimal) bool {
 }
 
 func reservedAt(value time.Time) time.Time {
+	if value.IsZero() {
+		return time.Now().UTC()
+	}
+
+	return value.UTC()
+}
+
+func releasedAt(value time.Time) time.Time {
 	if value.IsZero() {
 		return time.Now().UTC()
 	}

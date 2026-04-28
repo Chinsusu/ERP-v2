@@ -67,6 +67,44 @@ func TestPrototypeSalesOrderReservationStoreDoesNotPartiallyReserveOnInsufficien
 	}
 }
 
+func TestPrototypeSalesOrderReservationStoreReleasesActiveReservations(t *testing.T) {
+	store := NewPrototypeSalesOrderReservationStoreWithRows([]domain.StockBalanceSnapshot{
+		reservableRow("SERUM-30ML", "item-serum-30ml", "20", "2"),
+	})
+
+	_, err := store.ReserveSalesOrder(context.Background(), salesReservationInput([]salesapp.SalesOrderStockReservationLineInput{
+		reservationLine("line-serum", "item-serum-30ml", "SERUM-30ML", "4"),
+	}))
+	if err != nil {
+		t.Fatalf("reserve sales order: %v", err)
+	}
+	if got := store.Rows()[0].QtyReserved; got != "6.000000" {
+		t.Fatalf("reserved qty after reserve = %s, want 6.000000", got)
+	}
+
+	result, err := store.ReleaseSalesOrder(context.Background(), salesapp.SalesOrderStockReleaseInput{
+		OrgID:        "org-my-pham",
+		SalesOrderID: "so-reserve",
+		OrderNo:      "SO-RESERVE",
+		ActorID:      "user-sales",
+		Reason:       "customer changed order",
+		ReleasedAt:   time.Date(2026, 4, 28, 13, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatalf("release sales order: %v", err)
+	}
+	if result.ReleasedReservationCount != 1 {
+		t.Fatalf("released count = %d, want 1", result.ReleasedReservationCount)
+	}
+	if got := store.Rows()[0].QtyReserved; got != "2.000000" {
+		t.Fatalf("reserved qty after release = %s, want original 2.000000", got)
+	}
+	reservations := store.Reservations()
+	if reservations[0].Status != domain.ReservationStatusReleased || reservations[0].ReleasedBy != "user-sales" {
+		t.Fatalf("reservation = %+v, want released metadata", reservations[0])
+	}
+}
+
 func TestPrototypeSalesOrderReservationStoreBlocksNotSellableBatches(t *testing.T) {
 	for _, qcStatus := range []domain.QCStatus{domain.QCStatusHold, domain.QCStatusFail} {
 		t.Run(string(qcStatus), func(t *testing.T) {
