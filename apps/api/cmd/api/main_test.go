@@ -1741,7 +1741,8 @@ func TestReturnDispositionHandlerRoutesReusableAfterInspection(t *testing.T) {
 		t.Fatalf("inspect return: %v", err)
 	}
 
-	applyService := returnsapp.NewApplyReturnDisposition(store, auditStore)
+	movementStore := inventoryapp.NewInMemoryStockMovementStore()
+	applyService := returnsapp.NewApplyReturnDisposition(store, movementStore, auditStore)
 	body := bytes.NewBufferString(`{
 		"disposition": "reusable",
 		"note": "ready for putaway"
@@ -1780,8 +1781,14 @@ func TestReturnDispositionHandlerRoutesReusableAfterInspection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list return receipts: %v", err)
 	}
-	if len(rows) != 1 || rows[0].TargetLocation != "return-putaway-ready" || rows[0].StockMovement != nil {
-		t.Fatalf("rows = %+v, want dispositioned receipt without stock movement", rows)
+	if len(rows) != 1 || rows[0].TargetLocation != "return-putaway-ready" || rows[0].StockMovement == nil {
+		t.Fatalf("rows = %+v, want dispositioned receipt with stock movement", rows)
+	}
+	if rows[0].StockMovement.MovementType != "return_restock" || rows[0].StockMovement.TargetStockStatus != "available" {
+		t.Fatalf("stock movement = %+v, want reusable available restock", rows[0].StockMovement)
+	}
+	if movementStore.Count() != 1 {
+		t.Fatalf("stock movement count = %d, want 1", movementStore.Count())
 	}
 }
 
@@ -1812,7 +1819,8 @@ func TestReturnDispositionHandlerRoutesQAHold(t *testing.T) {
 	}, auth.RoleWarehouseLead)))
 	rec := httptest.NewRecorder()
 
-	returnDispositionHandler(returnsapp.NewApplyReturnDisposition(store, auditStore)).ServeHTTP(rec, req)
+	movementStore := inventoryapp.NewInMemoryStockMovementStore()
+	returnDispositionHandler(returnsapp.NewApplyReturnDisposition(store, movementStore, auditStore)).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
@@ -1825,12 +1833,15 @@ func TestReturnDispositionHandlerRoutesQAHold(t *testing.T) {
 	if payload.Data.TargetLocation != "return-quarantine-hold" || payload.Data.TargetStockStatus != "qc_hold" {
 		t.Fatalf("payload = %+v, want quarantine hold", payload.Data)
 	}
+	if movementStore.Count() != 0 {
+		t.Fatalf("stock movement count = %d, want 0 for qa hold", movementStore.Count())
+	}
 }
 
 func TestReturnDispositionHandlerRejectsPendingReceiptAndInvalidDisposition(t *testing.T) {
 	store := returnsapp.NewPrototypeReturnReceiptStore()
 	auditStore := audit.NewInMemoryLogStore()
-	applyService := returnsapp.NewApplyReturnDisposition(store, auditStore)
+	applyService := returnsapp.NewApplyReturnDisposition(store, inventoryapp.NewInMemoryStockMovementStore(), auditStore)
 	req := httptest.NewRequest(
 		http.MethodPost,
 		"/api/v1/returns/rr-260426-0001/disposition",

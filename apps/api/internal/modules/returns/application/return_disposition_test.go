@@ -37,8 +37,13 @@ func TestApplyReturnDispositionRoutesReusableToPutawayAndAudit(t *testing.T) {
 	if result.Action.TargetLocation != "return-putaway-ready" {
 		t.Fatalf("target location = %q, want return-putaway-ready", result.Action.TargetLocation)
 	}
-	if result.Receipt.StockMovement != nil {
-		t.Fatalf("stock movement = %+v, want nil until movement task", result.Receipt.StockMovement)
+	if result.Receipt.StockMovement == nil {
+		t.Fatal("stock movement = nil, want reusable restock movement")
+	}
+	if result.Receipt.StockMovement.MovementType != "return_restock" ||
+		result.Receipt.StockMovement.TargetStockStatus != "available" ||
+		result.Receipt.StockMovement.SourceDocID != result.Receipt.ID {
+		t.Fatalf("stock movement = %+v, want reusable available restock", result.Receipt.StockMovement)
 	}
 	if result.AuditLogID == "" {
 		t.Fatal("audit log id is empty")
@@ -53,6 +58,9 @@ func TestApplyReturnDispositionRoutesReusableToPutawayAndAudit(t *testing.T) {
 	}
 	if logs[0].AfterData["action_code"] != "route_to_putaway" {
 		t.Fatalf("audit after data = %+v, want route_to_putaway", logs[0].AfterData)
+	}
+	if logs[0].AfterData["stock_movement_type"] != "return_restock" {
+		t.Fatalf("audit after data = %+v, want stock movement type", logs[0].AfterData)
 	}
 }
 
@@ -105,6 +113,9 @@ func TestApplyReturnDispositionRoutesNotReusableAndQAHold(t *testing.T) {
 			}
 			if result.Action.TargetStockStatus != tt.wantStockStatus {
 				t.Fatalf("target stock status = %q, want %s", result.Action.TargetStockStatus, tt.wantStockStatus)
+			}
+			if result.Receipt.StockMovement != nil {
+				t.Fatalf("stock movement = %+v, want nil", result.Receipt.StockMovement)
 			}
 		})
 	}

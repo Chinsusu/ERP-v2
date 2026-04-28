@@ -3,14 +3,21 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
+	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
+	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
 
 var ErrReturnReceiptDispositionNotAllowed = errors.New("return receipt disposition action is not allowed")
+
+const returnStockSourceDocType = "return_receipt"
 
 type ReturnDispositionStore interface {
 	FindReceiptByID(ctx context.Context, id string) (domain.ReturnReceipt, error)
@@ -18,9 +25,10 @@ type ReturnDispositionStore interface {
 }
 
 type ApplyReturnDisposition struct {
-	store    ReturnDispositionStore
-	auditLog audit.LogStore
-	clock    func() time.Time
+	store         ReturnDispositionStore
+	stockMovement inventoryapp.StockMovementStore
+	auditLog      audit.LogStore
+	clock         func() time.Time
 }
 
 type ApplyReturnDispositionInput struct {
@@ -37,11 +45,16 @@ type ReturnDispositionResult struct {
 	AuditLogID string
 }
 
-func NewApplyReturnDisposition(store ReturnDispositionStore, auditLog audit.LogStore) ApplyReturnDisposition {
+func NewApplyReturnDisposition(
+	store ReturnDispositionStore,
+	stockMovement inventoryapp.StockMovementStore,
+	auditLog audit.LogStore,
+) ApplyReturnDisposition {
 	return ApplyReturnDisposition{
-		store:    store,
-		auditLog: auditLog,
-		clock:    func() time.Time { return time.Now().UTC() },
+		store:         store,
+		stockMovement: stockMovement,
+		auditLog:      auditLog,
+		clock:         func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -77,6 +90,18 @@ func (uc ApplyReturnDisposition) Execute(
 	}
 
 	updatedReceipt := receipt.ApplyDisposition(action)
+	movements, err := uc.newReturnRestockMovements(updatedReceipt, action, input.ActorID)
+	if err != nil {
+		return ReturnDispositionResult{}, err
+	}
+	for _, movement := range movements {
+		if err := uc.stockMovement.Record(ctx, movement); err != nil {
+			return ReturnDispositionResult{}, err
+		}
+	}
+	if len(movements) > 0 {
+		updatedReceipt.StockMovement = newReturnStockMovementSummary(updatedReceipt, movements[0])
+	}
 	if err := uc.store.SaveDisposition(ctx, updatedReceipt, action); err != nil {
 		return ReturnDispositionResult{}, err
 	}
@@ -96,6 +121,82 @@ func (uc ApplyReturnDisposition) Execute(
 	}, nil
 }
 
+func (uc ApplyReturnDisposition) newReturnRestockMovements(
+	receipt domain.ReturnReceipt,
+	action domain.ReturnDispositionAction,
+	actorID string,
+) ([]inventorydomain.StockMovement, error) {
+	if action.Disposition != domain.ReturnDispositionReusable {
+		return nil, nil
+	}
+	if uc.stockMovement == nil {
+		return nil, errors.New("stock movement store is required")
+	}
+
+	movements := make([]inventorydomain.StockMovement, 0, len(receipt.Lines))
+	for index, line := range receipt.Lines {
+		quantity := line.Quantity
+		if quantity <= 0 {
+			quantity = 1
+		}
+		baseQuantity := decimal.MustQuantity(strconv.Itoa(quantity))
+		movement, err := inventorydomain.NewStockMovement(inventorydomain.NewStockMovementInput{
+			MovementNo:       fmt.Sprintf("%s-RESTOCK-%03d", receipt.ReceiptNo, index+1),
+			MovementType:     inventorydomain.MovementReturnRestock,
+			OrgID:            "org-my-pham",
+			ItemID:           returnStockItemID(line),
+			WarehouseID:      receipt.WarehouseID,
+			Quantity:         baseQuantity,
+			BaseUOMCode:      "EA",
+			SourceQuantity:   baseQuantity,
+			SourceUOMCode:    "EA",
+			ConversionFactor: decimal.MustQuantity("1"),
+			StockStatus:      inventorydomain.StockStatusAvailable,
+			SourceDocType:    returnStockSourceDocType,
+			SourceDocID:      receipt.ID,
+			SourceDocLineID:  line.ID,
+			Reason:           "return reusable restock",
+			CreatedBy:        actorID,
+			MovementAt:       action.DecidedAt,
+		})
+		if err != nil {
+			return nil, err
+		}
+		movements = append(movements, movement)
+	}
+
+	return movements, nil
+}
+
+func returnStockItemID(line domain.ReturnReceiptLine) string {
+	sku := strings.ToLower(strings.TrimSpace(line.SKU))
+	if sku == "" {
+		return "item-unknown-sku"
+	}
+
+	return "item-" + sku
+}
+
+func newReturnStockMovementSummary(
+	receipt domain.ReturnReceipt,
+	movement inventorydomain.StockMovement,
+) *domain.ReturnStockMovement {
+	line := domain.ReturnReceiptLine{SKU: "UNKNOWN-SKU", Quantity: 1}
+	if len(receipt.Lines) > 0 {
+		line = receipt.Lines[0]
+	}
+
+	return &domain.ReturnStockMovement{
+		ID:                movement.MovementNo,
+		MovementType:      string(movement.MovementType),
+		SKU:               line.SKU,
+		WarehouseID:       movement.WarehouseID,
+		Quantity:          line.Quantity,
+		TargetStockStatus: string(movement.StockStatus),
+		SourceDocID:       movement.SourceDocID,
+	}
+}
+
 func newReturnDispositionAuditLog(
 	actorID string,
 	requestID string,
@@ -103,6 +204,20 @@ func newReturnDispositionAuditLog(
 	after domain.ReturnReceipt,
 	action domain.ReturnDispositionAction,
 ) (audit.Log, error) {
+	afterData := map[string]any{
+		"action_id":           action.ID,
+		"status":              string(after.Status),
+		"disposition":         string(action.Disposition),
+		"target_location":     action.TargetLocation,
+		"target_stock_status": action.TargetStockStatus,
+		"action_code":         action.ActionCode,
+	}
+	if after.StockMovement != nil {
+		afterData["stock_movement_id"] = after.StockMovement.ID
+		afterData["stock_movement_type"] = after.StockMovement.MovementType
+		afterData["stock_movement_status"] = after.StockMovement.TargetStockStatus
+	}
+
 	return audit.NewLog(audit.NewLogInput{
 		OrgID:      "org-my-pham",
 		ActorID:    strings.TrimSpace(actorID),
@@ -115,14 +230,7 @@ func newReturnDispositionAuditLog(
 			"disposition":     string(before.Disposition),
 			"target_location": before.TargetLocation,
 		},
-		AfterData: map[string]any{
-			"action_id":           action.ID,
-			"status":              string(after.Status),
-			"disposition":         string(action.Disposition),
-			"target_location":     action.TargetLocation,
-			"target_stock_status": action.TargetStockStatus,
-			"action_code":         action.ActionCode,
-		},
+		AfterData: afterData,
 		Metadata: map[string]any{
 			"source": "return disposition",
 		},
@@ -135,7 +243,7 @@ func NewPrototypeApplyReturnDispositionAt(
 	auditLog audit.LogStore,
 	now time.Time,
 ) ApplyReturnDisposition {
-	service := NewApplyReturnDisposition(store, auditLog)
+	service := NewApplyReturnDisposition(store, inventoryapp.NewInMemoryStockMovementStore(), auditLog)
 	service.clock = func() time.Time { return now.UTC() }
 
 	return service
