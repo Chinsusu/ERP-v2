@@ -1406,7 +1406,11 @@ func prototypeSalesOrders() []salesdomain.SalesOrder {
 		panic(fmt.Sprintf("invalid prototype packing order start pack: %v", err))
 	}
 
-	return append([]salesdomain.SalesOrder{draft, confirmed, packing}, prototypeHandoverSalesOrders(baseTime)...)
+	orders := []salesdomain.SalesOrder{draft, confirmed, packing}
+	orders = append(orders, prototypeHandoverSalesOrders(baseTime)...)
+	orders = append(orders, prototypeSprint2QASalesOrders(baseTime)...)
+
+	return orders
 }
 
 func prototypeHandoverSalesOrders(baseTime time.Time) []salesdomain.SalesOrder {
@@ -1528,4 +1532,275 @@ func mustPrototypeWaitingHandoverSalesOrder(
 	}
 
 	return order
+}
+
+type prototypeSalesOrderParty struct {
+	customerID   string
+	customerCode string
+	customerName string
+	channel      string
+}
+
+type prototypeSalesOrderProduct struct {
+	itemID    string
+	skuCode   string
+	itemName  string
+	batchID   string
+	batchNo   string
+	unitPrice string
+}
+
+type prototypeSalesOrderSeed struct {
+	id           string
+	orderNo      string
+	orderDate    string
+	partyKey     string
+	productKey   string
+	qty          string
+	targetStatus salesdomain.SalesOrderStatus
+	createdAt    time.Time
+}
+
+var prototypeSalesOrderParties = map[string]prototypeSalesOrderParty{
+	"minh-anh": {
+		customerID:   "cus-dl-minh-anh",
+		customerCode: "CUS-DL-MINHANH",
+		customerName: "Minh Anh Distributor",
+		channel:      "B2B",
+	},
+	"linh-chi": {
+		customerID:   "cus-dealer-linh-chi",
+		customerCode: "CUS-DL-LINHCHI",
+		customerName: "Linh Chi Dealer",
+		channel:      "DEALER",
+	},
+	"shopee": {
+		customerID:   "cus-mp-shopee",
+		customerCode: "CUS-MP-SHOPEE",
+		customerName: "Shopee Marketplace",
+		channel:      "MP",
+	},
+	"tiktok": {
+		customerID:   "cus-mp-tiktok",
+		customerCode: "CUS-MP-TIKTOK",
+		customerName: "TikTok Shop",
+		channel:      "MP",
+	},
+}
+
+var prototypeSalesOrderProducts = map[string]prototypeSalesOrderProduct{
+	"serum": {
+		itemID:    "item-serum-30ml",
+		skuCode:   "SERUM-30ML",
+		itemName:  "Hydrating Serum 30ml",
+		batchID:   "batch-serum-2604a",
+		batchNo:   "LOT-2604A",
+		unitPrice: "125000",
+	},
+	"cream": {
+		itemID:    "item-cream-50g",
+		skuCode:   "CREAM-50G",
+		itemName:  "Repair Cream 50g",
+		batchID:   "batch-cream-2603b",
+		batchNo:   "LOT-2603B",
+		unitPrice: "95000",
+	},
+}
+
+func prototypeSprint2QASalesOrders(baseTime time.Time) []salesdomain.SalesOrder {
+	seeds := []prototypeSalesOrderSeed{
+		{
+			id:           "so-260427-0001",
+			orderNo:      "SO-260427-0001",
+			orderDate:    "2026-04-27",
+			partyKey:     "linh-chi",
+			productKey:   "serum",
+			qty:          "4",
+			targetStatus: salesdomain.SalesOrderStatusDraft,
+			createdAt:    baseTime.Add(-24 * time.Hour),
+		},
+		{id: "so-260427-0002", orderNo: "SO-260427-0002", orderDate: "2026-04-27", partyKey: "shopee", productKey: "cream", qty: "2", targetStatus: salesdomain.SalesOrderStatusConfirmed, createdAt: baseTime.Add(-23 * time.Hour)},
+		{id: "so-260427-0003", orderNo: "SO-260427-0003", orderDate: "2026-04-27", partyKey: "minh-anh", productKey: "serum", qty: "6", targetStatus: salesdomain.SalesOrderStatusReserved, createdAt: baseTime.Add(-22 * time.Hour)},
+		{id: "so-260427-0004", orderNo: "SO-260427-0004", orderDate: "2026-04-27", partyKey: "tiktok", productKey: "cream", qty: "5", targetStatus: salesdomain.SalesOrderStatusPicking, createdAt: baseTime.Add(-21 * time.Hour)},
+		{id: "so-260427-0005", orderNo: "SO-260427-0005", orderDate: "2026-04-27", partyKey: "linh-chi", productKey: "serum", qty: "1", targetStatus: salesdomain.SalesOrderStatusPicked, createdAt: baseTime.Add(-20 * time.Hour)},
+		{id: "so-260427-0006", orderNo: "SO-260427-0006", orderDate: "2026-04-27", partyKey: "shopee", productKey: "cream", qty: "7", targetStatus: salesdomain.SalesOrderStatusPacking, createdAt: baseTime.Add(-19 * time.Hour)},
+		{id: "so-260427-0007", orderNo: "SO-260427-0007", orderDate: "2026-04-27", partyKey: "minh-anh", productKey: "serum", qty: "8", targetStatus: salesdomain.SalesOrderStatusPacked, createdAt: baseTime.Add(-18 * time.Hour)},
+		{id: "so-260427-0008", orderNo: "SO-260427-0008", orderDate: "2026-04-27", partyKey: "tiktok", productKey: "cream", qty: "3", targetStatus: salesdomain.SalesOrderStatusWaitingHandover, createdAt: baseTime.Add(-17 * time.Hour)},
+		{id: "so-260427-0009", orderNo: "SO-260427-0009", orderDate: "2026-04-27", partyKey: "linh-chi", productKey: "serum", qty: "9", targetStatus: salesdomain.SalesOrderStatusHandedOver, createdAt: baseTime.Add(-16 * time.Hour)},
+		{id: "so-260427-0010", orderNo: "SO-260427-0010", orderDate: "2026-04-27", partyKey: "shopee", productKey: "cream", qty: "4", targetStatus: salesdomain.SalesOrderStatusCancelled, createdAt: baseTime.Add(-15 * time.Hour)},
+		{id: "so-260427-0011", orderNo: "SO-260427-0011", orderDate: "2026-04-27", partyKey: "minh-anh", productKey: "serum", qty: "120", targetStatus: salesdomain.SalesOrderStatusReservationFailed, createdAt: baseTime.Add(-14 * time.Hour)},
+		{id: "so-260427-0012", orderNo: "SO-260427-0012", orderDate: "2026-04-27", partyKey: "tiktok", productKey: "cream", qty: "2", targetStatus: salesdomain.SalesOrderStatusPickException, createdAt: baseTime.Add(-13 * time.Hour)},
+		{id: "so-260427-0013", orderNo: "SO-260427-0013", orderDate: "2026-04-27", partyKey: "linh-chi", productKey: "serum", qty: "5", targetStatus: salesdomain.SalesOrderStatusPackException, createdAt: baseTime.Add(-12 * time.Hour)},
+		{id: "so-260427-0014", orderNo: "SO-260427-0014", orderDate: "2026-04-27", partyKey: "shopee", productKey: "cream", qty: "6", targetStatus: salesdomain.SalesOrderStatusHandoverException, createdAt: baseTime.Add(-11 * time.Hour)},
+	}
+
+	orders := make([]salesdomain.SalesOrder, 0, len(seeds))
+	for _, seed := range seeds {
+		orders = append(orders, mustPrototypeSalesOrder(seed))
+	}
+
+	return orders
+}
+
+func mustPrototypeSalesOrder(seed prototypeSalesOrderSeed) salesdomain.SalesOrder {
+	party, ok := prototypeSalesOrderParties[seed.partyKey]
+	if !ok {
+		panic(fmt.Sprintf("unknown sprint 2 prototype sales order party %q", seed.partyKey))
+	}
+	product, ok := prototypeSalesOrderProducts[seed.productKey]
+	if !ok {
+		panic(fmt.Sprintf("unknown sprint 2 prototype sales order product %q", seed.productKey))
+	}
+
+	reserveLine := prototypeSalesOrderStatusNeedsReservation(seed.targetStatus)
+	line := salesdomain.NewSalesOrderLineInput{
+		ID:               seed.id + "-line-01",
+		LineNo:           1,
+		ItemID:           product.itemID,
+		SKUCode:          product.skuCode,
+		ItemName:         product.itemName,
+		OrderedQty:       decimal.MustQuantity(seed.qty),
+		UOMCode:          "EA",
+		BaseOrderedQty:   decimal.MustQuantity(seed.qty),
+		BaseUOMCode:      "EA",
+		ConversionFactor: decimal.MustQuantity("1"),
+		UnitPrice:        decimal.MustUnitPrice(product.unitPrice),
+		CurrencyCode:     decimal.CurrencyVND.String(),
+	}
+	if reserveLine {
+		line.ReservedQty = decimal.MustQuantity(seed.qty)
+		line.BatchID = product.batchID
+		line.BatchNo = product.batchNo
+	}
+
+	order, err := salesdomain.NewSalesOrderDocument(salesdomain.NewSalesOrderDocumentInput{
+		ID:            seed.id,
+		OrgID:         defaultSalesOrderOrgID,
+		OrderNo:       seed.orderNo,
+		CustomerID:    party.customerID,
+		CustomerCode:  party.customerCode,
+		CustomerName:  party.customerName,
+		Channel:       party.channel,
+		WarehouseID:   "wh-hcm-fg",
+		WarehouseCode: "WH-HCM-FG",
+		OrderDate:     seed.orderDate,
+		CurrencyCode:  decimal.CurrencyVND.String(),
+		Lines:         []salesdomain.NewSalesOrderLineInput{line},
+		CreatedAt:     seed.createdAt,
+		CreatedBy:     "user-sales",
+		UpdatedAt:     seed.createdAt,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("invalid sprint 2 prototype sales order %s: %v", seed.orderNo, err))
+	}
+
+	return mustPrototypeSalesOrderStatus(order, seed.targetStatus, seed.createdAt)
+}
+
+func prototypeSalesOrderStatusNeedsReservation(status salesdomain.SalesOrderStatus) bool {
+	switch status {
+	case salesdomain.SalesOrderStatusReserved,
+		salesdomain.SalesOrderStatusPicking,
+		salesdomain.SalesOrderStatusPicked,
+		salesdomain.SalesOrderStatusPacking,
+		salesdomain.SalesOrderStatusPacked,
+		salesdomain.SalesOrderStatusWaitingHandover,
+		salesdomain.SalesOrderStatusHandedOver,
+		salesdomain.SalesOrderStatusPickException,
+		salesdomain.SalesOrderStatusPackException,
+		salesdomain.SalesOrderStatusHandoverException:
+		return true
+	default:
+		return false
+	}
+}
+
+func mustPrototypeSalesOrderStatus(
+	order salesdomain.SalesOrder,
+	targetStatus salesdomain.SalesOrderStatus,
+	createdAt time.Time,
+) salesdomain.SalesOrder {
+	switch targetStatus {
+	case salesdomain.SalesOrderStatusDraft:
+		return order
+	case salesdomain.SalesOrderStatusConfirmed:
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.Confirm("user-sales", createdAt.Add(5*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusReserved:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusConfirmed, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.MarkReserved("user-sales", createdAt.Add(10*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusPicking:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusReserved, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.StartPicking("user-picker", createdAt.Add(15*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusPicked:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusPicking, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.MarkPicked("user-picker", createdAt.Add(20*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusPacking:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusPicked, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.StartPacking("user-packer", createdAt.Add(25*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusPacked:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusPacking, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.MarkPacked("user-packer", createdAt.Add(30*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusWaitingHandover:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusPacked, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.MarkWaitingHandover("user-handover-operator", createdAt.Add(35*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusHandedOver:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusWaitingHandover, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.MarkHandedOver("user-handover-operator", createdAt.Add(40*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusCancelled:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusConfirmed, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.CancelWithReason("user-sales", "QA cancelled order seed", createdAt.Add(10*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusReservationFailed:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusConfirmed, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.MarkReservationFailed("user-sales", createdAt.Add(10*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusPickException:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusPicking, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.MarkPickException("user-picker", createdAt.Add(20*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusPackException:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusPacking, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.MarkPackException("user-packer", createdAt.Add(30*time.Minute))
+		})
+	case salesdomain.SalesOrderStatusHandoverException:
+		order = mustPrototypeSalesOrderStatus(order, salesdomain.SalesOrderStatusWaitingHandover, createdAt)
+		return mustPrototypeSalesOrderTransition(order, targetStatus, func() (salesdomain.SalesOrder, error) {
+			return order.MarkHandoverException("user-handover-operator", createdAt.Add(40*time.Minute))
+		})
+	default:
+		panic(fmt.Sprintf("unsupported sprint 2 prototype sales order status %q", targetStatus))
+	}
+}
+
+func mustPrototypeSalesOrderTransition(
+	order salesdomain.SalesOrder,
+	targetStatus salesdomain.SalesOrderStatus,
+	transition func() (salesdomain.SalesOrder, error),
+) salesdomain.SalesOrder {
+	updated, err := transition()
+	if err != nil {
+		panic(fmt.Sprintf("invalid prototype sales order transition %s -> %s: %v", order.Status, targetStatus, err))
+	}
+
+	return updated
 }

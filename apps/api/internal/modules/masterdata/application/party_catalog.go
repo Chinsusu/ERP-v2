@@ -816,7 +816,7 @@ func prototypeSuppliers() []domain.Supplier {
 
 func prototypeCustomers() []domain.Customer {
 	baseTime := time.Date(2026, 4, 26, 12, 0, 0, 0, time.UTC)
-	customers := make([]domain.Customer, 0, 4)
+	customers := make([]domain.Customer, 0, 5)
 	for _, input := range []domain.NewCustomerInput{
 		{
 			ID:            "cus-dl-minh-anh",
@@ -874,6 +874,25 @@ func prototypeCustomers() []domain.Customer {
 			Status:        domain.CustomerStatusActive,
 			CreatedAt:     baseTime.Add(20 * time.Minute),
 			UpdatedAt:     baseTime.Add(20 * time.Minute),
+		},
+		{
+			ID:            "cus-mp-tiktok",
+			Code:          "CUS-MP-TIKTOK",
+			Name:          "TikTok Shop",
+			Type:          domain.CustomerTypeMarketplace,
+			ChannelCode:   "MP",
+			PriceListCode: "PL-MP-2026",
+			DiscountGroup: "marketplace",
+			CreditLimit:   decimal.MustMoneyAmount("0"),
+			PaymentTerms:  "PREPAID",
+			ContactName:   "TikTok Ops",
+			Phone:         "+84909888555",
+			Email:         "ops@tiktokshop.example",
+			TaxCode:       "0315678005",
+			Address:       "Marketplace fulfillment channel",
+			Status:        domain.CustomerStatusActive,
+			CreatedAt:     baseTime.Add(25 * time.Minute),
+			UpdatedAt:     baseTime.Add(25 * time.Minute),
 		},
 		{
 			ID:            "cus-internal-hcm-store",
