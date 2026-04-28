@@ -631,6 +631,21 @@ func (uc VerifyCarrierManifestScan) evaluateMissingScanCode(
 				Message:  "Shipment is not packed and cannot be handed over",
 			}
 		}
+		if shipmentCarrierCode := strings.ToUpper(strings.TrimSpace(shipment.CarrierCode)); shipmentCarrierCode != "" && shipmentCarrierCode != manifest.CarrierCode {
+			return CarrierManifestScanResult{
+				Manifest: manifest,
+				Line: &domain.CarrierManifestLine{
+					ShipmentID:  shipment.ID,
+					OrderNo:     shipment.OrderNo,
+					TrackingNo:  shipment.TrackingNo,
+					PackageCode: shipment.PackageCode,
+					StagingZone: shipment.StagingZone,
+				},
+				Code:     domain.ScanResultManifestMismatch,
+				Severity: "danger",
+				Message:  "Shipment carrier does not match carrier manifest",
+			}
+		}
 
 		return CarrierManifestScanResult{
 			Manifest: manifest,
@@ -1021,6 +1036,7 @@ func prototypePackedShipments() []domain.PackedShipment {
 		{ID: "ship-hcm-260426-004", OrderNo: "SO-260426-004", TrackingNo: "GHN260426004", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-A03", StagingZone: "handover-a", HandoverZoneCode: "HANDOVER-A", HandoverBinCode: "TOTE-A03", Packed: true},
 		{ID: "ship-hcm-260426-099", OrderNo: "SO-260426-099", TrackingNo: "GHN260426099", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "PACKING-LANE-01", StagingZone: "packing", Packed: false},
 		{ID: "ship-hcm-vtp-260426-001", OrderNo: "SO-260426-011", TrackingNo: "VTP260426011", CarrierCode: "VTP", CarrierName: "Viettel Post", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-B01", StagingZone: "handover-b", HandoverZoneCode: "HANDOVER-B", HandoverBinCode: "TOTE-B01", Packed: true},
+		{ID: "ship-hcm-vtp-260426-002", OrderNo: "SO-260426-012", TrackingNo: "VTP260426012", CarrierCode: "VTP", CarrierName: "Viettel Post", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-B02", StagingZone: "handover-b", HandoverZoneCode: "HANDOVER-B", HandoverBinCode: "TOTE-B02", Packed: true},
 		{ID: "ship-hn-260426-001", OrderNo: "SO-260426-HN-011", TrackingNo: "GHNHN260426001", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hn", WarehouseCode: "HN", PackageCode: "HN-TOTE-01", StagingZone: "hn-handover", HandoverZoneCode: "HN-HANDOVER", HandoverBinCode: "HN-TOTE-01", Packed: true},
 	}
 }
