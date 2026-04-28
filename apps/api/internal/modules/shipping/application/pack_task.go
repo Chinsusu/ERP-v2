@@ -347,7 +347,9 @@ func (uc ReportPackTaskException) Execute(
 	if err != nil {
 		return PackTaskResult{}, err
 	}
-	if normalizePackTaskExceptionStatus(input.ExceptionCode) == "" {
+	exceptionCode := normalizePackTaskExceptionCode(input.ExceptionCode)
+	exceptionStatus := normalizePackTaskExceptionStatus(input.ExceptionCode)
+	if exceptionStatus == "" {
 		return PackTaskResult{}, domain.ErrPackTaskInvalidStatus
 	}
 	if current.Status == domain.PackTaskStatusPackException && (strings.TrimSpace(input.LineID) == "" || packLineAlreadyInException(current, input.LineID)) {
@@ -373,8 +375,9 @@ func (uc ReportPackTaskException) Execute(
 		}
 	}
 	metadata := map[string]any{
-		"exception_code": string(domain.PackTaskStatusPackException),
-		"investigation":  strings.TrimSpace(input.Investigation),
+		"exception_code":   exceptionCode,
+		"exception_status": string(exceptionStatus),
+		"investigation":    strings.TrimSpace(input.Investigation),
 	}
 	if strings.TrimSpace(input.LineID) != "" {
 		metadata["line_id"] = strings.TrimSpace(input.LineID)
@@ -619,9 +622,23 @@ func lineAlreadyPacked(task domain.PackTask, lineID string, packedQty string) bo
 }
 
 func normalizePackTaskExceptionStatus(value string) domain.PackTaskStatus {
+	if normalizePackTaskExceptionCode(value) != "" {
+		return domain.PackTaskStatusPackException
+	}
+
+	return ""
+}
+
+func normalizePackTaskExceptionCode(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case string(domain.PackTaskStatusPackException):
-		return domain.PackTaskStatusPackException
+		return string(domain.PackTaskStatusPackException)
+	case "missing_stock", "missing_item", "short_pack", "shortage":
+		return "missing_stock"
+	case "wrong_sku":
+		return "wrong_sku"
+	case "wrong_batch":
+		return "wrong_batch"
 	default:
 		return ""
 	}
