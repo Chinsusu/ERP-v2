@@ -72,19 +72,40 @@ ALTER TABLE sales.sales_order_lines
   ADD COLUMN line_discount_amount numeric(18, 2) NOT NULL DEFAULT 0,
   ADD COLUMN line_amount numeric(18, 2) NOT NULL DEFAULT 0;
 
+WITH line_uom AS (
+  SELECT
+    line.id AS sales_order_line_id,
+    ordered_units.code AS uom_code,
+    base_units.code AS base_uom_code,
+    COALESCE(conversion.factor, 1.000000) AS conversion_factor
+  FROM sales.sales_order_lines AS line
+  JOIN mdm.units AS ordered_units ON ordered_units.id = line.unit_id
+  JOIN mdm.items AS item ON item.id = line.item_id
+  JOIN mdm.units AS base_units ON base_units.id = item.base_unit_id
+  LEFT JOIN LATERAL (
+    SELECT uom_conversion.factor
+    FROM mdm.uom_conversions AS uom_conversion
+    WHERE uom_conversion.from_uom_code = ordered_units.code
+      AND uom_conversion.to_uom_code = base_units.code
+      AND uom_conversion.is_active
+      AND (uom_conversion.item_id IS NULL OR uom_conversion.item_id = line.item_id)
+      AND uom_conversion.effective_from <= CURRENT_DATE
+      AND (uom_conversion.effective_to IS NULL OR uom_conversion.effective_to >= CURRENT_DATE)
+    ORDER BY (uom_conversion.item_id IS NULL), uom_conversion.effective_from DESC
+    LIMIT 1
+  ) AS conversion ON ordered_units.code <> base_units.code
+  WHERE ordered_units.code = base_units.code
+    OR conversion.factor IS NOT NULL
+)
 UPDATE sales.sales_order_lines AS line
 SET
-  uom_code = ordered_units.code,
-  base_ordered_qty = line.ordered_qty,
-  base_uom_code = base_units.code,
-  conversion_factor = 1.000000,
-  line_amount = round(line.ordered_qty * line.unit_price, 2)
-FROM mdm.units AS ordered_units,
-  mdm.items AS item,
-  mdm.units AS base_units
-WHERE ordered_units.id = line.unit_id
-  AND item.id = line.item_id
-  AND base_units.id = item.base_unit_id;
+  uom_code = line_uom.uom_code,
+  base_ordered_qty = round(line.ordered_qty * line_uom.conversion_factor, 6),
+  base_uom_code = line_uom.base_uom_code,
+  conversion_factor = line_uom.conversion_factor,
+  line_amount = round((line.ordered_qty * line.unit_price) - line.line_discount_amount, 2)
+FROM line_uom
+WHERE line_uom.sales_order_line_id = line.id;
 
 ALTER TABLE sales.sales_order_lines
   ALTER COLUMN uom_code SET NOT NULL,
