@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -129,5 +130,54 @@ func TestReceiveReturnRoutesNotReusableToLabPlaceholder(t *testing.T) {
 	}
 	if result.Receipt.StockMovement != nil {
 		t.Fatalf("stock movement = %+v, want nil", result.Receipt.StockMovement)
+	}
+}
+
+func TestReceiveReturnRejectsOrderBeforeHandoverOrDelivery(t *testing.T) {
+	store := NewPrototypeReturnReceiptStore()
+	service := NewPrototypeReceiveReturnAt(
+		store,
+		audit.NewInMemoryLogStore(),
+		time.Date(2026, 4, 26, 11, 30, 0, 0, time.UTC),
+	)
+
+	_, err := service.Execute(context.Background(), ReceiveReturnInput{
+		WarehouseID:      "wh-hcm",
+		ScanCode:         "GHN260426009",
+		PackageCondition: "sealed",
+		Disposition:      "needs_inspection",
+		ActorID:          "user-warehouse-lead",
+		RequestID:        "req-return-not-eligible",
+	})
+	if !errors.Is(err, ErrExpectedReturnOrderNotReturnable) {
+		t.Fatalf("error = %v, want order status not returnable", err)
+	}
+}
+
+func TestReceiveReturnRejectsDuplicateKnownReturn(t *testing.T) {
+	store := NewPrototypeReturnReceiptStore()
+	service := NewPrototypeReceiveReturnAt(
+		store,
+		audit.NewInMemoryLogStore(),
+		time.Date(2026, 4, 26, 11, 30, 0, 0, time.UTC),
+	)
+
+	input := ReceiveReturnInput{
+		WarehouseID:      "wh-hcm",
+		ScanCode:         "GHN260426001",
+		PackageCondition: "sealed",
+		Disposition:      "needs_inspection",
+		ActorID:          "user-warehouse-lead",
+		RequestID:        "req-return-first-scan",
+	}
+	if _, err := service.Execute(context.Background(), input); err != nil {
+		t.Fatalf("first scan failed: %v", err)
+	}
+
+	input.ScanCode = "SO-260426-001"
+	input.RequestID = "req-return-duplicate-scan"
+	_, err := service.Execute(context.Background(), input)
+	if !errors.Is(err, ErrReturnReceiptDuplicate) {
+		t.Fatalf("error = %v, want duplicate return receipt", err)
 	}
 }
