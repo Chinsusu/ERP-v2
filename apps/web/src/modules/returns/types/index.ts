@@ -92,6 +92,24 @@ export type ReturnDispositionAction = {
   decidedAt: string;
 };
 
+export type ReturnAttachment = {
+  id: string;
+  receiptId: string;
+  receiptNo: string;
+  inspectionId: string;
+  fileName: string;
+  fileExt?: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  storageBucket: string;
+  storageKey: string;
+  status: "active" | "deleted" | "quarantined";
+  uploadedBy: string;
+  note?: string;
+  auditLogId?: string;
+  uploadedAt: string;
+};
+
 export type InspectReturnInput = {
   receipt: ReturnReceipt;
   condition: ReturnInspectionCondition;
@@ -103,6 +121,13 @@ export type InspectReturnInput = {
 export type ApplyReturnDispositionInput = {
   receipt: ReturnReceipt;
   disposition: ReturnDisposition;
+  note?: string;
+};
+
+export type UploadReturnAttachmentInput = {
+  receipt: ReturnReceipt;
+  inspectionId: string;
+  file: File;
   note?: string;
 };
 
