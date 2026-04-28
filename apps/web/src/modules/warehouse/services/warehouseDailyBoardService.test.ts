@@ -3,6 +3,7 @@ import { prototypeReturnReceipts } from "../../returns/services/returnReceivingS
 import { prototypeCarrierManifests } from "../../shipping/services/carrierManifestService";
 import type { GoodsReceipt } from "../../receiving/types";
 import {
+  buildWarehouseFulfillmentDrillDownHref,
   closeEndOfDayReconciliation,
   composeWarehouseDailyBoard,
   getEndOfDayReconciliations,
@@ -182,6 +183,23 @@ describe("warehouseDailyBoardService", () => {
       packedOrders: 1,
       generatedAt: "2026-04-26T00:00:00Z"
     });
+  });
+
+  it("builds drill-down links for fulfillment metrics", () => {
+    expect(
+      buildWarehouseFulfillmentDrillDownHref("waiting_handover", {
+        warehouseId: "wh-hcm",
+        date: "2026-04-26",
+        shiftCode: "day",
+        carrierCode: "ghn"
+      })
+    ).toBe("/warehouse?warehouse_id=wh-hcm&date=2026-04-26&shift_code=day&carrier_code=GHN&queue=handover#task-board");
+    expect(buildWarehouseFulfillmentDrillDownHref("reserved", { warehouseId: "wh-hcm", date: "2026-04-26" })).toBe(
+      "/sales?warehouse_id=wh-hcm-fg&date=2026-04-26&status=reserved#sales-list"
+    );
+    expect(buildWarehouseFulfillmentDrillDownHref("missing", { carrierCode: "VTP" })).toBe(
+      "/shipping?carrier_code=VTP&status=exception#carrier-manifest-list"
+    );
   });
 
   it("keeps active shift open when a P0 exception exists", () => {

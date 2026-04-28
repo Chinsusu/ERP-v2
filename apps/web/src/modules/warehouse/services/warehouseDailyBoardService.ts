@@ -51,6 +51,15 @@ export const statusOptions: { label: string; value: "" | WarehouseDailyTaskStatu
   { label: "Mismatch", value: "mismatch" }
 ];
 
+export type WarehouseFulfillmentDrillDownKey =
+  | "new"
+  | "reserved"
+  | "picking"
+  | "packed"
+  | "waiting_handover"
+  | "missing"
+  | "handover";
+
 export const warehouseDailyBoardCounterSources: WarehouseDailyBoardCounterSource[] = [
   {
     counter: "waiting",
@@ -325,6 +334,29 @@ export async function getWarehouseFulfillmentMetrics(
     return fromFulfillmentMetricsApi(metrics);
   } catch {
     return undefined;
+  }
+}
+
+export function buildWarehouseFulfillmentDrillDownHref(
+  key: WarehouseFulfillmentDrillDownKey,
+  query: WarehouseDailyBoardQuery = {}
+) {
+  switch (key) {
+    case "reserved":
+      return salesOrderDrillDownHref(query, "reserved");
+    case "missing":
+      return carrierManifestDrillDownHref(query, "exception");
+    case "handover":
+      return carrierManifestDrillDownHref(query, "handed_over");
+    case "waiting_handover":
+      return warehouseTaskDrillDownHref(query, "handover");
+    case "picking":
+      return warehouseTaskDrillDownHref(query, "picking");
+    case "packed":
+      return warehouseTaskDrillDownHref(query, "packed");
+    case "new":
+    default:
+      return warehouseTaskDrillDownHref(query, "waiting");
   }
 }
 
@@ -734,6 +766,65 @@ function hasPriorityZero(tasks: WarehouseDailyTask[]) {
 
 function normalizeCarrierCode(carrierCode?: string) {
   return carrierCode?.trim().toUpperCase() ?? "";
+}
+
+function warehouseTaskDrillDownHref(query: WarehouseDailyBoardQuery, queue: WarehouseDailyTaskStatus) {
+  return drillDownHref(
+    "/warehouse",
+    {
+      warehouse_id: query.warehouseId,
+      date: query.date,
+      shift_code: query.shiftCode,
+      carrier_code: normalizeCarrierCode(query.carrierCode) || undefined,
+      queue
+    },
+    "task-board"
+  );
+}
+
+function salesOrderDrillDownHref(query: WarehouseDailyBoardQuery, status: string) {
+  return drillDownHref(
+    "/sales",
+    {
+      warehouse_id: salesWarehouseIdForDrillDown(query.warehouseId),
+      date: query.date,
+      status
+    },
+    "sales-list"
+  );
+}
+
+function carrierManifestDrillDownHref(query: WarehouseDailyBoardQuery, status: string) {
+  return drillDownHref(
+    "/shipping",
+    {
+      warehouse_id: query.warehouseId,
+      date: query.date,
+      carrier_code: normalizeCarrierCode(query.carrierCode) || undefined,
+      status
+    },
+    "carrier-manifest-list"
+  );
+}
+
+function drillDownHref(path: string, query: Record<string, string | undefined>, hash: string) {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+  const queryString = params.toString();
+
+  return `${path}${queryString ? `?${queryString}` : ""}#${hash}`;
+}
+
+function salesWarehouseIdForDrillDown(warehouseId?: string) {
+  if (warehouseId === "wh-hcm") {
+    return "wh-hcm-fg";
+  }
+
+  return warehouseId;
 }
 
 function matchesWarehouseScope(taskWarehouseId: string, queryWarehouseId: string) {
