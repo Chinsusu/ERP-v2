@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 )
@@ -159,6 +160,114 @@ func TestApplyReturnDispositionRoutesNotReusableAndQAHold(t *testing.T) {
 					quarantineLogs[0].AfterData["delta_available"] != "0.000000" {
 					t.Fatalf("quarantine audit log = %+v, want qc hold with zero available delta", quarantineLogs[0])
 				}
+			}
+		})
+	}
+}
+
+func TestApplyReturnDispositionStockRegressionByDisposition(t *testing.T) {
+	tests := []struct {
+		name                    string
+		condition               string
+		disposition             string
+		wantMovementCount       int
+		wantMovementType        string
+		wantStockStatus         string
+		wantDeltaOnHand         string
+		wantDeltaReserved       string
+		wantDeltaAvailable      string
+		wantRecordedAuditAction string
+	}{
+		{
+			name:                    "reusable moves to available",
+			condition:               "intact",
+			disposition:             "reusable",
+			wantMovementCount:       1,
+			wantMovementType:        "return_restock",
+			wantStockStatus:         "available",
+			wantDeltaOnHand:         "1.000000",
+			wantDeltaReserved:       "0.000000",
+			wantDeltaAvailable:      "1.000000",
+			wantRecordedAuditAction: returnStockMovementRecordedAction,
+		},
+		{
+			name:                    "needs inspection moves to quarantine only",
+			condition:               "seal_torn",
+			disposition:             "needs_inspection",
+			wantMovementCount:       1,
+			wantMovementType:        "return_receipt",
+			wantStockStatus:         "qc_hold",
+			wantDeltaOnHand:         "1.000000",
+			wantDeltaReserved:       "0.000000",
+			wantDeltaAvailable:      "0.000000",
+			wantRecordedAuditAction: returnStockQuarantinedAction,
+		},
+		{
+			name:              "not reusable does not move stock",
+			condition:         "damaged",
+			disposition:       "not_reusable",
+			wantMovementCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := NewPrototypeReturnReceiptStore()
+			auditStore := audit.NewInMemoryLogStore()
+			inspectPrototypeReceipt(t, store, auditStore, tt.condition, tt.disposition)
+			movementStore := inventoryapp.NewInMemoryStockMovementStore()
+			service := NewApplyReturnDisposition(store, movementStore, auditStore)
+			service.clock = func() time.Time { return time.Date(2026, 4, 26, 12, 0, 0, 0, time.UTC) }
+
+			if _, err := service.Execute(context.Background(), ApplyReturnDispositionInput{
+				ReceiptID:   "rr-260426-0001",
+				Disposition: tt.disposition,
+				ActorID:     "user-return-inspector",
+				RequestID:   "req-return-regression",
+			}); err != nil {
+				t.Fatalf("apply return disposition: %v", err)
+			}
+
+			movements := movementStore.Movements()
+			if len(movements) != tt.wantMovementCount {
+				t.Fatalf("stock movements = %d, want %d", len(movements), tt.wantMovementCount)
+			}
+			if tt.wantMovementCount == 0 {
+				logs, err := auditStore.List(context.Background(), audit.Query{EntityType: returnStockMovementEntityType})
+				if err != nil {
+					t.Fatalf("list stock movement audit logs: %v", err)
+				}
+				if len(logs) != 0 {
+					t.Fatalf("stock movement audit logs = %+v, want none", logs)
+				}
+				return
+			}
+
+			movement := movements[0]
+			if string(movement.MovementType) != tt.wantMovementType || string(movement.StockStatus) != tt.wantStockStatus {
+				t.Fatalf("movement = %+v, want %s/%s", movement, tt.wantMovementType, tt.wantStockStatus)
+			}
+			delta, err := movement.BalanceDelta()
+			if err != nil {
+				t.Fatalf("balance delta: %v", err)
+			}
+			if delta.OnHand.String() != tt.wantDeltaOnHand ||
+				delta.Reserved.String() != tt.wantDeltaReserved ||
+				delta.Available.String() != tt.wantDeltaAvailable {
+				t.Fatalf("delta = %+v, want on_hand %s reserved %s available %s", delta, tt.wantDeltaOnHand, tt.wantDeltaReserved, tt.wantDeltaAvailable)
+			}
+
+			logs, err := auditStore.List(context.Background(), audit.Query{Action: tt.wantRecordedAuditAction})
+			if err != nil {
+				t.Fatalf("list stock movement audit logs: %v", err)
+			}
+			if len(logs) != 1 {
+				t.Fatalf("stock movement audit logs = %d, want 1", len(logs))
+			}
+			if logs[0].AfterData["delta_on_hand"] != tt.wantDeltaOnHand ||
+				logs[0].AfterData["delta_reserved"] != tt.wantDeltaReserved ||
+				logs[0].AfterData["delta_available"] != tt.wantDeltaAvailable {
+				t.Fatalf("stock movement audit log = %+v, want movement deltas", logs[0])
 			}
 		})
 	}
