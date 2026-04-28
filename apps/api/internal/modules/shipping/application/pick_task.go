@@ -13,6 +13,7 @@ import (
 	salesdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
 
 var ErrPickTaskNotFound = errors.New("pick task not found")
@@ -21,9 +22,24 @@ var ErrPickTaskSalesOrderNotReserved = errors.New("sales order must be reserved 
 var ErrPickTaskReservationMissing = errors.New("active stock reservation is required for every sales order line")
 
 type PickTaskStore interface {
+	ListPickTasks(ctx context.Context) ([]domain.PickTask, error)
 	GetPickTask(ctx context.Context, id string) (domain.PickTask, error)
 	GetPickTaskBySalesOrder(ctx context.Context, salesOrderID string) (domain.PickTask, error)
 	SavePickTask(ctx context.Context, task domain.PickTask) error
+}
+
+type PickTaskFilter struct {
+	WarehouseID string
+	Status      domain.PickTaskStatus
+	AssignedTo  string
+}
+
+type ListPickTasks struct {
+	store PickTaskStore
+}
+
+type GetPickTask struct {
+	store PickTaskStore
 }
 
 type GeneratePickTaskFromReservedOrder struct {
@@ -45,6 +61,52 @@ type PickTaskResult struct {
 	AuditLogID string
 }
 
+type PickTaskActionInput struct {
+	PickTaskID string
+	ActorID    string
+	RequestID  string
+}
+
+type ConfirmPickTaskLineInput struct {
+	PickTaskID string
+	LineID     string
+	PickedQty  string
+	ActorID    string
+	RequestID  string
+}
+
+type ReportPickTaskExceptionInput struct {
+	PickTaskID    string
+	ExceptionCode string
+	ActorID       string
+	RequestID     string
+	Investigation string
+}
+
+type StartPickTask struct {
+	store    PickTaskStore
+	auditLog audit.LogStore
+	clock    func() time.Time
+}
+
+type ConfirmPickTaskLine struct {
+	store    PickTaskStore
+	auditLog audit.LogStore
+	clock    func() time.Time
+}
+
+type CompletePickTask struct {
+	store    PickTaskStore
+	auditLog audit.LogStore
+	clock    func() time.Time
+}
+
+type ReportPickTaskException struct {
+	store    PickTaskStore
+	auditLog audit.LogStore
+	clock    func() time.Time
+}
+
 func NewGeneratePickTaskFromReservedOrder(
 	store PickTaskStore,
 	auditLog audit.LogStore,
@@ -54,6 +116,71 @@ func NewGeneratePickTaskFromReservedOrder(
 		auditLog: auditLog,
 		clock:    func() time.Time { return time.Now().UTC() },
 	}
+}
+
+func NewListPickTasks(store PickTaskStore) ListPickTasks {
+	return ListPickTasks{store: store}
+}
+
+func NewGetPickTask(store PickTaskStore) GetPickTask {
+	return GetPickTask{store: store}
+}
+
+func NewStartPickTask(store PickTaskStore, auditLog audit.LogStore) StartPickTask {
+	return StartPickTask{store: store, auditLog: auditLog, clock: func() time.Time { return time.Now().UTC() }}
+}
+
+func NewConfirmPickTaskLine(store PickTaskStore, auditLog audit.LogStore) ConfirmPickTaskLine {
+	return ConfirmPickTaskLine{store: store, auditLog: auditLog, clock: func() time.Time { return time.Now().UTC() }}
+}
+
+func NewCompletePickTask(store PickTaskStore, auditLog audit.LogStore) CompletePickTask {
+	return CompletePickTask{store: store, auditLog: auditLog, clock: func() time.Time { return time.Now().UTC() }}
+}
+
+func NewReportPickTaskException(store PickTaskStore, auditLog audit.LogStore) ReportPickTaskException {
+	return ReportPickTaskException{store: store, auditLog: auditLog, clock: func() time.Time { return time.Now().UTC() }}
+}
+
+func (uc ListPickTasks) Execute(ctx context.Context, filter PickTaskFilter) ([]domain.PickTask, error) {
+	if uc.store == nil {
+		return nil, errors.New("pick task store is required")
+	}
+	tasks, err := uc.store.ListPickTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filter.WarehouseID = strings.TrimSpace(filter.WarehouseID)
+	filter.AssignedTo = strings.TrimSpace(filter.AssignedTo)
+	filter.Status = domain.NormalizePickTaskStatus(filter.Status)
+	if filter.WarehouseID == "" && filter.AssignedTo == "" && filter.Status == "" {
+		return tasks, nil
+	}
+
+	filtered := make([]domain.PickTask, 0, len(tasks))
+	for _, task := range tasks {
+		if filter.WarehouseID != "" && strings.TrimSpace(task.WarehouseID) != filter.WarehouseID {
+			continue
+		}
+		if filter.AssignedTo != "" && strings.TrimSpace(task.AssignedTo) != filter.AssignedTo {
+			continue
+		}
+		if filter.Status != "" && task.Status != filter.Status {
+			continue
+		}
+		filtered = append(filtered, task.Clone())
+	}
+
+	return filtered, nil
+}
+
+func (uc GetPickTask) Execute(ctx context.Context, id string) (domain.PickTask, error) {
+	if uc.store == nil {
+		return domain.PickTask{}, errors.New("pick task store is required")
+	}
+
+	return uc.store.GetPickTask(ctx, id)
 }
 
 func (uc GeneratePickTaskFromReservedOrder) Execute(
@@ -116,6 +243,123 @@ func (uc GeneratePickTaskFromReservedOrder) Execute(
 	}
 
 	return PickTaskResult{PickTask: task, AuditLogID: log.ID}, nil
+}
+
+func (uc StartPickTask) Execute(ctx context.Context, input PickTaskActionInput) (PickTaskResult, error) {
+	if err := ensurePickTaskActionReady(uc.store, uc.auditLog, input.ActorID); err != nil {
+		return PickTaskResult{}, err
+	}
+	current, err := uc.store.GetPickTask(ctx, input.PickTaskID)
+	if err != nil {
+		return PickTaskResult{}, err
+	}
+	if current.Status == domain.PickTaskStatusInProgress || current.Status == domain.PickTaskStatusCompleted {
+		return PickTaskResult{PickTask: current}, nil
+	}
+
+	now := uc.clock()
+	updated := current
+	if updated.Status == domain.PickTaskStatusCreated {
+		updated, err = updated.Assign(input.ActorID, now)
+		if err != nil {
+			return PickTaskResult{}, err
+		}
+	}
+	updated, err = updated.Start(input.ActorID, now)
+	if err != nil {
+		return PickTaskResult{}, err
+	}
+
+	return saveAndAuditPickTaskAction(ctx, uc.store, uc.auditLog, input.ActorID, input.RequestID, "shipping.pick_task.started", current, updated, nil, now)
+}
+
+func (uc ConfirmPickTaskLine) Execute(ctx context.Context, input ConfirmPickTaskLineInput) (PickTaskResult, error) {
+	if err := ensurePickTaskActionReady(uc.store, uc.auditLog, input.ActorID); err != nil {
+		return PickTaskResult{}, err
+	}
+	current, err := uc.store.GetPickTask(ctx, input.PickTaskID)
+	if err != nil {
+		return PickTaskResult{}, err
+	}
+	if lineAlreadyPicked(current, input.LineID, input.PickedQty) {
+		return PickTaskResult{PickTask: current}, nil
+	}
+
+	now := uc.clock()
+	updated, err := current.MarkLinePicked(input.LineID, input.PickedQty, input.ActorID, now)
+	if err != nil {
+		return PickTaskResult{}, err
+	}
+
+	return saveAndAuditPickTaskAction(ctx, uc.store, uc.auditLog, input.ActorID, input.RequestID, "shipping.pick_task.line_confirmed", current, updated, map[string]any{"line_id": strings.TrimSpace(input.LineID)}, now)
+}
+
+func (uc CompletePickTask) Execute(ctx context.Context, input PickTaskActionInput) (PickTaskResult, error) {
+	if err := ensurePickTaskActionReady(uc.store, uc.auditLog, input.ActorID); err != nil {
+		return PickTaskResult{}, err
+	}
+	current, err := uc.store.GetPickTask(ctx, input.PickTaskID)
+	if err != nil {
+		return PickTaskResult{}, err
+	}
+	if current.Status == domain.PickTaskStatusCompleted {
+		return PickTaskResult{PickTask: current}, nil
+	}
+
+	now := uc.clock()
+	updated, err := current.Complete(input.ActorID, now)
+	if err != nil {
+		return PickTaskResult{}, err
+	}
+
+	return saveAndAuditPickTaskAction(ctx, uc.store, uc.auditLog, input.ActorID, input.RequestID, "shipping.pick_task.completed", current, updated, nil, now)
+}
+
+func (uc ReportPickTaskException) Execute(
+	ctx context.Context,
+	input ReportPickTaskExceptionInput,
+) (PickTaskResult, error) {
+	if err := ensurePickTaskActionReady(uc.store, uc.auditLog, input.ActorID); err != nil {
+		return PickTaskResult{}, err
+	}
+	current, err := uc.store.GetPickTask(ctx, input.PickTaskID)
+	if err != nil {
+		return PickTaskResult{}, err
+	}
+	exceptionStatus := normalizePickTaskExceptionStatus(input.ExceptionCode)
+	if exceptionStatus == "" {
+		return PickTaskResult{}, domain.ErrPickTaskInvalidStatus
+	}
+	if current.Status == exceptionStatus {
+		return PickTaskResult{PickTask: current}, nil
+	}
+	if current.Status == domain.PickTaskStatusCompleted || isPickTaskExceptionStatus(current.Status) {
+		return PickTaskResult{}, domain.ErrPickTaskInvalidTransition
+	}
+
+	now := uc.clock()
+	updated := current.Clone()
+	updated.Status = exceptionStatus
+	updated.UpdatedAt = now
+	if err := updated.Validate(); err != nil {
+		return PickTaskResult{}, err
+	}
+
+	return saveAndAuditPickTaskAction(
+		ctx,
+		uc.store,
+		uc.auditLog,
+		input.ActorID,
+		input.RequestID,
+		"shipping.pick_task.exception_reported",
+		current,
+		updated,
+		map[string]any{
+			"exception_code": string(exceptionStatus),
+			"investigation":  strings.TrimSpace(input.Investigation),
+		},
+		now,
+	)
 }
 
 type PrototypePickTaskStore struct {
@@ -185,9 +429,9 @@ func (s *PrototypePickTaskStore) SavePickTask(_ context.Context, task domain.Pic
 	return nil
 }
 
-func (s *PrototypePickTaskStore) ListPickTasks() []domain.PickTask {
+func (s *PrototypePickTaskStore) ListPickTasks(_ context.Context) ([]domain.PickTask, error) {
 	if s == nil {
-		return nil
+		return nil, errors.New("pick task store is required")
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -198,7 +442,47 @@ func (s *PrototypePickTaskStore) ListPickTasks() []domain.PickTask {
 	}
 	domain.SortPickTasks(tasks)
 
-	return tasks
+	return tasks, nil
+}
+
+func saveAndAuditPickTaskAction(
+	ctx context.Context,
+	store PickTaskStore,
+	auditLog audit.LogStore,
+	actorID string,
+	requestID string,
+	action string,
+	before domain.PickTask,
+	after domain.PickTask,
+	metadata map[string]any,
+	createdAt time.Time,
+) (PickTaskResult, error) {
+	if err := store.SavePickTask(ctx, after); err != nil {
+		return PickTaskResult{}, err
+	}
+	log, err := newPickTaskActionAuditLog(actorID, requestID, action, before, after, metadata, createdAt)
+	if err != nil {
+		return PickTaskResult{}, err
+	}
+	if err := auditLog.Record(ctx, log); err != nil {
+		return PickTaskResult{}, err
+	}
+
+	return PickTaskResult{PickTask: after, AuditLogID: log.ID}, nil
+}
+
+func ensurePickTaskActionReady(store PickTaskStore, auditLog audit.LogStore, actorID string) error {
+	if store == nil {
+		return errors.New("pick task store is required")
+	}
+	if auditLog == nil {
+		return errors.New("audit log store is required")
+	}
+	if strings.TrimSpace(actorID) == "" {
+		return domain.ErrPickTaskActorRequired
+	}
+
+	return nil
 }
 
 func newPickTaskLinesFromReservations(
@@ -255,6 +539,58 @@ func activeReservationsByLineID(
 	return byLineID
 }
 
+func lineAlreadyPicked(task domain.PickTask, lineID string, pickedQty string) bool {
+	qty := strings.TrimSpace(pickedQty)
+	for _, line := range task.Lines {
+		if strings.TrimSpace(line.ID) == strings.TrimSpace(lineID) &&
+			line.Status == domain.PickTaskLineStatusPicked &&
+			line.QtyPicked.String() == normalizeQuantityText(qty) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func normalizePickTaskExceptionStatus(value string) domain.PickTaskStatus {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case string(domain.PickTaskStatusMissingStock):
+		return domain.PickTaskStatusMissingStock
+	case string(domain.PickTaskStatusWrongSKU):
+		return domain.PickTaskStatusWrongSKU
+	case string(domain.PickTaskStatusWrongBatch):
+		return domain.PickTaskStatusWrongBatch
+	case string(domain.PickTaskStatusWrongLocation):
+		return domain.PickTaskStatusWrongLocation
+	case string(domain.PickTaskStatusCancelled):
+		return domain.PickTaskStatusCancelled
+	default:
+		return ""
+	}
+}
+
+func isPickTaskExceptionStatus(status domain.PickTaskStatus) bool {
+	switch status {
+	case domain.PickTaskStatusMissingStock,
+		domain.PickTaskStatusWrongSKU,
+		domain.PickTaskStatusWrongBatch,
+		domain.PickTaskStatusWrongLocation,
+		domain.PickTaskStatusCancelled:
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeQuantityText(value string) string {
+	quantity, err := decimal.ParseQuantity(value)
+	if err != nil {
+		return strings.TrimSpace(value)
+	}
+
+	return quantity.String()
+}
+
 func newPickTaskAuditLog(
 	actorID string,
 	requestID string,
@@ -283,6 +619,57 @@ func newPickTaskAuditLog(
 		},
 		CreatedAt: createdAt,
 	})
+}
+
+func newPickTaskActionAuditLog(
+	actorID string,
+	requestID string,
+	action string,
+	before domain.PickTask,
+	after domain.PickTask,
+	metadata map[string]any,
+	createdAt time.Time,
+) (audit.Log, error) {
+	baseMetadata := map[string]any{"source": "pick task action"}
+	for key, value := range metadata {
+		baseMetadata[key] = value
+	}
+
+	return audit.NewLog(audit.NewLogInput{
+		OrgID:      after.OrgID,
+		ActorID:    strings.TrimSpace(actorID),
+		Action:     action,
+		EntityType: "shipping.pick_task",
+		EntityID:   after.ID,
+		RequestID:  strings.TrimSpace(requestID),
+		BeforeData: pickTaskAuditData(before),
+		AfterData:  pickTaskAuditData(after),
+		Metadata:   baseMetadata,
+		CreatedAt:  createdAt,
+	})
+}
+
+func pickTaskAuditData(task domain.PickTask) map[string]any {
+	return map[string]any{
+		"pick_task_no":   task.PickTaskNo,
+		"sales_order_id": task.SalesOrderID,
+		"warehouse_id":   task.WarehouseID,
+		"status":         string(task.Status),
+		"assigned_to":    task.AssignedTo,
+		"line_count":     len(task.Lines),
+		"picked_count":   countPickedLines(task),
+	}
+}
+
+func countPickedLines(task domain.PickTask) int {
+	count := 0
+	for _, line := range task.Lines {
+		if line.Status == domain.PickTaskLineStatusPicked {
+			count++
+		}
+	}
+
+	return count
 }
 
 func newPickTaskID(salesOrderID string) string {
