@@ -526,42 +526,50 @@ type carrierManifestSummaryResponse struct {
 }
 
 type carrierManifestLineResponse struct {
-	ID          string `json:"id"`
-	ShipmentID  string `json:"shipment_id"`
-	OrderNo     string `json:"order_no"`
-	TrackingNo  string `json:"tracking_no"`
-	PackageCode string `json:"package_code"`
-	StagingZone string `json:"staging_zone"`
-	Scanned     bool   `json:"scanned"`
+	ID               string `json:"id"`
+	ShipmentID       string `json:"shipment_id"`
+	OrderNo          string `json:"order_no"`
+	TrackingNo       string `json:"tracking_no"`
+	PackageCode      string `json:"package_code"`
+	StagingZone      string `json:"staging_zone"`
+	HandoverZoneCode string `json:"handover_zone_code,omitempty"`
+	HandoverBinCode  string `json:"handover_bin_code,omitempty"`
+	Scanned          bool   `json:"scanned"`
 }
 
 type carrierManifestResponse struct {
-	ID            string                         `json:"id"`
-	CarrierCode   string                         `json:"carrier_code"`
-	CarrierName   string                         `json:"carrier_name"`
-	WarehouseID   string                         `json:"warehouse_id"`
-	WarehouseCode string                         `json:"warehouse_code"`
-	Date          string                         `json:"date"`
-	HandoverBatch string                         `json:"handover_batch"`
-	StagingZone   string                         `json:"staging_zone"`
-	Status        string                         `json:"status"`
-	Owner         string                         `json:"owner"`
-	AuditLogID    string                         `json:"audit_log_id,omitempty"`
-	Summary       carrierManifestSummaryResponse `json:"summary"`
-	Lines         []carrierManifestLineResponse  `json:"lines"`
-	CreatedAt     string                         `json:"created_at,omitempty"`
+	ID               string                         `json:"id"`
+	CarrierCode      string                         `json:"carrier_code"`
+	CarrierName      string                         `json:"carrier_name"`
+	WarehouseID      string                         `json:"warehouse_id"`
+	WarehouseCode    string                         `json:"warehouse_code"`
+	Date             string                         `json:"date"`
+	HandoverBatch    string                         `json:"handover_batch"`
+	StagingZone      string                         `json:"staging_zone"`
+	HandoverZoneCode string                         `json:"handover_zone_code,omitempty"`
+	HandoverBinCode  string                         `json:"handover_bin_code,omitempty"`
+	Status           string                         `json:"status"`
+	Owner            string                         `json:"owner"`
+	AuditLogID       string                         `json:"audit_log_id,omitempty"`
+	Summary          carrierManifestSummaryResponse `json:"summary"`
+	Lines            []carrierManifestLineResponse  `json:"lines"`
+	CreatedAt        string                         `json:"created_at,omitempty"`
 }
 
 type createCarrierManifestRequest struct {
-	ID            string `json:"id"`
-	CarrierCode   string `json:"carrier_code"`
-	CarrierName   string `json:"carrier_name"`
-	WarehouseID   string `json:"warehouse_id"`
-	WarehouseCode string `json:"warehouse_code"`
-	Date          string `json:"date"`
-	HandoverBatch string `json:"handover_batch"`
-	StagingZone   string `json:"staging_zone"`
-	Owner         string `json:"owner"`
+	ID               string `json:"id"`
+	CarrierCode      string `json:"carrier_code"`
+	CarrierName      string `json:"carrier_name"`
+	WarehouseID      string `json:"warehouse_id"`
+	WarehouseCode    string `json:"warehouse_code"`
+	Date             string `json:"date"`
+	HandoverBatch    string `json:"handover_batch"`
+	StagingZone      string `json:"staging_zone"`
+	HandoverZoneID   string `json:"handover_zone_id"`
+	HandoverZoneCode string `json:"handover_zone_code"`
+	HandoverBinID    string `json:"handover_bin_id"`
+	HandoverBinCode  string `json:"handover_bin_code"`
+	Owner            string `json:"owner"`
 }
 
 type addShipmentToManifestRequest struct {
@@ -3220,17 +3228,21 @@ func carrierManifestsHandler(
 			}
 
 			result, err := createService.Execute(r.Context(), shippingapp.CreateCarrierManifestInput{
-				ID:            payload.ID,
-				CarrierCode:   payload.CarrierCode,
-				CarrierName:   payload.CarrierName,
-				WarehouseID:   payload.WarehouseID,
-				WarehouseCode: payload.WarehouseCode,
-				Date:          payload.Date,
-				HandoverBatch: payload.HandoverBatch,
-				StagingZone:   payload.StagingZone,
-				Owner:         payload.Owner,
-				ActorID:       principal.UserID,
-				RequestID:     response.RequestID(r),
+				ID:               payload.ID,
+				CarrierCode:      payload.CarrierCode,
+				CarrierName:      payload.CarrierName,
+				WarehouseID:      payload.WarehouseID,
+				WarehouseCode:    payload.WarehouseCode,
+				Date:             payload.Date,
+				HandoverBatch:    payload.HandoverBatch,
+				StagingZone:      payload.StagingZone,
+				HandoverZoneID:   payload.HandoverZoneID,
+				HandoverZoneCode: payload.HandoverZoneCode,
+				HandoverBinID:    payload.HandoverBinID,
+				HandoverBinCode:  payload.HandoverBinCode,
+				Owner:            payload.Owner,
+				ActorID:          principal.UserID,
+				RequestID:        response.RequestID(r),
 			})
 			if err != nil {
 				writeCarrierManifestError(w, r, err)
@@ -3711,17 +3723,19 @@ func newEndOfDayReconciliationResponse(
 func newCarrierManifestResponse(manifest shippingdomain.CarrierManifest, auditLogID string) carrierManifestResponse {
 	summary := manifest.Summary()
 	payload := carrierManifestResponse{
-		ID:            manifest.ID,
-		CarrierCode:   manifest.CarrierCode,
-		CarrierName:   manifest.CarrierName,
-		WarehouseID:   manifest.WarehouseID,
-		WarehouseCode: manifest.WarehouseCode,
-		Date:          manifest.Date,
-		HandoverBatch: manifest.HandoverBatch,
-		StagingZone:   manifest.StagingZone,
-		Status:        string(manifest.Status),
-		Owner:         manifest.Owner,
-		AuditLogID:    auditLogID,
+		ID:               manifest.ID,
+		CarrierCode:      manifest.CarrierCode,
+		CarrierName:      manifest.CarrierName,
+		WarehouseID:      manifest.WarehouseID,
+		WarehouseCode:    manifest.WarehouseCode,
+		Date:             manifest.Date,
+		HandoverBatch:    manifest.HandoverBatch,
+		StagingZone:      manifest.StagingZone,
+		HandoverZoneCode: manifest.HandoverZoneCode,
+		HandoverBinCode:  manifest.HandoverBinCode,
+		Status:           string(manifest.Status),
+		Owner:            manifest.Owner,
+		AuditLogID:       auditLogID,
 		Summary: carrierManifestSummaryResponse{
 			ExpectedCount: summary.ExpectedCount,
 			ScannedCount:  summary.ScannedCount,
@@ -3734,13 +3748,15 @@ func newCarrierManifestResponse(manifest shippingdomain.CarrierManifest, auditLo
 	}
 	for _, line := range manifest.Lines {
 		payload.Lines = append(payload.Lines, carrierManifestLineResponse{
-			ID:          line.ID,
-			ShipmentID:  line.ShipmentID,
-			OrderNo:     line.OrderNo,
-			TrackingNo:  line.TrackingNo,
-			PackageCode: line.PackageCode,
-			StagingZone: line.StagingZone,
-			Scanned:     line.Scanned,
+			ID:               line.ID,
+			ShipmentID:       line.ShipmentID,
+			OrderNo:          line.OrderNo,
+			TrackingNo:       line.TrackingNo,
+			PackageCode:      line.PackageCode,
+			StagingZone:      line.StagingZone,
+			HandoverZoneCode: line.HandoverZoneCode,
+			HandoverBinCode:  line.HandoverBinCode,
+			Scanned:          line.Scanned,
 		})
 	}
 
@@ -3775,13 +3791,15 @@ func newCarrierManifestScanResponse(result shippingapp.CarrierManifestScanResult
 	}
 	if result.Line != nil {
 		payload.Line = &carrierManifestLineResponse{
-			ID:          result.Line.ID,
-			ShipmentID:  result.Line.ShipmentID,
-			OrderNo:     result.Line.OrderNo,
-			TrackingNo:  result.Line.TrackingNo,
-			PackageCode: result.Line.PackageCode,
-			StagingZone: result.Line.StagingZone,
-			Scanned:     result.Line.Scanned,
+			ID:               result.Line.ID,
+			ShipmentID:       result.Line.ShipmentID,
+			OrderNo:          result.Line.OrderNo,
+			TrackingNo:       result.Line.TrackingNo,
+			PackageCode:      result.Line.PackageCode,
+			StagingZone:      result.Line.StagingZone,
+			HandoverZoneCode: result.Line.HandoverZoneCode,
+			HandoverBinCode:  result.Line.HandoverBinCode,
+			Scanned:          result.Line.Scanned,
 		}
 	}
 
