@@ -127,6 +127,7 @@ const prototypeShipmentStates = [
     shipmentId: "ship-hcm-260426-004",
     orderNo: "SO-260426-004",
     trackingNo: "GHN260426004",
+    carrierCode: "GHN",
     packageCode: "TOTE-A03",
     stagingZone: "handover-a",
     handoverZoneCode: "handover-a",
@@ -137,9 +138,21 @@ const prototypeShipmentStates = [
     shipmentId: "ship-hcm-260426-099",
     orderNo: "SO-260426-099",
     trackingNo: "GHN260426099",
+    carrierCode: "GHN",
     packageCode: "PACKING-LANE-01",
     stagingZone: "packing",
     packed: false
+  },
+  {
+    shipmentId: "ship-hcm-vtp-260426-002",
+    orderNo: "SO-260426-012",
+    trackingNo: "VTP260426012",
+    carrierCode: "VTP",
+    packageCode: "TOTE-B02",
+    stagingZone: "handover-b",
+    handoverZoneCode: "handover-b",
+    handoverBinCode: "B02",
+    packed: true
   }
 ];
 
@@ -481,6 +494,9 @@ function addPrototypeShipmentToManifest(manifestId: string, shipmentId: string):
   const shipment = prototypeShipmentStates.find((candidate) => candidate.shipmentId === shipmentId);
   if (shipment && !shipment.packed) {
     throw new Error("Shipment must be packed before adding to carrier manifest");
+  }
+  if (shipment?.carrierCode && shipment.carrierCode !== manifest.carrierCode) {
+    throw new Error("Shipment carrier does not match carrier manifest");
   }
 
   const updated = createManifest({

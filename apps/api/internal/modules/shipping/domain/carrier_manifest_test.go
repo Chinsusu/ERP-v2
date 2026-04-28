@@ -164,6 +164,9 @@ func TestCarrierManifestRejectsDuplicateAndUnpackedShipments(t *testing.T) {
 	if _, err := manifest.AddShipment(PackedShipment{ID: "ship-unpacked"}); !errors.Is(err, ErrManifestShipmentNotPacked) {
 		t.Fatalf("err = %v, want unpacked error", err)
 	}
+	if _, err := manifest.AddShipment(PackedShipment{ID: "ship-vtp", CarrierCode: "VTP", Packed: true}); !errors.Is(err, ErrManifestCarrierMismatch) {
+		t.Fatalf("err = %v, want carrier mismatch error", err)
+	}
 
 	updated, err := manifest.AddShipment(PackedShipment{ID: "ship-001", Packed: true})
 	if err != nil {
