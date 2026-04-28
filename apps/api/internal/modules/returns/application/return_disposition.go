@@ -17,7 +17,12 @@ import (
 
 var ErrReturnReceiptDispositionNotAllowed = errors.New("return receipt disposition action is not allowed")
 
-const returnStockSourceDocType = "return_receipt"
+const (
+	returnStockSourceDocType          = "return_receipt"
+	returnStockMovementEntityType     = "returns.return_stock_movement"
+	returnStockMovementRecordedAction = "returns.stock_movement.recorded"
+	returnStockQuarantinedAction      = "returns.stock_movement.quarantined"
+)
 
 type ReturnDispositionStore interface {
 	FindReceiptByID(ctx context.Context, id string) (domain.ReturnReceipt, error)
@@ -112,6 +117,15 @@ func (uc ApplyReturnDisposition) Execute(
 	}
 	if err := uc.auditLog.Record(ctx, log); err != nil {
 		return ReturnDispositionResult{}, err
+	}
+	for _, movement := range movements {
+		log, err := newReturnStockMovementAuditLog(input.ActorID, input.RequestID, updatedReceipt, action, movement)
+		if err != nil {
+			return ReturnDispositionResult{}, err
+		}
+		if err := uc.auditLog.Record(ctx, log); err != nil {
+			return ReturnDispositionResult{}, err
+		}
 	}
 
 	return ReturnDispositionResult{
@@ -270,6 +284,81 @@ func newReturnDispositionAuditLog(
 		},
 		CreatedAt: action.DecidedAt,
 	})
+}
+
+func newReturnStockMovementAuditLog(
+	actorID string,
+	requestID string,
+	receipt domain.ReturnReceipt,
+	action domain.ReturnDispositionAction,
+	movement inventorydomain.StockMovement,
+) (audit.Log, error) {
+	direction, err := movement.Direction()
+	if err != nil {
+		return audit.Log{}, err
+	}
+	delta, err := movement.BalanceDelta()
+	if err != nil {
+		return audit.Log{}, err
+	}
+	line := returnStockMovementLine(receipt, movement.SourceDocLineID)
+
+	return audit.NewLog(audit.NewLogInput{
+		OrgID:      movement.OrgID,
+		ActorID:    strings.TrimSpace(actorID),
+		Action:     returnStockMovementAuditAction(movement),
+		EntityType: returnStockMovementEntityType,
+		EntityID:   movement.MovementNo,
+		RequestID:  strings.TrimSpace(requestID),
+		AfterData: map[string]any{
+			"receipt_id":          receipt.ID,
+			"receipt_no":          receipt.ReceiptNo,
+			"disposition":         string(action.Disposition),
+			"target_location":     action.TargetLocation,
+			"movement_no":         movement.MovementNo,
+			"movement_type":       string(movement.MovementType),
+			"direction":           string(direction),
+			"sku":                 line.SKU,
+			"quantity":            movement.Quantity.String(),
+			"base_uom_code":       movement.BaseUOMCode.String(),
+			"stock_status":        string(movement.StockStatus),
+			"source_doc_type":     movement.SourceDocType,
+			"source_doc_id":       movement.SourceDocID,
+			"source_doc_line_id":  movement.SourceDocLineID,
+			"delta_on_hand":       delta.OnHand.String(),
+			"delta_reserved":      delta.Reserved.String(),
+			"delta_available":     delta.Available.String(),
+			"available_blocked":   movement.StockStatus != inventorydomain.StockStatusAvailable,
+			"quarantine_movement": movement.StockStatus == inventorydomain.StockStatusQCHold,
+		},
+		Metadata: map[string]any{
+			"source":       "return disposition stock movement",
+			"warehouse_id": movement.WarehouseID,
+			"reason":       movement.Reason,
+		},
+		CreatedAt: action.DecidedAt,
+	})
+}
+
+func returnStockMovementAuditAction(movement inventorydomain.StockMovement) string {
+	if movement.StockStatus == inventorydomain.StockStatusQCHold {
+		return returnStockQuarantinedAction
+	}
+
+	return returnStockMovementRecordedAction
+}
+
+func returnStockMovementLine(receipt domain.ReturnReceipt, sourceDocLineID string) domain.ReturnReceiptLine {
+	for _, line := range receipt.Lines {
+		if strings.TrimSpace(line.ID) == strings.TrimSpace(sourceDocLineID) {
+			return line
+		}
+	}
+	if len(receipt.Lines) > 0 {
+		return receipt.Lines[0]
+	}
+
+	return domain.ReturnReceiptLine{SKU: "UNKNOWN-SKU", Quantity: 1}
 }
 
 func NewPrototypeApplyReturnDispositionAt(
