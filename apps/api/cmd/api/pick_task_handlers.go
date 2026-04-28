@@ -61,6 +61,7 @@ type confirmPickTaskLineRequest struct {
 }
 
 type pickTaskExceptionRequest struct {
+	LineID        string `json:"line_id"`
 	ExceptionCode string `json:"exception_code"`
 	Investigation string `json:"investigation"`
 }
@@ -171,6 +172,7 @@ func reportPickTaskExceptionHandler(service shippingapp.ReportPickTaskException)
 
 		result, err := service.Execute(r.Context(), shippingapp.ReportPickTaskExceptionInput{
 			PickTaskID:    r.PathValue("pick_task_id"),
+			LineID:        payload.LineID,
 			ExceptionCode: payload.ExceptionCode,
 			ActorID:       actorID,
 			RequestID:     response.RequestID(r),

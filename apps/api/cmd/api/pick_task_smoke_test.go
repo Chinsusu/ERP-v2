@@ -89,7 +89,7 @@ func TestPickTaskAPIExceptionSmoke(t *testing.T) {
 	authConfig := smokeAuthConfig()
 	store := shippingapp.NewPrototypePickTaskStore(mustPrototypePickTask())
 	auditStore := audit.NewInMemoryLogStore()
-	body := bytes.NewBufferString(`{"exception_code":"wrong_location","investigation":"Scanner reported a different bin"}`)
+	body := bytes.NewBufferString(`{"line_id":"pick-so-260428-0001-line-01","exception_code":"wrong_location","investigation":"Scanner reported a different bin"}`)
 
 	rec := httptest.NewRecorder()
 	req := smokeRequestAsRole(
@@ -105,7 +105,10 @@ func TestPickTaskAPIExceptionSmoke(t *testing.T) {
 		t.Fatalf("exception status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	payload := decodeSmokeSuccess[pickTaskResponse](t, rec)
-	if payload.Data.Status != "wrong_location" || payload.Data.AuditLogID == "" {
-		t.Fatalf("exception payload = %+v, want wrong-location task with audit", payload.Data)
+	if payload.Data.Status != "wrong_location" ||
+		payload.Data.Lines[0].Status != "wrong_location" ||
+		payload.Data.Lines[0].QtyPicked != "0.000000" ||
+		payload.Data.AuditLogID == "" {
+		t.Fatalf("exception payload = %+v, want wrong-location task and line with audit", payload.Data)
 	}
 }
