@@ -38,41 +38,53 @@ const ScanResultManifestMismatch CarrierManifestScanResultCode = "MANIFEST_MISMA
 const ScanResultDuplicate CarrierManifestScanResultCode = "DUPLICATE_SCAN"
 
 type CarrierManifest struct {
-	ID            string
-	CarrierCode   string
-	CarrierName   string
-	WarehouseID   string
-	WarehouseCode string
-	Date          string
-	HandoverBatch string
-	StagingZone   string
-	Status        CarrierManifestStatus
-	Owner         string
-	Lines         []CarrierManifestLine
-	CreatedAt     time.Time
+	ID               string
+	CarrierCode      string
+	CarrierName      string
+	WarehouseID      string
+	WarehouseCode    string
+	Date             string
+	HandoverBatch    string
+	StagingZone      string
+	HandoverZoneID   string
+	HandoverZoneCode string
+	HandoverBinID    string
+	HandoverBinCode  string
+	Status           CarrierManifestStatus
+	Owner            string
+	Lines            []CarrierManifestLine
+	CreatedAt        time.Time
 }
 
 type CarrierManifestLine struct {
-	ID          string
-	ShipmentID  string
-	OrderNo     string
-	TrackingNo  string
-	PackageCode string
-	StagingZone string
-	Scanned     bool
+	ID               string
+	ShipmentID       string
+	OrderNo          string
+	TrackingNo       string
+	PackageCode      string
+	StagingZone      string
+	HandoverZoneID   string
+	HandoverZoneCode string
+	HandoverBinID    string
+	HandoverBinCode  string
+	Scanned          bool
 }
 
 type PackedShipment struct {
-	ID            string
-	OrderNo       string
-	TrackingNo    string
-	CarrierCode   string
-	CarrierName   string
-	WarehouseID   string
-	WarehouseCode string
-	PackageCode   string
-	StagingZone   string
-	Packed        bool
+	ID               string
+	OrderNo          string
+	TrackingNo       string
+	CarrierCode      string
+	CarrierName      string
+	WarehouseID      string
+	WarehouseCode    string
+	PackageCode      string
+	StagingZone      string
+	HandoverZoneID   string
+	HandoverZoneCode string
+	HandoverBinID    string
+	HandoverBinCode  string
+	Packed           bool
 }
 
 type CarrierManifestSummary struct {
@@ -89,31 +101,39 @@ type CarrierManifestFilter struct {
 }
 
 type NewCarrierManifestInput struct {
-	ID            string
-	CarrierCode   string
-	CarrierName   string
-	WarehouseID   string
-	WarehouseCode string
-	Date          string
-	HandoverBatch string
-	StagingZone   string
-	Owner         string
-	CreatedAt     time.Time
+	ID               string
+	CarrierCode      string
+	CarrierName      string
+	WarehouseID      string
+	WarehouseCode    string
+	Date             string
+	HandoverBatch    string
+	StagingZone      string
+	HandoverZoneID   string
+	HandoverZoneCode string
+	HandoverBinID    string
+	HandoverBinCode  string
+	Owner            string
+	CreatedAt        time.Time
 }
 
 func NewCarrierManifest(input NewCarrierManifestInput) (CarrierManifest, error) {
 	manifest := CarrierManifest{
-		ID:            strings.TrimSpace(input.ID),
-		CarrierCode:   strings.ToUpper(strings.TrimSpace(input.CarrierCode)),
-		CarrierName:   strings.TrimSpace(input.CarrierName),
-		WarehouseID:   strings.TrimSpace(input.WarehouseID),
-		WarehouseCode: strings.ToUpper(strings.TrimSpace(input.WarehouseCode)),
-		Date:          strings.TrimSpace(input.Date),
-		HandoverBatch: strings.TrimSpace(input.HandoverBatch),
-		StagingZone:   strings.TrimSpace(input.StagingZone),
-		Status:        ManifestStatusDraft,
-		Owner:         strings.TrimSpace(input.Owner),
-		CreatedAt:     input.CreatedAt,
+		ID:               strings.TrimSpace(input.ID),
+		CarrierCode:      strings.ToUpper(strings.TrimSpace(input.CarrierCode)),
+		CarrierName:      strings.TrimSpace(input.CarrierName),
+		WarehouseID:      strings.TrimSpace(input.WarehouseID),
+		WarehouseCode:    strings.ToUpper(strings.TrimSpace(input.WarehouseCode)),
+		Date:             strings.TrimSpace(input.Date),
+		HandoverBatch:    strings.TrimSpace(input.HandoverBatch),
+		StagingZone:      strings.TrimSpace(input.StagingZone),
+		HandoverZoneID:   strings.TrimSpace(input.HandoverZoneID),
+		HandoverZoneCode: normalizeManifestLocationCode(input.HandoverZoneCode),
+		HandoverBinID:    strings.TrimSpace(input.HandoverBinID),
+		HandoverBinCode:  normalizeManifestLocationCode(input.HandoverBinCode),
+		Status:           ManifestStatusDraft,
+		Owner:            strings.TrimSpace(input.Owner),
+		CreatedAt:        input.CreatedAt,
 	}
 	if manifest.CarrierCode == "" || manifest.WarehouseID == "" || manifest.Date == "" {
 		return CarrierManifest{}, ErrManifestRequiredField
@@ -129,6 +149,9 @@ func NewCarrierManifest(input NewCarrierManifestInput) (CarrierManifest, error) 
 	}
 	if manifest.StagingZone == "" {
 		manifest.StagingZone = "handover"
+	}
+	if manifest.HandoverZoneCode == "" {
+		manifest.HandoverZoneCode = normalizeManifestLocationCode(manifest.StagingZone)
 	}
 	if manifest.Owner == "" {
 		manifest.Owner = "Warehouse Lead"
@@ -190,12 +213,16 @@ func (m CarrierManifest) AddShipment(shipment PackedShipment) (CarrierManifest, 
 
 	next := m.Clone()
 	next.Lines = append(next.Lines, CarrierManifestLine{
-		ID:          fmt.Sprintf("line-%s", strings.TrimSpace(shipment.ID)),
-		ShipmentID:  strings.TrimSpace(shipment.ID),
-		OrderNo:     strings.TrimSpace(shipment.OrderNo),
-		TrackingNo:  strings.TrimSpace(shipment.TrackingNo),
-		PackageCode: strings.TrimSpace(shipment.PackageCode),
-		StagingZone: strings.TrimSpace(shipment.StagingZone),
+		ID:               fmt.Sprintf("line-%s", strings.TrimSpace(shipment.ID)),
+		ShipmentID:       strings.TrimSpace(shipment.ID),
+		OrderNo:          strings.TrimSpace(shipment.OrderNo),
+		TrackingNo:       strings.TrimSpace(shipment.TrackingNo),
+		PackageCode:      strings.TrimSpace(shipment.PackageCode),
+		StagingZone:      firstNonEmpty(shipment.StagingZone, m.StagingZone),
+		HandoverZoneID:   firstNonEmpty(shipment.HandoverZoneID, m.HandoverZoneID),
+		HandoverZoneCode: firstNonEmpty(normalizeManifestLocationCode(shipment.HandoverZoneCode), m.HandoverZoneCode),
+		HandoverBinID:    firstNonEmpty(shipment.HandoverBinID, m.HandoverBinID),
+		HandoverBinCode:  firstNonEmpty(normalizeManifestLocationCode(shipment.HandoverBinCode), m.HandoverBinCode),
 	})
 
 	return next, nil
@@ -329,6 +356,20 @@ func (line CarrierManifestLine) MatchesScanCode(code string) bool {
 
 func NormalizeManifestScanCode(code string) string {
 	return strings.ToUpper(strings.TrimSpace(code))
+}
+
+func normalizeManifestLocationCode(code string) string {
+	return strings.ToUpper(strings.TrimSpace(code))
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+
+	return ""
 }
 
 func (m CarrierManifest) Summary() CarrierManifestSummary {

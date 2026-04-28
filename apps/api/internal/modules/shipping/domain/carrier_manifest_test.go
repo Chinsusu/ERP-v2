@@ -21,7 +21,10 @@ func TestNewCarrierManifestDefaultsToDraft(t *testing.T) {
 	if manifest.Status != ManifestStatusDraft {
 		t.Fatalf("status = %q, want draft", manifest.Status)
 	}
-	if manifest.CarrierCode != "GHN" || manifest.HandoverBatch != "day" || manifest.StagingZone != "handover" {
+	if manifest.CarrierCode != "GHN" ||
+		manifest.HandoverBatch != "day" ||
+		manifest.StagingZone != "handover" ||
+		manifest.HandoverZoneCode != "HANDOVER" {
 		t.Fatalf("manifest defaults = %+v", manifest)
 	}
 }
@@ -70,6 +73,38 @@ func TestCarrierManifestAddShipmentUpdatesExpectedAndMissingCounts(t *testing.T)
 	}
 	if got := updated.Summary(); got.ExpectedCount != 1 || got.ScannedCount != 0 || got.MissingCount != 1 {
 		t.Fatalf("summary = %+v, want 1 expected, 0 scanned, 1 missing", got)
+	}
+}
+
+func TestCarrierManifestCopiesHandoverZoneAndBinToLines(t *testing.T) {
+	manifest, err := NewCarrierManifest(NewCarrierManifestInput{
+		CarrierCode:      "GHN",
+		WarehouseID:      "wh-hcm",
+		Date:             "2026-04-26",
+		StagingZone:      "handover-a",
+		HandoverZoneCode: "handover-a",
+		HandoverBinCode:  "tote-a01",
+	})
+	if err != nil {
+		t.Fatalf("new manifest: %v", err)
+	}
+
+	updated, err := manifest.AddShipment(PackedShipment{
+		ID:          "ship-001",
+		OrderNo:     "SO-001",
+		TrackingNo:  "TRK-001",
+		PackageCode: "TOTE-A01",
+		Packed:      true,
+	})
+	if err != nil {
+		t.Fatalf("add shipment: %v", err)
+	}
+
+	line := updated.Lines[0]
+	if line.StagingZone != "handover-a" ||
+		line.HandoverZoneCode != "HANDOVER-A" ||
+		line.HandoverBinCode != "TOTE-A01" {
+		t.Fatalf("line = %+v, want manifest zone/bin copied", line)
 	}
 }
 
