@@ -19,6 +19,7 @@ const (
 	ErrorCodeNotFound              ErrorCode = "NOT_FOUND"
 	ErrorCodeConflict              ErrorCode = "CONFLICT"
 	ErrorCodeInsufficientStock     ErrorCode = "INSUFFICIENT_STOCK"
+	ErrorCodeBatchNotSellable      ErrorCode = "BATCH_NOT_SELLABLE"
 	ErrorCodeUOMConversionNotFound ErrorCode = "UOM_CONVERSION_NOT_FOUND"
 	ErrorCodeInvalidState          ErrorCode = "INVALID_STATE"
 )

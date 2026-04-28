@@ -773,7 +773,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** @enum {string} */
-        ErrorCode: "VALIDATION_ERROR" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "INSUFFICIENT_STOCK" | "INVALID_STATE";
+        ErrorCode: "VALIDATION_ERROR" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "INSUFFICIENT_STOCK" | "BATCH_NOT_SELLABLE" | "INVALID_STATE";
         HealthSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["HealthResponse"];
         };

@@ -16,6 +16,7 @@ import (
 )
 
 var ErrInsufficientStock = errors.New("insufficient stock")
+var ErrBatchNotSellable = errors.New("batch is not sellable")
 
 type PrototypeSalesOrderReservationStore struct {
 	mu           sync.Mutex
@@ -93,6 +94,8 @@ func reserveSalesOrderLine(
 
 	snapshots := domain.CalculateAvailableStockAt(rows, input.ReservedAt)
 	bestAvailableQty := decimal.MustQuantity("0")
+	blockedRow, hasBlockedRow := firstNotSellableStockBalanceRow(rows, input, line)
+	hasSellableRow := hasSellableStockBalanceRow(rows, input, line)
 	for _, snapshot := range snapshots {
 		if !salesOrderReservationSnapshotMatches(snapshot, input, line) {
 			continue
@@ -150,6 +153,10 @@ func reserveSalesOrderLine(
 		}, nil
 	}
 
+	if bestAvailableQty.IsZero() && hasBlockedRow && !hasSellableRow {
+		return allocatedSalesOrderLine{}, batchNotSellableError(input, line, blockedRow)
+	}
+
 	return allocatedSalesOrderLine{}, insufficientStockError(input, line, bestAvailableQty)
 }
 
@@ -178,6 +185,87 @@ func findReservableStockBalanceRow(rows []domain.StockBalanceSnapshot, snapshot 
 	return -1
 }
 
+func firstNotSellableStockBalanceRow(
+	rows []domain.StockBalanceSnapshot,
+	input salesapp.SalesOrderStockReservationInput,
+	line salesapp.SalesOrderStockReservationLineInput,
+) (domain.StockBalanceSnapshot, bool) {
+	for _, row := range rows {
+		if strings.TrimSpace(row.WarehouseID) != strings.TrimSpace(input.WarehouseID) ||
+			!strings.EqualFold(strings.TrimSpace(row.SKU), strings.TrimSpace(line.SKUCode)) ||
+			row.BaseUOMCode != line.BaseUOMCode {
+			continue
+		}
+		if !stockBalanceRowIsSellable(row, input.ReservedAt) {
+			return row, true
+		}
+	}
+
+	return domain.StockBalanceSnapshot{}, false
+}
+
+func hasSellableStockBalanceRow(
+	rows []domain.StockBalanceSnapshot,
+	input salesapp.SalesOrderStockReservationInput,
+	line salesapp.SalesOrderStockReservationLineInput,
+) bool {
+	for _, row := range rows {
+		if strings.TrimSpace(row.WarehouseID) == strings.TrimSpace(input.WarehouseID) &&
+			strings.EqualFold(strings.TrimSpace(row.SKU), strings.TrimSpace(line.SKUCode)) &&
+			row.BaseUOMCode == line.BaseUOMCode &&
+			stockBalanceRowIsSellable(row, input.ReservedAt) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func stockBalanceRowIsSellable(row domain.StockBalanceSnapshot, asOf time.Time) bool {
+	if row.StockStatus != domain.StockStatusAvailable {
+		return false
+	}
+	batchStatus := domain.NormalizeBatchStatus(row.BatchStatus)
+	if batchStatus == "" {
+		batchStatus = domain.BatchStatusActive
+	}
+	if batchStatus != domain.BatchStatusActive {
+		return false
+	}
+	if !row.BatchExpiry.IsZero() {
+		if asOf.IsZero() {
+			asOf = time.Now().UTC()
+		}
+		if row.BatchExpiry.Before(dayStart(asOf)) {
+			return false
+		}
+	}
+	qcStatus := domain.NormalizeQCStatus(row.BatchQCStatus)
+	return qcStatus == "" || qcStatus == domain.QCStatusPass
+}
+
+func batchNotSellableError(
+	input salesapp.SalesOrderStockReservationInput,
+	line salesapp.SalesOrderStockReservationLineInput,
+	row domain.StockBalanceSnapshot,
+) error {
+	return apperrors.Conflict(
+		response.ErrorCodeBatchNotSellable,
+		"Batch is not sellable for sales reservation",
+		ErrBatchNotSellable,
+		map[string]any{
+			"sales_order_id":      input.SalesOrderID,
+			"sales_order_line_id": line.SalesOrderLineID,
+			"sku_code":            line.SKUCode,
+			"batch_id":            row.BatchID,
+			"batch_no":            row.BatchNo,
+			"qc_status":           string(domain.NormalizeQCStatus(row.BatchQCStatus)),
+			"batch_status":        string(domain.NormalizeBatchStatus(row.BatchStatus)),
+			"warehouse_id":        input.WarehouseID,
+		},
+	)
+}
+
 func insufficientStockError(
 	input salesapp.SalesOrderStockReservationInput,
 	line salesapp.SalesOrderStockReservationLineInput,
@@ -197,6 +285,11 @@ func insufficientStockError(
 			"warehouse_id":        input.WarehouseID,
 		},
 	)
+}
+
+func dayStart(value time.Time) time.Time {
+	value = value.UTC()
+	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 func quantityAtLeast(available decimal.Decimal, required decimal.Decimal) bool {

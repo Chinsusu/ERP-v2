@@ -1883,6 +1883,7 @@ components:
         - NOT_FOUND
         - CONFLICT
         - INSUFFICIENT_STOCK
+        - BATCH_NOT_SELLABLE
         - INVALID_STATE
     HealthSuccessResponse:
       allOf:
