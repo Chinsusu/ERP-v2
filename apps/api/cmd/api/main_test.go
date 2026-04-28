@@ -13,6 +13,7 @@ import (
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
+	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
 	salesdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/domain"
 	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
 	shippingdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
@@ -982,6 +983,129 @@ func TestWarehouseDailyBoardFulfillmentMetricsHandlerSummarizesOrderStates(t *te
 			}
 		})
 	}
+}
+
+func TestWarehouseDailyBoardFulfillmentMetricsMatchSalesAndManifestState(t *testing.T) {
+	salesService, _ := newTestSalesOrderAPIService()
+	manifestStore := shippingapp.NewPrototypeCarrierManifestStore()
+	listManifests := shippingapp.NewListCarrierManifests(manifestStore)
+	ctx := context.Background()
+	orders, err := salesService.ListSalesOrders(ctx, salesapp.SalesOrderFilter{
+		WarehouseID: "wh-hcm",
+		DateFrom:    "2026-04-26",
+		DateTo:      "2026-04-26",
+	})
+	if err != nil {
+		t.Fatalf("list sales orders: %v", err)
+	}
+	manifests, err := listManifests.Execute(
+		ctx,
+		shippingdomain.NewCarrierManifestFilter("wh-hcm", "2026-04-26", "GHN", ""),
+	)
+	if err != nil {
+		t.Fatalf("list carrier manifests: %v", err)
+	}
+	expected := expectedFulfillmentMetricsFromSources(orders, manifests, "GHN")
+	authConfig := auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/warehouse/daily-board/fulfillment-metrics?warehouse_id=wh-hcm&date=2026-04-26&carrier_code=GHN",
+		nil,
+	)
+	req.Header.Set(response.HeaderRequestID, "req-warehouse-fulfillment-consistency")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(authConfig, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	warehouseDailyBoardFulfillmentMetricsHandler(salesService, listManifests).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var payload response.SuccessEnvelope[warehouseFulfillmentMetricsResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.TotalOrders != expected.total ||
+		payload.Data.NewOrders != expected.newOrders ||
+		payload.Data.ReservedOrders != expected.reserved ||
+		payload.Data.PickingOrders != expected.picking ||
+		payload.Data.PackedOrders != expected.packed ||
+		payload.Data.WaitingHandoverOrders != expected.waitingHandover ||
+		payload.Data.MissingOrders != expected.missing ||
+		payload.Data.HandoverOrders != expected.handover {
+		t.Fatalf("metrics = %+v, want consistency = %+v", payload.Data, expected)
+	}
+}
+
+type expectedFulfillmentMetrics struct {
+	total           int
+	newOrders       int
+	reserved        int
+	picking         int
+	packed          int
+	waitingHandover int
+	missing         int
+	handover        int
+}
+
+func expectedFulfillmentMetricsFromSources(
+	orders []salesdomain.SalesOrder,
+	manifests []shippingdomain.CarrierManifest,
+	carrierCode string,
+) expectedFulfillmentMetrics {
+	manifestOrderNos := make(map[string]struct{})
+	missingOrderNos := make(map[string]struct{})
+	for _, manifest := range manifests {
+		if strings.TrimSpace(carrierCode) != "" && manifest.CarrierCode != carrierCode {
+			continue
+		}
+		for _, line := range manifest.Lines {
+			orderNo := strings.TrimSpace(line.OrderNo)
+			if orderNo == "" {
+				continue
+			}
+			manifestOrderNos[orderNo] = struct{}{}
+			if !line.Scanned {
+				missingOrderNos[orderNo] = struct{}{}
+			}
+		}
+	}
+
+	expected := expectedFulfillmentMetrics{missing: len(missingOrderNos)}
+	for _, order := range orders {
+		if strings.TrimSpace(carrierCode) != "" {
+			if _, ok := manifestOrderNos[order.OrderNo]; !ok {
+				continue
+			}
+		}
+
+		expected.total++
+		switch salesdomain.NormalizeSalesOrderStatus(order.Status) {
+		case salesdomain.SalesOrderStatusDraft, salesdomain.SalesOrderStatusConfirmed:
+			expected.newOrders++
+		case salesdomain.SalesOrderStatusReserved:
+			expected.reserved++
+		case salesdomain.SalesOrderStatusPicking, salesdomain.SalesOrderStatusPicked, salesdomain.SalesOrderStatusPacking:
+			expected.picking++
+		case salesdomain.SalesOrderStatusPacked:
+			expected.packed++
+		case salesdomain.SalesOrderStatusWaitingHandover:
+			expected.waitingHandover++
+		case salesdomain.SalesOrderStatusHandedOver:
+			expected.handover++
+		case salesdomain.SalesOrderStatusHandoverException:
+			if orderNo := strings.TrimSpace(order.OrderNo); orderNo != "" {
+				missingOrderNos[orderNo] = struct{}{}
+			}
+		}
+	}
+	expected.missing = len(missingOrderNos)
+
+	return expected
 }
 
 func TestConfirmCarrierManifestHandoverHandlerMarksManifestHandedOver(t *testing.T) {
