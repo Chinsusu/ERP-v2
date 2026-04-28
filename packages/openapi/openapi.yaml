@@ -1745,6 +1745,41 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /shipping/manifests/{manifest_id}/exceptions:
+    post:
+      summary: Report missing orders for a carrier manifest
+      operationId: reportCarrierManifestMissingOrders
+      tags:
+        - shipping
+      parameters:
+        - name: manifest_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarrierManifestActionRequest"
+      responses:
+        "200":
+          description: Missing order exception recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarrierManifestSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /returns/receipts:
     get:
       summary: List return receipts
@@ -4352,6 +4387,11 @@ components:
       properties:
         shipment_id:
           type: string
+    CarrierManifestActionRequest:
+      type: object
+      properties:
+        reason:
+          type: string
     VerifyCarrierManifestScanRequest:
       type: object
       required:
@@ -4477,6 +4517,7 @@ components:
         - owner
         - summary
         - lines
+        - missing_lines
       properties:
         id:
           type: string
@@ -4507,6 +4548,10 @@ components:
         summary:
           $ref: "#/components/schemas/CarrierManifestSummary"
         lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/CarrierManifestLine"
+        missing_lines:
           type: array
           items:
             $ref: "#/components/schemas/CarrierManifestLine"

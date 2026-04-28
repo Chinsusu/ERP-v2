@@ -51,6 +51,7 @@ type CarrierManifestApi = {
   audit_log_id?: string;
   summary: CarrierManifestSummaryApi;
   lines: CarrierManifestLineApi[];
+  missing_lines?: CarrierManifestLineApi[];
   created_at?: string;
 };
 
@@ -735,10 +736,11 @@ function verifyPrototypeCarrierManifestScan(
   });
 }
 
-function createManifest(input: Omit<CarrierManifest, "summary">): CarrierManifest {
+function createManifest(input: Omit<CarrierManifest, "summary" | "missingLines">): CarrierManifest {
   return {
     ...input,
-    summary: summarizeCarrierManifestLines(input.lines)
+    summary: summarizeCarrierManifestLines(input.lines),
+    missingLines: input.lines.filter((line) => !line.scanned)
   };
 }
 
@@ -930,6 +932,7 @@ function cloneManifest(manifest: CarrierManifest): CarrierManifest {
   return {
     ...manifest,
     lines: manifest.lines.map((line) => ({ ...line })),
+    missingLines: manifest.missingLines.map((line) => ({ ...line })),
     summary: { ...manifest.summary }
   };
 }

@@ -584,6 +584,9 @@ func TestCarrierManifestsHandlerReturnsFilteredRows(t *testing.T) {
 	if payload.Data[0].Summary.ExpectedCount != 3 || payload.Data[0].Summary.MissingCount != 1 {
 		t.Fatalf("summary = %+v, want expected 3 missing 1", payload.Data[0].Summary)
 	}
+	if len(payload.Data[0].MissingLines) != 1 || payload.Data[0].MissingLines[0].TrackingNo != "GHN260426003" {
+		t.Fatalf("missing lines = %+v, want GHN260426003", payload.Data[0].MissingLines)
+	}
 }
 
 func TestCarrierManifestsHandlerCreatesManifestAndWritesAudit(t *testing.T) {
@@ -854,6 +857,50 @@ func TestCarrierManifestActionHandlersReadyRemoveAndCancel(t *testing.T) {
 	}
 	if cancelPayload.Data.Status != "cancelled" || cancelPayload.Data.AuditLogID == "" {
 		t.Fatalf("cancel payload = %+v, want cancelled with audit", cancelPayload.Data)
+	}
+}
+
+func TestReportCarrierManifestMissingOrdersHandlerMarksException(t *testing.T) {
+	store := shippingapp.NewPrototypeCarrierManifestStore()
+	auditStore := audit.NewInMemoryLogStore()
+	service := shippingapp.NewReportCarrierManifestMissingOrders(store, auditStore)
+	body := bytes.NewBufferString(`{"reason":"physical tote missing one order"}`)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/shipping/manifests/manifest-hcm-ghn-morning/exceptions",
+		body,
+	)
+	req.SetPathValue("manifest_id", "manifest-hcm-ghn-morning")
+	req.Header.Set(response.HeaderRequestID, "req-manifest-missing")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	reportCarrierManifestMissingOrdersHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var payload response.SuccessEnvelope[carrierManifestResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.Status != "exception" || payload.Data.AuditLogID == "" {
+		t.Fatalf("payload = %+v, want exception manifest with audit", payload.Data)
+	}
+	if len(payload.Data.MissingLines) != 1 || payload.Data.MissingLines[0].OrderNo != "SO-260426-003" {
+		t.Fatalf("missing lines = %+v, want SO-260426-003", payload.Data.MissingLines)
+	}
+
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "shipping.manifest.missing_exception_reported"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].Metadata["missing_count"] != 1 {
+		t.Fatalf("audit logs = %+v, want missing exception count", logs)
 	}
 }
 

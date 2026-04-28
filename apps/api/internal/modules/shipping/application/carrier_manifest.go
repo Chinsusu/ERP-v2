@@ -63,6 +63,12 @@ type CancelCarrierManifest struct {
 	clock    func() time.Time
 }
 
+type ReportCarrierManifestMissingOrders struct {
+	store    CarrierManifestStore
+	auditLog audit.LogStore
+	clock    func() time.Time
+}
+
 type VerifyCarrierManifestScan struct {
 	store    CarrierManifestStore
 	auditLog audit.LogStore
@@ -213,6 +219,17 @@ func NewCancelCarrierManifest(
 	auditLog audit.LogStore,
 ) CancelCarrierManifest {
 	return CancelCarrierManifest{
+		store:    store,
+		auditLog: auditLog,
+		clock:    func() time.Time { return time.Now().UTC() },
+	}
+}
+
+func NewReportCarrierManifestMissingOrders(
+	store CarrierManifestStore,
+	auditLog audit.LogStore,
+) ReportCarrierManifestMissingOrders {
+	return ReportCarrierManifestMissingOrders{
 		store:    store,
 		auditLog: auditLog,
 		clock:    func() time.Time { return time.Now().UTC() },
@@ -495,6 +512,56 @@ func (uc CancelCarrierManifest) Execute(
 		map[string]any{
 			"source": "carrier manifest cancel",
 			"reason": strings.TrimSpace(input.Reason),
+		},
+		uc.clock(),
+	)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	if err := uc.auditLog.Record(ctx, log); err != nil {
+		return CarrierManifestResult{}, err
+	}
+
+	return CarrierManifestResult{Manifest: updated, AuditLogID: log.ID}, nil
+}
+
+func (uc ReportCarrierManifestMissingOrders) Execute(
+	ctx context.Context,
+	input CarrierManifestActionInput,
+) (CarrierManifestResult, error) {
+	if uc.store == nil {
+		return CarrierManifestResult{}, errors.New("carrier manifest store is required")
+	}
+	if uc.auditLog == nil {
+		return CarrierManifestResult{}, errors.New("audit log store is required")
+	}
+
+	manifest, err := uc.store.Get(ctx, input.ManifestID)
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	updated, missingLines, err := manifest.ReportMissingOrders()
+	if err != nil {
+		return CarrierManifestResult{}, err
+	}
+	if manifest.Status == updated.Status {
+		return CarrierManifestResult{Manifest: updated}, nil
+	}
+	if err := uc.store.Save(ctx, updated); err != nil {
+		return CarrierManifestResult{}, err
+	}
+
+	log, err := newManifestAuditLog(
+		input.ActorID,
+		input.RequestID,
+		"shipping.manifest.missing_exception_reported",
+		updated,
+		map[string]any{
+			"source":               "carrier manifest missing exception",
+			"reason":               strings.TrimSpace(input.Reason),
+			"missing_count":        len(missingLines),
+			"missing_order_nos":    manifestLineOrderNos(missingLines),
+			"missing_tracking_nos": manifestLineTrackingNos(missingLines),
 		},
 		uc.clock(),
 	)
@@ -902,6 +969,28 @@ func newManifestAuditLog(
 		Metadata:  metadata,
 		CreatedAt: createdAt,
 	})
+}
+
+func manifestLineOrderNos(lines []domain.CarrierManifestLine) []string {
+	orderNos := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if strings.TrimSpace(line.OrderNo) != "" {
+			orderNos = append(orderNos, strings.TrimSpace(line.OrderNo))
+		}
+	}
+
+	return orderNos
+}
+
+func manifestLineTrackingNos(lines []domain.CarrierManifestLine) []string {
+	trackingNos := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if strings.TrimSpace(line.TrackingNo) != "" {
+			trackingNos = append(trackingNos, strings.TrimSpace(line.TrackingNo))
+		}
+	}
+
+	return trackingNos
 }
 
 func newCarrierManifestScanEvent(

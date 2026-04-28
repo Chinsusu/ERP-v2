@@ -199,7 +199,7 @@ export function CarrierManifestPrototype() {
   }, [localManifests, manifests, query]);
   const selectedManifest =
     displayedManifests.find((manifest) => manifest.id === selectedManifestId) ?? displayedManifests[0] ?? null;
-  const missingLines = selectedManifest?.lines.filter((line) => !line.scanned) ?? [];
+  const missingLines = selectedManifest?.missingLines ?? [];
   const canConfirmHandover =
     selectedManifest !== null &&
     !actionBusy &&
