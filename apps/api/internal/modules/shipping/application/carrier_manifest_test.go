@@ -51,7 +51,9 @@ func TestCreateCarrierManifestWritesAudit(t *testing.T) {
 	if result.Manifest.Status != domain.ManifestStatusDraft {
 		t.Fatalf("status = %q, want draft", result.Manifest.Status)
 	}
-	if result.Manifest.CarrierName != "Ninja Van" || result.Manifest.StagingZone != "handover-c" {
+	if result.Manifest.CarrierName != "Ninja Van" ||
+		result.Manifest.StagingZone != "handover-c" ||
+		result.Manifest.HandoverZoneCode != "HANDOVER-C" {
 		t.Fatalf("manifest = %+v, want carrier name and handover zone from carrier master", result.Manifest)
 	}
 	if result.AuditLogID == "" {
@@ -119,6 +121,10 @@ func TestAddShipmentToCarrierManifestUpdatesCountsAndAudit(t *testing.T) {
 	}
 	if got := result.Manifest.Summary(); got.ExpectedCount != 1 || got.ScannedCount != 0 || got.MissingCount != 1 {
 		t.Fatalf("summary = %+v, want 1 expected, 0 scanned, 1 missing", got)
+	}
+	if result.Manifest.Lines[0].HandoverZoneCode != "HANDOVER-A" ||
+		result.Manifest.Lines[0].HandoverBinCode != "TOTE-A03" {
+		t.Fatalf("line = %+v, want shipment handover zone/bin copied", result.Manifest.Lines[0])
 	}
 
 	logs, err := auditStore.List(context.Background(), audit.Query{Action: "shipping.manifest.shipment_added"})
@@ -281,15 +287,17 @@ func draftCarrierManifestForActionTest(t *testing.T) domain.CarrierManifest {
 	t.Helper()
 
 	manifest, err := domain.NewCarrierManifest(domain.NewCarrierManifestInput{
-		ID:            "manifest-hcm-ghn-action-test",
-		CarrierCode:   "GHN",
-		CarrierName:   "GHN Express",
-		WarehouseID:   "wh-hcm",
-		WarehouseCode: "HCM",
-		Date:          "2026-04-28",
-		HandoverBatch: "afternoon",
-		StagingZone:   "handover-a",
-		Owner:         "Warehouse Lead",
+		ID:               "manifest-hcm-ghn-action-test",
+		CarrierCode:      "GHN",
+		CarrierName:      "GHN Express",
+		WarehouseID:      "wh-hcm",
+		WarehouseCode:    "HCM",
+		Date:             "2026-04-28",
+		HandoverBatch:    "afternoon",
+		StagingZone:      "handover-a",
+		HandoverZoneCode: "HANDOVER-A",
+		HandoverBinCode:  "TOTE-A01",
+		Owner:            "Warehouse Lead",
 	})
 	if err != nil {
 		t.Fatalf("new carrier manifest: %v", err)

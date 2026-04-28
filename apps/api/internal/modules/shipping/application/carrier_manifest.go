@@ -70,17 +70,21 @@ type VerifyCarrierManifestScan struct {
 }
 
 type CreateCarrierManifestInput struct {
-	ID            string
-	CarrierCode   string
-	CarrierName   string
-	WarehouseID   string
-	WarehouseCode string
-	Date          string
-	HandoverBatch string
-	StagingZone   string
-	Owner         string
-	ActorID       string
-	RequestID     string
+	ID               string
+	CarrierCode      string
+	CarrierName      string
+	WarehouseID      string
+	WarehouseCode    string
+	Date             string
+	HandoverBatch    string
+	StagingZone      string
+	HandoverZoneID   string
+	HandoverZoneCode string
+	HandoverBinID    string
+	HandoverBinCode  string
+	Owner            string
+	ActorID          string
+	RequestID        string
 }
 
 type AddShipmentToCarrierManifestInput struct {
@@ -249,16 +253,20 @@ func (uc CreateCarrierManifest) Execute(
 	}
 
 	manifest, err := domain.NewCarrierManifest(domain.NewCarrierManifestInput{
-		ID:            input.ID,
-		CarrierCode:   carrier.Code,
-		CarrierName:   carrier.Name,
-		WarehouseID:   input.WarehouseID,
-		WarehouseCode: input.WarehouseCode,
-		Date:          input.Date,
-		HandoverBatch: input.HandoverBatch,
-		StagingZone:   carrierHandoverZone(input.StagingZone, carrier),
-		Owner:         input.Owner,
-		CreatedAt:     uc.clock(),
+		ID:               input.ID,
+		CarrierCode:      carrier.Code,
+		CarrierName:      carrier.Name,
+		WarehouseID:      input.WarehouseID,
+		WarehouseCode:    input.WarehouseCode,
+		Date:             input.Date,
+		HandoverBatch:    input.HandoverBatch,
+		StagingZone:      carrierHandoverZone(input.StagingZone, carrier),
+		HandoverZoneID:   input.HandoverZoneID,
+		HandoverZoneCode: carrierHandoverZone(input.HandoverZoneCode, carrier),
+		HandoverBinID:    input.HandoverBinID,
+		HandoverBinCode:  input.HandoverBinCode,
+		Owner:            input.Owner,
+		CreatedAt:        uc.clock(),
 	})
 	if err != nil {
 		return CarrierManifestResult{}, err
@@ -947,53 +955,59 @@ func newManifestScanAuditLog(
 func prototypeCarrierManifests() []domain.CarrierManifest {
 	return []domain.CarrierManifest{
 		{
-			ID:            "manifest-hcm-ghn-morning",
-			CarrierCode:   "GHN",
-			CarrierName:   "GHN Express",
-			WarehouseID:   "wh-hcm",
-			WarehouseCode: "HCM",
-			Date:          "2026-04-26",
-			HandoverBatch: "morning",
-			StagingZone:   "handover-a",
-			Status:        domain.ManifestStatusScanning,
-			Owner:         "Handover Operator",
-			CreatedAt:     time.Date(2026, 4, 26, 7, 45, 0, 0, time.UTC),
+			ID:               "manifest-hcm-ghn-morning",
+			CarrierCode:      "GHN",
+			CarrierName:      "GHN Express",
+			WarehouseID:      "wh-hcm",
+			WarehouseCode:    "HCM",
+			Date:             "2026-04-26",
+			HandoverBatch:    "morning",
+			StagingZone:      "handover-a",
+			HandoverZoneCode: "HANDOVER-A",
+			HandoverBinCode:  "TOTE-A01",
+			Status:           domain.ManifestStatusScanning,
+			Owner:            "Handover Operator",
+			CreatedAt:        time.Date(2026, 4, 26, 7, 45, 0, 0, time.UTC),
 			Lines: []domain.CarrierManifestLine{
-				{ID: "line-ship-hcm-001", ShipmentID: "ship-hcm-260426-001", OrderNo: "SO-260426-001", TrackingNo: "GHN260426001", PackageCode: "TOTE-A01", StagingZone: "handover-a", Scanned: true},
-				{ID: "line-ship-hcm-002", ShipmentID: "ship-hcm-260426-002", OrderNo: "SO-260426-002", TrackingNo: "GHN260426002", PackageCode: "TOTE-A01", StagingZone: "handover-a", Scanned: true},
-				{ID: "line-ship-hcm-003", ShipmentID: "ship-hcm-260426-003", OrderNo: "SO-260426-003", TrackingNo: "GHN260426003", PackageCode: "TOTE-A02", StagingZone: "handover-a"},
+				{ID: "line-ship-hcm-001", ShipmentID: "ship-hcm-260426-001", OrderNo: "SO-260426-001", TrackingNo: "GHN260426001", PackageCode: "TOTE-A01", StagingZone: "handover-a", HandoverZoneCode: "HANDOVER-A", HandoverBinCode: "TOTE-A01", Scanned: true},
+				{ID: "line-ship-hcm-002", ShipmentID: "ship-hcm-260426-002", OrderNo: "SO-260426-002", TrackingNo: "GHN260426002", PackageCode: "TOTE-A01", StagingZone: "handover-a", HandoverZoneCode: "HANDOVER-A", HandoverBinCode: "TOTE-A01", Scanned: true},
+				{ID: "line-ship-hcm-003", ShipmentID: "ship-hcm-260426-003", OrderNo: "SO-260426-003", TrackingNo: "GHN260426003", PackageCode: "TOTE-A02", StagingZone: "handover-a", HandoverZoneCode: "HANDOVER-A", HandoverBinCode: "TOTE-A02"},
 			},
 		},
 		{
-			ID:            "manifest-hcm-vtp-noon",
-			CarrierCode:   "VTP",
-			CarrierName:   "Viettel Post",
-			WarehouseID:   "wh-hcm",
-			WarehouseCode: "HCM",
-			Date:          "2026-04-26",
-			HandoverBatch: "noon",
-			StagingZone:   "handover-b",
-			Status:        domain.ManifestStatusReady,
-			Owner:         "Warehouse Lead",
-			CreatedAt:     time.Date(2026, 4, 26, 9, 0, 0, 0, time.UTC),
+			ID:               "manifest-hcm-vtp-noon",
+			CarrierCode:      "VTP",
+			CarrierName:      "Viettel Post",
+			WarehouseID:      "wh-hcm",
+			WarehouseCode:    "HCM",
+			Date:             "2026-04-26",
+			HandoverBatch:    "noon",
+			StagingZone:      "handover-b",
+			HandoverZoneCode: "HANDOVER-B",
+			HandoverBinCode:  "TOTE-B01",
+			Status:           domain.ManifestStatusReady,
+			Owner:            "Warehouse Lead",
+			CreatedAt:        time.Date(2026, 4, 26, 9, 0, 0, 0, time.UTC),
 			Lines: []domain.CarrierManifestLine{
-				{ID: "line-ship-hcm-vtp-001", ShipmentID: "ship-hcm-vtp-260426-001", OrderNo: "SO-260426-011", TrackingNo: "VTP260426011", PackageCode: "TOTE-B01", StagingZone: "handover-b"},
+				{ID: "line-ship-hcm-vtp-001", ShipmentID: "ship-hcm-vtp-260426-001", OrderNo: "SO-260426-011", TrackingNo: "VTP260426011", PackageCode: "TOTE-B01", StagingZone: "handover-b", HandoverZoneCode: "HANDOVER-B", HandoverBinCode: "TOTE-B01"},
 			},
 		},
 		{
-			ID:            "manifest-hn-ghn-day",
-			CarrierCode:   "GHN",
-			CarrierName:   "GHN Express",
-			WarehouseID:   "wh-hn",
-			WarehouseCode: "HN",
-			Date:          "2026-04-26",
-			HandoverBatch: "day",
-			StagingZone:   "hn-handover",
-			Status:        domain.ManifestStatusCompleted,
-			Owner:         "HN Lead",
-			CreatedAt:     time.Date(2026, 4, 26, 8, 20, 0, 0, time.UTC),
+			ID:               "manifest-hn-ghn-day",
+			CarrierCode:      "GHN",
+			CarrierName:      "GHN Express",
+			WarehouseID:      "wh-hn",
+			WarehouseCode:    "HN",
+			Date:             "2026-04-26",
+			HandoverBatch:    "day",
+			StagingZone:      "hn-handover",
+			HandoverZoneCode: "HN-HANDOVER",
+			HandoverBinCode:  "HN-TOTE-01",
+			Status:           domain.ManifestStatusCompleted,
+			Owner:            "HN Lead",
+			CreatedAt:        time.Date(2026, 4, 26, 8, 20, 0, 0, time.UTC),
 			Lines: []domain.CarrierManifestLine{
-				{ID: "line-ship-hn-001", ShipmentID: "ship-hn-260426-001", OrderNo: "SO-260426-HN-011", TrackingNo: "GHNHN260426001", PackageCode: "HN-TOTE-01", StagingZone: "hn-handover", Scanned: true},
+				{ID: "line-ship-hn-001", ShipmentID: "ship-hn-260426-001", OrderNo: "SO-260426-HN-011", TrackingNo: "GHNHN260426001", PackageCode: "HN-TOTE-01", StagingZone: "hn-handover", HandoverZoneCode: "HN-HANDOVER", HandoverBinCode: "HN-TOTE-01", Scanned: true},
 			},
 		},
 	}
@@ -1001,12 +1015,12 @@ func prototypeCarrierManifests() []domain.CarrierManifest {
 
 func prototypePackedShipments() []domain.PackedShipment {
 	return []domain.PackedShipment{
-		{ID: "ship-hcm-260426-001", OrderNo: "SO-260426-001", TrackingNo: "GHN260426001", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-A01", StagingZone: "handover-a", Packed: true},
-		{ID: "ship-hcm-260426-002", OrderNo: "SO-260426-002", TrackingNo: "GHN260426002", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-A01", StagingZone: "handover-a", Packed: true},
-		{ID: "ship-hcm-260426-003", OrderNo: "SO-260426-003", TrackingNo: "GHN260426003", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-A02", StagingZone: "handover-a", Packed: true},
-		{ID: "ship-hcm-260426-004", OrderNo: "SO-260426-004", TrackingNo: "GHN260426004", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-A03", StagingZone: "handover-a", Packed: true},
+		{ID: "ship-hcm-260426-001", OrderNo: "SO-260426-001", TrackingNo: "GHN260426001", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-A01", StagingZone: "handover-a", HandoverZoneCode: "HANDOVER-A", HandoverBinCode: "TOTE-A01", Packed: true},
+		{ID: "ship-hcm-260426-002", OrderNo: "SO-260426-002", TrackingNo: "GHN260426002", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-A01", StagingZone: "handover-a", HandoverZoneCode: "HANDOVER-A", HandoverBinCode: "TOTE-A01", Packed: true},
+		{ID: "ship-hcm-260426-003", OrderNo: "SO-260426-003", TrackingNo: "GHN260426003", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-A02", StagingZone: "handover-a", HandoverZoneCode: "HANDOVER-A", HandoverBinCode: "TOTE-A02", Packed: true},
+		{ID: "ship-hcm-260426-004", OrderNo: "SO-260426-004", TrackingNo: "GHN260426004", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-A03", StagingZone: "handover-a", HandoverZoneCode: "HANDOVER-A", HandoverBinCode: "TOTE-A03", Packed: true},
 		{ID: "ship-hcm-260426-099", OrderNo: "SO-260426-099", TrackingNo: "GHN260426099", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "PACKING-LANE-01", StagingZone: "packing", Packed: false},
-		{ID: "ship-hcm-vtp-260426-001", OrderNo: "SO-260426-011", TrackingNo: "VTP260426011", CarrierCode: "VTP", CarrierName: "Viettel Post", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-B01", StagingZone: "handover-b", Packed: true},
-		{ID: "ship-hn-260426-001", OrderNo: "SO-260426-HN-011", TrackingNo: "GHNHN260426001", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hn", WarehouseCode: "HN", PackageCode: "HN-TOTE-01", StagingZone: "hn-handover", Packed: true},
+		{ID: "ship-hcm-vtp-260426-001", OrderNo: "SO-260426-011", TrackingNo: "VTP260426011", CarrierCode: "VTP", CarrierName: "Viettel Post", WarehouseID: "wh-hcm", WarehouseCode: "HCM", PackageCode: "TOTE-B01", StagingZone: "handover-b", HandoverZoneCode: "HANDOVER-B", HandoverBinCode: "TOTE-B01", Packed: true},
+		{ID: "ship-hn-260426-001", OrderNo: "SO-260426-HN-011", TrackingNo: "GHNHN260426001", CarrierCode: "GHN", CarrierName: "GHN Express", WarehouseID: "wh-hn", WarehouseCode: "HN", PackageCode: "HN-TOTE-01", StagingZone: "hn-handover", HandoverZoneCode: "HN-HANDOVER", HandoverBinCode: "HN-TOTE-01", Packed: true},
 	}
 }

@@ -596,7 +596,8 @@ func TestCarrierManifestsHandlerCreatesManifestAndWritesAudit(t *testing.T) {
 		"carrier_name": "Ninja Van",
 		"warehouse_id": "wh-hcm",
 		"warehouse_code": "HCM",
-		"date": "2026-04-26"
+		"date": "2026-04-26",
+		"handover_bin_code": "tote-c01"
 	}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/shipping/manifests", body)
 	req.Header.Set(response.HeaderRequestID, "req-manifest-create")
@@ -620,6 +621,8 @@ func TestCarrierManifestsHandlerCreatesManifestAndWritesAudit(t *testing.T) {
 	if payload.Data.Status != "draft" ||
 		payload.Data.CarrierName != "Ninja Van" ||
 		payload.Data.StagingZone != "handover-c" ||
+		payload.Data.HandoverZoneCode != "HANDOVER-C" ||
+		payload.Data.HandoverBinCode != "TOTE-C01" ||
 		payload.Data.AuditLogID == "" {
 		t.Fatalf("manifest response = %+v, want draft with carrier master defaults and audit log", payload.Data)
 	}
@@ -723,7 +726,11 @@ func TestAddShipmentToCarrierManifestHandlerUpdatesCounts(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if payload.Data.Status != "draft" || payload.Data.Summary.ExpectedCount != 1 || payload.Data.Summary.MissingCount != 1 {
+	if payload.Data.Status != "draft" ||
+		payload.Data.Summary.ExpectedCount != 1 ||
+		payload.Data.Summary.MissingCount != 1 ||
+		payload.Data.Lines[0].HandoverZoneCode != "HANDOVER-A" ||
+		payload.Data.Lines[0].HandoverBinCode != "TOTE-A03" {
 		t.Fatalf("manifest = %+v, want draft with expected 1 missing 1", payload.Data)
 	}
 }
@@ -1698,15 +1705,17 @@ func mustDraftCarrierManifestForHandler(t *testing.T) shippingdomain.CarrierMani
 	t.Helper()
 
 	manifest, err := shippingdomain.NewCarrierManifest(shippingdomain.NewCarrierManifestInput{
-		ID:            "manifest-hcm-ghn-handler",
-		CarrierCode:   "GHN",
-		CarrierName:   "GHN Express",
-		WarehouseID:   "wh-hcm",
-		WarehouseCode: "HCM",
-		Date:          "2026-04-28",
-		HandoverBatch: "afternoon",
-		StagingZone:   "handover-a",
-		Owner:         "Warehouse Lead",
+		ID:               "manifest-hcm-ghn-handler",
+		CarrierCode:      "GHN",
+		CarrierName:      "GHN Express",
+		WarehouseID:      "wh-hcm",
+		WarehouseCode:    "HCM",
+		Date:             "2026-04-28",
+		HandoverBatch:    "afternoon",
+		StagingZone:      "handover-a",
+		HandoverZoneCode: "HANDOVER-A",
+		HandoverBinCode:  "TOTE-A01",
+		Owner:            "Warehouse Lead",
 	})
 	if err != nil {
 		t.Fatalf("new carrier manifest: %v", err)
