@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   createReturnInspection,
   formatReturnInspectionCondition,
@@ -7,6 +7,7 @@ import {
   getReturnReceipts,
   matchesReturnReceiptCode,
   receiveReturn,
+  resetPrototypeReturnReceiptsForTest,
   returnDispositionTone,
   returnInspectionConditionTone,
   returnInspectionDispositionTone,
@@ -15,6 +16,10 @@ import {
 } from "./returnReceivingService";
 
 describe("returnReceivingService", () => {
+  beforeEach(() => {
+    resetPrototypeReturnReceiptsForTest();
+  });
+
   it("filters return receipts by warehouse and pending inspection status", async () => {
     await expect(
       getReturnReceipts({
@@ -82,6 +87,33 @@ describe("returnReceivingService", () => {
       targetLocation: "lab-damaged-placeholder",
       stockMovement: undefined
     });
+  });
+
+  it("rejects duplicate scans across tracking and order number", async () => {
+    const input = {
+      warehouseId: "wh-hcm",
+      warehouseCode: "HCM",
+      source: "CARRIER" as const,
+      code: "GHN260426001",
+      packageCondition: "sealed",
+      disposition: "needs_inspection" as const
+    };
+
+    await expect(receiveReturn(input)).resolves.toMatchObject({ originalOrderNo: "SO-260426-001" });
+    await expect(receiveReturn({ ...input, code: "SO-260426-001" })).rejects.toThrow("already exists");
+  });
+
+  it("rejects returns before handover or delivery", async () => {
+    await expect(
+      receiveReturn({
+        warehouseId: "wh-hcm",
+        warehouseCode: "HCM",
+        source: "CARRIER",
+        code: "GHN260426009",
+        packageCondition: "sealed",
+        disposition: "needs_inspection"
+      })
+    ).rejects.toThrow("not eligible");
   });
 
   it("maps returns status and disposition to UI labels and tones", () => {

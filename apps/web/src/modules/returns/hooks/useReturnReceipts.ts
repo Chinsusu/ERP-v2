@@ -7,15 +7,22 @@ import type { ReturnReceipt, ReturnReceiptQuery } from "../types";
 export function useReturnReceipts(query: ReturnReceiptQuery = {}) {
   const [receipts, setReceipts] = useState<ReturnReceipt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setError(null);
 
     getReturnReceipts(query)
       .then((rows) => {
         if (active) {
           setReceipts(rows);
+        }
+      })
+      .catch((cause: unknown) => {
+        if (active) {
+          setError(cause instanceof Error ? cause : new Error("Return receipts could not be loaded"));
         }
       })
       .finally(() => {
@@ -29,5 +36,5 @@ export function useReturnReceipts(query: ReturnReceiptQuery = {}) {
     };
   }, [query]);
 
-  return { receipts, loading };
+  return { receipts, loading, error };
 }
