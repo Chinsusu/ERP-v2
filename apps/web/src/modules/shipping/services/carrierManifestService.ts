@@ -1,7 +1,9 @@
+import { ApiError, apiDelete, apiGetRaw, apiPost } from "../../../shared/api/client";
 import type {
   CarrierManifest,
   CarrierManifestLine,
   CarrierManifestQuery,
+  CarrierManifestScanEvent,
   CarrierManifestScanResult,
   CarrierManifestScanResultCode,
   CarrierManifestScanSeverity,
@@ -12,6 +14,87 @@ import type {
 } from "../types";
 
 export const defaultCarrierManifestDate = "2026-04-26";
+
+const defaultAccessToken = "local-dev-access-token";
+
+type CarrierManifestSummaryApi = {
+  expected_count: number;
+  scanned_count: number;
+  missing_count: number;
+};
+
+type CarrierManifestLineApi = {
+  id: string;
+  shipment_id: string;
+  order_no: string;
+  tracking_no: string;
+  package_code: string;
+  staging_zone: string;
+  handover_zone_code?: string;
+  handover_bin_code?: string;
+  scanned: boolean;
+};
+
+type CarrierManifestApi = {
+  id: string;
+  carrier_code: string;
+  carrier_name: string;
+  warehouse_id: string;
+  warehouse_code: string;
+  date: string;
+  handover_batch: string;
+  staging_zone: string;
+  handover_zone_code?: string;
+  handover_bin_code?: string;
+  status: CarrierManifestStatus;
+  owner: string;
+  audit_log_id?: string;
+  summary: CarrierManifestSummaryApi;
+  lines: CarrierManifestLineApi[];
+  created_at?: string;
+};
+
+type CreateCarrierManifestApiRequest = {
+  carrier_code: string;
+  carrier_name: string;
+  warehouse_id: string;
+  warehouse_code: string;
+  date: string;
+  handover_batch?: string;
+  staging_zone?: string;
+  handover_zone_code?: string;
+  handover_bin_code?: string;
+  owner?: string;
+};
+
+type CarrierManifestScanEventApi = {
+  id: string;
+  manifest_id: string;
+  expected_manifest_id?: string;
+  code: string;
+  result_code: CarrierManifestScanResultCode;
+  severity: CarrierManifestScanSeverity;
+  message: string;
+  shipment_id?: string;
+  order_no?: string;
+  tracking_no?: string;
+  actor_id: string;
+  station_id: string;
+  warehouse_id: string;
+  carrier_code: string;
+  created_at: string;
+};
+
+type CarrierManifestScanResultApi = {
+  result_code: CarrierManifestScanResultCode;
+  severity: CarrierManifestScanSeverity;
+  message: string;
+  expected_manifest_id?: string;
+  line?: CarrierManifestLineApi;
+  scan_event: CarrierManifestScanEventApi;
+  manifest: CarrierManifestApi;
+  audit_log_id?: string;
+};
 
 export const carrierOptions = [
   { label: "All carriers", value: "" },
@@ -32,103 +115,24 @@ export const carrierManifestStatusOptions: { label: string; value: "" | CarrierM
   { label: "Ready", value: "ready" },
   { label: "Scanning", value: "scanning" },
   { label: "Completed", value: "completed" },
-  { label: "Exception", value: "exception" }
+  { label: "Handed over", value: "handed_over" },
+  { label: "Exception", value: "exception" },
+  { label: "Cancelled", value: "cancelled" }
 ];
 
-export const prototypeCarrierManifests: CarrierManifest[] = [
-  createManifest({
-    id: "manifest-hcm-ghn-morning",
-    carrierCode: "GHN",
-    carrierName: "GHN Express",
-    warehouseId: "wh-hcm",
-    warehouseCode: "HCM",
-    date: "2026-04-26",
-    handoverBatch: "morning",
-    stagingZone: "handover-a",
-    status: "scanning",
-    owner: "Handover Operator",
-    createdAt: "2026-04-26T07:45:00Z",
-    lines: [
-      {
-        id: "line-ship-hcm-001",
-        shipmentId: "ship-hcm-260426-001",
-        orderNo: "SO-260426-001",
-        trackingNo: "GHN260426001",
-        packageCode: "TOTE-A01",
-        stagingZone: "handover-a",
-        scanned: true
-      },
-      {
-        id: "line-ship-hcm-002",
-        shipmentId: "ship-hcm-260426-002",
-        orderNo: "SO-260426-002",
-        trackingNo: "GHN260426002",
-        packageCode: "TOTE-A01",
-        stagingZone: "handover-a",
-        scanned: true
-      },
-      {
-        id: "line-ship-hcm-003",
-        shipmentId: "ship-hcm-260426-003",
-        orderNo: "SO-260426-003",
-        trackingNo: "GHN260426003",
-        packageCode: "TOTE-A02",
-        stagingZone: "handover-a",
-        scanned: false
-      }
-    ]
-  }),
-  createManifest({
-    id: "manifest-hcm-vtp-noon",
-    carrierCode: "VTP",
-    carrierName: "Viettel Post",
-    warehouseId: "wh-hcm",
-    warehouseCode: "HCM",
-    date: "2026-04-26",
-    handoverBatch: "noon",
-    stagingZone: "handover-b",
-    status: "ready",
-    owner: "Warehouse Lead",
-    createdAt: "2026-04-26T09:00:00Z",
-    lines: [
-      {
-        id: "line-ship-hcm-vtp-001",
-        shipmentId: "ship-hcm-vtp-260426-001",
-        orderNo: "SO-260426-011",
-        trackingNo: "VTP260426011",
-        packageCode: "TOTE-B01",
-        stagingZone: "handover-b",
-        scanned: false
-      }
-    ]
-  }),
-  createManifest({
-    id: "manifest-hn-ghn-day",
-    carrierCode: "GHN",
-    carrierName: "GHN Express",
-    warehouseId: "wh-hn",
-    warehouseCode: "HN",
-    date: "2026-04-26",
-    handoverBatch: "day",
-    stagingZone: "hn-handover",
-    status: "completed",
-    owner: "HN Lead",
-    createdAt: "2026-04-26T08:20:00Z",
-    lines: [
-      {
-        id: "line-ship-hn-001",
-        shipmentId: "ship-hn-260426-001",
-        orderNo: "SO-260426-HN-011",
-        trackingNo: "GHNHN260426001",
-        packageCode: "HN-TOTE-01",
-        stagingZone: "hn-handover",
-        scanned: true
-      }
-    ]
-  })
-];
+export let prototypeCarrierManifests: CarrierManifest[] = createPrototypeCarrierManifests();
 
 const prototypeShipmentStates = [
+  {
+    shipmentId: "ship-hcm-260426-004",
+    orderNo: "SO-260426-004",
+    trackingNo: "GHN260426004",
+    packageCode: "TOTE-A03",
+    stagingZone: "handover-a",
+    handoverZoneCode: "handover-a",
+    handoverBinCode: "A03",
+    packed: true
+  },
   {
     shipmentId: "ship-hcm-260426-099",
     orderNo: "SO-260426-099",
@@ -142,6 +146,283 @@ const prototypeShipmentStates = [
 let prototypeScanSequence = 0;
 
 export async function getCarrierManifests(query: CarrierManifestQuery = {}): Promise<CarrierManifest[]> {
+  try {
+    const manifests = await apiGetRaw<CarrierManifestApi[]>(`/shipping/manifests${queryString(toApiQuery(query))}`, {
+      accessToken: defaultAccessToken
+    });
+
+    return manifests.map(fromApiCarrierManifest).sort(sortManifests);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return filterPrototypeCarrierManifests(query);
+  }
+}
+
+export async function createCarrierManifest(input: CreateCarrierManifestInput): Promise<CarrierManifest> {
+  try {
+    return fromApiCarrierManifest(
+      await apiPost<CarrierManifestApi, CreateCarrierManifestApiRequest>(
+        "/shipping/manifests",
+        toApiCreateInput(input),
+        { accessToken: defaultAccessToken }
+      )
+    );
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return createPrototypeCarrierManifest(input);
+  }
+}
+
+export async function addShipmentToManifest(manifestId: string, shipmentId: string): Promise<CarrierManifest> {
+  try {
+    return fromApiCarrierManifest(
+      await apiPost<CarrierManifestApi, { shipment_id: string }>(
+        `/shipping/manifests/${encodeURIComponent(manifestId)}/shipments`,
+        { shipment_id: shipmentId },
+        { accessToken: defaultAccessToken }
+      )
+    );
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return addPrototypeShipmentToManifest(manifestId, shipmentId);
+  }
+}
+
+export async function removeShipmentFromManifest(manifestId: string, shipmentId: string): Promise<CarrierManifest> {
+  try {
+    return fromApiCarrierManifest(
+      await apiDelete<CarrierManifestApi>(
+        `/shipping/manifests/${encodeURIComponent(manifestId)}/shipments/${encodeURIComponent(shipmentId)}`,
+        { accessToken: defaultAccessToken }
+      )
+    );
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return removePrototypeShipmentFromManifest(manifestId, shipmentId);
+  }
+}
+
+export async function markCarrierManifestReady(manifestId: string): Promise<CarrierManifest> {
+  try {
+    return fromApiCarrierManifest(
+      await apiPost<CarrierManifestApi, Record<string, never>>(
+        `/shipping/manifests/${encodeURIComponent(manifestId)}/ready`,
+        {},
+        { accessToken: defaultAccessToken }
+      )
+    );
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return markPrototypeManifestReady(manifestId);
+  }
+}
+
+export async function cancelCarrierManifest(manifestId: string, reason = ""): Promise<CarrierManifest> {
+  try {
+    return fromApiCarrierManifest(
+      await apiPost<CarrierManifestApi, { reason: string }>(
+        `/shipping/manifests/${encodeURIComponent(manifestId)}/cancel`,
+        { reason },
+        { accessToken: defaultAccessToken }
+      )
+    );
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return cancelPrototypeManifest(manifestId);
+  }
+}
+
+export async function verifyCarrierManifestScan(
+  input: VerifyCarrierManifestScanInput,
+  manifests: CarrierManifest[] = prototypeCarrierManifests
+): Promise<CarrierManifestScanResult> {
+  try {
+    return fromApiCarrierManifestScanResult(
+      await apiPost<CarrierManifestScanResultApi, { code: string; station_id?: string }>(
+        `/shipping/manifests/${encodeURIComponent(input.manifestId)}/scan`,
+        { code: input.code, station_id: input.stationId },
+        { accessToken: defaultAccessToken }
+      )
+    );
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return verifyPrototypeCarrierManifestScan(input, manifests);
+  }
+}
+
+export function summarizeCarrierManifestLines(lines: CarrierManifestLine[]): CarrierManifestSummary {
+  const expectedCount = lines.length;
+  const scannedCount = lines.filter((line) => line.scanned).length;
+
+  return {
+    expectedCount,
+    scannedCount,
+    missingCount: Math.max(expectedCount - scannedCount, 0)
+  };
+}
+
+export function carrierManifestStatusTone(
+  status: CarrierManifestStatus
+): "normal" | "success" | "warning" | "danger" | "info" {
+  switch (status) {
+    case "completed":
+    case "handed_over":
+      return "success";
+    case "exception":
+    case "cancelled":
+      return "danger";
+    case "scanning":
+      return "warning";
+    case "ready":
+      return "info";
+    case "draft":
+    default:
+      return "normal";
+  }
+}
+
+export function carrierManifestScanSeverityTone(severity: CarrierManifestScanSeverity) {
+  return severity;
+}
+
+export function resetPrototypeCarrierManifestsForTest() {
+  prototypeCarrierManifests = createPrototypeCarrierManifests();
+  prototypeScanSequence = 0;
+}
+
+function shouldUsePrototypeFallback(reason: unknown) {
+  if (reason instanceof ApiError) {
+    return false;
+  }
+
+  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
+}
+
+function fromApiCarrierManifest(manifest: CarrierManifestApi): CarrierManifest {
+  return createManifest({
+    id: manifest.id,
+    carrierCode: manifest.carrier_code,
+    carrierName: manifest.carrier_name,
+    warehouseId: manifest.warehouse_id,
+    warehouseCode: manifest.warehouse_code,
+    date: manifest.date,
+    handoverBatch: manifest.handover_batch,
+    stagingZone: manifest.staging_zone,
+    handoverZoneCode: manifest.handover_zone_code || manifest.staging_zone,
+    handoverBinCode: manifest.handover_bin_code,
+    status: manifest.status,
+    owner: manifest.owner,
+    auditLogId: manifest.audit_log_id,
+    lines: manifest.lines.map(fromApiCarrierManifestLine),
+    createdAt: manifest.created_at ?? ""
+  });
+}
+
+function fromApiCarrierManifestLine(line: CarrierManifestLineApi): CarrierManifestLine {
+  return {
+    id: line.id,
+    shipmentId: line.shipment_id,
+    orderNo: line.order_no,
+    trackingNo: line.tracking_no,
+    packageCode: line.package_code,
+    stagingZone: line.staging_zone,
+    handoverZoneCode: line.handover_zone_code || line.staging_zone,
+    handoverBinCode: line.handover_bin_code,
+    scanned: line.scanned
+  };
+}
+
+function fromApiCarrierManifestScanResult(result: CarrierManifestScanResultApi): CarrierManifestScanResult {
+  return {
+    resultCode: result.result_code,
+    severity: result.severity,
+    message: result.message,
+    expectedManifestId: result.expected_manifest_id,
+    line: result.line ? fromApiCarrierManifestLine(result.line) : undefined,
+    scanEvent: fromApiCarrierManifestScanEvent(result.scan_event),
+    manifest: fromApiCarrierManifest(result.manifest),
+    auditLogId: result.audit_log_id
+  };
+}
+
+function fromApiCarrierManifestScanEvent(event: CarrierManifestScanEventApi): CarrierManifestScanEvent {
+  return {
+    id: event.id,
+    manifestId: event.manifest_id,
+    expectedManifestId: event.expected_manifest_id,
+    code: event.code,
+    resultCode: event.result_code,
+    severity: event.severity,
+    message: event.message,
+    shipmentId: event.shipment_id,
+    orderNo: event.order_no,
+    trackingNo: event.tracking_no,
+    actorId: event.actor_id,
+    stationId: event.station_id,
+    warehouseId: event.warehouse_id,
+    carrierCode: event.carrier_code,
+    createdAt: event.created_at
+  };
+}
+
+function toApiQuery(query: CarrierManifestQuery) {
+  return {
+    warehouse_id: query.warehouseId,
+    date: query.date,
+    carrier_code: query.carrierCode,
+    status: query.status
+  };
+}
+
+function toApiCreateInput(input: CreateCarrierManifestInput): CreateCarrierManifestApiRequest {
+  return {
+    carrier_code: input.carrierCode,
+    carrier_name: input.carrierName,
+    warehouse_id: input.warehouseId,
+    warehouse_code: input.warehouseCode,
+    date: input.date,
+    handover_batch: input.handoverBatch,
+    staging_zone: input.stagingZone,
+    handover_zone_code: input.handoverZoneCode,
+    handover_bin_code: input.handoverBinCode,
+    owner: input.owner
+  };
+}
+
+function queryString(query: Record<string, string | undefined>) {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+
+  const value = params.toString();
+  return value ? `?${value}` : "";
+}
+
+function filterPrototypeCarrierManifests(query: CarrierManifestQuery) {
   return prototypeCarrierManifests
     .filter((manifest) => {
       if (query.warehouseId && manifest.warehouseId !== query.warehouseId) {
@@ -159,10 +440,11 @@ export async function getCarrierManifests(query: CarrierManifestQuery = {}): Pro
 
       return true;
     })
-    .sort(sortManifests);
+    .sort(sortManifests)
+    .map(cloneManifest);
 }
 
-export async function createCarrierManifest(input: CreateCarrierManifestInput): Promise<CarrierManifest> {
+function createPrototypeCarrierManifest(input: CreateCarrierManifestInput) {
   const manifest = createManifest({
     id: `manifest-${input.warehouseCode.toLowerCase()}-${input.carrierCode.toLowerCase()}-${input.date.replaceAll("-", "")}`,
     carrierCode: input.carrierCode.toUpperCase(),
@@ -171,49 +453,121 @@ export async function createCarrierManifest(input: CreateCarrierManifestInput): 
     warehouseCode: input.warehouseCode,
     date: input.date,
     handoverBatch: input.handoverBatch || "day",
-    stagingZone: input.stagingZone || "handover",
+    stagingZone: input.stagingZone || input.handoverZoneCode || "handover",
+    handoverZoneCode: input.handoverZoneCode || input.stagingZone || "handover",
+    handoverBinCode: input.handoverBinCode,
     status: "draft",
     owner: input.owner || "Warehouse Lead",
     auditLogId: "audit-manifest-created-prototype",
     createdAt: "2026-04-26T10:00:00Z",
     lines: []
   });
+  prototypeCarrierManifests = [
+    manifest,
+    ...prototypeCarrierManifests.filter((candidate) => candidate.id !== manifest.id)
+  ];
 
-  return manifest;
+  return cloneManifest(manifest);
 }
 
-export async function addShipmentToManifest(manifestId: string, shipmentId: string): Promise<CarrierManifest> {
-  const manifest = prototypeCarrierManifests.find((candidate) => candidate.id === manifestId);
-  if (!manifest) {
-    throw new Error("Carrier manifest not found");
-  }
+function addPrototypeShipmentToManifest(manifestId: string, shipmentId: string): CarrierManifest {
+  const manifest = findPrototypeManifest(manifestId);
   if (manifest.lines.some((line) => line.shipmentId === shipmentId)) {
     throw new Error("Shipment already exists in carrier manifest");
   }
+  if (manifest.status !== "draft" && manifest.status !== "ready") {
+    throw new Error("Carrier manifest status transition is invalid");
+  }
+  const shipment = prototypeShipmentStates.find((candidate) => candidate.shipmentId === shipmentId);
+  if (shipment && !shipment.packed) {
+    throw new Error("Shipment must be packed before adding to carrier manifest");
+  }
 
-  return createManifest({
+  const updated = createManifest({
     ...manifest,
-    status: manifest.status === "draft" ? "ready" : manifest.status,
     auditLogId: "audit-manifest-shipment-added-prototype",
     lines: [
       ...manifest.lines,
       {
         id: `line-${shipmentId}`,
         shipmentId,
-        orderNo: shipmentId.toUpperCase(),
-        trackingNo: shipmentId.toUpperCase(),
-        packageCode: "TOTE-A03",
-        stagingZone: manifest.stagingZone,
+        orderNo: shipment?.orderNo ?? shipmentId.toUpperCase(),
+        trackingNo: shipment?.trackingNo ?? shipmentId.toUpperCase(),
+        packageCode: shipment?.packageCode ?? "TOTE-A03",
+        stagingZone: shipment?.stagingZone ?? manifest.stagingZone,
+        handoverZoneCode: shipment?.handoverZoneCode ?? manifest.handoverZoneCode ?? manifest.stagingZone,
+        handoverBinCode: shipment?.handoverBinCode ?? manifest.handoverBinCode,
         scanned: false
       }
     ]
   });
+
+  replacePrototypeManifest(updated);
+  return cloneManifest(updated);
 }
 
-export async function verifyCarrierManifestScan(
+function removePrototypeShipmentFromManifest(manifestId: string, shipmentId: string): CarrierManifest {
+  const manifest = findPrototypeManifest(manifestId);
+  if (manifest.status !== "draft" && manifest.status !== "ready") {
+    throw new Error("Carrier manifest status transition is invalid");
+  }
+  if (!manifest.lines.some((line) => line.shipmentId === shipmentId)) {
+    throw new Error("Shipment was not found in carrier manifest");
+  }
+
+  const updated = createManifest({
+    ...manifest,
+    status: manifest.lines.length === 1 ? "draft" : manifest.status,
+    auditLogId: "audit-manifest-shipment-removed-prototype",
+    lines: manifest.lines.filter((line) => line.shipmentId !== shipmentId)
+  });
+
+  replacePrototypeManifest(updated);
+  return cloneManifest(updated);
+}
+
+function markPrototypeManifestReady(manifestId: string): CarrierManifest {
+  const manifest = findPrototypeManifest(manifestId);
+  if (manifest.status === "ready" || manifest.status === "scanning") {
+    return cloneManifest(manifest);
+  }
+  if (manifest.status !== "draft" || manifest.lines.length === 0) {
+    throw new Error("Carrier manifest status transition is invalid");
+  }
+
+  const updated = createManifest({
+    ...manifest,
+    status: "ready",
+    auditLogId: "audit-manifest-ready-prototype"
+  });
+  replacePrototypeManifest(updated);
+
+  return cloneManifest(updated);
+}
+
+function cancelPrototypeManifest(manifestId: string): CarrierManifest {
+  const manifest = findPrototypeManifest(manifestId);
+  if (manifest.status === "completed" || manifest.status === "handed_over") {
+    throw new Error("Carrier manifest is already completed");
+  }
+  if (manifest.status === "cancelled") {
+    return cloneManifest(manifest);
+  }
+
+  const updated = createManifest({
+    ...manifest,
+    status: "cancelled",
+    auditLogId: "audit-manifest-cancelled-prototype"
+  });
+  replacePrototypeManifest(updated);
+
+  return cloneManifest(updated);
+}
+
+function verifyPrototypeCarrierManifestScan(
   input: VerifyCarrierManifestScanInput,
-  manifests: CarrierManifest[] = prototypeCarrierManifests
-): Promise<CarrierManifestScanResult> {
+  manifests: CarrierManifest[]
+): CarrierManifestScanResult {
   const manifest = manifests.find((candidate) => candidate.id === input.manifestId);
   if (!manifest) {
     throw new Error("Carrier manifest not found");
@@ -256,6 +610,9 @@ export async function verifyCarrierManifestScan(
       auditLogId: "audit-manifest-scan-prototype",
       lines: manifest.lines.map((candidate, index) => (index === lineIndex ? { ...candidate, scanned: true } : candidate))
     });
+    if (manifests === prototypeCarrierManifests) {
+      replacePrototypeManifest(updatedManifest);
+    }
 
     return createScanResult({
       code,
@@ -320,39 +677,6 @@ export async function verifyCarrierManifestScan(
   });
 }
 
-export function summarizeCarrierManifestLines(lines: CarrierManifestLine[]): CarrierManifestSummary {
-  const expectedCount = lines.length;
-  const scannedCount = lines.filter((line) => line.scanned).length;
-
-  return {
-    expectedCount,
-    scannedCount,
-    missingCount: Math.max(expectedCount - scannedCount, 0)
-  };
-}
-
-export function carrierManifestStatusTone(
-  status: CarrierManifestStatus
-): "normal" | "success" | "warning" | "danger" | "info" {
-  switch (status) {
-    case "completed":
-      return "success";
-    case "exception":
-      return "danger";
-    case "scanning":
-      return "warning";
-    case "ready":
-      return "info";
-    case "draft":
-    default:
-      return "normal";
-  }
-}
-
-export function carrierManifestScanSeverityTone(severity: CarrierManifestScanSeverity) {
-  return severity;
-}
-
 function createManifest(input: Omit<CarrierManifest, "summary">): CarrierManifest {
   return {
     ...input,
@@ -408,6 +732,141 @@ function createScanResult({
     scanEvent,
     manifest,
     auditLogId
+  };
+}
+
+function createPrototypeCarrierManifests(): CarrierManifest[] {
+  return [
+    createManifest({
+      id: "manifest-hcm-ghn-morning",
+      carrierCode: "GHN",
+      carrierName: "GHN Express",
+      warehouseId: "wh-hcm",
+      warehouseCode: "HCM",
+      date: "2026-04-26",
+      handoverBatch: "morning",
+      stagingZone: "handover-a",
+      handoverZoneCode: "handover-a",
+      handoverBinCode: "A01",
+      status: "scanning",
+      owner: "Handover Operator",
+      createdAt: "2026-04-26T07:45:00Z",
+      lines: [
+        {
+          id: "line-ship-hcm-001",
+          shipmentId: "ship-hcm-260426-001",
+          orderNo: "SO-260426-001",
+          trackingNo: "GHN260426001",
+          packageCode: "TOTE-A01",
+          stagingZone: "handover-a",
+          handoverZoneCode: "handover-a",
+          handoverBinCode: "A01",
+          scanned: true
+        },
+        {
+          id: "line-ship-hcm-002",
+          shipmentId: "ship-hcm-260426-002",
+          orderNo: "SO-260426-002",
+          trackingNo: "GHN260426002",
+          packageCode: "TOTE-A01",
+          stagingZone: "handover-a",
+          handoverZoneCode: "handover-a",
+          handoverBinCode: "A01",
+          scanned: true
+        },
+        {
+          id: "line-ship-hcm-003",
+          shipmentId: "ship-hcm-260426-003",
+          orderNo: "SO-260426-003",
+          trackingNo: "GHN260426003",
+          packageCode: "TOTE-A02",
+          stagingZone: "handover-a",
+          handoverZoneCode: "handover-a",
+          handoverBinCode: "A02",
+          scanned: false
+        }
+      ]
+    }),
+    createManifest({
+      id: "manifest-hcm-vtp-noon",
+      carrierCode: "VTP",
+      carrierName: "Viettel Post",
+      warehouseId: "wh-hcm",
+      warehouseCode: "HCM",
+      date: "2026-04-26",
+      handoverBatch: "noon",
+      stagingZone: "handover-b",
+      handoverZoneCode: "handover-b",
+      handoverBinCode: "B01",
+      status: "ready",
+      owner: "Warehouse Lead",
+      createdAt: "2026-04-26T09:00:00Z",
+      lines: [
+        {
+          id: "line-ship-hcm-vtp-001",
+          shipmentId: "ship-hcm-vtp-260426-001",
+          orderNo: "SO-260426-011",
+          trackingNo: "VTP260426011",
+          packageCode: "TOTE-B01",
+          stagingZone: "handover-b",
+          handoverZoneCode: "handover-b",
+          handoverBinCode: "B01",
+          scanned: false
+        }
+      ]
+    }),
+    createManifest({
+      id: "manifest-hn-ghn-day",
+      carrierCode: "GHN",
+      carrierName: "GHN Express",
+      warehouseId: "wh-hn",
+      warehouseCode: "HN",
+      date: "2026-04-26",
+      handoverBatch: "day",
+      stagingZone: "hn-handover",
+      handoverZoneCode: "hn-handover",
+      handoverBinCode: "HN-01",
+      status: "completed",
+      owner: "HN Lead",
+      createdAt: "2026-04-26T08:20:00Z",
+      lines: [
+        {
+          id: "line-ship-hn-001",
+          shipmentId: "ship-hn-260426-001",
+          orderNo: "SO-260426-HN-011",
+          trackingNo: "GHNHN260426001",
+          packageCode: "HN-TOTE-01",
+          stagingZone: "hn-handover",
+          handoverZoneCode: "hn-handover",
+          handoverBinCode: "HN-01",
+          scanned: true
+        }
+      ]
+    })
+  ];
+}
+
+function findPrototypeManifest(id: string) {
+  const manifest = prototypeCarrierManifests.find((candidate) => candidate.id === id);
+  if (!manifest) {
+    throw new Error("Carrier manifest not found");
+  }
+
+  return manifest;
+}
+
+function replacePrototypeManifest(manifest: CarrierManifest) {
+  prototypeCarrierManifests = [
+    manifest,
+    ...prototypeCarrierManifests.filter((candidate) => candidate.id !== manifest.id)
+  ];
+}
+
+function cloneManifest(manifest: CarrierManifest): CarrierManifest {
+  return {
+    ...manifest,
+    lines: manifest.lines.map((line) => ({ ...line })),
+    summary: { ...manifest.summary }
   };
 }
 

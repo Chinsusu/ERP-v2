@@ -1,4 +1,11 @@
-export type CarrierManifestStatus = "draft" | "ready" | "scanning" | "completed" | "exception";
+export type CarrierManifestStatus =
+  | "draft"
+  | "ready"
+  | "scanning"
+  | "completed"
+  | "handed_over"
+  | "exception"
+  | "cancelled";
 
 export type CarrierManifestSummary = {
   expectedCount: number;
@@ -13,6 +20,8 @@ export type CarrierManifestLine = {
   trackingNo: string;
   packageCode: string;
   stagingZone: string;
+  handoverZoneCode?: string;
+  handoverBinCode?: string;
   scanned: boolean;
 };
 
@@ -25,6 +34,8 @@ export type CarrierManifest = {
   date: string;
   handoverBatch: string;
   stagingZone: string;
+  handoverZoneCode?: string;
+  handoverBinCode?: string;
   status: CarrierManifestStatus;
   owner: string;
   auditLogId?: string;
@@ -92,6 +103,8 @@ export type CreateCarrierManifestInput = {
   date: string;
   handoverBatch?: string;
   stagingZone?: string;
+  handoverZoneCode?: string;
+  handoverBinCode?: string;
   owner?: string;
 };
 

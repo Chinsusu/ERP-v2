@@ -5,13 +5,16 @@ import { DataTable, StatusChip, type DataTableColumn } from "@/shared/design-sys
 import { useCarrierManifests } from "../hooks/useCarrierManifests";
 import {
   addShipmentToManifest,
+  cancelCarrierManifest,
   carrierManifestScanSeverityTone,
   carrierManifestStatusOptions,
   carrierManifestStatusTone,
   carrierOptions,
   createCarrierManifest,
   defaultCarrierManifestDate,
+  markCarrierManifestReady,
   manifestWarehouseOptions,
+  removeShipmentFromManifest,
   verifyCarrierManifestScan
 } from "../services/carrierManifestService";
 import type {
@@ -22,73 +25,115 @@ import type {
   CarrierManifestStatus
 } from "../types";
 
-const manifestColumns: DataTableColumn<CarrierManifest>[] = [
-  {
-    key: "manifest",
-    header: "Manifest",
-    render: (row) => (
-      <span className="erp-shipping-manifest-cell">
-        <strong>{row.id}</strong>
-        <small>{row.handoverBatch} / {row.stagingZone}</small>
-      </span>
-    ),
-    width: "260px"
-  },
-  {
-    key: "carrier",
-    header: "Carrier",
-    render: (row) => row.carrierName,
-    width: "150px"
-  },
-  {
-    key: "warehouse",
-    header: "Warehouse",
-    render: (row) => row.warehouseCode,
-    width: "100px"
-  },
-  {
-    key: "status",
-    header: "Status",
-    render: (row) => <StatusChip tone={carrierManifestStatusTone(row.status)}>{statusLabel(row.status)}</StatusChip>,
-    width: "120px"
-  },
-  {
-    key: "expected",
-    header: "Expected",
-    render: (row) => row.summary.expectedCount,
-    align: "right",
-    width: "100px"
-  },
-  {
-    key: "scanned",
-    header: "Scanned",
-    render: (row) => row.summary.scannedCount,
-    align: "right",
-    width: "100px"
-  },
-  {
-    key: "missing",
-    header: "Missing",
-    render: (row) => (
-      <StatusChip tone={row.summary.missingCount === 0 ? "success" : "danger"}>{row.summary.missingCount}</StatusChip>
-    ),
-    align: "right",
-    width: "100px"
-  }
-];
+function createManifestColumns(
+  selectedManifestId: string,
+  onSelectManifest: (manifestId: string) => void
+): DataTableColumn<CarrierManifest>[] {
+  return [
+    {
+      key: "manifest",
+      header: "Manifest",
+      render: (row) => (
+        <span className="erp-shipping-manifest-cell">
+          <strong>{row.id}</strong>
+          <small>{row.handoverBatch} / {manifestLocationLabel(row)}</small>
+        </span>
+      ),
+      width: "280px"
+    },
+    {
+      key: "carrier",
+      header: "Carrier",
+      render: (row) => row.carrierName,
+      width: "150px"
+    },
+    {
+      key: "warehouse",
+      header: "Warehouse",
+      render: (row) => row.warehouseCode,
+      width: "100px"
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (row) => <StatusChip tone={carrierManifestStatusTone(row.status)}>{statusLabel(row.status)}</StatusChip>,
+      width: "130px"
+    },
+    {
+      key: "orders",
+      header: "Orders",
+      render: (row) => row.summary.expectedCount,
+      align: "right",
+      width: "90px"
+    },
+    {
+      key: "scanned",
+      header: "Scanned",
+      render: (row) => row.summary.scannedCount,
+      align: "right",
+      width: "100px"
+    },
+    {
+      key: "missing",
+      header: "Missing",
+      render: (row) => (
+        <StatusChip tone={row.summary.missingCount === 0 ? "success" : "danger"}>{row.summary.missingCount}</StatusChip>
+      ),
+      align: "right",
+      width: "100px"
+    },
+    {
+      key: "select",
+      header: "",
+      render: (row) => (
+        <button
+          className={`erp-button ${row.id === selectedManifestId ? "erp-button--primary" : "erp-button--secondary"}`}
+          type="button"
+          onClick={() => onSelectManifest(row.id)}
+        >
+          Select
+        </button>
+      ),
+      align: "right",
+      width: "110px"
+    }
+  ];
+}
 
-const lineColumns: DataTableColumn<CarrierManifestLine>[] = [
-  { key: "order", header: "Order", render: (row) => row.orderNo, width: "150px" },
-  { key: "tracking", header: "Tracking", render: (row) => row.trackingNo, width: "160px" },
-  { key: "package", header: "Package", render: (row) => row.packageCode, width: "120px" },
-  { key: "zone", header: "Zone", render: (row) => row.stagingZone, width: "130px" },
-  {
-    key: "scan",
-    header: "Scan state",
-    render: (row) => <StatusChip tone={row.scanned ? "success" : "warning"}>{row.scanned ? "Scanned" : "Missing"}</StatusChip>,
-    width: "120px"
-  }
-];
+function createLineColumns(
+  canRemoveLine: boolean,
+  onRemoveLine: (line: CarrierManifestLine) => void
+): DataTableColumn<CarrierManifestLine>[] {
+  return [
+    { key: "order", header: "Order", render: (row) => row.orderNo, width: "150px" },
+    { key: "tracking", header: "Tracking", render: (row) => row.trackingNo, width: "160px" },
+    { key: "package", header: "Package", render: (row) => row.packageCode, width: "120px" },
+    { key: "zone", header: "Zone", render: (row) => row.handoverZoneCode || row.stagingZone, width: "130px" },
+    { key: "bin", header: "Bin", render: (row) => row.handoverBinCode || "-", width: "90px" },
+    {
+      key: "scan",
+      header: "Scan state",
+      render: (row) => <StatusChip tone={row.scanned ? "success" : "warning"}>{row.scanned ? "Scanned" : "Missing"}</StatusChip>,
+      width: "120px"
+    },
+    {
+      key: "action",
+      header: "",
+      render: (row) => (
+        <button
+          className="erp-button erp-button--secondary"
+          type="button"
+          onClick={() => onRemoveLine(row)}
+          disabled={!canRemoveLine}
+        >
+          Remove
+        </button>
+      ),
+      align: "right",
+      width: "110px"
+    }
+  ];
+}
 
 function createMissingLineColumns(
   onMissingAction: (action: "find" | "report", orderNo: string) => void
@@ -96,7 +141,7 @@ function createMissingLineColumns(
   return [
     { key: "order", header: "Order", render: (row) => row.orderNo, width: "150px" },
     { key: "tracking", header: "Tracking", render: (row) => row.trackingNo, width: "160px" },
-    { key: "zone", header: "Packing zone", render: (row) => row.stagingZone || "handover", width: "140px" },
+    { key: "zone", header: "Packing zone", render: (row) => row.handoverZoneCode || row.stagingZone || "handover", width: "140px" },
     {
       key: "state",
       header: "State",
@@ -134,6 +179,7 @@ export function CarrierManifestPrototype() {
   const [scanResult, setScanResult] = useState<CarrierManifestScanResult | null>(null);
   const [recentScans, setRecentScans] = useState<CarrierManifestScanResult[]>([]);
   const [scanBusy, setScanBusy] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
   const [localManifests, setLocalManifests] = useState<CarrierManifest[]>([]);
   const query = useMemo<CarrierManifestQuery>(
     () => ({
@@ -144,7 +190,7 @@ export function CarrierManifestPrototype() {
     }),
     [carrierCode, date, status, warehouseId]
   );
-  const { manifests, loading } = useCarrierManifests(query);
+  const { manifests, loading, error } = useCarrierManifests(query);
   const displayedManifests = useMemo(() => {
     const localMatches = localManifests.filter((manifest) => matchesManifestQuery(manifest, query));
     const localIds = new Set(localMatches.map((manifest) => manifest.id));
@@ -156,9 +202,25 @@ export function CarrierManifestPrototype() {
   const missingLines = selectedManifest?.lines.filter((line) => !line.scanned) ?? [];
   const canConfirmHandover =
     selectedManifest !== null &&
+    !actionBusy &&
     selectedManifest.summary.expectedCount > 0 &&
     selectedManifest.summary.missingCount === 0 &&
-    selectedManifest.status !== "completed";
+    selectedManifest.status !== "completed" &&
+    selectedManifest.status !== "handed_over" &&
+    selectedManifest.status !== "cancelled";
+  const canMarkReady =
+    selectedManifest !== null &&
+    !actionBusy &&
+    selectedManifest.status === "draft" &&
+    selectedManifest.summary.expectedCount > 0;
+  const canCancel =
+    selectedManifest !== null &&
+    !actionBusy &&
+    selectedManifest.status !== "completed" &&
+    selectedManifest.status !== "handed_over" &&
+    selectedManifest.status !== "cancelled";
+  const canRemoveLine =
+    selectedManifest !== null && !actionBusy && (selectedManifest.status === "draft" || selectedManifest.status === "ready");
   const totals = displayedManifests.reduce(
     (acc, manifest) => ({
       expected: acc.expected + manifest.summary.expectedCount,
@@ -173,30 +235,88 @@ export function CarrierManifestPrototype() {
       window.setTimeout(() => scanInputRef.current?.focus(), 0);
     }
   }, [selectedManifest, selectedManifestId]);
+  const manifestColumns = useMemo(
+    () => createManifestColumns(selectedManifest?.id ?? "", handleSelectManifest),
+    [selectedManifest?.id]
+  );
+  const lineColumns = useMemo(
+    () => createLineColumns(canRemoveLine, handleRemoveShipment),
+    [canRemoveLine, selectedManifest?.id]
+  );
   const missingColumns = createMissingLineColumns(handleMissingAction);
 
+  function handleSelectManifest(manifestId: string) {
+    setSelectedManifestId(manifestId);
+    setScanCode("");
+    setScanResult(null);
+  }
+
   async function handleCreateManifest() {
-    const warehouseOption = manifestWarehouseOptions.find((option) => option.value === (warehouseId || "wh-hcm"));
-    const carrierOption = carrierOptions.find((option) => option.value === (carrierCode || "GHN"));
-    const created = await createCarrierManifest({
-      carrierCode: carrierOption?.value || "GHN",
-      carrierName: carrierOption?.label || "GHN",
-      warehouseId: warehouseOption?.value || "wh-hcm",
-      warehouseCode: warehouseOption && "code" in warehouseOption ? warehouseOption.code : "HCM",
-      date
+    await runManifestAction(async () => {
+      const warehouseOption = manifestWarehouseOptions.find((option) => option.value === (warehouseId || "wh-hcm"));
+      const carrierOption = carrierOptions.find((option) => option.value === (carrierCode || "GHN"));
+      const handoverZoneCode = carrierOption?.value === "VTP" ? "handover-b" : "handover-a";
+      const created = await createCarrierManifest({
+        carrierCode: carrierOption?.value || "GHN",
+        carrierName: carrierOption?.label || "GHN",
+        warehouseId: warehouseOption?.value || "wh-hcm",
+        warehouseCode: warehouseOption && "code" in warehouseOption ? warehouseOption.code : "HCM",
+        date,
+        stagingZone: handoverZoneCode,
+        handoverZoneCode,
+        handoverBinCode: "A01"
+      });
+      patchManifest(created);
+      setSelectedManifestId(created.id);
+      setFeedback(`Created ${created.id}`);
     });
-    setLocalManifests((current) => [created, ...current.filter((manifest) => manifest.id !== created.id)]);
-    setSelectedManifestId(created.id);
-    setFeedback(`Created ${created.id}`);
   }
 
   async function handleAddShipment() {
     if (!selectedManifest || shipmentId.trim() === "") {
       return;
     }
-    const updated = await addShipmentToManifest(selectedManifest.id, shipmentId.trim());
-    setLocalManifests((current) => [updated, ...current.filter((manifest) => manifest.id !== updated.id)]);
-    setFeedback(`Added ${shipmentId.trim()} to ${updated.id}`);
+    await runManifestAction(async () => {
+      const updated = await addShipmentToManifest(selectedManifest.id, shipmentId.trim());
+      patchManifest(updated);
+      setFeedback(`Added ${shipmentId.trim()} to ${updated.id}`);
+    });
+  }
+
+  async function handleMarkReady() {
+    if (!selectedManifest || !canMarkReady) {
+      return;
+    }
+
+    await runManifestAction(async () => {
+      const updated = await markCarrierManifestReady(selectedManifest.id);
+      patchManifest(updated);
+      setFeedback(`${updated.id} is ready to scan`);
+    });
+  }
+
+  async function handleCancelManifest() {
+    if (!selectedManifest || !canCancel) {
+      return;
+    }
+
+    await runManifestAction(async () => {
+      const updated = await cancelCarrierManifest(selectedManifest.id, "carrier pickup moved");
+      patchManifest(updated);
+      setFeedback(`Cancelled ${updated.id}`);
+    });
+  }
+
+  async function handleRemoveShipment(line: CarrierManifestLine) {
+    if (!selectedManifest || !canRemoveLine) {
+      return;
+    }
+
+    await runManifestAction(async () => {
+      const updated = await removeShipmentFromManifest(selectedManifest.id, line.shipmentId);
+      patchManifest(updated);
+      setFeedback(`Removed ${line.orderNo} from ${updated.id}`);
+    });
   }
 
   async function handleVerifyScan(code: string) {
@@ -210,7 +330,7 @@ export function CarrierManifestPrototype() {
         {
           manifestId: selectedManifest.id,
           code,
-          stationId: `${selectedManifest.warehouseCode.toLowerCase()}-${selectedManifest.stagingZone}`
+          stationId: `${selectedManifest.warehouseCode.toLowerCase()}-${selectedManifest.handoverZoneCode || selectedManifest.stagingZone}`
         },
         displayedManifests
       );
@@ -220,6 +340,9 @@ export function CarrierManifestPrototype() {
       setRecentScans((current) => [result, ...current].slice(0, 6));
       setFeedback(`${result.resultCode}: ${result.message}`);
       return result;
+    } catch (cause) {
+      setFeedback(cause instanceof Error ? cause.message : "Scan could not be verified");
+      return null;
     } finally {
       setScanBusy(false);
     }
@@ -254,12 +377,12 @@ export function CarrierManifestPrototype() {
       return;
     }
 
-    const completed: CarrierManifest = {
+    const handedOver: CarrierManifest = {
       ...selectedManifest,
-      status: "completed"
+      status: "handed_over"
     };
-    setLocalManifests((current) => [completed, ...current.filter((manifest) => manifest.id !== completed.id)]);
-    setFeedback(`Confirmed handover for ${completed.id}`);
+    patchManifest(handedOver);
+    setFeedback(`Confirmed handover for ${handedOver.id}`);
   }
 
   function handleMissingAction(action: "find" | "report", orderNo: string) {
@@ -268,6 +391,26 @@ export function CarrierManifestPrototype() {
 
   function handleReportManifestMissing() {
     setFeedback(`Reported missing lines for ${selectedManifest?.id ?? "manifest"}`);
+  }
+
+  async function runManifestAction(action: () => Promise<void>) {
+    if (actionBusy) {
+      return;
+    }
+
+    setActionBusy(true);
+    try {
+      await action();
+    } catch (cause) {
+      setFeedback(cause instanceof Error ? cause.message : "Manifest action failed");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  function patchManifest(manifest: CarrierManifest) {
+    setLocalManifests((current) => [manifest, ...current.filter((candidate) => candidate.id !== manifest.id)]);
+    setSelectedManifestId(manifest.id);
   }
 
   return (
@@ -282,7 +425,7 @@ export function CarrierManifestPrototype() {
           <button className="erp-button erp-button--secondary" type="button" onClick={() => setStatus("exception")}>
             Exceptions
           </button>
-          <button className="erp-button erp-button--primary" type="button" onClick={handleCreateManifest}>
+          <button className="erp-button erp-button--primary" type="button" onClick={handleCreateManifest} disabled={actionBusy}>
             Create manifest
           </button>
         </div>
@@ -329,7 +472,7 @@ export function CarrierManifestPrototype() {
         <ShippingKPI label="Expected" value={totals.expected} tone="info" />
         <ShippingKPI label="Scanned" value={totals.scanned} tone="success" />
         <ShippingKPI label="Missing" value={totals.missing} tone={totals.missing === 0 ? "success" : "danger"} />
-        <ShippingKPI label="Manifests" value={manifests.length} tone="normal" />
+        <ShippingKPI label="Manifests" value={displayedManifests.length} tone="normal" />
       </section>
 
       <section className="erp-card erp-card--padded erp-module-table-card">
@@ -337,7 +480,13 @@ export function CarrierManifestPrototype() {
           <h2 className="erp-section-title">Manifest batches</h2>
           <StatusChip tone={displayedManifests.length === 0 ? "warning" : "info"}>{displayedManifests.length} rows</StatusChip>
         </div>
-        <DataTable columns={manifestColumns} rows={displayedManifests} getRowKey={(row) => row.id} loading={loading} />
+        <DataTable
+          columns={manifestColumns}
+          rows={displayedManifests}
+          getRowKey={(row) => row.id}
+          loading={loading}
+          error={error?.message}
+        />
       </section>
 
       <section className="erp-shipping-handover-grid">
@@ -364,7 +513,8 @@ export function CarrierManifestPrototype() {
               </select>
             </label>
             <HandoverMetric label="Carrier" value={selectedManifest?.carrierName ?? "-"} />
-            <HandoverMetric label="Zone" value={selectedManifest?.stagingZone ?? "-"} />
+            <HandoverMetric label="Zone" value={selectedManifest ? manifestLocationLabel(selectedManifest) : "-"} />
+            <HandoverMetric label="Bin" value={selectedManifest?.handoverBinCode ?? "-"} />
             <HandoverMetric label="Owner" value={selectedManifest?.owner ?? "-"} />
             <HandoverMetric label="Expected" value={selectedManifest?.summary.expectedCount ?? 0} />
             <HandoverMetric label="Scanned" value={selectedManifest?.summary.scannedCount ?? 0} />
@@ -379,7 +529,7 @@ export function CarrierManifestPrototype() {
               onChange={(event) => setScanCode(event.target.value)}
               onKeyDown={handleScanKeyDown}
               placeholder="SO-260426-003 / GHN260426003"
-              disabled={!selectedManifest}
+              disabled={!selectedManifest || actionBusy}
             />
             {scanResult ? (
               <small>
@@ -388,7 +538,7 @@ export function CarrierManifestPrototype() {
                 {scanResult.expectedManifestId ? <span>Related {scanResult.expectedManifestId}</span> : null}
               </small>
             ) : (
-              <small>{scanBusy ? "Checking code" : selectedManifest?.stagingZone ?? "No handover zone"}</small>
+              <small>{scanBusy ? "Checking code" : selectedManifest ? manifestLocationLabel(selectedManifest) : "No handover zone"}</small>
             )}
           </label>
 
@@ -396,8 +546,14 @@ export function CarrierManifestPrototype() {
             <button className="erp-button erp-button--secondary" type="button" onClick={() => setFeedback(`Printed ${selectedManifest?.id ?? "manifest"}`)}>
               Print manifest
             </button>
+            <button className="erp-button erp-button--secondary" type="button" onClick={handleMarkReady} disabled={!canMarkReady}>
+              Ready to scan
+            </button>
             <button className="erp-button erp-button--danger" type="button" onClick={handleReportManifestMissing} disabled={missingLines.length === 0}>
               Report missing
+            </button>
+            <button className="erp-button erp-button--danger" type="button" onClick={handleCancelManifest} disabled={!canCancel}>
+              Cancel manifest
             </button>
             <button className="erp-button erp-button--primary" type="button" onClick={handleConfirmHandover} disabled={!canConfirmHandover}>
               Confirm handover
@@ -411,7 +567,7 @@ export function CarrierManifestPrototype() {
           <div className="erp-section-header">
             <div>
               <h2 className="erp-section-title">Missing / exception queue</h2>
-              <p className="erp-section-description">{selectedManifest?.stagingZone ?? "No zone"}</p>
+              <p className="erp-section-description">{selectedManifest ? manifestLocationLabel(selectedManifest) : "No zone"}</p>
             </div>
             <StatusChip tone={missingLines.length === 0 ? "success" : "danger"}>{missingLines.length} open</StatusChip>
           </div>
@@ -466,7 +622,7 @@ export function CarrierManifestPrototype() {
               <span>Shipment ID</span>
               <input className="erp-input" value={shipmentId} onChange={(event) => setShipmentId(event.target.value)} />
             </label>
-            <button className="erp-button erp-button--primary" type="button" onClick={handleAddShipment}>
+            <button className="erp-button erp-button--primary" type="button" onClick={handleAddShipment} disabled={actionBusy || !selectedManifest}>
               Add shipment
             </button>
           </div>
@@ -514,8 +670,12 @@ function HandoverMetric({
 
 function statusLabel(status: CarrierManifestStatus) {
   switch (status) {
+    case "cancelled":
+      return "Cancelled";
     case "completed":
       return "Completed";
+    case "handed_over":
+      return "Handed over";
     case "exception":
       return "Exception";
     case "scanning":
@@ -526,6 +686,10 @@ function statusLabel(status: CarrierManifestStatus) {
     default:
       return "Draft";
   }
+}
+
+function manifestLocationLabel(manifest: CarrierManifest) {
+  return [manifest.handoverZoneCode || manifest.stagingZone, manifest.handoverBinCode].filter(Boolean).join(" / ");
 }
 
 function matchesManifestQuery(manifest: CarrierManifest, query: CarrierManifestQuery) {
