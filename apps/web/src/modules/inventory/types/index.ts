@@ -124,3 +124,47 @@ export type SubmitStockCountInput = {
     note?: string;
   }>;
 };
+
+export type StockAdjustmentStatus = "draft" | "submitted" | "approved" | "rejected" | "posted" | "cancelled";
+
+export type StockAdjustmentLine = {
+  id: string;
+  itemId?: string;
+  sku: string;
+  batchId?: string;
+  batchNo?: string;
+  locationId?: string;
+  locationCode?: string;
+  expectedQty: string;
+  countedQty: string;
+  deltaQty: string;
+  baseUomCode: string;
+  reason?: string;
+};
+
+export type StockAdjustment = {
+  id: string;
+  adjustmentNo: string;
+  orgId: string;
+  warehouseId: string;
+  warehouseCode?: string;
+  sourceType?: string;
+  sourceId?: string;
+  reason: string;
+  status: StockAdjustmentStatus;
+  requestedBy: string;
+  submittedBy?: string;
+  approvedBy?: string;
+  rejectedBy?: string;
+  postedBy?: string;
+  lines: StockAdjustmentLine[];
+  auditLogId?: string;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt?: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  postedAt?: string;
+};
+
+export type StockAdjustmentAction = "submit" | "approve" | "reject" | "post";
