@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiGet } from "./client";
+import { ApiError, apiDelete, apiGet } from "./client";
 
 describe("apiGet", () => {
   afterEach(() => {
@@ -98,6 +98,34 @@ describe("apiGet", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/inventory/available-stock?warehouse_id=wh-hcm&sku=SERUM-30ML",
       {
+        headers: {
+          Authorization: "Bearer local-dev-access-token"
+        }
+      }
+    );
+  });
+
+  it("sends authenticated delete requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: { id: "manifest-api-1" },
+          request_id: "req-delete"
+        }),
+        { status: 200 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiDelete("/shipping/manifests/manifest-api-1/shipments/ship-api-1", {
+      accessToken: "local-dev-access-token"
+    })).resolves.toEqual({ id: "manifest-api-1" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/shipping/manifests/manifest-api-1/shipments/ship-api-1",
+      {
+        method: "DELETE",
         headers: {
           Authorization: "Bearer local-dev-access-token"
         }
