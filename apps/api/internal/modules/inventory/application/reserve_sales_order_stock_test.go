@@ -67,30 +67,41 @@ func TestPrototypeSalesOrderReservationStoreDoesNotPartiallyReserveOnInsufficien
 	}
 }
 
-func TestPrototypeSalesOrderReservationStoreBlocksQCHoldStock(t *testing.T) {
-	store := NewPrototypeSalesOrderReservationStoreWithRows([]domain.StockBalanceSnapshot{
-		{
-			WarehouseID:   "wh-hcm-fg",
-			WarehouseCode: "WH-HCM-FG",
-			LocationID:    "bin-qc",
-			LocationCode:  "QC-01",
-			ItemID:        "item-serum-30ml",
-			SKU:           "SERUM-30ML",
-			BatchID:       "batch-hold",
-			BatchNo:       "LOT-HOLD",
-			BatchQCStatus: domain.QCStatusHold,
-			BatchStatus:   domain.BatchStatusActive,
-			BaseUOMCode:   decimal.MustUOMCode("EA"),
-			StockStatus:   domain.StockStatusAvailable,
-			QtyOnHand:     decimal.MustQuantity("10"),
-		},
-	})
+func TestPrototypeSalesOrderReservationStoreBlocksNotSellableBatches(t *testing.T) {
+	for _, qcStatus := range []domain.QCStatus{domain.QCStatusHold, domain.QCStatusFail} {
+		t.Run(string(qcStatus), func(t *testing.T) {
+			store := NewPrototypeSalesOrderReservationStoreWithRows([]domain.StockBalanceSnapshot{
+				{
+					WarehouseID:   "wh-hcm-fg",
+					WarehouseCode: "WH-HCM-FG",
+					LocationID:    "bin-qc",
+					LocationCode:  "QC-01",
+					ItemID:        "item-serum-30ml",
+					SKU:           "SERUM-30ML",
+					BatchID:       "batch-" + string(qcStatus),
+					BatchNo:       "LOT-" + string(qcStatus),
+					BatchQCStatus: qcStatus,
+					BatchStatus:   domain.BatchStatusActive,
+					BaseUOMCode:   decimal.MustUOMCode("EA"),
+					StockStatus:   domain.StockStatusAvailable,
+					QtyOnHand:     decimal.MustQuantity("10"),
+				},
+			})
 
-	_, err := store.ReserveSalesOrder(context.Background(), salesReservationInput([]salesapp.SalesOrderStockReservationLineInput{
-		reservationLine("line-serum", "item-serum-30ml", "SERUM-30ML", "1"),
-	}))
-	if !errors.Is(err, ErrInsufficientStock) {
-		t.Fatalf("err = %v, want insufficient stock for QC hold batch", err)
+			_, err := store.ReserveSalesOrder(context.Background(), salesReservationInput([]salesapp.SalesOrderStockReservationLineInput{
+				reservationLine("line-serum", "item-serum-30ml", "SERUM-30ML", "1"),
+			}))
+			if !errors.Is(err, ErrBatchNotSellable) {
+				t.Fatalf("err = %v, want batch not sellable", err)
+			}
+			var appErr apperrors.AppError
+			if !errors.As(err, &appErr) || appErr.Code != response.ErrorCodeBatchNotSellable {
+				t.Fatalf("app err = %+v, want batch not sellable code", appErr)
+			}
+			if appErr.Details["qc_status"] != string(qcStatus) {
+				t.Fatalf("details = %+v, want qc status %s", appErr.Details, qcStatus)
+			}
+		})
 	}
 }
 
