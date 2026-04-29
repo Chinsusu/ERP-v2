@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
+	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	productionapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/application"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
@@ -188,6 +190,112 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 		}
 	})
 
+	t.Run("issues materials with transfer stock movement and audit", func(t *testing.T) {
+		service, movementStore, transferStore, auditStore := newTestSubcontractMaterialIssueAPIService()
+		orderID := "sco-smoke-260429-issue"
+		createAndSubmitSubcontractOrderForTest(t, service, authConfig, orderID)
+		approveAndConfirmSubcontractOrderForTest(t, service, authConfig, orderID)
+
+		issueReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+orderID+"/issue-materials", bytes.NewBufferString(`{
+				"expected_version": 4,
+				"transfer_id": "smt-smoke-260429-issue",
+				"transfer_no": "SMT-SMOKE-260429-ISSUE",
+				"source_warehouse_id": "wh-hcm-rm",
+				"source_warehouse_code": "WH-HCM-RM",
+				"handover_by": "warehouse-user",
+				"handover_at": "2026-04-29T09:30:00Z",
+				"received_by": "factory-receiver",
+				"receiver_contact": "0988000111",
+				"vehicle_no": "51A-12345",
+				"lines": [
+					{
+						"order_material_line_id": "sco-smoke-260429-issue-material-01",
+						"issue_qty": "20",
+						"uom_code": "EA",
+						"batch_id": "batch-cream-2603b",
+						"source_bin_id": "rm-a01"
+					}
+				],
+				"evidence": [
+					{
+						"id": "smt-smoke-260429-issue-handover",
+						"evidence_type": "handover",
+						"file_name": "handover.pdf",
+						"object_key": "subcontract/smt-smoke-260429-issue/handover.pdf"
+					}
+				]
+			}`)),
+			authConfig,
+			auth.RoleProductionOps,
+		)
+		issueReq.SetPathValue("subcontract_order_id", orderID)
+		issueReq.Header.Set(response.HeaderRequestID, "req-subcontract-issue-materials")
+		issueRec := httptest.NewRecorder()
+
+		subcontractOrderIssueMaterialsHandler(service).ServeHTTP(issueRec, issueReq)
+
+		if issueRec.Code != http.StatusOK {
+			t.Fatalf("issue materials status = %d, want %d: %s", issueRec.Code, http.StatusOK, issueRec.Body.String())
+		}
+		payload := decodeSmokeSuccess[issueSubcontractMaterialsResponse](t, issueRec).Data
+		if payload.SubcontractOrder.Status != "materials_issued_to_factory" ||
+			payload.Transfer.Status != "sent_to_factory" ||
+			payload.AuditLogID == "" {
+			t.Fatalf("issue materials payload = %+v, want issued order, sent transfer, and audit", payload)
+		}
+		if len(payload.StockMovements) != 1 ||
+			payload.StockMovements[0].MovementType != string(inventorydomain.MovementSubcontractIssue) ||
+			payload.StockMovements[0].StockStatus != string(inventorydomain.StockStatusSubcontractIssued) ||
+			payload.StockMovements[0].SourceDocID != payload.Transfer.ID {
+			t.Fatalf("stock movements = %+v, want subcontract issue from transfer", payload.StockMovements)
+		}
+		if movementStore.Count() != 1 {
+			t.Fatalf("stock movement count = %d, want 1", movementStore.Count())
+		}
+		if transferStore.Count() != 1 {
+			t.Fatalf("transfer count = %d, want 1", transferStore.Count())
+		}
+		logs, err := auditStore.List(issueReq.Context(), audit.Query{Action: "subcontract.materials_issued"})
+		if err != nil {
+			t.Fatalf("list material issue audit logs: %v", err)
+		}
+		if len(logs) != 1 {
+			t.Fatalf("material issue audit log count = %d, want 1", len(logs))
+		}
+	})
+
+	t.Run("denies material issue without side effects", func(t *testing.T) {
+		service, movementStore, transferStore, auditStore := newTestSubcontractMaterialIssueAPIService()
+		req := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/sco-smoke-denied/issue-materials", bytes.NewBufferString(`{
+				"source_warehouse_id": "wh-hcm-rm",
+				"received_by": "factory-receiver",
+				"lines": []
+			}`)),
+			authConfig,
+			auth.RoleFinanceOps,
+		)
+		req.SetPathValue("subcontract_order_id", "sco-smoke-denied")
+		rec := httptest.NewRecorder()
+
+		subcontractOrderIssueMaterialsHandler(service).ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusForbidden, rec.Body.String())
+		}
+		if movementStore.Count() != 0 || transferStore.Count() != 0 {
+			t.Fatalf("side effects = movements %d transfers %d, want none", movementStore.Count(), transferStore.Count())
+		}
+		logs, err := auditStore.List(req.Context(), audit.Query{Action: "subcontract.materials_issued"})
+		if err != nil {
+			t.Fatalf("list material issue audit logs: %v", err)
+		}
+		if len(logs) != 0 {
+			t.Fatalf("material issue audit logs = %+v, want none", logs)
+		}
+	})
+
 	t.Run("denies finance role from approval action without audit", func(t *testing.T) {
 		service, auditStore := newTestSubcontractOrderAPIService()
 		createAndSubmitSubcontractOrderForTest(t, service, authConfig, "sco-smoke-260429-denied")
@@ -231,6 +339,29 @@ func newTestSubcontractOrderAPIService() (productionapp.SubcontractOrderService,
 		itemCatalog,
 		subcontractOrderUOMConverterAdapter{catalog: uomCatalog},
 	), auditStore
+}
+
+func newTestSubcontractMaterialIssueAPIService() (
+	productionapp.SubcontractOrderService,
+	*inventoryapp.InMemoryStockMovementStore,
+	*productionapp.PrototypeSubcontractMaterialTransferStore,
+	audit.LogStore,
+) {
+	auditStore := audit.NewInMemoryLogStore()
+	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditStore)
+	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditStore)
+	uomCatalog := masterdataapp.NewPrototypeUOMCatalog()
+	subcontractOrderStore := productionapp.NewPrototypeSubcontractOrderStore(auditStore)
+	movementStore := inventoryapp.NewInMemoryStockMovementStore()
+	transferStore := productionapp.NewPrototypeSubcontractMaterialTransferStore()
+	service := productionapp.NewSubcontractOrderService(
+		subcontractOrderStore,
+		partyCatalog,
+		itemCatalog,
+		subcontractOrderUOMConverterAdapter{catalog: uomCatalog},
+	).WithMaterialIssueStores(transferStore, movementStore)
+
+	return service, movementStore, transferStore, auditStore
 }
 
 func createAndSubmitSubcontractOrderForTest(
@@ -284,5 +415,42 @@ func createAndSubmitSubcontractOrderForTest(
 
 	if submitRec.Code != http.StatusOK {
 		t.Fatalf("submit status = %d, want %d: %s", submitRec.Code, http.StatusOK, submitRec.Body.String())
+	}
+}
+
+func approveAndConfirmSubcontractOrderForTest(
+	t *testing.T,
+	service productionapp.SubcontractOrderService,
+	authConfig auth.MockConfig,
+	id string,
+) {
+	t.Helper()
+
+	approveReq := smokeRequestAsRole(
+		httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+id+"/approve", bytes.NewBufferString(`{"expected_version":2}`)),
+		authConfig,
+		auth.RoleProductionOps,
+	)
+	approveReq.SetPathValue("subcontract_order_id", id)
+	approveRec := httptest.NewRecorder()
+
+	subcontractOrderApproveHandler(service).ServeHTTP(approveRec, approveReq)
+
+	if approveRec.Code != http.StatusOK {
+		t.Fatalf("approve status = %d, want %d: %s", approveRec.Code, http.StatusOK, approveRec.Body.String())
+	}
+
+	confirmReq := smokeRequestAsRole(
+		httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+id+"/confirm-factory", bytes.NewBufferString(`{"expected_version":3}`)),
+		authConfig,
+		auth.RoleProductionOps,
+	)
+	confirmReq.SetPathValue("subcontract_order_id", id)
+	confirmRec := httptest.NewRecorder()
+
+	subcontractOrderConfirmFactoryHandler(service).ServeHTTP(confirmRec, confirmReq)
+
+	if confirmRec.Code != http.StatusOK {
+		t.Fatalf("confirm factory status = %d, want %d: %s", confirmRec.Code, http.StatusOK, confirmRec.Body.String())
 	}
 }

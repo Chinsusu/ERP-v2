@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
+	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	productionapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/application"
 	productiondomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/domain"
@@ -65,6 +67,47 @@ type updateSubcontractOrderRequest struct {
 type subcontractOrderActionRequest struct {
 	ExpectedVersion int    `json:"expected_version"`
 	Reason          string `json:"reason"`
+}
+
+type issueSubcontractMaterialsLineRequest struct {
+	ID                  string `json:"id"`
+	LineNo              int    `json:"line_no"`
+	OrderMaterialLineID string `json:"order_material_line_id"`
+	IssueQty            string `json:"issue_qty"`
+	UOMCode             string `json:"uom_code"`
+	BaseIssueQty        string `json:"base_issue_qty"`
+	BaseUOMCode         string `json:"base_uom_code"`
+	ConversionFactor    string `json:"conversion_factor"`
+	BatchID             string `json:"batch_id"`
+	BatchNo             string `json:"batch_no"`
+	LotNo               string `json:"lot_no"`
+	SourceBinID         string `json:"source_bin_id"`
+	Note                string `json:"note"`
+}
+
+type issueSubcontractMaterialsEvidenceRequest struct {
+	ID           string `json:"id"`
+	EvidenceType string `json:"evidence_type"`
+	FileName     string `json:"file_name"`
+	ObjectKey    string `json:"object_key"`
+	ExternalURL  string `json:"external_url"`
+	Note         string `json:"note"`
+}
+
+type issueSubcontractMaterialsRequest struct {
+	ExpectedVersion     int                                        `json:"expected_version"`
+	TransferID          string                                     `json:"transfer_id"`
+	TransferNo          string                                     `json:"transfer_no"`
+	SourceWarehouseID   string                                     `json:"source_warehouse_id"`
+	SourceWarehouseCode string                                     `json:"source_warehouse_code"`
+	HandoverBy          string                                     `json:"handover_by"`
+	HandoverAt          string                                     `json:"handover_at"`
+	ReceivedBy          string                                     `json:"received_by"`
+	ReceiverContact     string                                     `json:"receiver_contact"`
+	VehicleNo           string                                     `json:"vehicle_no"`
+	Note                string                                     `json:"note"`
+	Lines               []issueSubcontractMaterialsLineRequest     `json:"lines"`
+	Evidence            []issueSubcontractMaterialsEvidenceRequest `json:"evidence"`
 }
 
 type subcontractOrderMaterialLineResponse struct {
@@ -170,6 +213,86 @@ type subcontractOrderActionResultResponse struct {
 	PreviousStatus   string                   `json:"previous_status"`
 	CurrentStatus    string                   `json:"current_status"`
 	AuditLogID       string                   `json:"audit_log_id,omitempty"`
+}
+
+type subcontractMaterialTransferLineResponse struct {
+	ID                  string `json:"id"`
+	LineNo              int    `json:"line_no"`
+	OrderMaterialLineID string `json:"order_material_line_id"`
+	ItemID              string `json:"item_id"`
+	SKUCode             string `json:"sku_code"`
+	ItemName            string `json:"item_name"`
+	IssueQty            string `json:"issue_qty"`
+	UOMCode             string `json:"uom_code"`
+	BaseIssueQty        string `json:"base_issue_qty"`
+	BaseUOMCode         string `json:"base_uom_code"`
+	ConversionFactor    string `json:"conversion_factor"`
+	BatchID             string `json:"batch_id,omitempty"`
+	BatchNo             string `json:"batch_no,omitempty"`
+	LotNo               string `json:"lot_no,omitempty"`
+	SourceBinID         string `json:"source_bin_id,omitempty"`
+	LotTraceRequired    bool   `json:"lot_trace_required"`
+	Note                string `json:"note,omitempty"`
+}
+
+type subcontractMaterialTransferEvidenceResponse struct {
+	ID           string `json:"id"`
+	EvidenceType string `json:"evidence_type"`
+	FileName     string `json:"file_name,omitempty"`
+	ObjectKey    string `json:"object_key,omitempty"`
+	ExternalURL  string `json:"external_url,omitempty"`
+	Note         string `json:"note,omitempty"`
+}
+
+type subcontractMaterialTransferResponse struct {
+	ID                  string                                        `json:"id"`
+	OrgID               string                                        `json:"org_id"`
+	TransferNo          string                                        `json:"transfer_no"`
+	SubcontractOrderID  string                                        `json:"subcontract_order_id"`
+	SubcontractOrderNo  string                                        `json:"subcontract_order_no"`
+	FactoryID           string                                        `json:"factory_id"`
+	FactoryCode         string                                        `json:"factory_code,omitempty"`
+	FactoryName         string                                        `json:"factory_name"`
+	SourceWarehouseID   string                                        `json:"source_warehouse_id"`
+	SourceWarehouseCode string                                        `json:"source_warehouse_code,omitempty"`
+	Status              string                                        `json:"status"`
+	Lines               []subcontractMaterialTransferLineResponse     `json:"lines"`
+	Evidence            []subcontractMaterialTransferEvidenceResponse `json:"evidence,omitempty"`
+	HandoverBy          string                                        `json:"handover_by"`
+	HandoverAt          string                                        `json:"handover_at"`
+	ReceivedBy          string                                        `json:"received_by"`
+	ReceiverContact     string                                        `json:"receiver_contact,omitempty"`
+	VehicleNo           string                                        `json:"vehicle_no,omitempty"`
+	Note                string                                        `json:"note,omitempty"`
+	CreatedAt           string                                        `json:"created_at"`
+	UpdatedAt           string                                        `json:"updated_at"`
+	Version             int                                           `json:"version"`
+}
+
+type subcontractMaterialIssueMovementResponse struct {
+	MovementNo       string `json:"movement_no"`
+	MovementType     string `json:"movement_type"`
+	ItemID           string `json:"item_id"`
+	BatchID          string `json:"batch_id,omitempty"`
+	WarehouseID      string `json:"warehouse_id"`
+	BinID            string `json:"bin_id,omitempty"`
+	Quantity         string `json:"quantity"`
+	BaseUOMCode      string `json:"base_uom_code"`
+	SourceQuantity   string `json:"source_quantity"`
+	SourceUOMCode    string `json:"source_uom_code"`
+	ConversionFactor string `json:"conversion_factor"`
+	StockStatus      string `json:"stock_status"`
+	SourceDocType    string `json:"source_doc_type"`
+	SourceDocID      string `json:"source_doc_id"`
+	SourceDocLineID  string `json:"source_doc_line_id"`
+	Reason           string `json:"reason"`
+}
+
+type issueSubcontractMaterialsResponse struct {
+	SubcontractOrder subcontractOrderResponse                   `json:"subcontract_order"`
+	Transfer         subcontractMaterialTransferResponse        `json:"transfer"`
+	StockMovements   []subcontractMaterialIssueMovementResponse `json:"stock_movements"`
+	AuditLogID       string                                     `json:"audit_log_id,omitempty"`
 }
 
 func (a subcontractOrderUOMConverterAdapter) ConvertToBase(
@@ -341,6 +464,70 @@ func subcontractOrderCloseHandler(service productionapp.SubcontractOrderService)
 	return subcontractOrderActionHandler(service, "close")
 }
 
+func subcontractOrderIssueMaterialsHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload issueSubcontractMaterialsRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract material issue payload", nil)
+			return
+		}
+		handoverAt, err := parseSubcontractOptionalTime(payload.HandoverAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract material issue payload", map[string]any{"field": "handover_at"})
+			return
+		}
+
+		result, err := service.IssueSubcontractMaterials(r.Context(), productionapp.IssueSubcontractMaterialsInput{
+			ID:                  r.PathValue("subcontract_order_id"),
+			ExpectedVersion:     payload.ExpectedVersion,
+			TransferID:          payload.TransferID,
+			TransferNo:          payload.TransferNo,
+			SourceWarehouseID:   payload.SourceWarehouseID,
+			SourceWarehouseCode: payload.SourceWarehouseCode,
+			Lines:               issueSubcontractMaterialLineInputs(payload.Lines),
+			Evidence:            issueSubcontractMaterialEvidenceInputs(payload.Evidence),
+			HandoverBy:          payload.HandoverBy,
+			HandoverAt:          handoverAt,
+			ReceivedBy:          payload.ReceivedBy,
+			ReceiverContact:     payload.ReceiverContact,
+			VehicleNo:           payload.VehicleNo,
+			Note:                payload.Note,
+			ActorID:             principal.UserID,
+			RequestID:           response.RequestID(r),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, issueSubcontractMaterialsResponse{
+			SubcontractOrder: newSubcontractOrderResponse(result.SubcontractOrder, ""),
+			Transfer:         newSubcontractMaterialTransferResponse(result.Transfer),
+			StockMovements:   newSubcontractMaterialIssueMovementResponses(result.StockMovements),
+			AuditLogID:       result.AuditLogID,
+		})
+	}
+}
+
 func subcontractOrderActionHandler(service productionapp.SubcontractOrderService, action string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -456,6 +643,58 @@ func subcontractOrderMaterialLineInputs(
 	return lines
 }
 
+func issueSubcontractMaterialLineInputs(
+	inputs []issueSubcontractMaterialsLineRequest,
+) []productionapp.IssueSubcontractMaterialsLineInput {
+	lines := make([]productionapp.IssueSubcontractMaterialsLineInput, 0, len(inputs))
+	for _, input := range inputs {
+		lines = append(lines, productionapp.IssueSubcontractMaterialsLineInput{
+			ID:                  input.ID,
+			LineNo:              input.LineNo,
+			OrderMaterialLineID: input.OrderMaterialLineID,
+			IssueQty:            input.IssueQty,
+			UOMCode:             input.UOMCode,
+			BaseIssueQty:        input.BaseIssueQty,
+			BaseUOMCode:         input.BaseUOMCode,
+			ConversionFactor:    input.ConversionFactor,
+			BatchID:             input.BatchID,
+			BatchNo:             input.BatchNo,
+			LotNo:               input.LotNo,
+			SourceBinID:         input.SourceBinID,
+			Note:                input.Note,
+		})
+	}
+
+	return lines
+}
+
+func issueSubcontractMaterialEvidenceInputs(
+	inputs []issueSubcontractMaterialsEvidenceRequest,
+) []productionapp.IssueSubcontractMaterialsEvidenceInput {
+	evidence := make([]productionapp.IssueSubcontractMaterialsEvidenceInput, 0, len(inputs))
+	for _, input := range inputs {
+		evidence = append(evidence, productionapp.IssueSubcontractMaterialsEvidenceInput{
+			ID:           input.ID,
+			EvidenceType: input.EvidenceType,
+			FileName:     input.FileName,
+			ObjectKey:    input.ObjectKey,
+			ExternalURL:  input.ExternalURL,
+			Note:         input.Note,
+		})
+	}
+
+	return evidence
+}
+
+func parseSubcontractOptionalTime(value string) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return time.Time{}, nil
+	}
+
+	return time.Parse(time.RFC3339, value)
+}
+
 func newSubcontractOrderListItemResponse(order productiondomain.SubcontractOrder) subcontractOrderListItemResponse {
 	return subcontractOrderListItemResponse{
 		ID:                  order.ID,
@@ -555,6 +794,96 @@ func newSubcontractOrderResponse(order productiondomain.SubcontractOrder, auditL
 			LineCostAmount:   line.LineCostAmount.String(),
 			LotTraceRequired: line.LotTraceRequired,
 			Note:             line.Note,
+		})
+	}
+
+	return payload
+}
+
+func newSubcontractMaterialTransferResponse(
+	transfer productiondomain.SubcontractMaterialTransfer,
+) subcontractMaterialTransferResponse {
+	payload := subcontractMaterialTransferResponse{
+		ID:                  transfer.ID,
+		OrgID:               transfer.OrgID,
+		TransferNo:          transfer.TransferNo,
+		SubcontractOrderID:  transfer.SubcontractOrderID,
+		SubcontractOrderNo:  transfer.SubcontractOrderNo,
+		FactoryID:           transfer.FactoryID,
+		FactoryCode:         transfer.FactoryCode,
+		FactoryName:         transfer.FactoryName,
+		SourceWarehouseID:   transfer.SourceWarehouseID,
+		SourceWarehouseCode: transfer.SourceWarehouseCode,
+		Status:              string(transfer.Status),
+		Lines:               make([]subcontractMaterialTransferLineResponse, 0, len(transfer.Lines)),
+		Evidence:            make([]subcontractMaterialTransferEvidenceResponse, 0, len(transfer.Evidence)),
+		HandoverBy:          transfer.HandoverBy,
+		HandoverAt:          timeString(transfer.HandoverAt),
+		ReceivedBy:          transfer.ReceivedBy,
+		ReceiverContact:     transfer.ReceiverContact,
+		VehicleNo:           transfer.VehicleNo,
+		Note:                transfer.Note,
+		CreatedAt:           timeString(transfer.CreatedAt),
+		UpdatedAt:           timeString(transfer.UpdatedAt),
+		Version:             transfer.Version,
+	}
+	for _, line := range transfer.Lines {
+		payload.Lines = append(payload.Lines, subcontractMaterialTransferLineResponse{
+			ID:                  line.ID,
+			LineNo:              line.LineNo,
+			OrderMaterialLineID: line.OrderMaterialLineID,
+			ItemID:              line.ItemID,
+			SKUCode:             line.SKUCode,
+			ItemName:            line.ItemName,
+			IssueQty:            line.IssueQty.String(),
+			UOMCode:             line.UOMCode.String(),
+			BaseIssueQty:        line.BaseIssueQty.String(),
+			BaseUOMCode:         line.BaseUOMCode.String(),
+			ConversionFactor:    line.ConversionFactor.String(),
+			BatchID:             line.BatchID,
+			BatchNo:             line.BatchNo,
+			LotNo:               line.LotNo,
+			SourceBinID:         line.SourceBinID,
+			LotTraceRequired:    line.LotTraceRequired,
+			Note:                line.Note,
+		})
+	}
+	for _, evidence := range transfer.Evidence {
+		payload.Evidence = append(payload.Evidence, subcontractMaterialTransferEvidenceResponse{
+			ID:           evidence.ID,
+			EvidenceType: evidence.EvidenceType,
+			FileName:     evidence.FileName,
+			ObjectKey:    evidence.ObjectKey,
+			ExternalURL:  evidence.ExternalURL,
+			Note:         evidence.Note,
+		})
+	}
+
+	return payload
+}
+
+func newSubcontractMaterialIssueMovementResponses(
+	movements []inventorydomain.StockMovement,
+) []subcontractMaterialIssueMovementResponse {
+	payload := make([]subcontractMaterialIssueMovementResponse, 0, len(movements))
+	for _, movement := range movements {
+		payload = append(payload, subcontractMaterialIssueMovementResponse{
+			MovementNo:       movement.MovementNo,
+			MovementType:     string(movement.MovementType),
+			ItemID:           movement.ItemID,
+			BatchID:          movement.BatchID,
+			WarehouseID:      movement.WarehouseID,
+			BinID:            movement.BinID,
+			Quantity:         movement.Quantity.String(),
+			BaseUOMCode:      movement.BaseUOMCode.String(),
+			SourceQuantity:   movement.SourceQuantity.String(),
+			SourceUOMCode:    movement.SourceUOMCode.String(),
+			ConversionFactor: movement.ConversionFactor.String(),
+			StockStatus:      string(movement.StockStatus),
+			SourceDocType:    movement.SourceDocType,
+			SourceDocID:      movement.SourceDocID,
+			SourceDocLineID:  movement.SourceDocLineID,
+			Reason:           movement.Reason,
 		})
 	}
 
