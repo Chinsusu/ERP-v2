@@ -101,6 +101,20 @@ export type WarehouseInboundMetrics = {
   generatedAt: string;
 };
 
+export type WarehouseSubcontractMetrics = {
+  warehouseId?: string;
+  date?: string;
+  shiftCode?: string;
+  openOrders: number;
+  materialIssuedOrders: number;
+  materialTransferCount: number;
+  samplePending: number;
+  factoryClaims: number;
+  factoryClaimsOverdue: number;
+  finalPaymentReadyOrders: number;
+  generatedAt: string;
+};
+
 export type WarehouseDailyBoardCounterSource = {
   counter: keyof WarehouseDailyBoardSummary;
   label: string;
@@ -117,6 +131,7 @@ export type WarehouseDailyBoardData = {
   summary: WarehouseDailyBoardSummary;
   fulfillment: WarehouseFulfillmentMetrics;
   inbound: WarehouseInboundMetrics;
+  subcontract: WarehouseSubcontractMetrics;
   sourceFields: WarehouseDailyBoardCounterSource[];
   tasks: WarehouseDailyTask[];
 };
