@@ -9,6 +9,7 @@ import (
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
+	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
 	salesdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/domain"
 	shippingapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/application"
@@ -150,6 +151,165 @@ func TestOrderFulfillmentPermissionRegressionSmoke(t *testing.T) {
 	if adminManifestRec.Code != http.StatusCreated {
 		t.Fatalf("admin manifest status = %d, want %d: %s", adminManifestRec.Code, http.StatusCreated, adminManifestRec.Body.String())
 	}
+}
+
+func TestReturnsAndShiftClosingPermissionAuditRegressionSmoke(t *testing.T) {
+	authConfig := smokeAuthConfig()
+	auditStore := audit.NewInMemoryLogStore()
+	returnStore := returnsapp.NewPrototypeReturnReceiptStore()
+	movementStore := inventoryapp.NewInMemoryStockMovementStore()
+	receiveService := returnsapp.NewReceiveReturn(returnStore, auditStore)
+	inspectService := returnsapp.NewInspectReturn(returnStore, auditStore)
+	dispositionService := returnsapp.NewApplyReturnDisposition(returnStore, movementStore, auditStore)
+
+	staffScanReq := smokeRequestAsRole(
+		httptest.NewRequest(http.MethodPost, "/api/v1/returns/scan", bytes.NewBufferString(`{
+			"warehouse_id": "wh-hcm",
+			"warehouse_code": "HCM",
+			"source": "CARRIER",
+			"code": "GHN260426001",
+			"package_condition": "sealed bag"
+		}`)),
+		authConfig,
+		auth.RoleWarehouseStaff,
+	)
+	staffScanRec := httptest.NewRecorder()
+
+	returnScanHandler(receiveService).ServeHTTP(staffScanRec, staffScanReq)
+
+	assertForbidden(t, staffScanRec)
+	assertNoAuditAction(t, auditStore, "returns.receipt.created")
+
+	leadScanReq := smokeRequestAsRole(
+		httptest.NewRequest(http.MethodPost, "/api/v1/returns/scan", bytes.NewBufferString(`{
+			"warehouse_id": "wh-hcm",
+			"warehouse_code": "HCM",
+			"source": "CARRIER",
+			"code": "GHN260426001",
+			"package_condition": "sealed bag"
+		}`)),
+		authConfig,
+		auth.RoleWarehouseLead,
+	)
+	leadScanReq.Header.Set(response.HeaderRequestID, "req-regression-return-scan")
+	leadScanRec := httptest.NewRecorder()
+
+	returnScanHandler(receiveService).ServeHTTP(leadScanRec, leadScanReq)
+
+	if leadScanRec.Code != http.StatusCreated {
+		t.Fatalf("lead scan status = %d, want %d: %s", leadScanRec.Code, http.StatusCreated, leadScanRec.Body.String())
+	}
+	received := decodeSmokeSuccess[returnReceiptResponse](t, leadScanRec).Data
+	if received.ID == "" || received.AuditLogID == "" || received.Status != "pending_inspection" {
+		t.Fatalf("received = %+v, want pending inspection receipt with audit", received)
+	}
+
+	qaInspectReq := smokeRequestAsRole(
+		httptest.NewRequest(
+			http.MethodPost,
+			"/api/v1/returns/"+received.ID+"/inspect",
+			bytes.NewBufferString(`{
+				"condition": "intact",
+				"disposition": "reusable",
+				"note": "qa released for putaway",
+				"evidence_label": "photo-regression-001"
+			}`),
+		),
+		authConfig,
+		auth.RoleQA,
+	)
+	qaInspectReq.SetPathValue("return_receipt_id", received.ID)
+	qaInspectReq.Header.Set(response.HeaderRequestID, "req-regression-return-inspect")
+	qaInspectRec := httptest.NewRecorder()
+
+	returnInspectionHandler(inspectService).ServeHTTP(qaInspectRec, qaInspectReq)
+
+	if qaInspectRec.Code != http.StatusOK {
+		t.Fatalf("qa inspect status = %d, want %d: %s", qaInspectRec.Code, http.StatusOK, qaInspectRec.Body.String())
+	}
+	inspection := decodeSmokeSuccess[returnInspectionResponse](t, qaInspectRec).Data
+	if inspection.ReceiptID != received.ID || inspection.AuditLogID == "" {
+		t.Fatalf("inspection = %+v, want inspected receipt with audit", inspection)
+	}
+
+	adminDispositionReq := smokeRequestAsRole(
+		httptest.NewRequest(
+			http.MethodPost,
+			"/api/v1/returns/"+received.ID+"/disposition",
+			bytes.NewBufferString(`{"disposition":"reusable","note":"admin approved putaway"}`),
+		),
+		authConfig,
+		auth.RoleERPAdmin,
+	)
+	adminDispositionReq.SetPathValue("return_receipt_id", received.ID)
+	adminDispositionReq.Header.Set(response.HeaderRequestID, "req-regression-return-disposition")
+	adminDispositionRec := httptest.NewRecorder()
+
+	returnDispositionHandler(dispositionService).ServeHTTP(adminDispositionRec, adminDispositionReq)
+
+	if adminDispositionRec.Code != http.StatusOK {
+		t.Fatalf(
+			"admin disposition status = %d, want %d: %s",
+			adminDispositionRec.Code,
+			http.StatusOK,
+			adminDispositionRec.Body.String(),
+		)
+	}
+	disposition := decodeSmokeSuccess[returnDispositionActionResponse](t, adminDispositionRec).Data
+	if disposition.ReceiptID != received.ID || disposition.AuditLogID == "" {
+		t.Fatalf("disposition = %+v, want disposition with audit", disposition)
+	}
+	if movementStore.Count() != 1 {
+		t.Fatalf("movement count = %d, want 1 return disposition movement", movementStore.Count())
+	}
+
+	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
+	closeService := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditStore)
+	staffCloseReq := smokeRequestAsRole(
+		httptest.NewRequest(
+			http.MethodPost,
+			"/api/v1/warehouse/end-of-day-reconciliations/rec-hn-260426-day/close",
+			bytes.NewBufferString(`{"exception_note":""}`),
+		),
+		authConfig,
+		auth.RoleWarehouseStaff,
+	)
+	staffCloseReq.SetPathValue("reconciliation_id", "rec-hn-260426-day")
+	staffCloseRec := httptest.NewRecorder()
+
+	closeEndOfDayReconciliationHandler(closeService).ServeHTTP(staffCloseRec, staffCloseReq)
+
+	assertForbidden(t, staffCloseRec)
+	assertNoAuditAction(t, auditStore, "warehouse.shift.closed")
+
+	adminCloseReq := smokeRequestAsRole(
+		httptest.NewRequest(
+			http.MethodPost,
+			"/api/v1/warehouse/end-of-day-reconciliations/rec-hn-260426-day/close",
+			bytes.NewBufferString(`{"exception_note":""}`),
+		),
+		authConfig,
+		auth.RoleERPAdmin,
+	)
+	adminCloseReq.SetPathValue("reconciliation_id", "rec-hn-260426-day")
+	adminCloseReq.Header.Set(response.HeaderRequestID, "req-regression-shift-close")
+	adminCloseRec := httptest.NewRecorder()
+
+	closeEndOfDayReconciliationHandler(closeService).ServeHTTP(adminCloseRec, adminCloseReq)
+
+	if adminCloseRec.Code != http.StatusOK {
+		t.Fatalf("admin close status = %d, want %d: %s", adminCloseRec.Code, http.StatusOK, adminCloseRec.Body.String())
+	}
+	closed := decodeSmokeSuccess[endOfDayReconciliationResponse](t, adminCloseRec).Data
+	if closed.Status != "closed" || closed.AuditLogID == "" {
+		t.Fatalf("closed = %+v, want closed shift with audit", closed)
+	}
+
+	assertAuditAction(t, auditStore, "returns.receipt.created")
+	assertAuditAction(t, auditStore, "returns.receipt.inspected")
+	assertAuditAction(t, auditStore, "returns.inspection.disposition")
+	assertAuditAction(t, auditStore, "returns.stock_movement.recorded")
+	assertAuditAction(t, auditStore, "warehouse.shift.closed")
 }
 
 func TestOrderFulfillmentAuditRegressionSmoke(t *testing.T) {
@@ -405,5 +565,17 @@ func assertAuditAction(t *testing.T, store audit.LogStore, action string) {
 	}
 	if len(logs) == 0 {
 		t.Fatalf("audit action %s missing", action)
+	}
+}
+
+func assertNoAuditAction(t *testing.T, store audit.LogStore, action string) {
+	t.Helper()
+
+	logs, err := store.List(context.Background(), audit.Query{Action: action})
+	if err != nil {
+		t.Fatalf("list audit logs for %s: %v", action, err)
+	}
+	if len(logs) != 0 {
+		t.Fatalf("audit action %s count = %d, want 0", action, len(logs))
 	}
 }
