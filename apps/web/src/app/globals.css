@@ -2868,6 +2868,13 @@ textarea {
   align-items: end;
 }
 
+.erp-subcontract-sample-controls {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
 .erp-subcontract-line-list,
 .erp-subcontract-movement-list {
   display: grid;
@@ -4197,6 +4204,7 @@ textarea {
   .erp-subcontract-transfer-grid,
   .erp-subcontract-quality-grid,
   .erp-subcontract-transfer-controls,
+  .erp-subcontract-sample-controls,
   .erp-subcontract-line-item,
   .erp-subcontract-timeline,
   .erp-subcontract-sample-item,
