@@ -182,8 +182,91 @@ func TestInboundQCInspectionServicePartialRequiresValidSplit(t *testing.T) {
 		partial.Inspection.HoldQuantity.String() != "14.000000" {
 		t.Fatalf("partial result = %+v, want 10 pass and 14 hold", partial)
 	}
-	if movementStore.Count() != 0 {
-		t.Fatalf("stock movements = %d, want none for partial in S4-04-01", movementStore.Count())
+	movements := movementStore.Movements()
+	if len(movements) != 2 {
+		t.Fatalf("stock movements = %d, want available and qc hold movements for partial", len(movements))
+	}
+	available := findMovementByStatus(movements, inventorydomain.StockStatusAvailable)
+	if available.Quantity.String() != "10.000000" {
+		t.Fatalf("available movement = %+v, want 10 pass quantity", available)
+	}
+	hold := findMovementByStatus(movements, inventorydomain.StockStatusQCHold)
+	if hold.Quantity.String() != "14.000000" {
+		t.Fatalf("hold movement = %+v, want 14 quarantined quantity", hold)
+	}
+}
+
+func TestInboundQCInspectionServiceHoldQuarantinesStockMovement(t *testing.T) {
+	service, _, movementStore := newTestInboundQCInspectionService()
+	ctx := context.Background()
+	created, err := service.CreateInboundQCInspection(ctx, CreateInboundQCInspectionInput{
+		ID:                 "iqc-hold",
+		GoodsReceiptID:     "grn-hcm-260427-inspect",
+		GoodsReceiptLineID: "grn-line-draft-001",
+		ActorID:            "user-qa",
+	})
+	if err != nil {
+		t.Fatalf("create inspection: %v", err)
+	}
+	if _, err := service.StartInboundQCInspection(ctx, InboundQCActionInput{ID: created.Inspection.ID, ActorID: "user-qa"}); err != nil {
+		t.Fatalf("start inspection: %v", err)
+	}
+
+	held, err := service.HoldInboundQCInspection(ctx, InboundQCActionInput{
+		ID:        created.Inspection.ID,
+		Checklist: completedChecklistInput("pass"),
+		Reason:    "pending supplier COA",
+		ActorID:   "user-qa",
+	})
+	if err != nil {
+		t.Fatalf("hold inspection: %v", err)
+	}
+	if held.CurrentResult != qcdomain.InboundQCResultHold ||
+		held.Inspection.HoldQuantity.String() != held.Inspection.Quantity.String() {
+		t.Fatalf("hold result = %+v, want full hold", held)
+	}
+	movements := movementStore.Movements()
+	if len(movements) != 1 ||
+		movements[0].StockStatus != inventorydomain.StockStatusQCHold ||
+		movements[0].Quantity.String() != held.Inspection.Quantity.String() {
+		t.Fatalf("stock movements = %+v, want full qc hold movement", movements)
+	}
+}
+
+func TestInboundQCInspectionServiceFailBlocksStockMovementFromAvailable(t *testing.T) {
+	service, _, movementStore := newTestInboundQCInspectionService()
+	ctx := context.Background()
+	created, err := service.CreateInboundQCInspection(ctx, CreateInboundQCInspectionInput{
+		ID:                 "iqc-fail",
+		GoodsReceiptID:     "grn-hcm-260427-inspect",
+		GoodsReceiptLineID: "grn-line-draft-001",
+		ActorID:            "user-qa",
+	})
+	if err != nil {
+		t.Fatalf("create inspection: %v", err)
+	}
+	if _, err := service.StartInboundQCInspection(ctx, InboundQCActionInput{ID: created.Inspection.ID, ActorID: "user-qa"}); err != nil {
+		t.Fatalf("start inspection: %v", err)
+	}
+
+	failed, err := service.FailInboundQCInspection(ctx, InboundQCActionInput{
+		ID:        created.Inspection.ID,
+		Checklist: completedChecklistInput("fail"),
+		Reason:    "damaged packaging",
+		ActorID:   "user-qa",
+	})
+	if err != nil {
+		t.Fatalf("fail inspection: %v", err)
+	}
+	if failed.CurrentResult != qcdomain.InboundQCResultFail ||
+		failed.Inspection.FailedQuantity.String() != failed.Inspection.Quantity.String() {
+		t.Fatalf("fail result = %+v, want full fail", failed)
+	}
+	movements := movementStore.Movements()
+	if len(movements) != 1 ||
+		movements[0].StockStatus != inventorydomain.StockStatusDamaged ||
+		movements[0].Quantity.String() != failed.Inspection.Quantity.String() {
+		t.Fatalf("stock movements = %+v, want full damaged movement", movements)
 	}
 }
 
@@ -208,4 +291,17 @@ func completedChecklistInput(status string) []InboundQCChecklistInput {
 		{ID: "check-lot-expiry", Code: "LOT_EXPIRY", Label: "Lot and expiry match delivery", Required: true, Status: status},
 		{ID: "check-sample", Code: "SAMPLE", Label: "Sample retained when required", Status: "not_applicable"},
 	}
+}
+
+func findMovementByStatus(
+	movements []inventorydomain.StockMovement,
+	status inventorydomain.StockStatus,
+) inventorydomain.StockMovement {
+	for _, movement := range movements {
+		if movement.StockStatus == status {
+			return movement
+		}
+	}
+
+	return inventorydomain.StockMovement{}
 }
