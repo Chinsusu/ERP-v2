@@ -2244,6 +2244,163 @@ textarea {
   line-height: var(--erp-line-height-helper);
 }
 
+.erp-qc-page {
+  display: grid;
+  gap: 16px;
+}
+
+.erp-qc-page .erp-page-header,
+.erp-qc-page .erp-module-table-card {
+  margin-bottom: 0;
+}
+
+.erp-qc-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(180px, 220px) minmax(180px, 240px);
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-qc-kpis {
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+}
+
+.erp-qc-workspace {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(520px, 1.15fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.erp-qc-panel {
+  min-width: 0;
+}
+
+.erp-qc-record-cell,
+.erp-qc-checklist-label {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.erp-qc-record-cell strong,
+.erp-qc-record-cell small,
+.erp-qc-checklist-label strong,
+.erp-qc-checklist-label small {
+  overflow-wrap: anywhere;
+}
+
+.erp-qc-record-cell small,
+.erp-qc-checklist-label small {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-qc-selected-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-qc-selected-line div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.erp-qc-selected-line strong,
+.erp-qc-selected-line span {
+  overflow-wrap: anywhere;
+}
+
+.erp-qc-selected-line span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+}
+
+.erp-qc-fact-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.erp-qc-fact {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-qc-fact span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+}
+
+.erp-qc-fact strong {
+  overflow-wrap: anywhere;
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-body);
+}
+
+.erp-qc-checklist {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.erp-qc-checklist-item {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(120px, 140px) minmax(160px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-qc-decision-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.erp-qc-note-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.erp-qc-note-field textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.erp-qc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
 .erp-returns-page {
   display: grid;
   gap: 16px;
@@ -3884,6 +4041,14 @@ textarea {
   .erp-receiving-form-grid,
   .erp-receiving-selected-line,
   .erp-receiving-detail-grid,
+  .erp-qc-toolbar,
+  .erp-qc-kpis,
+  .erp-qc-workspace,
+  .erp-qc-selected-line,
+  .erp-qc-fact-grid,
+  .erp-qc-checklist-item,
+  .erp-qc-decision-grid,
+  .erp-qc-note-grid,
   .erp-returns-toolbar,
   .erp-returns-kpis,
   .erp-returns-receiving-grid,
@@ -3923,6 +4088,7 @@ textarea {
   .erp-sales-actions,
   .erp-purchase-actions,
   .erp-receiving-actions,
+  .erp-qc-actions,
   .erp-returns-actions,
   .erp-subcontract-actions {
     align-items: stretch;
@@ -3935,6 +4101,7 @@ textarea {
   .erp-sales-actions .erp-button,
   .erp-purchase-actions .erp-button,
   .erp-receiving-actions .erp-button,
+  .erp-qc-actions .erp-button,
   .erp-returns-actions .erp-button,
   .erp-subcontract-actions .erp-button {
     flex: 1 1 120px;
