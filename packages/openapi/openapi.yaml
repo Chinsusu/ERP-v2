@@ -1599,6 +1599,37 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/accept:
+    post:
+      summary: Accept subcontract finished goods into available stock
+      operationId: acceptSubcontractFinishedGoods
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptSubcontractFinishedGoodsRequest"
+      responses:
+        "200":
+          description: Subcontract finished goods accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptSubcontractFinishedGoodsSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /subcontract-orders/{subcontract_order_id}/mark-final-payment-ready:
     post:
       summary: Mark subcontract final payment ready
@@ -5372,6 +5403,15 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/ReceiveSubcontractFinishedGoodsResult"
+    AcceptSubcontractFinishedGoodsSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/AcceptSubcontractFinishedGoodsResult"
     SubcontractSampleApprovalResultSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
@@ -5710,6 +5750,21 @@ components:
           $ref: "#/components/schemas/Quantity"
         packaging_status:
           type: string
+        note:
+          type: string
+    AcceptSubcontractFinishedGoodsRequest:
+      type: object
+      required:
+        - expected_version
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        accepted_by:
+          type: string
+        accepted_at:
+          type: string
+          format: date-time
         note:
           type: string
     SubmitSubcontractSampleRequest:
@@ -6316,6 +6371,26 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SubcontractStockMovement"
+        audit_log_id:
+          type: string
+    AcceptSubcontractFinishedGoodsResult:
+      type: object
+      required:
+        - subcontract_order
+        - stock_movements
+        - previous_status
+        - current_status
+      properties:
+        subcontract_order:
+          $ref: "#/components/schemas/SubcontractOrder"
+        stock_movements:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractStockMovement"
+        previous_status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
+        current_status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
         audit_log_id:
           type: string
     SubcontractFinishedGoodsReceipt:
