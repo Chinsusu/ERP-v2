@@ -1,4 +1,5 @@
 import { ApiError, apiGetRaw, apiPost } from "../../../shared/api/client";
+import type { components, operations } from "../../../shared/api/generated/schema";
 import { decimalScales, formatDateTimeVI, formatQuantity, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type {
   CreateSupplierRejectionAttachmentInput,
@@ -12,116 +13,17 @@ import type {
   SupplierRejectionStatus
 } from "../types";
 
-type SupplierRejectionLineApi = {
+type SupplierRejectionLineApi = components["schemas"]["SupplierRejectionLine"];
+type SupplierRejectionAttachmentApi = components["schemas"]["SupplierRejectionAttachment"];
+type SupplierRejectionApi = components["schemas"]["SupplierRejection"];
+type CreateSupplierRejectionLineApiRequest = components["schemas"]["SupplierRejectionLineRequest"];
+type CreateSupplierRejectionAttachmentApiRequest = components["schemas"]["SupplierRejectionAttachmentRequest"];
+type CreateSupplierRejectionApiRequest = components["schemas"]["CreateSupplierRejectionRequest"] & {
   id: string;
-  purchase_order_line_id?: string;
-  goods_receipt_line_id: string;
-  inbound_qc_inspection_id: string;
-  item_id: string;
-  sku: string;
-  item_name?: string;
-  batch_id: string;
-  batch_no: string;
-  lot_no: string;
-  expiry_date: string;
-  rejected_qty: string;
-  uom_code: string;
-  base_uom_code: string;
-  reason: string;
-};
-
-type SupplierRejectionAttachmentApi = {
-  id: string;
-  line_id?: string;
-  file_name: string;
-  object_key: string;
-  content_type?: string;
-  uploaded_at?: string;
-  uploaded_by?: string;
-  source?: string;
-};
-
-type SupplierRejectionApi = {
-  id: string;
-  org_id: string;
   rejection_no: string;
-  supplier_id: string;
-  supplier_code?: string;
-  supplier_name?: string;
-  purchase_order_id?: string;
-  purchase_order_no?: string;
-  goods_receipt_id: string;
-  goods_receipt_no?: string;
-  inbound_qc_inspection_id: string;
-  warehouse_id: string;
-  warehouse_code?: string;
-  status: SupplierRejectionStatus;
-  reason: string;
-  lines: SupplierRejectionLineApi[];
-  attachments: SupplierRejectionAttachmentApi[];
-  audit_log_id?: string;
-  created_at: string;
-  created_by: string;
-  updated_at: string;
-  updated_by: string;
-  submitted_at?: string;
-  submitted_by?: string;
-  confirmed_at?: string;
-  confirmed_by?: string;
 };
-
-type CreateSupplierRejectionLineApiRequest = {
-  id?: string;
-  purchase_order_line_id?: string;
-  goods_receipt_line_id: string;
-  inbound_qc_inspection_id: string;
-  item_id: string;
-  sku: string;
-  item_name?: string;
-  batch_id: string;
-  batch_no: string;
-  lot_no: string;
-  expiry_date: string;
-  rejected_qty: string;
-  uom_code: string;
-  base_uom_code: string;
-  reason: string;
-};
-
-type CreateSupplierRejectionAttachmentApiRequest = {
-  id?: string;
-  line_id?: string;
-  file_name: string;
-  object_key: string;
-  content_type?: string;
-  source?: string;
-};
-
-type CreateSupplierRejectionApiRequest = {
-  id: string;
-  org_id?: string;
-  rejection_no: string;
-  supplier_id: string;
-  supplier_code?: string;
-  supplier_name?: string;
-  purchase_order_id?: string;
-  purchase_order_no?: string;
-  goods_receipt_id: string;
-  goods_receipt_no?: string;
-  inbound_qc_inspection_id: string;
-  warehouse_id: string;
-  warehouse_code?: string;
-  reason: string;
-  lines: CreateSupplierRejectionLineApiRequest[];
-  attachments?: CreateSupplierRejectionAttachmentApiRequest[];
-};
-
-type SupplierRejectionActionResultApi = {
-  rejection: SupplierRejectionApi;
-  previous_status?: SupplierRejectionStatus;
-  current_status: SupplierRejectionStatus;
-  audit_log_id?: string;
-};
+type SupplierRejectionActionResultApi = components["schemas"]["SupplierRejectionActionResult"];
+type SupplierRejectionListApiQuery = operations["listSupplierRejections"]["parameters"]["query"];
 
 type SupplierOption = {
   label: string;
@@ -454,18 +356,22 @@ function toApiCreateAttachmentInput(
 
 function supplierRejectionQueryString(query: SupplierRejectionQuery) {
   const params = new URLSearchParams();
-  if (query.supplierId) {
-    params.set("supplier_id", query.supplierId);
-  }
-  if (query.warehouseId) {
-    params.set("warehouse_id", query.warehouseId);
-  }
-  if (query.status) {
-    params.set("status", query.status);
-  }
+  Object.entries(toApiSupplierRejectionQuery(query) ?? {}).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
 
   const value = params.toString();
   return value ? `?${value}` : "";
+}
+
+function toApiSupplierRejectionQuery(query: SupplierRejectionQuery): SupplierRejectionListApiQuery {
+  return {
+    supplier_id: query.supplierId,
+    warehouse_id: query.warehouseId,
+    status: query.status
+  };
 }
 
 function shouldUsePrototypeFallback(reason: unknown) {

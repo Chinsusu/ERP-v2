@@ -422,6 +422,110 @@ export interface paths {
         patch: operations["changeWarehouseLocationStatus"];
         trace?: never;
     };
+    "/purchase-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List purchase orders */
+        get: operations["listPurchaseOrders"];
+        put?: never;
+        /** Create a purchase order draft */
+        post: operations["createPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/purchase-orders/{purchase_order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get purchase order detail */
+        get: operations["getPurchaseOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update purchase order draft */
+        patch: operations["updatePurchaseOrder"];
+        trace?: never;
+    };
+    "/purchase-orders/{purchase_order_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a purchase order */
+        post: operations["submitPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/purchase-orders/{purchase_order_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a purchase order */
+        post: operations["approvePurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/purchase-orders/{purchase_order_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a purchase order */
+        post: operations["cancelPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/purchase-orders/{purchase_order_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a purchase order */
+        post: operations["closePurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/inventory/stock-movements": {
         parameters: {
             query?: never;
@@ -594,6 +698,195 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/inbound-qc-inspections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List inbound QC inspections */
+        get: operations["listInboundQCInspections"];
+        put?: never;
+        /** Create an inbound QC inspection for an inspection-ready goods receipt line */
+        post: operations["createInboundQCInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inbound-qc-inspections/{inspection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get inbound QC inspection detail */
+        get: operations["getInboundQCInspection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inbound-qc-inspections/{inspection_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start an inbound QC inspection */
+        post: operations["startInboundQCInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inbound-qc-inspections/{inspection_id}/pass": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pass an inbound QC inspection */
+        post: operations["passInboundQCInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inbound-qc-inspections/{inspection_id}/fail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fail an inbound QC inspection */
+        post: operations["failInboundQCInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inbound-qc-inspections/{inspection_id}/partial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Partially pass or hold an inbound QC inspection */
+        post: operations["partialInboundQCInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inbound-qc-inspections/{inspection_id}/hold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put an inbound QC inspection on hold */
+        post: operations["holdInboundQCInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-rejections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List supplier rejection records */
+        get: operations["listSupplierRejections"];
+        put?: never;
+        /** Create a supplier rejection record for failed inbound QC */
+        post: operations["createSupplierRejection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-rejections/{supplier_rejection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get supplier rejection detail */
+        get: operations["getSupplierRejection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-rejections/{supplier_rejection_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a supplier rejection record */
+        post: operations["submitSupplierRejection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-rejections/{supplier_rejection_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm a supplier rejection record */
+        post: operations["confirmSupplierRejection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/warehouse/end-of-day-reconciliations": {
         parameters: {
             query?: never;
@@ -637,6 +930,23 @@ export interface paths {
         };
         /** Get warehouse daily board fulfillment metrics */
         get: operations["getWarehouseDailyBoardFulfillmentMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/warehouse/daily-board/inbound-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get warehouse daily board inbound metrics */
+        get: operations["getWarehouseDailyBoardInboundMetrics"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1576,6 +1886,136 @@ export interface components {
             updated_at: string;
         };
         /** @enum {string} */
+        PurchaseOrderStatus: "draft" | "submitted" | "approved" | "partially_received" | "received" | "closed" | "cancelled" | "rejected";
+        PurchaseOrderListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["PurchaseOrderListItem"][];
+        };
+        PurchaseOrderSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["PurchaseOrder"];
+        };
+        PurchaseOrderActionResultSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["PurchaseOrderActionResult"];
+        };
+        CreatePurchaseOrderRequest: {
+            id?: string;
+            po_no?: string;
+            supplier_id: string;
+            warehouse_id: string;
+            /** Format: date */
+            expected_date: string;
+            currency_code?: components["schemas"]["CurrencyCode"];
+            note?: string;
+            lines: components["schemas"]["PurchaseOrderLineRequest"][];
+        };
+        UpdatePurchaseOrderRequest: {
+            supplier_id: string;
+            warehouse_id: string;
+            /** Format: date */
+            expected_date: string;
+            note?: string;
+            expected_version: number;
+            lines: components["schemas"]["PurchaseOrderLineRequest"][];
+        };
+        PurchaseOrderLineRequest: {
+            id?: string;
+            line_no?: number;
+            item_id: string;
+            ordered_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            unit_price: components["schemas"]["UnitPriceAmount"];
+            currency_code?: components["schemas"]["CurrencyCode"];
+            /** Format: date */
+            expected_date?: string;
+            note?: string;
+        };
+        PurchaseOrderActionRequest: {
+            expected_version?: number;
+            reason?: string;
+            note?: string;
+        };
+        PurchaseOrderListItem: {
+            id: string;
+            po_no: string;
+            supplier_id: string;
+            supplier_code?: string;
+            supplier_name: string;
+            warehouse_id: string;
+            warehouse_code?: string;
+            /** Format: date */
+            expected_date: string;
+            status: components["schemas"]["PurchaseOrderStatus"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            total_amount: components["schemas"]["MoneyAmount"];
+            line_count: number;
+            received_line_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        PurchaseOrder: {
+            id: string;
+            po_no: string;
+            supplier_id: string;
+            supplier_code?: string;
+            supplier_name: string;
+            warehouse_id: string;
+            warehouse_code?: string;
+            /** Format: date */
+            expected_date: string;
+            status: components["schemas"]["PurchaseOrderStatus"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            subtotal_amount: components["schemas"]["MoneyAmount"];
+            total_amount: components["schemas"]["MoneyAmount"];
+            note?: string;
+            lines: components["schemas"]["PurchaseOrderLine"][];
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            /** Format: date-time */
+            approved_at?: string;
+            /** Format: date-time */
+            closed_at?: string;
+            /** Format: date-time */
+            cancelled_at?: string;
+            /** Format: date-time */
+            rejected_at?: string;
+            cancel_reason?: string;
+            reject_reason?: string;
+            version: number;
+        };
+        PurchaseOrderLine: {
+            id: string;
+            line_no: number;
+            item_id: string;
+            sku_code: string;
+            item_name: string;
+            ordered_qty: components["schemas"]["Quantity"];
+            received_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_ordered_qty: components["schemas"]["Quantity"];
+            base_received_qty: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            conversion_factor: components["schemas"]["Quantity"];
+            unit_price: components["schemas"]["UnitPriceAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            line_amount: components["schemas"]["MoneyAmount"];
+            /** Format: date */
+            expected_date: string;
+            note?: string;
+        };
+        PurchaseOrderActionResult: {
+            purchase_order: components["schemas"]["PurchaseOrder"];
+            previous_status: components["schemas"]["PurchaseOrderStatus"];
+            current_status: components["schemas"]["PurchaseOrderStatus"];
+            audit_log_id?: string;
+        };
+        /** @enum {string} */
         GoodsReceiptStatus: "draft" | "submitted" | "inspect_ready" | "posted";
         GoodsReceiptListSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["GoodsReceipt"][];
@@ -1593,18 +2033,26 @@ export interface components {
             reference_doc_type: string;
             /** @example PO-260427-0001 */
             reference_doc_id: string;
-            supplier_id?: string;
+            supplier_id: string;
+            delivery_note_no: string;
             lines: components["schemas"]["CreateGoodsReceiptLineRequest"][];
         };
         CreateGoodsReceiptLineRequest: {
             id?: string;
+            purchase_order_line_id: string;
             item_id?: string;
             sku?: string;
             item_name?: string;
             batch_id?: string;
             batch_no?: string;
+            lot_no: string;
+            /** Format: date */
+            expiry_date: string;
             quantity: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
             base_uom_code: components["schemas"]["UOMCode"];
+            /** @enum {string} */
+            packaging_status: "intact" | "damaged" | "missing_label" | "leaking";
             qc_status?: components["schemas"]["BatchQCStatus"];
         };
         GoodsReceipt: {
@@ -1618,6 +2066,7 @@ export interface components {
             reference_doc_type: string;
             reference_doc_id: string;
             supplier_id?: string;
+            delivery_note_no?: string;
             status: components["schemas"]["GoodsReceiptStatus"];
             lines: components["schemas"]["GoodsReceiptLine"][];
             stock_movements?: components["schemas"]["GoodsReceiptStockMovement"][];
@@ -1639,15 +2088,22 @@ export interface components {
         };
         GoodsReceiptLine: {
             id: string;
+            purchase_order_line_id: string;
             item_id: string;
             sku: string;
             item_name?: string;
             batch_id?: string;
             batch_no?: string;
+            lot_no?: string;
+            /** Format: date */
+            expiry_date?: string;
             warehouse_id: string;
             location_id: string;
             quantity: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
             base_uom_code: components["schemas"]["UOMCode"];
+            /** @enum {string} */
+            packaging_status: "intact" | "damaged" | "missing_label" | "leaking";
             qc_status?: components["schemas"]["BatchQCStatus"];
         };
         GoodsReceiptStockMovement: {
@@ -1666,6 +2122,219 @@ export interface components {
             source_doc_line_id: string;
         };
         /** @enum {string} */
+        InboundQCInspectionStatus: "pending" | "in_progress" | "completed" | "cancelled";
+        /** @enum {string} */
+        InboundQCResult: "pass" | "fail" | "hold" | "partial";
+        /** @enum {string} */
+        InboundQCChecklistStatus: "pending" | "pass" | "fail" | "not_applicable";
+        InboundQCInspectionListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["InboundQCInspection"][];
+        };
+        InboundQCInspectionSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["InboundQCInspection"];
+        };
+        InboundQCActionResultSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["InboundQCActionResult"];
+        };
+        CreateInboundQCInspectionRequest: {
+            id?: string;
+            org_id?: string;
+            goods_receipt_id: string;
+            goods_receipt_line_id: string;
+            inspector_id?: string;
+            checklist?: components["schemas"]["InboundQCChecklistItem"][];
+            note?: string;
+        };
+        InboundQCDecisionRequest: {
+            passed_qty?: components["schemas"]["Quantity"];
+            failed_qty?: components["schemas"]["Quantity"];
+            hold_qty?: components["schemas"]["Quantity"];
+            checklist?: components["schemas"]["InboundQCChecklistItem"][];
+            reason?: string;
+            note?: string;
+        };
+        InboundQCChecklistItem: {
+            id: string;
+            code: string;
+            label: string;
+            required: boolean;
+            status: components["schemas"]["InboundQCChecklistStatus"];
+            note?: string;
+        };
+        InboundQCInspection: {
+            id: string;
+            org_id: string;
+            goods_receipt_id: string;
+            goods_receipt_no: string;
+            goods_receipt_line_id: string;
+            purchase_order_id: string;
+            purchase_order_line_id: string;
+            item_id: string;
+            sku: string;
+            item_name: string;
+            batch_id: string;
+            batch_no: string;
+            lot_no: string;
+            /** Format: date */
+            expiry_date: string;
+            warehouse_id: string;
+            location_id: string;
+            quantity: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            inspector_id: string;
+            status: components["schemas"]["InboundQCInspectionStatus"];
+            result?: components["schemas"]["InboundQCResult"];
+            passed_qty: components["schemas"]["Quantity"];
+            failed_qty: components["schemas"]["Quantity"];
+            hold_qty: components["schemas"]["Quantity"];
+            checklist: components["schemas"]["InboundQCChecklistItem"][];
+            reason?: string;
+            note?: string;
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            created_by: string;
+            /** Format: date-time */
+            updated_at: string;
+            updated_by: string;
+            /** Format: date-time */
+            started_at?: string;
+            started_by?: string;
+            /** Format: date-time */
+            decided_at?: string;
+            decided_by?: string;
+        };
+        InboundQCActionResult: {
+            inspection: components["schemas"]["InboundQCInspection"];
+            previous_status?: components["schemas"]["InboundQCInspectionStatus"];
+            current_status: components["schemas"]["InboundQCInspectionStatus"];
+            previous_result?: components["schemas"]["InboundQCResult"];
+            current_result?: components["schemas"]["InboundQCResult"];
+            audit_log_id?: string;
+        };
+        /** @enum {string} */
+        SupplierRejectionStatus: "draft" | "submitted" | "confirmed" | "cancelled";
+        SupplierRejectionListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SupplierRejection"][];
+        };
+        SupplierRejectionSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SupplierRejection"];
+        };
+        SupplierRejectionActionResultSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SupplierRejectionActionResult"];
+        };
+        CreateSupplierRejectionRequest: {
+            id?: string;
+            org_id?: string;
+            rejection_no?: string;
+            supplier_id: string;
+            supplier_code?: string;
+            supplier_name?: string;
+            purchase_order_id?: string;
+            purchase_order_no?: string;
+            goods_receipt_id: string;
+            goods_receipt_no?: string;
+            inbound_qc_inspection_id: string;
+            warehouse_id: string;
+            warehouse_code?: string;
+            reason: string;
+            lines: components["schemas"]["SupplierRejectionLineRequest"][];
+            attachments?: components["schemas"]["SupplierRejectionAttachmentRequest"][];
+        };
+        SupplierRejectionLineRequest: {
+            id?: string;
+            purchase_order_line_id?: string;
+            goods_receipt_line_id: string;
+            inbound_qc_inspection_id: string;
+            item_id: string;
+            sku: string;
+            item_name?: string;
+            batch_id: string;
+            batch_no: string;
+            lot_no: string;
+            /** Format: date */
+            expiry_date: string;
+            rejected_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            reason: string;
+        };
+        SupplierRejectionAttachmentRequest: {
+            id?: string;
+            line_id?: string;
+            file_name: string;
+            object_key: string;
+            content_type?: string;
+            source?: string;
+        };
+        SupplierRejection: {
+            id: string;
+            org_id: string;
+            rejection_no: string;
+            supplier_id: string;
+            supplier_code?: string;
+            supplier_name?: string;
+            purchase_order_id?: string;
+            purchase_order_no?: string;
+            goods_receipt_id: string;
+            goods_receipt_no?: string;
+            inbound_qc_inspection_id: string;
+            warehouse_id: string;
+            warehouse_code?: string;
+            status: components["schemas"]["SupplierRejectionStatus"];
+            reason: string;
+            lines: components["schemas"]["SupplierRejectionLine"][];
+            attachments: components["schemas"]["SupplierRejectionAttachment"][];
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            created_by: string;
+            /** Format: date-time */
+            updated_at: string;
+            updated_by: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            submitted_by?: string;
+            /** Format: date-time */
+            confirmed_at?: string;
+            confirmed_by?: string;
+        };
+        SupplierRejectionLine: {
+            id: string;
+            purchase_order_line_id?: string;
+            goods_receipt_line_id: string;
+            inbound_qc_inspection_id: string;
+            item_id: string;
+            sku: string;
+            item_name?: string;
+            batch_id: string;
+            batch_no: string;
+            lot_no: string;
+            /** Format: date */
+            expiry_date: string;
+            rejected_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            reason: string;
+        };
+        SupplierRejectionAttachment: {
+            id: string;
+            line_id?: string;
+            file_name: string;
+            object_key: string;
+            content_type?: string;
+            /** Format: date-time */
+            uploaded_at: string;
+            uploaded_by: string;
+            source?: string;
+        };
+        SupplierRejectionActionResult: {
+            rejection: components["schemas"]["SupplierRejection"];
+            previous_status?: components["schemas"]["SupplierRejectionStatus"];
+            current_status: components["schemas"]["SupplierRejectionStatus"];
+            audit_log_id?: string;
+        };
+        /** @enum {string} */
         EndOfDayReconciliationStatus: "open" | "in_review" | "closed";
         EndOfDayReconciliationListSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["EndOfDayReconciliation"][];
@@ -1675,6 +2344,9 @@ export interface components {
         };
         WarehouseFulfillmentMetricsSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["WarehouseFulfillmentMetrics"];
+        };
+        WarehouseInboundMetricsSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["WarehouseInboundMetrics"];
         };
         CloseEndOfDayReconciliationRequest: {
             exception_note?: string;
@@ -1693,6 +2365,28 @@ export interface components {
             waiting_handover_orders: number;
             missing_orders: number;
             handover_orders: number;
+            /** Format: date-time */
+            generated_at: string;
+        };
+        WarehouseInboundMetrics: {
+            warehouse_id?: string;
+            /** Format: date */
+            date?: string;
+            shift_code?: string;
+            purchase_orders_incoming: number;
+            receiving_pending: number;
+            receiving_draft: number;
+            receiving_submitted: number;
+            receiving_inspect_ready: number;
+            qc_hold: number;
+            qc_fail: number;
+            qc_pass: number;
+            qc_partial: number;
+            supplier_rejections: number;
+            supplier_rejection_draft: number;
+            supplier_rejection_submitted: number;
+            supplier_rejection_confirmed: number;
+            supplier_rejection_cancelled: number;
             /** Format: date-time */
             generated_at: string;
         };
@@ -3216,6 +3910,246 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    listPurchaseOrders: {
+        parameters: {
+            query?: {
+                search?: string;
+                /** @description Comma-separated purchase order statuses. */
+                status?: string;
+                supplier_id?: string;
+                warehouse_id?: string;
+                expected_from?: string;
+                expected_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Purchase order rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePurchaseOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Purchase order created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Purchase order detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updatePurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePurchaseOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Purchase order updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    submitPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PurchaseOrderActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Purchase order submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    approvePurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PurchaseOrderActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Purchase order approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    cancelPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseOrderActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Purchase order cancelled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    closePurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PurchaseOrderActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Purchase order closed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     recordStockMovement: {
         parameters: {
             query?: never;
@@ -3538,6 +4472,370 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    listInboundQCInspections: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["InboundQCInspectionStatus"];
+                goods_receipt_id?: string;
+                goods_receipt_line_id?: string;
+                warehouse_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Inbound QC inspection rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundQCInspectionListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createInboundQCInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInboundQCInspectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Inbound QC inspection created and audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundQCActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getInboundQCInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Inbound QC inspection detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundQCInspectionSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    startInboundQCInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Inbound QC inspection started and audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundQCActionResultSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    passInboundQCInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["InboundQCDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Inbound QC inspection passed and audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundQCActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    failInboundQCInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["InboundQCDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Inbound QC inspection failed and audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundQCActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    partialInboundQCInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InboundQCDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Inbound QC inspection partially decided and audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundQCActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    holdInboundQCInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["InboundQCDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Inbound QC inspection held and audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboundQCActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listSupplierRejections: {
+        parameters: {
+            query?: {
+                supplier_id?: string;
+                warehouse_id?: string;
+                status?: components["schemas"]["SupplierRejectionStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supplier rejection records */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierRejectionListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createSupplierRejection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupplierRejectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier rejection created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierRejectionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getSupplierRejection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_rejection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supplier rejection detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierRejectionSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    submitSupplierRejection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_rejection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supplier rejection submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierRejectionActionResultSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    confirmSupplierRejection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_rejection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supplier rejection confirmed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierRejectionActionResultSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     listEndOfDayReconciliations: {
         parameters: {
             query?: {
@@ -3618,6 +4916,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WarehouseFulfillmentMetricsSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getWarehouseDailyBoardInboundMetrics: {
+        parameters: {
+            query?: {
+                warehouse_id?: string;
+                date?: string;
+                shift_code?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse daily board inbound metrics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseInboundMetricsSuccessResponse"];
                 };
             };
             401: components["responses"]["Unauthorized"];

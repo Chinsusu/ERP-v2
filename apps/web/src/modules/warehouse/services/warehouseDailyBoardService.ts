@@ -1,4 +1,4 @@
-import { apiGet, apiGetRaw } from "../../../shared/api/client";
+import { apiGet } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import { getStockAdjustments, summarizeStockAdjustmentDelta } from "../../inventory/services/stockAdjustmentService";
 import type { StockAdjustment } from "../../inventory/types";
@@ -28,31 +28,8 @@ import type {
 
 type WarehouseFulfillmentMetricsApi = components["schemas"]["WarehouseFulfillmentMetrics"];
 type WarehouseFulfillmentMetricsApiQuery = operations["getWarehouseDailyBoardFulfillmentMetrics"]["parameters"]["query"];
-type WarehouseInboundMetricsApi = {
-  warehouse_id?: string;
-  date?: string;
-  shift_code?: string;
-  purchase_orders_incoming: number;
-  receiving_pending: number;
-  receiving_draft: number;
-  receiving_submitted: number;
-  receiving_inspect_ready: number;
-  qc_hold: number;
-  qc_fail: number;
-  qc_pass: number;
-  qc_partial: number;
-  supplier_rejections: number;
-  supplier_rejection_draft: number;
-  supplier_rejection_submitted: number;
-  supplier_rejection_confirmed: number;
-  supplier_rejection_cancelled: number;
-  generated_at: string;
-};
-type WarehouseInboundMetricsApiQuery = {
-  warehouse_id?: string;
-  date?: string;
-  shift_code?: string;
-};
+type WarehouseInboundMetricsApi = components["schemas"]["WarehouseInboundMetrics"];
+type WarehouseInboundMetricsApiQuery = operations["getWarehouseDailyBoardInboundMetrics"]["parameters"]["query"];
 
 const defaultAccessToken = "local-dev-access-token";
 export const defaultWarehouseDailyBoardDate = "2026-04-26";
@@ -442,10 +419,10 @@ export async function getWarehouseInboundMetrics(
   query: WarehouseDailyBoardQuery = {}
 ): Promise<WarehouseInboundMetrics | undefined> {
   try {
-    const metrics = await apiGetRaw<WarehouseInboundMetricsApi>(
-      `/warehouse/daily-board/inbound-metrics${queryString(toInboundMetricsApiQuery(query))}`,
-      { accessToken: defaultAccessToken }
-    );
+    const metrics = await apiGet("/warehouse/daily-board/inbound-metrics", {
+      accessToken: defaultAccessToken,
+      query: toInboundMetricsApiQuery(query)
+    });
 
     return fromInboundMetricsApi(metrics);
   } catch {
@@ -1246,18 +1223,6 @@ function drillDownHref(path: string, query: Record<string, string | undefined>, 
   const queryString = params.toString();
 
   return `${path}${queryString ? `?${queryString}` : ""}#${hash}`;
-}
-
-function queryString(query: Record<string, string | undefined>) {
-  const params = new URLSearchParams();
-  Object.entries(query).forEach(([key, value]) => {
-    if (value) {
-      params.set(key, value);
-    }
-  });
-  const value = params.toString();
-
-  return value ? `?${value}` : "";
 }
 
 function salesWarehouseIdForDrillDown(warehouseId?: string) {
