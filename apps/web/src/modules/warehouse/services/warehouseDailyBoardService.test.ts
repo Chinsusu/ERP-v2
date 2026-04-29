@@ -1,7 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { prototypeReturnReceipts } from "../../returns/services/returnReceivingService";
+import {
+  prototypeReturnReceipts,
+  resetPrototypeReturnReceiptsForTest
+} from "../../returns/services/returnReceivingService";
 import { prototypeCarrierManifests } from "../../shipping/services/carrierManifestService";
 import type { GoodsReceipt } from "../../receiving/types";
+import {
+  createGoodsReceipt,
+  markGoodsReceiptInspectReady,
+  postGoodsReceipt,
+  resetPrototypeGoodsReceiptsForTest,
+  submitGoodsReceipt
+} from "../../receiving/services/warehouseReceivingService";
+import { resetPrototypeStockAdjustmentsForTest } from "../../inventory/services/stockAdjustmentService";
 import {
   buildWarehouseFulfillmentDrillDownHref,
   buildWarehouseQueueDrillDownHref,
@@ -23,6 +34,9 @@ import {
 
 describe("warehouseDailyBoardService", () => {
   beforeEach(() => {
+    resetPrototypeGoodsReceiptsForTest();
+    resetPrototypeReturnReceiptsForTest();
+    resetPrototypeStockAdjustmentsForTest();
     vi.stubGlobal(
       "fetch",
       vi.fn(() => Promise.reject(new Error("offline")))
@@ -132,6 +146,98 @@ describe("warehouseDailyBoardService", () => {
         }
       ]
     });
+  });
+
+  it("uses service-backed return, adjustment, reconciliation, and closing data for the board", async () => {
+    const board = await getWarehouseDailyBoard({
+      warehouseId: "wh-hcm",
+      date: "2026-04-26",
+      shiftCode: "day"
+    });
+
+    expect(board.summary).toMatchObject({
+      returnPending: 1,
+      qaHold: 1,
+      adjustmentPending: 1,
+      stockCountVariance: 1,
+      closingBlocked: 1
+    });
+    expect(board.tasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          reference: "RET-260425-099",
+          source: "returns",
+          status: "returns",
+          href: "/returns?warehouse_id=wh-hcm&date=2026-04-26&queue=returns#return-receipts"
+        }),
+        expect.objectContaining({
+          reference: "RET-260425-120",
+          source: "returns",
+          status: "qa_hold",
+          href: "/returns?warehouse_id=wh-hcm&date=2026-04-26&queue=qa_hold#return-receipts"
+        }),
+        expect.objectContaining({
+          reference: "ADJ-260426-0001",
+          source: "adjustment",
+          status: "adjustment",
+          href: "/inventory?warehouse_id=wh-hcm&date=2026-04-26&queue=adjustment#stock-adjustments"
+        }),
+        expect.objectContaining({
+          reference: "VAR-20260426-SERUM-30ML",
+          source: "reconciliation",
+          status: "mismatch",
+          href: "/inventory?warehouse_id=wh-hcm&date=2026-04-26&queue=mismatch#stock-counts"
+        }),
+        expect.objectContaining({
+          reference: "HCM-2026-04-26-day",
+          source: "closing",
+          status: "closing",
+          href: "/warehouse?warehouse_id=wh-hcm&date=2026-04-26&shift_code=day#shift-closing"
+        })
+      ])
+    );
+  });
+
+  it("uses service-backed QC-hold stock movements for variance rows", async () => {
+    const receipt = await createGoodsReceipt({
+      id: "grn-s3-06-03-qc-hold",
+      orgId: "org-my-pham",
+      receiptNo: "GRN-S30603-QCHOLD",
+      warehouseId: "wh-hcm-fg",
+      locationId: "loc-hcm-fg-recv-01",
+      referenceDocType: "purchase_order",
+      referenceDocId: "PO-S30603-QCHOLD",
+      lines: [
+        {
+          id: "line-s3-06-03-qc-hold",
+          batchId: "batch-serum-2604a",
+          quantity: "3.000000",
+          baseUomCode: "EA"
+        }
+      ]
+    });
+
+    await submitGoodsReceipt(receipt.id);
+    await markGoodsReceiptInspectReady(receipt.id);
+    await postGoodsReceipt(receipt.id);
+
+    const board = await getWarehouseDailyBoard({
+      warehouseId: "wh-hcm",
+      date: "2026-04-27",
+      shiftCode: "day",
+      status: "mismatch"
+    });
+
+    expect(board.summary.stockCountVariance).toBe(1);
+    expect(board.tasks).toEqual([
+      expect.objectContaining({
+        reference: "GRN-S30603-QCHOLD-MV-001",
+        source: "stock_movement",
+        sourceField: "stock_movements.stock_status",
+        status: "mismatch",
+        priority: "P0"
+      })
+    ]);
   });
 
   it("loads fulfillment metrics from the daily board API with the selected carrier", async () => {
