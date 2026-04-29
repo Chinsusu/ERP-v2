@@ -2066,8 +2066,11 @@ func TestReturnAttachmentHandlerUploadsInspectionEvidence(t *testing.T) {
 		AccessToken: "local-dev-access-token",
 	}, auth.RoleWarehouseLead)))
 	rec := httptest.NewRecorder()
+	objectStore := returnsapp.NewInMemoryReturnAttachmentObjectStore()
 
-	returnAttachmentHandler(returnsapp.NewUploadReturnAttachment(store, auditStore)).ServeHTTP(rec, req)
+	returnAttachmentHandler(
+		returnsapp.NewUploadReturnAttachment(store, auditStore).WithObjectStore(objectStore),
+	).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
@@ -2082,6 +2085,9 @@ func TestReturnAttachmentHandlerUploadsInspectionEvidence(t *testing.T) {
 		payload.Data.FileSizeBytes == 0 ||
 		payload.Data.AuditLogID == "" {
 		t.Fatalf("payload = %+v, want png attachment metadata and audit", payload.Data)
+	}
+	if _, ok := objectStore.Get(payload.Data.StorageBucket, payload.Data.StorageKey); !ok {
+		t.Fatalf("object %s/%s was not stored", payload.Data.StorageBucket, payload.Data.StorageKey)
 	}
 
 	logs, err := auditStore.List(req.Context(), audit.Query{Action: "returns.inspection.attachment_uploaded"})
@@ -2098,8 +2104,11 @@ func TestReturnAttachmentHandlerRejectsPendingReceiptAndInvalidFile(t *testing.T
 	auditStore := audit.NewInMemoryLogStore()
 	req := newReturnAttachmentRequest(t, "rr-260426-0001", "inspect-rr-260426-0001-intact", "return-photo.png", "fake image bytes")
 	rec := httptest.NewRecorder()
+	objectStore := returnsapp.NewInMemoryReturnAttachmentObjectStore()
 
-	returnAttachmentHandler(returnsapp.NewUploadReturnAttachment(store, auditStore)).ServeHTTP(rec, req)
+	returnAttachmentHandler(
+		returnsapp.NewUploadReturnAttachment(store, auditStore).WithObjectStore(objectStore),
+	).ServeHTTP(rec, req)
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("pending status = %d, want %d: %s", rec.Code, http.StatusConflict, rec.Body.String())
 	}
@@ -2118,7 +2127,9 @@ func TestReturnAttachmentHandlerRejectsPendingReceiptAndInvalidFile(t *testing.T
 	invalid := newReturnAttachmentRequest(t, "rr-260426-0001", "inspect-rr-260426-0001-intact", "return-photo.exe", "binary")
 	invalidRec := httptest.NewRecorder()
 
-	returnAttachmentHandler(returnsapp.NewUploadReturnAttachment(store, auditStore)).ServeHTTP(invalidRec, invalid)
+	returnAttachmentHandler(
+		returnsapp.NewUploadReturnAttachment(store, auditStore).WithObjectStore(objectStore),
+	).ServeHTTP(invalidRec, invalid)
 	if invalidRec.Code != http.StatusBadRequest {
 		t.Fatalf("invalid file status = %d, want %d: %s", invalidRec.Code, http.StatusBadRequest, invalidRec.Body.String())
 	}
