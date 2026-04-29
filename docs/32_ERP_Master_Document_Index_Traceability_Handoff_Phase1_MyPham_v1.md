@@ -153,6 +153,8 @@ Một tài liệu chỉ có giá trị khi nó giúp:
 | 22 | `22_ERP_Core_Docs_Revision_v1_1_Change_Log_Phase1_MyPham.md` | Log tài liệu lõi cần sửa lên v1.1 | PM, BA, Tech Lead | Khi update core docs |
 | 41 | `41_ERP_Coding_Task_Board_Sprint2_Order_Fulfillment_Core_MyPham_v1.md` | Sprint 2 Order Fulfillment Core task board | PM, Tech Lead, Dev, QA | Khi triển khai order-to-handover |
 | 42 | `42_ERP_Sprint2_Changelog_Order_Fulfillment_Core_MyPham_v1.md` | Changelog/release note Sprint 2 | PM, Tech Lead, QA | Khi theo dõi kickoff và release evidence Sprint 2 |
+| 43 | `43_ERP_Coding_Task_Board_Sprint3_Returns_Reconciliation_Core_MyPham_v1.md` | Sprint 3 Returns Reconciliation Core task board | PM, Tech Lead, Dev, QA | Khi triển khai returns, stock count, adjustment, shift closing |
+| 44 | `44_ERP_Sprint3_Changelog_Returns_Reconciliation_Core_MyPham_v1.md` | Changelog/release note Sprint 3 | PM, Tech Lead, QA, DevOps | Khi theo dõi release evidence Sprint 3 |
 
 ### 4.5. Nhóm tích hợp, test, delivery và vận hành
 
