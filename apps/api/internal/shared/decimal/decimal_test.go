@@ -134,3 +134,37 @@ func TestQuantityArithmetic(t *testing.T) {
 		t.Fatalf("diff = %q, want -2.500000", diff)
 	}
 }
+
+func TestDecimalArithmeticRegressionAvoidsFloatDrift(t *testing.T) {
+	sum, err := AddQuantity(MustQuantity("0.100000"), MustQuantity("0.200000"))
+	if err != nil {
+		t.Fatalf("add quantity: %v", err)
+	}
+	if sum != "0.300000" {
+		t.Fatalf("sum = %q, want exact 0.300000", sum)
+	}
+
+	product, err := MultiplyQuantityByFactor(MustQuantity("0.125000"), MustQuantity("8.000000"))
+	if err != nil {
+		t.Fatalf("multiply quantity: %v", err)
+	}
+	if product != "1.000000" {
+		t.Fatalf("product = %q, want exact 1.000000", product)
+	}
+
+	money, err := RoundMoneyAmount("0.105")
+	if err != nil {
+		t.Fatalf("round money: %v", err)
+	}
+	if money != "0.11" {
+		t.Fatalf("money = %q, want half-up 0.11", money)
+	}
+
+	rate, err := RoundRate("12.34505")
+	if err != nil {
+		t.Fatalf("round rate: %v", err)
+	}
+	if rate != "12.3451" {
+		t.Fatalf("rate = %q, want half-up 12.3451", rate)
+	}
+}
