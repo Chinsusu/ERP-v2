@@ -2446,6 +2446,99 @@ textarea {
   min-width: 0;
 }
 
+.erp-supplier-rejection-panel {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.05fr) minmax(360px, 0.95fr);
+  gap: 12px;
+  align-items: start;
+  scroll-margin-top: 96px;
+}
+
+.erp-supplier-rejection-form-card,
+.erp-supplier-rejection-detail-card,
+.erp-supplier-rejection-table-card,
+.erp-supplier-rejection-audit-card {
+  min-width: 0;
+}
+
+.erp-supplier-rejection-table-card,
+.erp-supplier-rejection-audit-card {
+  grid-column: 1 / -1;
+}
+
+.erp-supplier-rejection-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.erp-supplier-rejection-form .erp-field:nth-child(3),
+.erp-supplier-rejection-form .erp-field:nth-child(5),
+.erp-supplier-rejection-actions {
+  grid-column: 1 / -1;
+}
+
+.erp-supplier-rejection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.erp-supplier-rejection-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.erp-supplier-rejection-evidence {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--erp-border-soft);
+}
+
+.erp-supplier-rejection-evidence span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+  overflow-wrap: anywhere;
+}
+
+.erp-supplier-rejection-evidence small {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+}
+
+.erp-supplier-rejection-record-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.erp-supplier-rejection-record-cell strong,
+.erp-supplier-rejection-record-cell small {
+  overflow-wrap: anywhere;
+}
+
+.erp-supplier-rejection-record-cell small {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+}
+
+.erp-supplier-rejection-table-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px);
+  gap: 12px;
+  align-items: end;
+}
+
 .erp-returns-inspection-result {
   grid-column: 1 / -1;
 }
@@ -3891,6 +3984,7 @@ textarea {
   .erp-returns-toolbar,
   .erp-returns-receiving-grid,
   .erp-returns-inspection-grid,
+  .erp-supplier-rejection-panel,
   .erp-returns-note-grid {
     grid-template-columns: 1fr;
   }
@@ -4059,6 +4153,9 @@ textarea {
   .erp-returns-note-grid,
   .erp-returns-order-grid,
   .erp-returns-result-grid,
+  .erp-supplier-rejection-form,
+  .erp-supplier-rejection-facts,
+  .erp-supplier-rejection-table-toolbar,
   .erp-subcontract-kpis,
   .erp-subcontract-list-toolbar,
   .erp-subcontract-workspace,
@@ -4090,6 +4187,7 @@ textarea {
   .erp-receiving-actions,
   .erp-qc-actions,
   .erp-returns-actions,
+  .erp-supplier-rejection-actions,
   .erp-subcontract-actions {
     align-items: stretch;
   }
@@ -4103,6 +4201,7 @@ textarea {
   .erp-receiving-actions .erp-button,
   .erp-qc-actions .erp-button,
   .erp-returns-actions .erp-button,
+  .erp-supplier-rejection-actions .erp-button,
   .erp-subcontract-actions .erp-button {
     flex: 1 1 120px;
   }

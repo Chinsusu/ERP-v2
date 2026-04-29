@@ -145,3 +145,122 @@ export type ReceiveReturnInput = {
   disposition: ReturnDisposition;
   investigationNote?: string;
 };
+
+export type SupplierRejectionStatus = "draft" | "submitted" | "confirmed" | "cancelled";
+
+export type SupplierRejectionLine = {
+  id: string;
+  purchaseOrderLineId?: string;
+  goodsReceiptLineId: string;
+  inboundQCInspectionId: string;
+  itemId: string;
+  sku: string;
+  itemName?: string;
+  batchId: string;
+  batchNo: string;
+  lotNo: string;
+  expiryDate: string;
+  rejectedQuantity: string;
+  uomCode: string;
+  baseUOMCode: string;
+  reason: string;
+};
+
+export type SupplierRejectionAttachment = {
+  id: string;
+  lineId?: string;
+  fileName: string;
+  objectKey: string;
+  contentType?: string;
+  uploadedAt?: string;
+  uploadedBy?: string;
+  source?: string;
+};
+
+export type SupplierRejection = {
+  id: string;
+  orgId: string;
+  rejectionNo: string;
+  supplierId: string;
+  supplierCode?: string;
+  supplierName?: string;
+  purchaseOrderId?: string;
+  purchaseOrderNo?: string;
+  goodsReceiptId: string;
+  goodsReceiptNo?: string;
+  inboundQCInspectionId: string;
+  warehouseId: string;
+  warehouseCode?: string;
+  status: SupplierRejectionStatus;
+  reason: string;
+  lines: SupplierRejectionLine[];
+  attachments: SupplierRejectionAttachment[];
+  auditLogId?: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  updatedBy: string;
+  submittedAt?: string;
+  submittedBy?: string;
+  confirmedAt?: string;
+  confirmedBy?: string;
+};
+
+export type SupplierRejectionQuery = {
+  supplierId?: string;
+  warehouseId?: string;
+  status?: SupplierRejectionStatus;
+};
+
+export type CreateSupplierRejectionLineInput = {
+  id?: string;
+  purchaseOrderLineId?: string;
+  goodsReceiptLineId: string;
+  inboundQCInspectionId: string;
+  itemId: string;
+  sku: string;
+  itemName?: string;
+  batchId: string;
+  batchNo: string;
+  lotNo: string;
+  expiryDate: string;
+  rejectedQuantity: string;
+  uomCode: string;
+  baseUOMCode: string;
+  reason: string;
+};
+
+export type CreateSupplierRejectionAttachmentInput = {
+  id?: string;
+  lineId?: string;
+  fileName: string;
+  objectKey?: string;
+  contentType?: string;
+  source?: string;
+};
+
+export type CreateSupplierRejectionInput = {
+  id?: string;
+  orgId?: string;
+  rejectionNo?: string;
+  supplierId: string;
+  supplierCode?: string;
+  supplierName?: string;
+  purchaseOrderId?: string;
+  purchaseOrderNo?: string;
+  goodsReceiptId: string;
+  goodsReceiptNo?: string;
+  inboundQCInspectionId: string;
+  warehouseId: string;
+  warehouseCode?: string;
+  reason: string;
+  lines: CreateSupplierRejectionLineInput[];
+  attachments?: CreateSupplierRejectionAttachmentInput[];
+};
+
+export type SupplierRejectionActionResult = {
+  rejection: SupplierRejection;
+  previousStatus?: SupplierRejectionStatus;
+  currentStatus: SupplierRejectionStatus;
+  auditLogId?: string;
+};

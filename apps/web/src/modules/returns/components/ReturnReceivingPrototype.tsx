@@ -14,6 +14,7 @@ import {
 } from "../services/returnReceivingService";
 import type { ReturnDisposition, ReturnReceipt, ReturnReceiptQuery, ReturnSource } from "../types";
 import { ReturnInspectionPanel } from "./ReturnInspectionPanel";
+import { SupplierRejectionPanel } from "./SupplierRejectionPanel";
 
 type ScanFeedback = {
   tone: StatusTone;
@@ -171,6 +172,9 @@ export function ReturnReceivingPrototype() {
           <a className="erp-button erp-button--secondary" href="#return-inspection">
             Inspect
           </a>
+          <a className="erp-button erp-button--secondary" href="#supplier-rejections">
+            Supplier rejects
+          </a>
           <a className="erp-button erp-button--primary" href="#return-receipts">
             Receipts
           </a>
@@ -311,6 +315,8 @@ export function ReturnReceivingPrototype() {
           setLocalReceipts((current) => [receipt, ...current.filter((candidate) => candidate.id !== receipt.id)]);
         }}
       />
+
+      <SupplierRejectionPanel />
 
       <section className="erp-card erp-card--padded erp-module-table-card" id="return-receipts">
         <div className="erp-section-header">
