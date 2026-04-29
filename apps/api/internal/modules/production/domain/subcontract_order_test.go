@@ -221,6 +221,114 @@ func TestSubcontractMaterialIssuedQuantityCannotExceedPlanned(t *testing.T) {
 	}
 }
 
+func TestIssueMaterialsUpdatesProgressAndTransitionsWhenComplete(t *testing.T) {
+	changedAt := time.Date(2026, 4, 29, 10, 0, 0, 0, time.UTC)
+	order, err := subcontractOrderReadyForFactoryConfirmation(t)
+	if err != nil {
+		t.Fatalf("factory confirmed order: %v", err)
+	}
+
+	updated, err := order.IssueMaterials(IssueSubcontractMaterialsInput{
+		ActorID:   "warehouse-user",
+		ChangedAt: changedAt,
+		Lines: []IssueSubcontractMaterialLineInput{
+			{
+				OrderMaterialLineID: "sco_mat_001",
+				IssueQty:            decimal.MustQuantity("10"),
+				UOMCode:             "KG",
+				BaseIssueQty:        decimal.MustQuantity("10000"),
+				BaseUOMCode:         "G",
+				ConversionFactor:    decimal.MustQuantity("1000"),
+			},
+			{
+				OrderMaterialLineID: "sco_mat_002",
+				IssueQty:            decimal.MustQuantity("1000"),
+				UOMCode:             "PCS",
+				BaseIssueQty:        decimal.MustQuantity("1000"),
+				BaseUOMCode:         "PCS",
+				ConversionFactor:    decimal.MustQuantity("1"),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("issue materials: %v", err)
+	}
+
+	if updated.Status != SubcontractOrderStatusMaterialsIssued {
+		t.Fatalf("status = %q, want materials issued", updated.Status)
+	}
+	if updated.MaterialsIssuedBy != "warehouse-user" || !updated.MaterialsIssuedAt.Equal(changedAt) {
+		t.Fatalf("materials issued metadata = %s/%s, want actor and timestamp", updated.MaterialsIssuedBy, updated.MaterialsIssuedAt)
+	}
+	if got, want := updated.MaterialLines[0].BaseIssuedQty.String(), "10000.000000"; got != want {
+		t.Fatalf("first base issued qty = %s, want %s", got, want)
+	}
+	if got, want := updated.MaterialLines[1].IssuedQty.String(), "1000.000000"; got != want {
+		t.Fatalf("second issued qty = %s, want %s", got, want)
+	}
+}
+
+func TestIssueMaterialsAllowsPartialIssueWithoutFinalTransition(t *testing.T) {
+	changedAt := time.Date(2026, 4, 29, 10, 0, 0, 0, time.UTC)
+	order, err := subcontractOrderReadyForFactoryConfirmation(t)
+	if err != nil {
+		t.Fatalf("factory confirmed order: %v", err)
+	}
+
+	updated, err := order.IssueMaterials(IssueSubcontractMaterialsInput{
+		ActorID:   "warehouse-user",
+		ChangedAt: changedAt,
+		Lines: []IssueSubcontractMaterialLineInput{
+			{
+				OrderMaterialLineID: "sco_mat_001",
+				IssueQty:            decimal.MustQuantity("5"),
+				UOMCode:             "KG",
+				BaseIssueQty:        decimal.MustQuantity("5000"),
+				BaseUOMCode:         "G",
+				ConversionFactor:    decimal.MustQuantity("1000"),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("issue partial materials: %v", err)
+	}
+
+	if updated.Status != SubcontractOrderStatusFactoryConfirmed {
+		t.Fatalf("status = %q, want factory confirmed until all materials are issued", updated.Status)
+	}
+	if updated.MaterialsIssuedBy != "" || !updated.MaterialsIssuedAt.IsZero() {
+		t.Fatalf("materials issued metadata should be empty for partial issue: %+v", updated)
+	}
+	if got, want := updated.MaterialLines[0].BaseIssuedQty.String(), "5000.000000"; got != want {
+		t.Fatalf("first base issued qty = %s, want %s", got, want)
+	}
+}
+
+func TestIssueMaterialsRejectsOverIssue(t *testing.T) {
+	order, err := subcontractOrderReadyForFactoryConfirmation(t)
+	if err != nil {
+		t.Fatalf("factory confirmed order: %v", err)
+	}
+
+	_, err = order.IssueMaterials(IssueSubcontractMaterialsInput{
+		ActorID:   "warehouse-user",
+		ChangedAt: time.Now(),
+		Lines: []IssueSubcontractMaterialLineInput{
+			{
+				OrderMaterialLineID: "sco_mat_001",
+				IssueQty:            decimal.MustQuantity("11"),
+				UOMCode:             "KG",
+				BaseIssueQty:        decimal.MustQuantity("11000"),
+				BaseUOMCode:         "G",
+				ConversionFactor:    decimal.MustQuantity("1000"),
+			},
+		},
+	})
+	if !errors.Is(err, ErrSubcontractOrderInvalidQuantity) {
+		t.Fatalf("error = %v, want invalid quantity", err)
+	}
+}
+
 func TestSubcontractOrderRejectsInvalidTransitionsAndMissingActor(t *testing.T) {
 	order, err := NewSubcontractOrder(SubcontractOrderStatusDraft)
 	if err != nil {
@@ -264,30 +372,36 @@ func TestCanTransitionSubcontractOrderStatus(t *testing.T) {
 func subcontractOrderReadyForMaterials(t *testing.T, sampleRequired bool) SubcontractOrder {
 	t.Helper()
 
-	input := validSubcontractOrderInput()
-	input.SampleRequired = sampleRequired
-	order, err := NewSubcontractOrderDocument(input)
+	order, err := subcontractOrderReadyForFactoryConfirmation(t)
 	if err != nil {
-		t.Fatalf("new subcontract order: %v", err)
+		t.Fatalf("factory confirmed order: %v", err)
 	}
-	order, err = order.Submit("subcontract-user", time.Now())
-	if err != nil {
-		t.Fatalf("submit: %v", err)
-	}
-	order, err = order.Approve("operations-lead", time.Now())
-	if err != nil {
-		t.Fatalf("approve: %v", err)
-	}
-	order, err = order.ConfirmFactory("factory-coordinator", time.Now())
-	if err != nil {
-		t.Fatalf("confirm factory: %v", err)
-	}
+	order.SampleRequired = sampleRequired
 	order, err = order.MarkMaterialsIssued("warehouse-user", time.Now())
 	if err != nil {
 		t.Fatalf("mark materials issued: %v", err)
 	}
 
 	return order
+}
+
+func subcontractOrderReadyForFactoryConfirmation(t *testing.T) (SubcontractOrder, error) {
+	t.Helper()
+
+	order, err := NewSubcontractOrderDocument(validSubcontractOrderInput())
+	if err != nil {
+		return SubcontractOrder{}, err
+	}
+	order, err = order.Submit("subcontract-user", time.Now())
+	if err != nil {
+		return SubcontractOrder{}, err
+	}
+	order, err = order.Approve("operations-lead", time.Now())
+	if err != nil {
+		return SubcontractOrder{}, err
+	}
+
+	return order.ConfirmFactory("factory-coordinator", time.Now())
 }
 
 func validSubcontractOrderInput() NewSubcontractOrderDocumentInput {
