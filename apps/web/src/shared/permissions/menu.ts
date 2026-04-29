@@ -6,6 +6,8 @@ export type RoleKey =
   | "WAREHOUSE_STAFF"
   | "WAREHOUSE_LEAD"
   | "QA"
+  | "PURCHASE_OPS"
+  | "FINANCE_OPS"
   | "SALES_OPS"
   | "PRODUCTION_OPS";
 
@@ -14,6 +16,7 @@ export type PermissionKey =
   | "warehouse:view"
   | "inventory:view"
   | "purchase:view"
+  | "finance:view"
   | "qc:view"
   | "qc:decision"
   | "production:view"
@@ -59,6 +62,8 @@ export const roleKeys: RoleKey[] = [
   "WAREHOUSE_STAFF",
   "WAREHOUSE_LEAD",
   "QA",
+  "PURCHASE_OPS",
+  "FINANCE_OPS",
   "SALES_OPS",
   "PRODUCTION_OPS"
 ];
@@ -68,6 +73,7 @@ export const permissionCatalog: PermissionDefinition[] = [
   { key: "warehouse:view", label: "Warehouse", group: "operations" },
   { key: "inventory:view", label: "Inventory", group: "operations" },
   { key: "purchase:view", label: "Purchase", group: "operations" },
+  { key: "finance:view", label: "Finance", group: "control" },
   { key: "qc:view", label: "QC", group: "operations" },
   { key: "qc:decision", label: "QC Decision", group: "action" },
   { key: "production:view", label: "Production", group: "operations" },
@@ -97,6 +103,7 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "warehouse:view",
     "inventory:view",
     "purchase:view",
+    "finance:view",
     "qc:view",
     "qc:decision",
     "production:view",
@@ -140,6 +147,22 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "returns:view",
     "reports:view",
     "record:create"
+  ],
+  PURCHASE_OPS: [
+    "dashboard:view",
+    "purchase:view",
+    "master-data:view",
+    "reports:view",
+    "record:create",
+    "record:export"
+  ],
+  FINANCE_OPS: [
+    "dashboard:view",
+    "purchase:view",
+    "finance:view",
+    "reports:view",
+    "audit-log:view",
+    "record:export"
   ],
   SALES_OPS: [
     "dashboard:view",
@@ -197,6 +220,7 @@ export const appMenuGroups: AppMenuGroup[] = [
     label: "Control",
     items: [
       { label: "Approvals", href: "/approvals", code: "AP", permission: "approvals:view" },
+      { label: "Finance", href: "/finance", code: "FI", permission: "finance:view" },
       { label: "Audit Log", href: "/audit-log", code: "AU", permission: "audit-log:view" },
       { label: "Reports", href: "/reports", code: "RP", permission: "reports:view" },
       { label: "Settings", href: "/settings", code: "ST", permission: "settings:view" }

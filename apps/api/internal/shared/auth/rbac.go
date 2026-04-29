@@ -13,6 +13,8 @@ const RoleERPAdmin RoleKey = "ERP_ADMIN"
 const RoleWarehouseStaff RoleKey = "WAREHOUSE_STAFF"
 const RoleWarehouseLead RoleKey = "WAREHOUSE_LEAD"
 const RoleQA RoleKey = "QA"
+const RolePurchaseOps RoleKey = "PURCHASE_OPS"
+const RoleFinanceOps RoleKey = "FINANCE_OPS"
 const RoleSalesOps RoleKey = "SALES_OPS"
 const RoleProductionOps RoleKey = "PRODUCTION_OPS"
 
@@ -22,6 +24,7 @@ const PermissionDashboardView PermissionKey = "dashboard:view"
 const PermissionWarehouseView PermissionKey = "warehouse:view"
 const PermissionInventoryView PermissionKey = "inventory:view"
 const PermissionPurchaseView PermissionKey = "purchase:view"
+const PermissionFinanceView PermissionKey = "finance:view"
 const PermissionQCView PermissionKey = "qc:view"
 const PermissionQCDecision PermissionKey = "qc:decision"
 const PermissionProductionView PermissionKey = "production:view"
@@ -55,6 +58,8 @@ var roleOrder = []RoleKey{
 	RoleWarehouseStaff,
 	RoleWarehouseLead,
 	RoleQA,
+	RolePurchaseOps,
+	RoleFinanceOps,
 	RoleSalesOps,
 	RoleProductionOps,
 }
@@ -64,6 +69,7 @@ var permissionCatalog = []PermissionDefinition{
 	{Key: PermissionWarehouseView, Name: "Warehouse", Group: "operations"},
 	{Key: PermissionInventoryView, Name: "Inventory", Group: "operations"},
 	{Key: PermissionPurchaseView, Name: "Purchase", Group: "operations"},
+	{Key: PermissionFinanceView, Name: "Finance", Group: "control"},
 	{Key: PermissionQCView, Name: "QC", Group: "operations"},
 	{Key: PermissionQCDecision, Name: "QC Decision", Group: "action"},
 	{Key: PermissionProductionView, Name: "Production", Group: "operations"},
@@ -86,6 +92,8 @@ var roleDisplayNames = map[RoleKey]string{
 	RoleWarehouseStaff: "Warehouse Staff",
 	RoleWarehouseLead:  "Warehouse Lead",
 	RoleQA:             "QA",
+	RolePurchaseOps:    "Purchase Ops",
+	RoleFinanceOps:     "Finance Ops",
 	RoleSalesOps:       "Sales Ops",
 	RoleProductionOps:  "Production Ops",
 }
@@ -103,6 +111,7 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionWarehouseView,
 		PermissionInventoryView,
 		PermissionPurchaseView,
+		PermissionFinanceView,
 		PermissionQCView,
 		PermissionQCDecision,
 		PermissionProductionView,
@@ -146,6 +155,22 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionReturnsView,
 		PermissionReportsView,
 		PermissionRecordCreate,
+	},
+	RolePurchaseOps: {
+		PermissionDashboardView,
+		PermissionPurchaseView,
+		PermissionMasterDataView,
+		PermissionReportsView,
+		PermissionRecordCreate,
+		PermissionRecordExport,
+	},
+	RoleFinanceOps: {
+		PermissionDashboardView,
+		PermissionPurchaseView,
+		PermissionFinanceView,
+		PermissionReportsView,
+		PermissionAuditLogView,
+		PermissionRecordExport,
 	},
 	RoleSalesOps: {
 		PermissionDashboardView,

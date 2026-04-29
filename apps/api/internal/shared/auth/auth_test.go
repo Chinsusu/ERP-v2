@@ -95,6 +95,8 @@ func TestRoleCatalogIncludesPhaseOneRoles(t *testing.T) {
 		RoleWarehouseStaff,
 		RoleWarehouseLead,
 		RoleQA,
+		RolePurchaseOps,
+		RoleFinanceOps,
 		RoleSalesOps,
 		RoleProductionOps,
 	} {
@@ -116,6 +118,7 @@ func TestPermissionCatalogIncludesPhaseOneModuleKeys(t *testing.T) {
 		PermissionWarehouseView,
 		PermissionInventoryView,
 		PermissionQCDecision,
+		PermissionFinanceView,
 		PermissionSubcontractView,
 		PermissionMasterDataView,
 		PermissionSettingsView,
@@ -133,6 +136,37 @@ func TestQCDecisionPermissionIsScopedToQARoles(t *testing.T) {
 	}
 	if HasPermission(MockPrincipalForRole(testConfig, RoleWarehouseLead), PermissionQCDecision) {
 		t.Fatal("warehouse lead should not have QC decision permission")
+	}
+}
+
+func TestSprint4PurchaseAndFinanceRoleScopes(t *testing.T) {
+	purchase := MockPrincipalForRole(testConfig, RolePurchaseOps)
+	for _, permission := range []PermissionKey{
+		PermissionPurchaseView,
+		PermissionMasterDataView,
+		PermissionRecordCreate,
+	} {
+		if !HasPermission(purchase, permission) {
+			t.Fatalf("purchase role missing permission %q", permission)
+		}
+	}
+	if HasPermission(purchase, PermissionQCDecision) || HasPermission(purchase, PermissionFinanceView) {
+		t.Fatal("purchase role should not have QC decision or finance visibility")
+	}
+
+	finance := MockPrincipalForRole(testConfig, RoleFinanceOps)
+	for _, permission := range []PermissionKey{
+		PermissionFinanceView,
+		PermissionPurchaseView,
+		PermissionAuditLogView,
+		PermissionRecordExport,
+	} {
+		if !HasPermission(finance, permission) {
+			t.Fatalf("finance role missing permission %q", permission)
+		}
+	}
+	if HasPermission(finance, PermissionRecordCreate) || HasPermission(finance, PermissionQCDecision) {
+		t.Fatal("finance role should not create operational records or make QC decisions")
 	}
 }
 
