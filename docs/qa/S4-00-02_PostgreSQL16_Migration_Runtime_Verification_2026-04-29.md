@@ -17,8 +17,8 @@ apps/api/migrations
 Migration count:
 
 ```text
-11 up migrations
-11 down migrations
+12 up migrations
+12 down migrations
 ```
 
 ## Environment
@@ -35,31 +35,31 @@ migrate/migrate:v4.17.1
 Isolation:
 
 ```text
-Temporary migration copy: /tmp/erp-s4-migration-verify/migrations
-Temporary Docker network: erp_s4_migration_verify_net
-Temporary PostgreSQL container: erp_s4_migration_verify_pg
+Temporary Docker Compose project: erp-migration-verify
+Temporary PostgreSQL container: erp-migration-verify-postgres-1
+Temporary Docker volume: erp-migration-verify_postgres-data
 ```
 
-The temporary container and network were removed after verification.
+The temporary container, network, and volume were removed after verification.
 
 ## Commands Verified
 
 Apply all migrations:
 
 ```text
-migrate -path /migrations -database postgres://erp:***@erp_s4_migration_verify_pg:5432/erp?sslmode=disable -verbose up
-```
-
-Check version after apply:
-
-```text
-migrate -path /migrations -database postgres://erp:***@erp_s4_migration_verify_pg:5432/erp?sslmode=disable version
+docker compose -p erp-migration-verify -f infra/compose/docker-compose.local.yml --profile tools run --rm migrate
 ```
 
 Roll back all migrations:
 
 ```text
-migrate -path /migrations -database postgres://erp:***@erp_s4_migration_verify_pg:5432/erp?sslmode=disable -verbose down -all
+docker compose -p erp-migration-verify -f infra/compose/docker-compose.local.yml --profile tools run --rm migrate -path /migrations -database postgres://erp:***@postgres:5432/erp?sslmode=disable down 12
+```
+
+Cleanup:
+
+```text
+docker compose -p erp-migration-verify -f infra/compose/docker-compose.local.yml down -v --remove-orphans
 ```
 
 ## Results
@@ -67,21 +67,39 @@ migrate -path /migrations -database postgres://erp:***@erp_s4_migration_verify_p
 Apply result:
 
 ```text
-000001_init.up.sql through 000011_harden_return_receiving_db_model.up.sql applied successfully.
-Version after up: 11
-Relation count after up: 55
+1/u init
+2/u create_phase1_base_tables
+3/u create_uom_foundation
+4/u stock_ledger_decimal_base_uom
+5/u sales_order_foundation
+6/u harden_stock_reservations
+7/u create_pick_tasks
+8/u create_pack_tasks
+9/u harden_carrier_manifest_db
+10/u add_manifest_handover_zone_bins
+11/u harden_return_receiving_db_model
+12/u purchase_order_full_flow
 ```
 
 Rollback result:
 
 ```text
-000011_harden_return_receiving_db_model.down.sql through 000001_init.down.sql applied successfully.
-Version after down all: no migration
-Relation count after down all: 1
+12/d purchase_order_full_flow
+11/d harden_return_receiving_db_model
+10/d add_manifest_handover_zone_bins
+9/d harden_carrier_manifest_db
+8/d create_pack_tasks
+7/d create_pick_tasks
+6/d harden_stock_reservations
+5/d sales_order_foundation
+4/d stock_ledger_decimal_base_uom
+3/d create_uom_foundation
+2/d create_phase1_base_tables
+1/d init
 ```
 
-The remaining relation after rollback is migration metadata. No application migration failed during apply or rollback.
+No application migration failed during apply or rollback.
 
 ## Remaining Release Gate
 
-S4-00-02 is verified. The Sprint 3 production tag still remains on hold because S4-00-01 is blocked by the GitHub Actions account billing/spending-limit issue.
+S4-00-02 is verified. Production release tagging remains on hold because S4-00-01 is blocked by the GitHub Actions account billing/spending-limit issue.
