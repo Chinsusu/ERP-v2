@@ -587,6 +587,93 @@ func TestCloseEndOfDayReconciliationHandlerBlocksUnresolvedIssue(t *testing.T) {
 	}
 }
 
+func TestCloseEndOfDayReconciliationHandlerRequiresCreatePermission(t *testing.T) {
+	store := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
+	auditStore := audit.NewInMemoryLogStore()
+	service := inventoryapp.NewCloseEndOfDayReconciliation(store, auditStore)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/warehouse/end-of-day-reconciliations/rec-hn-260426-day/close",
+		bytes.NewBufferString(`{"exception_note":""}`),
+	)
+	req.SetPathValue("reconciliation_id", "rec-hn-260426-day")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseStaff)))
+	rec := httptest.NewRecorder()
+
+	closeEndOfDayReconciliationHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "warehouse.shift.closed"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 0 {
+		t.Fatalf("audit logs = %d, want 0", len(logs))
+	}
+}
+
+func TestCloseEndOfDayReconciliationHandlerAllowsVarianceExceptionForWarehouseLead(t *testing.T) {
+	store := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
+	if err := store.Save(context.Background(), inventorydomain.EndOfDayReconciliation{
+		ID:            "rec-hcm-variance-only",
+		WarehouseID:   "wh-hcm",
+		WarehouseCode: "HCM",
+		Date:          "2026-04-26",
+		ShiftCode:     "day",
+		Status:        inventorydomain.ReconciliationStatusInReview,
+		Owner:         "Warehouse Lead",
+		Checklist: []inventorydomain.ReconciliationChecklistItem{
+			{Key: "variance", Label: "Stock variance reviewed", Complete: false, Blocking: true},
+		},
+		Lines: []inventorydomain.ReconciliationLine{
+			{
+				ID:              "line-variance-only",
+				SKU:             "SERUM-30ML",
+				BatchNo:         "LOT-2604A",
+				BinCode:         "A-01",
+				SystemQuantity:  120,
+				CountedQuantity: 118,
+				Owner:           "Warehouse Lead",
+			},
+		},
+	}); err != nil {
+		t.Fatalf("save reconciliation: %v", err)
+	}
+	auditStore := audit.NewInMemoryLogStore()
+	service := inventoryapp.NewCloseEndOfDayReconciliation(store, auditStore)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/warehouse/end-of-day-reconciliations/rec-hcm-variance-only/close",
+		bytes.NewBufferString(`{"exception_note":"variance accepted by lead"}`),
+	)
+	req.SetPathValue("reconciliation_id", "rec-hcm-variance-only")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	closeEndOfDayReconciliationHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "warehouse.shift.closed"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
 func TestCarrierManifestsHandlerReturnsFilteredRows(t *testing.T) {
 	store := shippingapp.NewPrototypeCarrierManifestStore()
 	service := shippingapp.NewListCarrierManifests(store)

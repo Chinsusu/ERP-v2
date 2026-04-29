@@ -3747,6 +3747,10 @@ func closeEndOfDayReconciliationHandler(service inventoryapp.CloseEndOfDayReconc
 			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
 			return
 		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
 
 		result, err := service.Execute(r.Context(), inventoryapp.CloseEndOfDayReconciliationInput{
 			ID:            r.PathValue("reconciliation_id"),
