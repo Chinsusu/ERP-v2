@@ -1,4 +1,4 @@
-import { apiGet } from "../../../shared/api/client";
+import { apiGet, apiGetRaw } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import { getStockAdjustments, summarizeStockAdjustmentDelta } from "../../inventory/services/stockAdjustmentService";
 import type { StockAdjustment } from "../../inventory/types";
@@ -20,6 +20,7 @@ import type {
   WarehouseDailyBoardSummary,
   WarehouseFulfillmentMetrics,
   WarehouseInboundMetrics,
+  WarehouseSubcontractMetrics,
   WarehouseDailyShiftCode,
   WarehouseDailyTask,
   WarehouseDailyTaskPriority,
@@ -30,6 +31,20 @@ type WarehouseFulfillmentMetricsApi = components["schemas"]["WarehouseFulfillmen
 type WarehouseFulfillmentMetricsApiQuery = operations["getWarehouseDailyBoardFulfillmentMetrics"]["parameters"]["query"];
 type WarehouseInboundMetricsApi = components["schemas"]["WarehouseInboundMetrics"];
 type WarehouseInboundMetricsApiQuery = operations["getWarehouseDailyBoardInboundMetrics"]["parameters"]["query"];
+
+type WarehouseSubcontractMetricsApi = {
+  warehouse_id?: string;
+  date?: string;
+  shift_code?: string;
+  open_orders: number;
+  material_issued_orders: number;
+  material_transfer_count: number;
+  sample_pending: number;
+  factory_claims: number;
+  factory_claims_overdue: number;
+  final_payment_ready_orders: number;
+  generated_at: string;
+};
 
 const defaultAccessToken = "local-dev-access-token";
 export const defaultWarehouseDailyBoardDate = "2026-04-26";
@@ -353,6 +368,7 @@ export type WarehouseDailyBoardSources = {
   reconciliations?: EndOfDayReconciliation[];
   fulfillmentMetrics?: WarehouseFulfillmentMetrics;
   inboundMetrics?: WarehouseInboundMetrics;
+  subcontractMetrics?: WarehouseSubcontractMetrics;
 };
 
 export async function getWarehouseDailyBoard(query: WarehouseDailyBoardQuery = {}): Promise<WarehouseDailyBoardData> {
@@ -360,25 +376,38 @@ export async function getWarehouseDailyBoard(query: WarehouseDailyBoardQuery = {
   const warehouseId = query.warehouseId ?? "";
   const shiftCode = query.shiftCode ?? defaultWarehouseDailyBoardShiftCode;
   const carrierCode = normalizeCarrierCode(query.carrierCode);
-  const [goodsReceipts, carrierManifests, returnReceipts, stockAdjustments, fulfillmentMetrics, inboundMetrics] =
-    await Promise.all([
-      getGoodsReceipts(),
-      getCarrierManifests({ warehouseId: warehouseId || undefined, date, carrierCode: carrierCode || undefined }),
-      getReturnReceipts({ warehouseId: warehouseId || undefined }),
-      getStockAdjustments(),
-      getWarehouseFulfillmentMetrics({
-        ...query,
-        date,
-        shiftCode,
-        carrierCode: carrierCode || undefined
-      }),
-      getWarehouseInboundMetrics({
-        ...query,
-        warehouseId: inboundWarehouseIdForMetrics(warehouseId),
-        date,
-        shiftCode
-      })
-    ]);
+  const [
+    goodsReceipts,
+    carrierManifests,
+    returnReceipts,
+    stockAdjustments,
+    fulfillmentMetrics,
+    inboundMetrics,
+    subcontractMetrics
+  ] = await Promise.all([
+    getGoodsReceipts(),
+    getCarrierManifests({ warehouseId: warehouseId || undefined, date, carrierCode: carrierCode || undefined }),
+    getReturnReceipts({ warehouseId: warehouseId || undefined }),
+    getStockAdjustments(),
+    getWarehouseFulfillmentMetrics({
+      ...query,
+      date,
+      shiftCode,
+      carrierCode: carrierCode || undefined
+    }),
+    getWarehouseInboundMetrics({
+      ...query,
+      warehouseId: inboundWarehouseIdForMetrics(warehouseId),
+      date,
+      shiftCode
+    }),
+    getWarehouseSubcontractMetrics({
+      ...query,
+      warehouseId: warehouseId || undefined,
+      date,
+      shiftCode
+    })
+  ]);
 
   return composeWarehouseDailyBoard(
     {
@@ -395,7 +424,8 @@ export async function getWarehouseDailyBoard(query: WarehouseDailyBoardQuery = {
       stockAdjustments,
       reconciliations: prototypeEndOfDayReconciliations,
       fulfillmentMetrics,
-      inboundMetrics
+      inboundMetrics,
+      subcontractMetrics
     }
   );
 }
@@ -425,6 +455,20 @@ export async function getWarehouseInboundMetrics(
     });
 
     return fromInboundMetricsApi(metrics);
+  } catch {
+    return undefined;
+  }
+}
+
+export async function getWarehouseSubcontractMetrics(
+  query: WarehouseDailyBoardQuery = {}
+): Promise<WarehouseSubcontractMetrics | undefined> {
+  try {
+    const metrics = await apiGetRaw<WarehouseSubcontractMetricsApi>(warehouseSubcontractMetricsApiPath(query), {
+      accessToken: defaultAccessToken
+    });
+
+    return fromSubcontractMetricsApi(metrics);
   } catch {
     return undefined;
   }
@@ -571,6 +615,7 @@ export function composeWarehouseDailyBoard(
         baseTasks
       ),
     inbound: sources.inboundMetrics ?? emptyWarehouseInboundMetrics({ warehouseId, date, shiftCode }),
+    subcontract: sources.subcontractMetrics ?? emptyWarehouseSubcontractMetrics({ warehouseId, date, shiftCode }),
     sourceFields: warehouseDailyBoardCounterSources,
     tasks
   };
@@ -904,6 +949,23 @@ function toInboundMetricsApiQuery(query: WarehouseDailyBoardQuery): WarehouseInb
   };
 }
 
+function warehouseSubcontractMetricsApiPath(query: WarehouseDailyBoardQuery) {
+  const params = new URLSearchParams();
+  const warehouseId = query.warehouseId?.trim();
+  if (warehouseId) {
+    params.set("warehouse_id", warehouseId);
+  }
+  if (query.date) {
+    params.set("date", query.date);
+  }
+  if (query.shiftCode) {
+    params.set("shift_code", query.shiftCode);
+  }
+  const queryString = params.toString();
+
+  return `/warehouse/daily-board/subcontract-metrics${queryString ? `?${queryString}` : ""}`;
+}
+
 function fromFulfillmentMetricsApi(metrics: WarehouseFulfillmentMetricsApi): WarehouseFulfillmentMetrics {
   return {
     warehouseId: metrics.warehouse_id,
@@ -941,6 +1003,22 @@ function fromInboundMetricsApi(metrics: WarehouseInboundMetricsApi): WarehouseIn
     supplierRejectionSubmitted: metrics.supplier_rejection_submitted,
     supplierRejectionConfirmed: metrics.supplier_rejection_confirmed,
     supplierRejectionCancelled: metrics.supplier_rejection_cancelled,
+    generatedAt: metrics.generated_at
+  };
+}
+
+function fromSubcontractMetricsApi(metrics: WarehouseSubcontractMetricsApi): WarehouseSubcontractMetrics {
+  return {
+    warehouseId: metrics.warehouse_id,
+    date: metrics.date,
+    shiftCode: metrics.shift_code,
+    openOrders: metrics.open_orders,
+    materialIssuedOrders: metrics.material_issued_orders,
+    materialTransferCount: metrics.material_transfer_count,
+    samplePending: metrics.sample_pending,
+    factoryClaims: metrics.factory_claims,
+    factoryClaimsOverdue: metrics.factory_claims_overdue,
+    finalPaymentReadyOrders: metrics.final_payment_ready_orders,
     generatedAt: metrics.generated_at
   };
 }
@@ -996,6 +1074,26 @@ function emptyWarehouseInboundMetrics(query: Pick<WarehouseDailyBoardQuery, "war
     supplierRejectionSubmitted: 0,
     supplierRejectionConfirmed: 0,
     supplierRejectionCancelled: 0,
+    generatedAt: `${date}T00:00:00Z`
+  };
+}
+
+function emptyWarehouseSubcontractMetrics(
+  query: Pick<WarehouseDailyBoardQuery, "warehouseId" | "date" | "shiftCode">
+): WarehouseSubcontractMetrics {
+  const date = query.date ?? defaultWarehouseDailyBoardDate;
+
+  return {
+    warehouseId: query.warehouseId,
+    date,
+    shiftCode: query.shiftCode ?? defaultWarehouseDailyBoardShiftCode,
+    openOrders: 0,
+    materialIssuedOrders: 0,
+    materialTransferCount: 0,
+    samplePending: 0,
+    factoryClaims: 0,
+    factoryClaimsOverdue: 0,
+    finalPaymentReadyOrders: 0,
     generatedAt: `${date}T00:00:00Z`
   };
 }

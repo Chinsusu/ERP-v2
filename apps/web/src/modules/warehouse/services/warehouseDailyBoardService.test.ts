@@ -23,6 +23,7 @@ import {
   getEndOfDayReconciliations,
   getWarehouseFulfillmentMetrics,
   getWarehouseInboundMetrics,
+  getWarehouseSubcontractMetrics,
   getWarehouseDailyBoard,
   prototypeEndOfDayReconciliations,
   prototypeWarehouseDailyTasks,
@@ -408,6 +409,106 @@ describe("warehouseDailyBoardService", () => {
         receivingPending: 1,
         qcFail: 1,
         supplierRejections: 1
+      }
+    });
+  });
+
+  it("loads subcontract metrics from the daily board API using the operations warehouse scope", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/warehouse/daily-board/subcontract-metrics")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              success: true,
+              request_id: "req-subcontract-metrics",
+              data: {
+                warehouse_id: "wh-hcm",
+                date: "2026-04-29",
+                shift_code: "day",
+                open_orders: 5,
+                material_issued_orders: 2,
+                material_transfer_count: 3,
+                sample_pending: 1,
+                factory_claims: 2,
+                factory_claims_overdue: 1,
+                final_payment_ready_orders: 1,
+                generated_at: "2026-04-29T10:00:00Z"
+              }
+            }),
+            { status: 200 }
+          )
+        );
+      }
+
+      return Promise.reject(new Error("offline"));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      getWarehouseSubcontractMetrics({
+        warehouseId: "wh-hcm",
+        date: "2026-04-29",
+        shiftCode: "day"
+      })
+    ).resolves.toMatchObject({
+      warehouseId: "wh-hcm",
+      openOrders: 5,
+      materialIssuedOrders: 2,
+      factoryClaimsOverdue: 1,
+      finalPaymentReadyOrders: 1
+    });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("warehouse_id=wh-hcm"))).toBe(true);
+  });
+
+  it("composes daily board subcontract metrics returned by the API", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/warehouse/daily-board/subcontract-metrics")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                success: true,
+                request_id: "req-board-subcontract",
+                data: {
+                  warehouse_id: "wh-hcm",
+                  date: "2026-04-29",
+                  shift_code: "day",
+                  open_orders: 4,
+                  material_issued_orders: 2,
+                  material_transfer_count: 2,
+                  sample_pending: 1,
+                  factory_claims: 1,
+                  factory_claims_overdue: 1,
+                  final_payment_ready_orders: 1,
+                  generated_at: "2026-04-29T10:00:00Z"
+                }
+              }),
+              { status: 200 }
+            )
+          );
+        }
+
+        return Promise.reject(new Error("offline"));
+      })
+    );
+
+    await expect(
+      getWarehouseDailyBoard({
+        warehouseId: "wh-hcm",
+        date: "2026-04-29",
+        shiftCode: "day"
+      })
+    ).resolves.toMatchObject({
+      subcontract: {
+        warehouseId: "wh-hcm",
+        openOrders: 4,
+        materialIssuedOrders: 2,
+        samplePending: 1,
+        factoryClaims: 1,
+        finalPaymentReadyOrders: 1
       }
     });
   });

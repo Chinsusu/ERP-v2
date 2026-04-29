@@ -15,6 +15,8 @@ import (
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
+	productionapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/application"
+	productiondomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/domain"
 	purchaseapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/application"
 	purchasedomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/domain"
 	qcapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/application"
@@ -1402,6 +1404,162 @@ func TestWarehouseDailyBoardInboundMetricsMatchSourceState(t *testing.T) {
 	}
 }
 
+func TestWarehouseDailyBoardSubcontractMetricsHandlerSummarizesSubcontractState(t *testing.T) {
+	businessDay := "2026-04-29"
+	businessDayTimeUTC := time.Date(2026, 4, 29, 3, 0, 0, 0, time.UTC)
+	previousDayTimeUTC := time.Date(2026, 4, 28, 3, 0, 0, 0, time.UTC)
+	authConfig := auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}
+	handler := warehouseDailyBoardSubcontractMetricsHandler(
+		testWarehouseDailyBoardSubcontractOrderLister{orders: []productiondomain.SubcontractOrder{
+			{ID: "sco-open", Status: productiondomain.SubcontractOrderStatusApproved, ExpectedReceiptDate: businessDay},
+			{
+				ID:                  "sco-material",
+				Status:              productiondomain.SubcontractOrderStatusMaterialsIssued,
+				ExpectedReceiptDate: businessDay,
+				MaterialsIssuedAt:   businessDayTimeUTC,
+			},
+			{
+				ID:                  "sco-sample",
+				Status:              productiondomain.SubcontractOrderStatusSampleSubmitted,
+				ExpectedReceiptDate: businessDay,
+				SampleRequired:      true,
+				SampleSubmittedAt:   businessDayTimeUTC,
+			},
+			{
+				ID:                     "sco-claim",
+				Status:                 productiondomain.SubcontractOrderStatusRejectedFactoryIssue,
+				ExpectedReceiptDate:    "2026-04-28",
+				RejectedFactoryIssueAt: previousDayTimeUTC,
+			},
+			{
+				ID:                  "sco-payment",
+				Status:              productiondomain.SubcontractOrderStatusFinalPaymentReady,
+				ExpectedReceiptDate: businessDay,
+				FinalPaymentReadyAt: businessDayTimeUTC,
+			},
+			{
+				ID:                  "sco-closed",
+				Status:              productiondomain.SubcontractOrderStatusClosed,
+				ExpectedReceiptDate: businessDay,
+				ClosedAt:            businessDayTimeUTC,
+			},
+		}},
+		testWarehouseDailyBoardSubcontractMaterialTransferLister{transfers: map[string][]productiondomain.SubcontractMaterialTransfer{
+			"sco-material": {
+				{ID: "smt-match", SubcontractOrderID: "sco-material", SourceWarehouseID: "wh-hcm", HandoverAt: businessDayTimeUTC},
+				{ID: "smt-other-warehouse", SubcontractOrderID: "sco-material", SourceWarehouseID: "wh-hn", HandoverAt: businessDayTimeUTC},
+				{ID: "smt-other-day", SubcontractOrderID: "sco-material", SourceWarehouseID: "wh-hcm", HandoverAt: previousDayTimeUTC},
+			},
+		}},
+		testWarehouseDailyBoardSubcontractFactoryClaimLister{claims: map[string][]productiondomain.SubcontractFactoryClaim{
+			"sco-claim": {
+				{
+					ID:                 "sfc-open",
+					SubcontractOrderID: "sco-claim",
+					Status:             productiondomain.SubcontractFactoryClaimStatusOpen,
+					OpenedAt:           previousDayTimeUTC,
+					DueAt:              previousDayTimeUTC,
+				},
+				{
+					ID:                 "sfc-ack",
+					SubcontractOrderID: "sco-claim",
+					Status:             productiondomain.SubcontractFactoryClaimStatusAcknowledged,
+					OpenedAt:           businessDayTimeUTC,
+					DueAt:              previousDayTimeUTC,
+				},
+				{
+					ID:                 "sfc-resolved",
+					SubcontractOrderID: "sco-claim",
+					Status:             productiondomain.SubcontractFactoryClaimStatusResolved,
+					OpenedAt:           businessDayTimeUTC,
+					DueAt:              previousDayTimeUTC,
+				},
+			},
+		}},
+		testWarehouseDailyBoardSubcontractPaymentMilestoneLister{milestones: map[string][]productiondomain.SubcontractPaymentMilestone{
+			"sco-payment": {
+				{
+					ID:                 "spm-final-ready",
+					SubcontractOrderID: "sco-payment",
+					Kind:               productiondomain.SubcontractPaymentMilestoneKindFinalPayment,
+					Status:             productiondomain.SubcontractPaymentMilestoneStatusReady,
+					ReadyAt:            businessDayTimeUTC,
+				},
+				{
+					ID:                 "spm-deposit",
+					SubcontractOrderID: "sco-payment",
+					Kind:               productiondomain.SubcontractPaymentMilestoneKindDeposit,
+					Status:             productiondomain.SubcontractPaymentMilestoneStatusRecorded,
+					RecordedAt:         businessDayTimeUTC,
+				},
+			},
+		}},
+	)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/warehouse/daily-board/subcontract-metrics?warehouse_id=wh-hcm&date=2026-04-29&shift_code=day",
+		nil,
+	)
+	req.Header.Set(response.HeaderRequestID, "req-warehouse-subcontract-metrics")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(authConfig, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var payload response.SuccessEnvelope[warehouseSubcontractMetricsResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.OpenOrders != 5 ||
+		payload.Data.MaterialIssuedOrders != 1 ||
+		payload.Data.MaterialTransferCount != 1 ||
+		payload.Data.SamplePending != 1 ||
+		payload.Data.FactoryClaims != 2 ||
+		payload.Data.FactoryClaimsOverdue != 2 ||
+		payload.Data.FinalPaymentReadyOrders != 1 {
+		t.Fatalf("metrics = %+v, want subcontract source counts", payload.Data)
+	}
+	if payload.Data.WarehouseID != "wh-hcm" || payload.Data.Date != businessDay || payload.Data.ShiftCode != "day" {
+		t.Fatalf("scope = %+v, want wh-hcm/%s/day", payload.Data, businessDay)
+	}
+	if payload.Data.GeneratedAt == "" {
+		t.Fatal("generated_at is empty")
+	}
+}
+
+func TestWarehouseDailyBoardSubcontractMetricsHandlerRequiresWarehousePermission(t *testing.T) {
+	handler := warehouseDailyBoardSubcontractMetricsHandler(
+		testWarehouseDailyBoardSubcontractOrderLister{},
+		testWarehouseDailyBoardSubcontractMaterialTransferLister{},
+		testWarehouseDailyBoardSubcontractFactoryClaimLister{},
+		testWarehouseDailyBoardSubcontractPaymentMilestoneLister{},
+	)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/warehouse/daily-board/subcontract-metrics?warehouse_id=wh-hcm&date=2026-04-29",
+		nil,
+	)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "sales@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleSalesOps)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+}
+
 type expectedFulfillmentMetrics struct {
 	total           int
 	newOrders       int
@@ -1511,6 +1669,50 @@ func (l testWarehouseDailyBoardSupplierRejectionLister) Execute(
 	_ inventorydomain.SupplierRejectionFilter,
 ) ([]inventorydomain.SupplierRejection, error) {
 	return append([]inventorydomain.SupplierRejection(nil), l.rejections...), nil
+}
+
+type testWarehouseDailyBoardSubcontractOrderLister struct {
+	orders []productiondomain.SubcontractOrder
+}
+
+func (l testWarehouseDailyBoardSubcontractOrderLister) ListSubcontractOrders(
+	_ context.Context,
+	_ productionapp.SubcontractOrderFilter,
+) ([]productiondomain.SubcontractOrder, error) {
+	return append([]productiondomain.SubcontractOrder(nil), l.orders...), nil
+}
+
+type testWarehouseDailyBoardSubcontractMaterialTransferLister struct {
+	transfers map[string][]productiondomain.SubcontractMaterialTransfer
+}
+
+func (l testWarehouseDailyBoardSubcontractMaterialTransferLister) ListBySubcontractOrder(
+	_ context.Context,
+	subcontractOrderID string,
+) ([]productiondomain.SubcontractMaterialTransfer, error) {
+	return append([]productiondomain.SubcontractMaterialTransfer(nil), l.transfers[subcontractOrderID]...), nil
+}
+
+type testWarehouseDailyBoardSubcontractFactoryClaimLister struct {
+	claims map[string][]productiondomain.SubcontractFactoryClaim
+}
+
+func (l testWarehouseDailyBoardSubcontractFactoryClaimLister) ListBySubcontractOrder(
+	_ context.Context,
+	subcontractOrderID string,
+) ([]productiondomain.SubcontractFactoryClaim, error) {
+	return append([]productiondomain.SubcontractFactoryClaim(nil), l.claims[subcontractOrderID]...), nil
+}
+
+type testWarehouseDailyBoardSubcontractPaymentMilestoneLister struct {
+	milestones map[string][]productiondomain.SubcontractPaymentMilestone
+}
+
+func (l testWarehouseDailyBoardSubcontractPaymentMilestoneLister) ListBySubcontractOrder(
+	_ context.Context,
+	subcontractOrderID string,
+) ([]productiondomain.SubcontractPaymentMilestone, error) {
+	return append([]productiondomain.SubcontractPaymentMilestone(nil), l.milestones[subcontractOrderID]...), nil
 }
 
 type expectedWarehouseInboundMetrics struct {

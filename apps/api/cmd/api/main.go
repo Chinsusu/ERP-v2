@@ -18,6 +18,7 @@ import (
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
 	productionapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/application"
+	productiondomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/domain"
 	purchaseapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/application"
 	purchasedomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/domain"
 	qcapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/application"
@@ -449,6 +450,20 @@ type warehouseInboundMetricsResponse struct {
 	SupplierRejectionConfirmed int    `json:"supplier_rejection_confirmed"`
 	SupplierRejectionCancelled int    `json:"supplier_rejection_cancelled"`
 	GeneratedAt                string `json:"generated_at"`
+}
+
+type warehouseSubcontractMetricsResponse struct {
+	WarehouseID             string `json:"warehouse_id,omitempty"`
+	Date                    string `json:"date,omitempty"`
+	ShiftCode               string `json:"shift_code,omitempty"`
+	OpenOrders              int    `json:"open_orders"`
+	MaterialIssuedOrders    int    `json:"material_issued_orders"`
+	MaterialTransferCount   int    `json:"material_transfer_count"`
+	SamplePending           int    `json:"sample_pending"`
+	FactoryClaims           int    `json:"factory_claims"`
+	FactoryClaimsOverdue    int    `json:"factory_claims_overdue"`
+	FinalPaymentReadyOrders int    `json:"final_payment_ready_orders"`
+	GeneratedAt             string `json:"generated_at"`
 }
 
 type availableStockResponse struct {
@@ -1772,6 +1787,19 @@ func main() {
 				warehouseReceiving,
 				inboundQCInspections,
 				listSupplierRejections,
+			)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/warehouse/daily-board/subcontract-metrics",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionWarehouseView,
+			http.HandlerFunc(warehouseDailyBoardSubcontractMetricsHandler(
+				subcontractOrderService,
+				subcontractMaterialTransferStore,
+				subcontractFactoryClaimStore,
+				subcontractPaymentMilestoneStore,
 			)),
 		),
 	)
@@ -4204,6 +4232,22 @@ type warehouseDailyBoardSupplierRejectionLister interface {
 	Execute(context.Context, domain.SupplierRejectionFilter) ([]domain.SupplierRejection, error)
 }
 
+type warehouseDailyBoardSubcontractOrderLister interface {
+	ListSubcontractOrders(context.Context, productionapp.SubcontractOrderFilter) ([]productiondomain.SubcontractOrder, error)
+}
+
+type warehouseDailyBoardSubcontractMaterialTransferLister interface {
+	ListBySubcontractOrder(context.Context, string) ([]productiondomain.SubcontractMaterialTransfer, error)
+}
+
+type warehouseDailyBoardSubcontractFactoryClaimLister interface {
+	ListBySubcontractOrder(context.Context, string) ([]productiondomain.SubcontractFactoryClaim, error)
+}
+
+type warehouseDailyBoardSubcontractPaymentMilestoneLister interface {
+	ListBySubcontractOrder(context.Context, string) ([]productiondomain.SubcontractPaymentMilestone, error)
+}
+
 func warehouseDailyBoardInboundMetricsHandler(
 	purchaseOrders warehouseDailyBoardPurchaseOrderLister,
 	receivings warehouseDailyBoardReceivingLister,
@@ -4282,6 +4326,57 @@ func warehouseDailyBoardInboundMetricsHandler(
 	}
 }
 
+func warehouseDailyBoardSubcontractMetricsHandler(
+	orders warehouseDailyBoardSubcontractOrderLister,
+	materialTransfers warehouseDailyBoardSubcontractMaterialTransferLister,
+	factoryClaims warehouseDailyBoardSubcontractFactoryClaimLister,
+	paymentMilestones warehouseDailyBoardSubcontractPaymentMilestoneLister,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionWarehouseView) {
+			writePermissionDenied(w, r, auth.PermissionWarehouseView)
+			return
+		}
+
+		warehouseID := strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
+		date := strings.TrimSpace(r.URL.Query().Get("date"))
+		shiftCode := strings.TrimSpace(r.URL.Query().Get("shift_code"))
+
+		orderRows, err := orders.ListSubcontractOrders(r.Context(), productionapp.SubcontractOrderFilter{})
+		if err != nil {
+			writeWarehouseSubcontractMetricsLoadError(w, r)
+			return
+		}
+		payload, err := newWarehouseSubcontractMetricsResponse(
+			r.Context(),
+			orderRows,
+			materialTransfers,
+			factoryClaims,
+			paymentMilestones,
+			warehouseID,
+			date,
+			shiftCode,
+			time.Now().UTC(),
+		)
+		if err != nil {
+			writeWarehouseSubcontractMetricsLoadError(w, r)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, payload)
+	}
+}
+
 func writeWarehouseInboundMetricsLoadError(w http.ResponseWriter, r *http.Request) {
 	response.WriteError(
 		w,
@@ -4289,6 +4384,17 @@ func writeWarehouseInboundMetricsLoadError(w http.ResponseWriter, r *http.Reques
 		http.StatusConflict,
 		response.ErrorCodeConflict,
 		"Daily board inbound metrics could not be loaded",
+		nil,
+	)
+}
+
+func writeWarehouseSubcontractMetricsLoadError(w http.ResponseWriter, r *http.Request) {
+	response.WriteError(
+		w,
+		r,
+		http.StatusConflict,
+		response.ErrorCodeConflict,
+		"Daily board subcontract metrics could not be loaded",
 		nil,
 	)
 }
@@ -6803,6 +6909,89 @@ func newWarehouseInboundMetricsResponse(
 	return payload
 }
 
+func newWarehouseSubcontractMetricsResponse(
+	ctx context.Context,
+	orders []productiondomain.SubcontractOrder,
+	materialTransfers warehouseDailyBoardSubcontractMaterialTransferLister,
+	factoryClaims warehouseDailyBoardSubcontractFactoryClaimLister,
+	paymentMilestones warehouseDailyBoardSubcontractPaymentMilestoneLister,
+	warehouseID string,
+	date string,
+	shiftCode string,
+	generatedAt time.Time,
+) (warehouseSubcontractMetricsResponse, error) {
+	if materialTransfers == nil || factoryClaims == nil || paymentMilestones == nil {
+		return warehouseSubcontractMetricsResponse{}, errors.New("subcontract daily board dependencies are required")
+	}
+
+	payload := warehouseSubcontractMetricsResponse{
+		WarehouseID: strings.TrimSpace(warehouseID),
+		Date:        strings.TrimSpace(date),
+		ShiftCode:   strings.TrimSpace(shiftCode),
+		GeneratedAt: generatedAt.UTC().Format(time.RFC3339),
+	}
+	materialIssuedOrderIDs := make(map[string]struct{})
+	finalPaymentReadyOrderIDs := make(map[string]struct{})
+
+	for _, order := range orders {
+		if subcontractOrderOpenForDailyBoard(order, date) {
+			payload.OpenOrders++
+		}
+		if subcontractOrderSamplePendingForDailyBoard(order, date) {
+			payload.SamplePending++
+		}
+		if subcontractOrderFinalPaymentReadyOnDate(order, date) {
+			finalPaymentReadyOrderIDs[order.ID] = struct{}{}
+		}
+
+		transfers, err := materialTransfers.ListBySubcontractOrder(ctx, order.ID)
+		if err != nil {
+			return warehouseSubcontractMetricsResponse{}, err
+		}
+		matchedTransfers := 0
+		for _, transfer := range transfers {
+			if !matchesWarehouseScopeID(transfer.SourceWarehouseID, warehouseID) ||
+				!matchesBusinessDateTime(transfer.HandoverAt, date) {
+				continue
+			}
+			matchedTransfers++
+		}
+		payload.MaterialTransferCount += matchedTransfers
+		if matchedTransfers > 0 || (strings.TrimSpace(warehouseID) == "" && subcontractOrderMaterialIssuedOnDate(order, date)) {
+			materialIssuedOrderIDs[order.ID] = struct{}{}
+		}
+
+		claims, err := factoryClaims.ListBySubcontractOrder(ctx, order.ID)
+		if err != nil {
+			return warehouseSubcontractMetricsResponse{}, err
+		}
+		for _, claim := range claims {
+			if !claim.BlocksFinalPayment() || !matchesBusinessDateTimeOnOrBefore(claim.OpenedAt, date) {
+				continue
+			}
+			payload.FactoryClaims++
+			if claim.IsOverdue(generatedAt) {
+				payload.FactoryClaimsOverdue++
+			}
+		}
+
+		milestones, err := paymentMilestones.ListBySubcontractOrder(ctx, order.ID)
+		if err != nil {
+			return warehouseSubcontractMetricsResponse{}, err
+		}
+		for _, milestone := range milestones {
+			if subcontractPaymentMilestoneFinalReadyOnDate(milestone, date) {
+				finalPaymentReadyOrderIDs[order.ID] = struct{}{}
+			}
+		}
+	}
+
+	payload.MaterialIssuedOrders = len(materialIssuedOrderIDs)
+	payload.FinalPaymentReadyOrders = len(finalPaymentReadyOrderIDs)
+
+	return payload, nil
+}
+
 func matchesWarehouseID(rowWarehouseID string, filterWarehouseID string) bool {
 	filterWarehouseID = strings.TrimSpace(filterWarehouseID)
 	if filterWarehouseID == "" {
@@ -6810,6 +6999,16 @@ func matchesWarehouseID(rowWarehouseID string, filterWarehouseID string) bool {
 	}
 
 	return strings.TrimSpace(rowWarehouseID) == filterWarehouseID
+}
+
+func matchesWarehouseScopeID(rowWarehouseID string, filterWarehouseID string) bool {
+	filterWarehouseID = strings.TrimSpace(filterWarehouseID)
+	if filterWarehouseID == "" {
+		return true
+	}
+	rowWarehouseID = strings.TrimSpace(rowWarehouseID)
+
+	return rowWarehouseID == filterWarehouseID || strings.HasPrefix(rowWarehouseID, filterWarehouseID+"-")
 }
 
 func matchesBusinessDateString(rowDate string, filterDate string) bool {
@@ -6831,6 +7030,114 @@ func matchesBusinessDateTime(rowTime time.Time, filterDate string) bool {
 	}
 
 	return businessDate(rowTime) == filterDate
+}
+
+func matchesBusinessDateTimeOnOrBefore(rowTime time.Time, filterDate string) bool {
+	filterDate = strings.TrimSpace(filterDate)
+	if filterDate == "" {
+		return true
+	}
+	if rowTime.IsZero() {
+		return false
+	}
+
+	return businessDate(rowTime) <= filterDate
+}
+
+func matchesBusinessDateStringOnOrBefore(rowDate string, filterDate string) bool {
+	filterDate = strings.TrimSpace(filterDate)
+	if filterDate == "" {
+		return true
+	}
+	rowDate = strings.TrimSpace(rowDate)
+	if rowDate == "" {
+		return true
+	}
+
+	return rowDate <= filterDate
+}
+
+func subcontractOrderOpenForDailyBoard(order productiondomain.SubcontractOrder, date string) bool {
+	switch productiondomain.NormalizeSubcontractOrderStatus(order.Status) {
+	case productiondomain.SubcontractOrderStatusClosed, productiondomain.SubcontractOrderStatusCancelled:
+		return false
+	default:
+		return matchesBusinessDateStringOnOrBefore(order.ExpectedReceiptDate, date)
+	}
+}
+
+func subcontractOrderMaterialIssuedOnDate(order productiondomain.SubcontractOrder, date string) bool {
+	status := productiondomain.NormalizeSubcontractOrderStatus(order.Status)
+	if !subcontractOrderStatusAtOrAfterMaterialsIssued(status) {
+		return false
+	}
+
+	return matchesBusinessDateTime(order.MaterialsIssuedAt, date)
+}
+
+func subcontractOrderSamplePendingForDailyBoard(order productiondomain.SubcontractOrder, date string) bool {
+	if !order.SampleRequired {
+		return false
+	}
+	switch productiondomain.NormalizeSubcontractOrderStatus(order.Status) {
+	case productiondomain.SubcontractOrderStatusMaterialsIssued:
+		return matchesBusinessDateTimeOnOrBefore(firstNonZeroTime(order.MaterialsIssuedAt, order.UpdatedAt), date)
+	case productiondomain.SubcontractOrderStatusSampleSubmitted:
+		return matchesBusinessDateTimeOnOrBefore(firstNonZeroTime(order.SampleSubmittedAt, order.UpdatedAt), date)
+	case productiondomain.SubcontractOrderStatusSampleRejected:
+		return matchesBusinessDateTimeOnOrBefore(firstNonZeroTime(order.SampleRejectedAt, order.UpdatedAt), date)
+	default:
+		return false
+	}
+}
+
+func subcontractOrderFinalPaymentReadyOnDate(order productiondomain.SubcontractOrder, date string) bool {
+	if productiondomain.NormalizeSubcontractOrderStatus(order.Status) != productiondomain.SubcontractOrderStatusFinalPaymentReady {
+		return false
+	}
+
+	return matchesBusinessDateTime(order.FinalPaymentReadyAt, date)
+}
+
+func subcontractPaymentMilestoneFinalReadyOnDate(
+	milestone productiondomain.SubcontractPaymentMilestone,
+	date string,
+) bool {
+	if productiondomain.NormalizeSubcontractPaymentMilestoneKind(milestone.Kind) != productiondomain.SubcontractPaymentMilestoneKindFinalPayment ||
+		productiondomain.NormalizeSubcontractPaymentMilestoneStatus(milestone.Status) != productiondomain.SubcontractPaymentMilestoneStatusReady {
+		return false
+	}
+
+	return matchesBusinessDateTime(milestone.ReadyAt, date)
+}
+
+func subcontractOrderStatusAtOrAfterMaterialsIssued(status productiondomain.SubcontractOrderStatus) bool {
+	switch status {
+	case productiondomain.SubcontractOrderStatusMaterialsIssued,
+		productiondomain.SubcontractOrderStatusSampleSubmitted,
+		productiondomain.SubcontractOrderStatusSampleApproved,
+		productiondomain.SubcontractOrderStatusSampleRejected,
+		productiondomain.SubcontractOrderStatusMassProductionStarted,
+		productiondomain.SubcontractOrderStatusFinishedGoodsReceived,
+		productiondomain.SubcontractOrderStatusQCInProgress,
+		productiondomain.SubcontractOrderStatusAccepted,
+		productiondomain.SubcontractOrderStatusRejectedFactoryIssue,
+		productiondomain.SubcontractOrderStatusFinalPaymentReady,
+		productiondomain.SubcontractOrderStatusClosed:
+		return true
+	default:
+		return false
+	}
+}
+
+func firstNonZeroTime(values ...time.Time) time.Time {
+	for _, value := range values {
+		if !value.IsZero() {
+			return value
+		}
+	}
+
+	return time.Time{}
 }
 
 func businessDate(value time.Time) string {
