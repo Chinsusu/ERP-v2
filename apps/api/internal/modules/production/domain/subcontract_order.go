@@ -18,6 +18,8 @@ var ErrSubcontractOrderInvalidCurrency = errors.New("subcontract order currency 
 var ErrSubcontractOrderInvalidQuantity = errors.New("subcontract order quantity is invalid")
 var ErrSubcontractOrderInvalidAmount = errors.New("subcontract order amount is invalid")
 var ErrSubcontractOrderSampleApprovalRequired = errors.New("subcontract order sample approval is required")
+var ErrSubcontractOrderMaterialLineNotFound = errors.New("subcontract order material line is not found")
+var ErrSubcontractOrderDuplicateMaterialLine = errors.New("subcontract order material line is duplicated")
 
 type SubcontractOrderStatus string
 
@@ -187,6 +189,21 @@ type NewSubcontractMaterialLineInput struct {
 	CurrencyCode     string
 	LotTraceRequired bool
 	Note             string
+}
+
+type IssueSubcontractMaterialsInput struct {
+	Lines     []IssueSubcontractMaterialLineInput
+	ActorID   string
+	ChangedAt time.Time
+}
+
+type IssueSubcontractMaterialLineInput struct {
+	OrderMaterialLineID string
+	IssueQty            decimal.Decimal
+	UOMCode             string
+	BaseIssueQty        decimal.Decimal
+	BaseUOMCode         string
+	ConversionFactor    decimal.Decimal
 }
 
 var subcontractOrderTransitions = map[SubcontractOrderStatus][]SubcontractOrderStatus{
@@ -584,6 +601,104 @@ func (o SubcontractOrder) RecordDeposit(actorID string, amount decimal.Decimal, 
 
 func (o SubcontractOrder) MarkMaterialsIssued(actorID string, changedAt time.Time) (SubcontractOrder, error) {
 	return o.TransitionTo(SubcontractOrderStatusMaterialsIssued, actorID, changedAt)
+}
+
+func (o SubcontractOrder) IssueMaterials(input IssueSubcontractMaterialsInput) (SubcontractOrder, error) {
+	actorID := strings.TrimSpace(input.ActorID)
+	if actorID == "" {
+		return SubcontractOrder{}, ErrSubcontractOrderTransitionActorRequired
+	}
+	if len(input.Lines) == 0 {
+		return SubcontractOrder{}, ErrSubcontractOrderRequiredField
+	}
+	status := NormalizeSubcontractOrderStatus(o.Status)
+	if status != SubcontractOrderStatusFactoryConfirmed && status != SubcontractOrderStatusDepositRecorded {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidTransition
+	}
+	changedAt := input.ChangedAt
+	if changedAt.IsZero() {
+		changedAt = time.Now().UTC()
+	}
+
+	updated := o.Clone()
+	seen := map[string]struct{}{}
+	for _, issueLine := range input.Lines {
+		lineID := strings.TrimSpace(issueLine.OrderMaterialLineID)
+		if lineID == "" {
+			return SubcontractOrder{}, ErrSubcontractOrderRequiredField
+		}
+		if _, exists := seen[lineID]; exists {
+			return SubcontractOrder{}, ErrSubcontractOrderDuplicateMaterialLine
+		}
+		seen[lineID] = struct{}{}
+
+		lineIndex := -1
+		for index, candidate := range updated.MaterialLines {
+			if candidate.ID == lineID {
+				lineIndex = index
+				break
+			}
+		}
+		if lineIndex < 0 {
+			return SubcontractOrder{}, ErrSubcontractOrderMaterialLineNotFound
+		}
+
+		line := updated.MaterialLines[lineIndex]
+		uomCode := subcontractOrderFirstNonBlank(issueLine.UOMCode, line.UOMCode.String())
+		baseUOMCode := subcontractOrderFirstNonBlank(issueLine.BaseUOMCode, line.BaseUOMCode.String())
+		conversionFactor := issueLine.ConversionFactor
+		if strings.TrimSpace(conversionFactor.String()) == "" {
+			conversionFactor = line.ConversionFactor
+		}
+		issueQty, baseIssueQty, normalizedUOMCode, normalizedBaseUOMCode, normalizedConversionFactor, err := normalizeSubcontractOrderQuantitySet(
+			issueLine.IssueQty,
+			issueLine.BaseIssueQty,
+			uomCode,
+			baseUOMCode,
+			conversionFactor,
+			true,
+		)
+		if err != nil {
+			return SubcontractOrder{}, err
+		}
+		if normalizedUOMCode != line.UOMCode || normalizedBaseUOMCode != line.BaseUOMCode || normalizedConversionFactor != line.ConversionFactor {
+			return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+		}
+
+		nextIssuedQty, err := decimal.AddQuantity(line.IssuedQty, issueQty)
+		if err != nil {
+			return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+		}
+		nextBaseIssuedQty, err := decimal.AddQuantity(line.BaseIssuedQty, baseIssueQty)
+		if err != nil {
+			return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+		}
+		if err := validateSubcontractOrderProgressQuantity(nextIssuedQty, line.PlannedQty); err != nil {
+			return SubcontractOrder{}, err
+		}
+		if err := validateSubcontractOrderProgressQuantity(nextBaseIssuedQty, line.BasePlannedQty); err != nil {
+			return SubcontractOrder{}, err
+		}
+
+		line.IssuedQty = nextIssuedQty
+		line.BaseIssuedQty = nextBaseIssuedQty
+		updated.MaterialLines[lineIndex] = line
+	}
+
+	if allSubcontractMaterialLinesIssued(updated.MaterialLines) {
+		return updated.TransitionTo(SubcontractOrderStatusMaterialsIssued, actorID, changedAt)
+	}
+
+	updated.UpdatedAt = changedAt.UTC()
+	updated.UpdatedBy = actorID
+	if updated.Version > 0 {
+		updated.Version++
+	}
+	if err := updated.Validate(); err != nil {
+		return SubcontractOrder{}, err
+	}
+
+	return updated, nil
 }
 
 func (o SubcontractOrder) SubmitSample(actorID string, changedAt time.Time) (SubcontractOrder, error) {
@@ -1003,4 +1118,28 @@ func compareSubcontractOrderQuantity(left decimal.Decimal, right decimal.Decimal
 	}
 
 	return leftValue.Cmp(rightValue), nil
+}
+
+func allSubcontractMaterialLinesIssued(lines []SubcontractMaterialLine) bool {
+	if len(lines) == 0 {
+		return false
+	}
+	for _, line := range lines {
+		compare, err := compareSubcontractOrderQuantity(line.BaseIssuedQty, line.BasePlannedQty)
+		if err != nil || compare != 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
+func subcontractOrderFirstNonBlank(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+
+	return ""
 }
