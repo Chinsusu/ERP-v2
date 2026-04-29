@@ -2634,6 +2634,16 @@ textarea {
   gap: 10px;
 }
 
+.erp-shift-operations {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(104px, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  background: var(--erp-border-soft);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
 .erp-shift-metric {
   display: grid;
   gap: 6px;
@@ -2656,6 +2666,28 @@ textarea {
   line-height: 1.2;
 }
 
+.erp-shift-operation {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  min-height: 78px;
+  padding: 10px;
+  background: var(--erp-surface);
+}
+
+.erp-shift-operation span {
+  overflow-wrap: anywhere;
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-shift-operation strong {
+  color: var(--erp-text);
+  font-size: 22px;
+  line-height: 1.15;
+}
+
 .erp-shift-closing-grid {
   display: grid;
   grid-template-columns: minmax(320px, 1fr) minmax(280px, 360px);
@@ -2673,13 +2705,18 @@ textarea {
 
 .erp-shift-checklist-item {
   display: grid;
-  grid-template-columns: 18px 1fr;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: start;
   gap: 8px;
   min-height: 44px;
   padding: 8px 10px;
   background: var(--erp-surface);
   border: 1px solid var(--erp-border-soft);
   border-radius: var(--erp-radius);
+}
+
+.erp-shift-checklist-item.is-blocking {
+  border-color: rgba(213, 12, 45, 0.35);
 }
 
 .erp-shift-checklist-item strong,
@@ -3553,6 +3590,7 @@ textarea {
   .erp-warehouse-source-strip,
   .erp-warehouse-ops,
   .erp-shift-closing-summary,
+  .erp-shift-operations,
   .erp-shift-closing-grid,
   .erp-picking-toolbar,
   .erp-picking-kpis,

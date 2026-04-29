@@ -114,6 +114,15 @@ export type EndOfDayReconciliationSummary = {
   readyToClose: boolean;
 };
 
+export type EndOfDayReconciliationOperations = {
+  orderCount: number;
+  handoverOrderCount: number;
+  returnOrderCount: number;
+  stockMovementCount: number;
+  stockCountSessionCount: number;
+  pendingIssueCount: number;
+};
+
 export type EndOfDayReconciliation = {
   id: string;
   warehouseId: string;
@@ -126,6 +135,7 @@ export type EndOfDayReconciliation = {
   closedBy?: string;
   auditLogId?: string;
   summary: EndOfDayReconciliationSummary;
+  operations: EndOfDayReconciliationOperations;
   checklist: ReconciliationChecklistItem[];
   lines: ReconciliationLine[];
 };

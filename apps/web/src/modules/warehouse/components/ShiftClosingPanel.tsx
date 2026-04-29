@@ -5,6 +5,7 @@ import { DataTable, StatusChip, type DataTableColumn, type ToastMessage } from "
 import { useEndOfDayReconciliation } from "../hooks/useEndOfDayReconciliation";
 import {
   closeEndOfDayReconciliation,
+  isOperationalClosingBlocker,
   reconciliationStatusTone
 } from "../services/warehouseDailyBoardService";
 import type {
@@ -84,10 +85,13 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
   }, [closeResult, reconciliations]);
   const openBlockingItems =
     activeReconciliation?.checklist.filter((item) => item.blocking && !item.complete) ?? [];
+  const operationalBlockingItems = openBlockingItems.filter(isOperationalClosingBlocker);
+  const exceptionBlockingItems = openBlockingItems.filter((item) => !isOperationalClosingBlocker(item));
   const closeDisabled =
     !activeReconciliation ||
     activeReconciliation.status === "closed" ||
-    (openBlockingItems.length > 0 && exceptionNote.trim() === "");
+    operationalBlockingItems.length > 0 ||
+    (exceptionBlockingItems.length > 0 && exceptionNote.trim() === "");
 
   async function handleClose() {
     if (!activeReconciliation || closeDisabled) {
@@ -163,6 +167,19 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
         />
       </section>
 
+      <section className="erp-shift-operations" aria-label="Shift closing operating counters">
+        <OperationMetric label="Orders" value={activeReconciliation.operations.orderCount} />
+        <OperationMetric label="Handover" value={activeReconciliation.operations.handoverOrderCount} />
+        <OperationMetric label="Returns" value={activeReconciliation.operations.returnOrderCount} />
+        <OperationMetric label="Movements" value={activeReconciliation.operations.stockMovementCount} />
+        <OperationMetric label="Stock count" value={activeReconciliation.operations.stockCountSessionCount} />
+        <OperationMetric
+          label="Issues"
+          value={activeReconciliation.operations.pendingIssueCount}
+          tone={activeReconciliation.operations.pendingIssueCount > 0 ? "danger" : "success"}
+        />
+      </section>
+
       <section className="erp-shift-closing-grid">
         <div>
           <div className="erp-section-header erp-section-header--compact">
@@ -173,12 +190,18 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
           </div>
           <ol className="erp-shift-checklist">
             {activeReconciliation.checklist.map((item) => (
-              <li className="erp-shift-checklist-item" key={item.key}>
+              <li
+                className={`erp-shift-checklist-item${item.blocking && !item.complete ? " is-blocking" : ""}`}
+                key={item.key}
+              >
                 <span className={item.complete ? "erp-shift-checkmark is-complete" : "erp-shift-checkmark"} aria-hidden="true" />
                 <span>
                   <strong>{item.label}</strong>
                   {item.note ? <small>{item.note}</small> : null}
                 </span>
+                <StatusChip tone={item.complete ? "success" : isOperationalClosingBlocker(item) ? "danger" : "warning"}>
+                  {item.complete ? "Done" : isOperationalClosingBlocker(item) ? "Resolve" : "Exception"}
+                </StatusChip>
               </li>
             ))}
           </ol>
@@ -191,12 +214,17 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
               className="erp-input erp-textarea"
               value={exceptionNote}
               onChange={(event) => setExceptionNote(event.target.value)}
-              placeholder="Required when a blocking checklist item is still open"
+              placeholder={exceptionBlockingItems.length > 0 ? "Required for variance exception" : "No exception needed"}
             />
           </label>
           <button className="erp-button erp-button--primary erp-button--full" type="button" disabled={closeDisabled} onClick={handleClose}>
             Close shift
           </button>
+          {operationalBlockingItems.length > 0 ? (
+            <small className="erp-shift-close-feedback erp-shift-close-feedback--danger">
+              Resolve operational blockers before closing.
+            </small>
+          ) : null}
           {feedback ? (
             <small className={`erp-shift-close-feedback erp-shift-close-feedback--${feedback.tone ?? "normal"}`}>
               {feedback.title}
@@ -222,6 +250,24 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
   );
 }
 
+function OperationMetric({
+  label,
+  value,
+  tone = "info"
+}: {
+  label: string;
+  value: number;
+  tone?: "success" | "danger" | "info";
+}) {
+  return (
+    <article className="erp-shift-operation">
+      <span>{label}</span>
+      <strong>{formatCount(value)}</strong>
+      <StatusChip tone={tone}>Ops</StatusChip>
+    </article>
+  );
+}
+
 function ClosingMetric({
   label,
   value,
@@ -234,7 +280,7 @@ function ClosingMetric({
   return (
     <article className="erp-shift-metric">
       <span>{label}</span>
-      <strong>{typeof value === "number" ? value.toLocaleString("en-US") : value}</strong>
+      <strong>{typeof value === "number" ? formatCount(value) : value}</strong>
       <StatusChip tone={tone}>{label}</StatusChip>
     </article>
   );
@@ -258,4 +304,8 @@ function formatVariance(value: number) {
   }
 
   return String(value);
+}
+
+function formatCount(value: number) {
+  return value.toLocaleString("vi-VN");
 }

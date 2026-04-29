@@ -177,23 +177,38 @@ export const prototypeEndOfDayReconciliations: EndOfDayReconciliation[] = [
     shiftCode: "day",
     status: "in_review",
     owner: "Warehouse Lead",
+    operations: {
+      orderCount: 42,
+      handoverOrderCount: 27,
+      returnOrderCount: 3,
+      stockMovementCount: 6,
+      stockCountSessionCount: 1,
+      pendingIssueCount: 2
+    },
     checklist: [
-      { key: "shipments", label: "Shipments reconciled", complete: true, blocking: true },
-      { key: "inbound", label: "Inbound and QC checked", complete: true, blocking: true },
+      { key: "manifests", label: "Carrier manifests scanned", complete: true, blocking: true },
       { key: "returns", label: "Returns triaged", complete: true, blocking: true },
+      { key: "stock_count", label: "Stock count submitted", complete: true, blocking: true },
+      {
+        key: "adjustments",
+        label: "Adjustments approved",
+        complete: false,
+        blocking: true,
+        note: "One variance approval is still pending"
+      },
+      {
+        key: "pending_tasks",
+        label: "Issues resolved",
+        complete: false,
+        blocking: true,
+        note: "One mismatch pending lead sign-off"
+      },
       {
         key: "variance",
         label: "Stock variance reviewed",
         complete: false,
         blocking: true,
         note: "LOT-2604A short by 2"
-      },
-      {
-        key: "pending_tasks",
-        label: "P0 tasks cleared or noted",
-        complete: false,
-        blocking: true,
-        note: "One mismatch pending lead sign-off"
       }
     ],
     lines: [
@@ -228,11 +243,21 @@ export const prototypeEndOfDayReconciliations: EndOfDayReconciliation[] = [
     shiftCode: "day",
     status: "open",
     owner: "HN Lead",
+    operations: {
+      orderCount: 18,
+      handoverOrderCount: 14,
+      returnOrderCount: 1,
+      stockMovementCount: 3,
+      stockCountSessionCount: 1,
+      pendingIssueCount: 0
+    },
     checklist: [
-      { key: "shipments", label: "Shipments reconciled", complete: true, blocking: true },
+      { key: "manifests", label: "Carrier manifests scanned", complete: true, blocking: true },
       { key: "returns", label: "Returns triaged", complete: true, blocking: true },
+      { key: "stock_count", label: "Stock count submitted", complete: true, blocking: true },
+      { key: "adjustments", label: "Adjustments approved", complete: true, blocking: true },
+      { key: "pending_tasks", label: "Issues resolved", complete: true, blocking: true },
       { key: "variance", label: "Stock variance reviewed", complete: true, blocking: true },
-      { key: "pending_tasks", label: "P0 tasks cleared or noted", complete: true, blocking: true }
     ],
     lines: [
       {
@@ -257,11 +282,21 @@ export const prototypeEndOfDayReconciliations: EndOfDayReconciliation[] = [
     owner: "Warehouse Lead",
     closedAt: "2026-04-25T17:42:00Z",
     closedBy: "user-warehouse-lead",
+    operations: {
+      orderCount: 39,
+      handoverOrderCount: 32,
+      returnOrderCount: 2,
+      stockMovementCount: 5,
+      stockCountSessionCount: 1,
+      pendingIssueCount: 0
+    },
     checklist: [
-      { key: "shipments", label: "Shipments reconciled", complete: true, blocking: true },
+      { key: "manifests", label: "Carrier manifests scanned", complete: true, blocking: true },
       { key: "returns", label: "Returns triaged", complete: true, blocking: true },
+      { key: "stock_count", label: "Stock count submitted", complete: true, blocking: true },
+      { key: "adjustments", label: "Adjustments approved", complete: true, blocking: true },
+      { key: "pending_tasks", label: "Issues resolved", complete: true, blocking: true },
       { key: "variance", label: "Stock variance reviewed", complete: true, blocking: true },
-      { key: "pending_tasks", label: "P0 tasks cleared or noted", complete: true, blocking: true }
     ],
     lines: [
       {
@@ -455,6 +490,10 @@ export async function closeEndOfDayReconciliation(
   }
   if (reconciliation.status === "closed") {
     throw new Error("End-of-day reconciliation is already closed");
+  }
+  const openBlockingItems = reconciliation.checklist.filter((item) => item.blocking && !item.complete);
+  if (openBlockingItems.some(isOperationalClosingBlocker)) {
+    throw new Error("Resolve return, manifest, adjustment, or pending issue before closing this shift");
   }
   if (!canCloseReconciliation(reconciliation, exceptionNote)) {
     throw new Error("Exception note is required before closing this shift");
@@ -865,11 +904,36 @@ function taskRiskScore(task: WarehouseDailyTask) {
 
 function canCloseReconciliation(reconciliation: EndOfDayReconciliation, exceptionNote: string) {
   const openBlockingItems = reconciliation.checklist.filter((item) => item.blocking && !item.complete);
+  if (openBlockingItems.some(isOperationalClosingBlocker)) {
+    return false;
+  }
   if (openBlockingItems.length === 0) {
     return true;
   }
 
   return exceptionNote.trim() !== "";
+}
+
+export function isOperationalClosingBlocker(item: { key: string }) {
+  switch (item.key.trim().toLowerCase()) {
+    case "returns":
+    case "return":
+    case "return_inspection":
+    case "manifest":
+    case "manifests":
+    case "carrier_manifest":
+    case "handover":
+    case "shipments":
+    case "adjustment":
+    case "adjustments":
+    case "stock_adjustment":
+    case "stock_adjustments":
+    case "pending_tasks":
+    case "pending_issues":
+      return true;
+    default:
+      return false;
+  }
 }
 
 function createReconciliation(
@@ -878,6 +942,7 @@ function createReconciliation(
   const lineSummary = summarizeReconciliationLines(input.lines);
   const checklistCompleted = input.checklist.filter((item) => item.complete).length;
   const openBlockingItems = input.checklist.filter((item) => item.blocking && !item.complete);
+  const unresolvedOperationalItems = openBlockingItems.filter(isOperationalClosingBlocker);
 
   return {
     ...input,
@@ -885,7 +950,10 @@ function createReconciliation(
       ...lineSummary,
       checklistTotal: input.checklist.length,
       checklistCompleted,
-      readyToClose: input.status !== "closed" && openBlockingItems.length === 0
+      readyToClose:
+        input.status !== "closed" &&
+        unresolvedOperationalItems.length === 0 &&
+        openBlockingItems.length === 0
     }
   };
 }

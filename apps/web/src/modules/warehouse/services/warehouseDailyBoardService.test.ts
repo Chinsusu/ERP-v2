@@ -305,6 +305,12 @@ describe("warehouseDailyBoardService", () => {
     ).resolves.toMatchObject([
       {
         id: "rec-hcm-260426-day",
+        operations: {
+          orderCount: 42,
+          handoverOrderCount: 27,
+          returnOrderCount: 3,
+          pendingIssueCount: 2
+        },
         summary: {
           systemQuantity: 164,
           countedQuantity: 162,
@@ -324,14 +330,22 @@ describe("warehouseDailyBoardService", () => {
     });
   });
 
-  it("requires an exception note before closing with blocking checklist items", async () => {
+  it("blocks closing when operational checklist items are unresolved", async () => {
     await expect(closeEndOfDayReconciliation("rec-hcm-260426-day", "")).rejects.toThrow(
-      "Exception note is required before closing this shift"
+      "Resolve return, manifest, adjustment, or pending issue before closing this shift"
     );
+    await expect(closeEndOfDayReconciliation("rec-hcm-260426-day", "Variance accepted")).rejects.toThrow(
+      "Resolve return, manifest, adjustment, or pending issue before closing this shift"
+    );
+  });
 
-    await expect(closeEndOfDayReconciliation("rec-hcm-260426-day", "Variance accepted")).resolves.toMatchObject({
+  it("closes a clean end-of-day reconciliation session", async () => {
+    await expect(closeEndOfDayReconciliation("rec-hn-260426-day", "")).resolves.toMatchObject({
       status: "closed",
-      auditLogId: "audit-close-rec-hcm-260426-day"
+      auditLogId: "audit-close-rec-hn-260426-day",
+      operations: {
+        pendingIssueCount: 0
+      }
     });
   });
 
