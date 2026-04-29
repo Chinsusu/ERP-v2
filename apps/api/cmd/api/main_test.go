@@ -1286,6 +1286,115 @@ func TestWarehouseDailyBoardInboundMetricsHandlerRequiresWarehousePermission(t *
 	}
 }
 
+func TestWarehouseDailyBoardInboundMetricsMatchSourceState(t *testing.T) {
+	purchaseService := newTestWarehouseDailyBoardPurchaseOrderService(t)
+	receivingService, _ := newTestGoodsReceiptService()
+	businessDayTimeUTC := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
+	inboundQCService := qcapp.NewInboundQCInspectionService(
+		qcapp.NewPrototypeInboundQCInspectionStore(
+			qcdomain.InboundQCInspection{
+				ID: "iqc-board-pass", WarehouseID: "wh-hcm-fg", Status: qcdomain.InboundQCInspectionStatusCompleted,
+				Result: qcdomain.InboundQCResultPass, CreatedAt: businessDayTimeUTC,
+			},
+			qcdomain.InboundQCInspection{
+				ID: "iqc-board-fail", WarehouseID: "wh-hcm-fg", Status: qcdomain.InboundQCInspectionStatusCompleted,
+				Result: qcdomain.InboundQCResultFail, CreatedAt: businessDayTimeUTC,
+			},
+			qcdomain.InboundQCInspection{
+				ID: "iqc-board-hold", WarehouseID: "wh-hcm-fg", Status: qcdomain.InboundQCInspectionStatusCompleted,
+				Result: qcdomain.InboundQCResultHold, CreatedAt: businessDayTimeUTC,
+			},
+			qcdomain.InboundQCInspection{
+				ID: "iqc-board-partial", WarehouseID: "wh-hcm-fg", Status: qcdomain.InboundQCInspectionStatusCompleted,
+				Result: qcdomain.InboundQCResultPartial, CreatedAt: businessDayTimeUTC,
+			},
+		),
+		inventoryapp.NewPrototypeWarehouseReceivingStore(),
+		audit.NewInMemoryLogStore(),
+	)
+	listRejections := inventoryapp.NewListSupplierRejections(inventoryapp.NewPrototypeSupplierRejectionStore(
+		inventorydomain.SupplierRejection{
+			ID: "sr-board-draft", WarehouseID: "wh-hcm-fg", Status: inventorydomain.SupplierRejectionStatusDraft,
+			CreatedAt: businessDayTimeUTC,
+		},
+		inventorydomain.SupplierRejection{
+			ID: "sr-board-submitted", WarehouseID: "wh-hcm-fg", Status: inventorydomain.SupplierRejectionStatusSubmitted,
+			CreatedAt: businessDayTimeUTC,
+		},
+		inventorydomain.SupplierRejection{
+			ID: "sr-board-cancelled", WarehouseID: "wh-hcm-fg", Status: inventorydomain.SupplierRejectionStatusCancelled,
+			CreatedAt: businessDayTimeUTC,
+		},
+	))
+	handler := warehouseDailyBoardInboundMetricsHandler(
+		purchaseService,
+		receivingService,
+		inboundQCService,
+		listRejections,
+	)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/warehouse/daily-board/inbound-metrics?warehouse_id=wh-hcm-fg&date=2026-04-27&shift_code=day",
+		nil,
+	)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "warehouse@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var payload response.SuccessEnvelope[warehouseInboundMetricsResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	ctx := context.Background()
+	orders, err := purchaseService.ListPurchaseOrders(ctx, purchaseapp.PurchaseOrderFilter{
+		WarehouseID:  "wh-hcm-fg",
+		ExpectedFrom: "2026-04-27",
+		ExpectedTo:   "2026-04-27",
+	})
+	if err != nil {
+		t.Fatalf("list purchase orders: %v", err)
+	}
+	receipts, err := receivingService.ListWarehouseReceivings(ctx, inventorydomain.NewWarehouseReceivingFilter("wh-hcm-fg", ""))
+	if err != nil {
+		t.Fatalf("list receivings: %v", err)
+	}
+	inspections, err := inboundQCService.ListInboundQCInspections(ctx, qcapp.NewInboundQCInspectionFilter("", "", "", "wh-hcm-fg"))
+	if err != nil {
+		t.Fatalf("list inbound qc inspections: %v", err)
+	}
+	rejections, err := listRejections.Execute(ctx, inventorydomain.NewSupplierRejectionFilter("", "wh-hcm-fg", ""))
+	if err != nil {
+		t.Fatalf("list supplier rejections: %v", err)
+	}
+	expected := expectedWarehouseInboundMetricsFromSources(orders, receipts, inspections, rejections, "wh-hcm-fg", "2026-04-27")
+
+	if payload.Data.PurchaseOrdersIncoming != expected.purchaseOrdersIncoming ||
+		payload.Data.ReceivingPending != expected.receivingPending ||
+		payload.Data.ReceivingDraft != expected.receivingDraft ||
+		payload.Data.ReceivingSubmitted != expected.receivingSubmitted ||
+		payload.Data.ReceivingInspectReady != expected.receivingInspectReady ||
+		payload.Data.QCHold != expected.qcHold ||
+		payload.Data.QCFail != expected.qcFail ||
+		payload.Data.QCPass != expected.qcPass ||
+		payload.Data.QCPartial != expected.qcPartial ||
+		payload.Data.SupplierRejections != expected.supplierRejections ||
+		payload.Data.SupplierRejectionDraft != expected.supplierRejectionDraft ||
+		payload.Data.SupplierRejectionSubmitted != expected.supplierRejectionSubmitted ||
+		payload.Data.SupplierRejectionConfirmed != expected.supplierRejectionConfirmed ||
+		payload.Data.SupplierRejectionCancelled != expected.supplierRejectionCancelled {
+		t.Fatalf("metrics = %+v, want source-derived counts = %+v", payload.Data, expected)
+	}
+}
+
 type expectedFulfillmentMetrics struct {
 	total           int
 	newOrders       int
@@ -1395,6 +1504,161 @@ func (l testWarehouseDailyBoardSupplierRejectionLister) Execute(
 	_ inventorydomain.SupplierRejectionFilter,
 ) ([]inventorydomain.SupplierRejection, error) {
 	return append([]inventorydomain.SupplierRejection(nil), l.rejections...), nil
+}
+
+type expectedWarehouseInboundMetrics struct {
+	purchaseOrdersIncoming     int
+	receivingPending           int
+	receivingDraft             int
+	receivingSubmitted         int
+	receivingInspectReady      int
+	qcHold                     int
+	qcFail                     int
+	qcPass                     int
+	qcPartial                  int
+	supplierRejections         int
+	supplierRejectionDraft     int
+	supplierRejectionSubmitted int
+	supplierRejectionConfirmed int
+	supplierRejectionCancelled int
+}
+
+func expectedWarehouseInboundMetricsFromSources(
+	orders []purchasedomain.PurchaseOrder,
+	receipts []inventorydomain.WarehouseReceiving,
+	inspections []qcdomain.InboundQCInspection,
+	rejections []inventorydomain.SupplierRejection,
+	warehouseID string,
+	date string,
+) expectedWarehouseInboundMetrics {
+	expected := expectedWarehouseInboundMetrics{}
+	for _, order := range orders {
+		if order.WarehouseID != warehouseID || order.ExpectedDate != date {
+			continue
+		}
+		switch purchasedomain.NormalizePurchaseOrderStatus(order.Status) {
+		case purchasedomain.PurchaseOrderStatusApproved, purchasedomain.PurchaseOrderStatusPartiallyReceived:
+			expected.purchaseOrdersIncoming++
+		}
+	}
+	for _, receipt := range receipts {
+		if receipt.WarehouseID != warehouseID || businessDate(receipt.CreatedAt) != date {
+			continue
+		}
+		switch inventorydomain.NormalizeWarehouseReceivingStatus(receipt.Status) {
+		case inventorydomain.WarehouseReceivingStatusDraft:
+			expected.receivingDraft++
+			expected.receivingPending++
+		case inventorydomain.WarehouseReceivingStatusSubmitted:
+			expected.receivingSubmitted++
+			expected.receivingPending++
+		case inventorydomain.WarehouseReceivingStatusInspectReady:
+			expected.receivingInspectReady++
+			expected.receivingPending++
+		}
+	}
+	for _, inspection := range inspections {
+		if inspection.WarehouseID != warehouseID || businessDate(inspection.CreatedAt) != date {
+			continue
+		}
+		if qcdomain.NormalizeInboundQCInspectionStatus(inspection.Status) != qcdomain.InboundQCInspectionStatusCompleted {
+			continue
+		}
+		switch qcdomain.NormalizeInboundQCResult(inspection.Result) {
+		case qcdomain.InboundQCResultHold:
+			expected.qcHold++
+		case qcdomain.InboundQCResultFail:
+			expected.qcFail++
+		case qcdomain.InboundQCResultPass:
+			expected.qcPass++
+		case qcdomain.InboundQCResultPartial:
+			expected.qcPartial++
+		}
+	}
+	for _, rejection := range rejections {
+		if rejection.WarehouseID != warehouseID || businessDate(rejection.CreatedAt) != date {
+			continue
+		}
+		switch inventorydomain.NormalizeSupplierRejectionStatus(rejection.Status) {
+		case inventorydomain.SupplierRejectionStatusDraft:
+			expected.supplierRejectionDraft++
+			expected.supplierRejections++
+		case inventorydomain.SupplierRejectionStatusSubmitted:
+			expected.supplierRejectionSubmitted++
+			expected.supplierRejections++
+		case inventorydomain.SupplierRejectionStatusConfirmed:
+			expected.supplierRejectionConfirmed++
+			expected.supplierRejections++
+		case inventorydomain.SupplierRejectionStatusCancelled:
+			expected.supplierRejectionCancelled++
+		}
+	}
+
+	return expected
+}
+
+func newTestWarehouseDailyBoardPurchaseOrderService(t *testing.T) purchaseapp.PurchaseOrderService {
+	t.Helper()
+
+	auditStore := audit.NewInMemoryLogStore()
+	service := purchaseapp.NewPurchaseOrderService(
+		purchaseapp.NewPrototypePurchaseOrderStore(auditStore),
+		masterdataapp.NewPrototypePartyCatalog(auditStore),
+		masterdataapp.NewPrototypeItemCatalog(auditStore),
+		masterdataapp.NewPrototypeWarehouseLocationCatalog(auditStore),
+		purchaseOrderUOMConverterAdapter{catalog: masterdataapp.NewPrototypeUOMCatalog()},
+	)
+	createApprovedWarehouseDailyBoardPurchaseOrder(t, service, "po-board-approved", "2026-04-27")
+	createApprovedWarehouseDailyBoardPurchaseOrder(t, service, "po-board-other-day", "2026-04-28")
+
+	return service
+}
+
+func createApprovedWarehouseDailyBoardPurchaseOrder(
+	t *testing.T,
+	service purchaseapp.PurchaseOrderService,
+	id string,
+	expectedDate string,
+) {
+	t.Helper()
+
+	if _, err := service.CreatePurchaseOrder(context.Background(), purchaseapp.CreatePurchaseOrderInput{
+		ID:           id,
+		OrgID:        "org-my-pham",
+		PONo:         strings.ToUpper(id),
+		SupplierID:   "sup-rm-bioactive",
+		WarehouseID:  "wh-hcm-fg",
+		ExpectedDate: expectedDate,
+		CurrencyCode: "VND",
+		Lines: []purchaseapp.PurchaseOrderLineInput{
+			{
+				ID:         id + "-line-1",
+				LineNo:     1,
+				ItemID:     "item-cream-50g",
+				OrderedQty: "12.000000",
+				UOMCode:    "EA",
+				UnitPrice:  "1.0000",
+			},
+		},
+		ActorID:   "user-purchase-ops",
+		RequestID: "req-" + id + "-create",
+	}); err != nil {
+		t.Fatalf("create purchase order: %v", err)
+	}
+	if _, err := service.SubmitPurchaseOrder(context.Background(), purchaseapp.PurchaseOrderActionInput{
+		ID:        id,
+		ActorID:   "user-purchase-ops",
+		RequestID: "req-" + id + "-submit",
+	}); err != nil {
+		t.Fatalf("submit purchase order: %v", err)
+	}
+	if _, err := service.ApprovePurchaseOrder(context.Background(), purchaseapp.PurchaseOrderActionInput{
+		ID:        id,
+		ActorID:   "user-purchase-lead",
+		RequestID: "req-" + id + "-approve",
+	}); err != nil {
+		t.Fatalf("approve purchase order: %v", err)
+	}
 }
 
 func mustWarehouseDailyBoardPurchaseOrder(
