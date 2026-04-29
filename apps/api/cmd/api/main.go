@@ -18,7 +18,9 @@ import (
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
 	purchaseapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/application"
+	purchasedomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/domain"
 	qcapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/application"
+	qcdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/domain"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	returnsdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
@@ -425,6 +427,27 @@ type warehouseFulfillmentMetricsResponse struct {
 	MissingOrders         int    `json:"missing_orders"`
 	HandoverOrders        int    `json:"handover_orders"`
 	GeneratedAt           string `json:"generated_at"`
+}
+
+type warehouseInboundMetricsResponse struct {
+	WarehouseID                string `json:"warehouse_id,omitempty"`
+	Date                       string `json:"date,omitempty"`
+	ShiftCode                  string `json:"shift_code,omitempty"`
+	PurchaseOrdersIncoming     int    `json:"purchase_orders_incoming"`
+	ReceivingPending           int    `json:"receiving_pending"`
+	ReceivingDraft             int    `json:"receiving_draft"`
+	ReceivingSubmitted         int    `json:"receiving_submitted"`
+	ReceivingInspectReady      int    `json:"receiving_inspect_ready"`
+	QCHold                     int    `json:"qc_hold"`
+	QCFail                     int    `json:"qc_fail"`
+	QCPass                     int    `json:"qc_pass"`
+	QCPartial                  int    `json:"qc_partial"`
+	SupplierRejections         int    `json:"supplier_rejections"`
+	SupplierRejectionDraft     int    `json:"supplier_rejection_draft"`
+	SupplierRejectionSubmitted int    `json:"supplier_rejection_submitted"`
+	SupplierRejectionConfirmed int    `json:"supplier_rejection_confirmed"`
+	SupplierRejectionCancelled int    `json:"supplier_rejection_cancelled"`
+	GeneratedAt                string `json:"generated_at"`
 }
 
 type availableStockResponse struct {
@@ -1599,6 +1622,19 @@ func main() {
 			authSessions,
 			auth.PermissionWarehouseView,
 			http.HandlerFunc(warehouseDailyBoardFulfillmentMetricsHandler(salesOrderService, listCarrierManifests)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/warehouse/daily-board/inbound-metrics",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionWarehouseView,
+			http.HandlerFunc(warehouseDailyBoardInboundMetricsHandler(
+				purchaseOrderService,
+				warehouseReceiving,
+				inboundQCInspections,
+				listSupplierRejections,
+			)),
 		),
 	)
 	mux.Handle(
@@ -4012,6 +4048,111 @@ func warehouseDailyBoardFulfillmentMetricsHandler(
 		)
 		response.WriteSuccess(w, r, http.StatusOK, payload)
 	}
+}
+
+type warehouseDailyBoardPurchaseOrderLister interface {
+	ListPurchaseOrders(context.Context, purchaseapp.PurchaseOrderFilter) ([]purchasedomain.PurchaseOrder, error)
+}
+
+type warehouseDailyBoardReceivingLister interface {
+	ListWarehouseReceivings(context.Context, domain.WarehouseReceivingFilter) ([]domain.WarehouseReceiving, error)
+}
+
+type warehouseDailyBoardInboundQCLister interface {
+	ListInboundQCInspections(context.Context, qcapp.InboundQCInspectionFilter) ([]qcdomain.InboundQCInspection, error)
+}
+
+type warehouseDailyBoardSupplierRejectionLister interface {
+	Execute(context.Context, domain.SupplierRejectionFilter) ([]domain.SupplierRejection, error)
+}
+
+func warehouseDailyBoardInboundMetricsHandler(
+	purchaseOrders warehouseDailyBoardPurchaseOrderLister,
+	receivings warehouseDailyBoardReceivingLister,
+	inboundQC warehouseDailyBoardInboundQCLister,
+	supplierRejections warehouseDailyBoardSupplierRejectionLister,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionWarehouseView) {
+			writePermissionDenied(w, r, auth.PermissionWarehouseView)
+			return
+		}
+
+		warehouseID := strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
+		date := strings.TrimSpace(r.URL.Query().Get("date"))
+		shiftCode := strings.TrimSpace(r.URL.Query().Get("shift_code"))
+
+		purchaseFilter := purchaseapp.PurchaseOrderFilter{WarehouseID: warehouseID}
+		if date != "" {
+			purchaseFilter.ExpectedFrom = date
+			purchaseFilter.ExpectedTo = date
+		}
+		orders, err := purchaseOrders.ListPurchaseOrders(r.Context(), purchaseFilter)
+		if err != nil {
+			writeWarehouseInboundMetricsLoadError(w, r)
+			return
+		}
+
+		receipts, err := receivings.ListWarehouseReceivings(
+			r.Context(),
+			domain.NewWarehouseReceivingFilter(warehouseID, ""),
+		)
+		if err != nil {
+			writeWarehouseInboundMetricsLoadError(w, r)
+			return
+		}
+
+		inspections, err := inboundQC.ListInboundQCInspections(
+			r.Context(),
+			qcapp.NewInboundQCInspectionFilter("", "", "", warehouseID),
+		)
+		if err != nil {
+			writeWarehouseInboundMetricsLoadError(w, r)
+			return
+		}
+
+		rejections, err := supplierRejections.Execute(
+			r.Context(),
+			domain.NewSupplierRejectionFilter("", warehouseID, ""),
+		)
+		if err != nil {
+			writeWarehouseInboundMetricsLoadError(w, r)
+			return
+		}
+
+		payload := newWarehouseInboundMetricsResponse(
+			orders,
+			receipts,
+			inspections,
+			rejections,
+			warehouseID,
+			date,
+			shiftCode,
+			time.Now().UTC(),
+		)
+		response.WriteSuccess(w, r, http.StatusOK, payload)
+	}
+}
+
+func writeWarehouseInboundMetricsLoadError(w http.ResponseWriter, r *http.Request) {
+	response.WriteError(
+		w,
+		r,
+		http.StatusConflict,
+		response.ErrorCodeConflict,
+		"Daily board inbound metrics could not be loaded",
+		nil,
+	)
 }
 
 func carrierManifestsHandler(
@@ -6437,6 +6578,130 @@ func newWarehouseFulfillmentMetricsResponse(
 	payload.MissingOrders = len(missingOrderNos)
 
 	return payload
+}
+
+func newWarehouseInboundMetricsResponse(
+	orders []purchasedomain.PurchaseOrder,
+	receipts []domain.WarehouseReceiving,
+	inspections []qcdomain.InboundQCInspection,
+	rejections []domain.SupplierRejection,
+	warehouseID string,
+	date string,
+	shiftCode string,
+	generatedAt time.Time,
+) warehouseInboundMetricsResponse {
+	payload := warehouseInboundMetricsResponse{
+		WarehouseID: strings.TrimSpace(warehouseID),
+		Date:        strings.TrimSpace(date),
+		ShiftCode:   strings.TrimSpace(shiftCode),
+		GeneratedAt: generatedAt.UTC().Format(time.RFC3339),
+	}
+
+	for _, order := range orders {
+		if !matchesWarehouseID(order.WarehouseID, warehouseID) || !matchesBusinessDateString(order.ExpectedDate, date) {
+			continue
+		}
+		switch purchasedomain.NormalizePurchaseOrderStatus(order.Status) {
+		case purchasedomain.PurchaseOrderStatusApproved, purchasedomain.PurchaseOrderStatusPartiallyReceived:
+			payload.PurchaseOrdersIncoming++
+		}
+	}
+
+	for _, receipt := range receipts {
+		if !matchesWarehouseID(receipt.WarehouseID, warehouseID) || !matchesBusinessDateTime(receipt.CreatedAt, date) {
+			continue
+		}
+		switch domain.NormalizeWarehouseReceivingStatus(receipt.Status) {
+		case domain.WarehouseReceivingStatusDraft:
+			payload.ReceivingDraft++
+			payload.ReceivingPending++
+		case domain.WarehouseReceivingStatusSubmitted:
+			payload.ReceivingSubmitted++
+			payload.ReceivingPending++
+		case domain.WarehouseReceivingStatusInspectReady:
+			payload.ReceivingInspectReady++
+			payload.ReceivingPending++
+		}
+	}
+
+	for _, inspection := range inspections {
+		if !matchesWarehouseID(inspection.WarehouseID, warehouseID) || !matchesBusinessDateTime(inspection.CreatedAt, date) {
+			continue
+		}
+		if qcdomain.NormalizeInboundQCInspectionStatus(inspection.Status) != qcdomain.InboundQCInspectionStatusCompleted {
+			continue
+		}
+		switch qcdomain.NormalizeInboundQCResult(inspection.Result) {
+		case qcdomain.InboundQCResultHold:
+			payload.QCHold++
+		case qcdomain.InboundQCResultFail:
+			payload.QCFail++
+		case qcdomain.InboundQCResultPass:
+			payload.QCPass++
+		case qcdomain.InboundQCResultPartial:
+			payload.QCPartial++
+		}
+	}
+
+	for _, rejection := range rejections {
+		if !matchesWarehouseID(rejection.WarehouseID, warehouseID) || !matchesBusinessDateTime(rejection.CreatedAt, date) {
+			continue
+		}
+		switch domain.NormalizeSupplierRejectionStatus(rejection.Status) {
+		case domain.SupplierRejectionStatusDraft:
+			payload.SupplierRejectionDraft++
+			payload.SupplierRejections++
+		case domain.SupplierRejectionStatusSubmitted:
+			payload.SupplierRejectionSubmitted++
+			payload.SupplierRejections++
+		case domain.SupplierRejectionStatusConfirmed:
+			payload.SupplierRejectionConfirmed++
+			payload.SupplierRejections++
+		case domain.SupplierRejectionStatusCancelled:
+			payload.SupplierRejectionCancelled++
+		}
+	}
+
+	return payload
+}
+
+func matchesWarehouseID(rowWarehouseID string, filterWarehouseID string) bool {
+	filterWarehouseID = strings.TrimSpace(filterWarehouseID)
+	if filterWarehouseID == "" {
+		return true
+	}
+
+	return strings.TrimSpace(rowWarehouseID) == filterWarehouseID
+}
+
+func matchesBusinessDateString(rowDate string, filterDate string) bool {
+	filterDate = strings.TrimSpace(filterDate)
+	if filterDate == "" {
+		return true
+	}
+
+	return strings.TrimSpace(rowDate) == filterDate
+}
+
+func matchesBusinessDateTime(rowTime time.Time, filterDate string) bool {
+	filterDate = strings.TrimSpace(filterDate)
+	if filterDate == "" {
+		return true
+	}
+	if rowTime.IsZero() {
+		return false
+	}
+
+	return businessDate(rowTime) == filterDate
+}
+
+func businessDate(value time.Time) string {
+	loc, err := time.LoadLocation(decimal.TimezoneHoChiMinh)
+	if err != nil {
+		loc = time.FixedZone(decimal.TimezoneHoChiMinh, 7*60*60)
+	}
+
+	return value.In(loc).Format("2006-01-02")
 }
 
 func carrierManifestOrderNoSet(manifests []shippingdomain.CarrierManifest) map[string]struct{} {

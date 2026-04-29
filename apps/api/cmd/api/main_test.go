@@ -15,7 +15,10 @@ import (
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
+	purchaseapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/application"
 	purchasedomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/domain"
+	qcapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/application"
+	qcdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/domain"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	returnsdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
@@ -1176,6 +1179,113 @@ func TestWarehouseDailyBoardFulfillmentMetricsMatchSalesAndManifestState(t *test
 	}
 }
 
+func TestWarehouseDailyBoardInboundMetricsHandlerSummarizesInboundState(t *testing.T) {
+	businessDay := "2026-04-29"
+	businessDayTimeUTC := time.Date(2026, 4, 28, 18, 0, 0, 0, time.UTC)
+	authConfig := auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}
+	handler := warehouseDailyBoardInboundMetricsHandler(
+		testWarehouseDailyBoardPurchaseOrderLister{orders: []purchasedomain.PurchaseOrder{
+			mustWarehouseDailyBoardPurchaseOrder(t, "po-approved", purchasedomain.PurchaseOrderStatusApproved, "wh-hcm-fg", businessDay),
+			mustWarehouseDailyBoardPurchaseOrder(t, "po-partial", purchasedomain.PurchaseOrderStatusPartiallyReceived, "wh-hcm-fg", businessDay),
+			mustWarehouseDailyBoardPurchaseOrder(t, "po-received", purchasedomain.PurchaseOrderStatusReceived, "wh-hcm-fg", businessDay),
+			mustWarehouseDailyBoardPurchaseOrder(t, "po-other-warehouse", purchasedomain.PurchaseOrderStatusApproved, "wh-da-nang", businessDay),
+			mustWarehouseDailyBoardPurchaseOrder(t, "po-other-day", purchasedomain.PurchaseOrderStatusApproved, "wh-hcm-fg", "2026-04-30"),
+		}},
+		testWarehouseDailyBoardReceivingLister{receipts: []inventorydomain.WarehouseReceiving{
+			mustWarehouseDailyBoardReceiving(t, "grn-draft", inventorydomain.WarehouseReceivingStatusDraft, "wh-hcm-fg", businessDayTimeUTC),
+			mustWarehouseDailyBoardReceiving(t, "grn-submitted", inventorydomain.WarehouseReceivingStatusSubmitted, "wh-hcm-fg", businessDayTimeUTC),
+			mustWarehouseDailyBoardReceiving(t, "grn-inspect", inventorydomain.WarehouseReceivingStatusInspectReady, "wh-hcm-fg", businessDayTimeUTC),
+			mustWarehouseDailyBoardReceiving(t, "grn-posted", inventorydomain.WarehouseReceivingStatusPosted, "wh-hcm-fg", businessDayTimeUTC),
+			mustWarehouseDailyBoardReceiving(t, "grn-other-warehouse", inventorydomain.WarehouseReceivingStatusDraft, "wh-da-nang", businessDayTimeUTC),
+		}},
+		testWarehouseDailyBoardInboundQCLister{inspections: []qcdomain.InboundQCInspection{
+			{ID: "iqc-hold", WarehouseID: "wh-hcm-fg", Status: qcdomain.InboundQCInspectionStatusCompleted, Result: qcdomain.InboundQCResultHold, CreatedAt: businessDayTimeUTC},
+			{ID: "iqc-fail", WarehouseID: "wh-hcm-fg", Status: qcdomain.InboundQCInspectionStatusCompleted, Result: qcdomain.InboundQCResultFail, CreatedAt: businessDayTimeUTC},
+			{ID: "iqc-pass", WarehouseID: "wh-hcm-fg", Status: qcdomain.InboundQCInspectionStatusCompleted, Result: qcdomain.InboundQCResultPass, CreatedAt: businessDayTimeUTC},
+			{ID: "iqc-partial", WarehouseID: "wh-hcm-fg", Status: qcdomain.InboundQCInspectionStatusCompleted, Result: qcdomain.InboundQCResultPartial, CreatedAt: businessDayTimeUTC},
+			{ID: "iqc-pending", WarehouseID: "wh-hcm-fg", Status: qcdomain.InboundQCInspectionStatusPending, CreatedAt: businessDayTimeUTC},
+			{ID: "iqc-other-warehouse", WarehouseID: "wh-da-nang", Status: qcdomain.InboundQCInspectionStatusCompleted, Result: qcdomain.InboundQCResultFail, CreatedAt: businessDayTimeUTC},
+		}},
+		testWarehouseDailyBoardSupplierRejectionLister{rejections: []inventorydomain.SupplierRejection{
+			{ID: "sr-draft", WarehouseID: "wh-hcm-fg", Status: inventorydomain.SupplierRejectionStatusDraft, CreatedAt: businessDayTimeUTC},
+			{ID: "sr-submitted", WarehouseID: "wh-hcm-fg", Status: inventorydomain.SupplierRejectionStatusSubmitted, CreatedAt: businessDayTimeUTC},
+			{ID: "sr-confirmed", WarehouseID: "wh-hcm-fg", Status: inventorydomain.SupplierRejectionStatusConfirmed, CreatedAt: businessDayTimeUTC},
+			{ID: "sr-cancelled", WarehouseID: "wh-hcm-fg", Status: inventorydomain.SupplierRejectionStatusCancelled, CreatedAt: businessDayTimeUTC},
+			{ID: "sr-other-day", WarehouseID: "wh-hcm-fg", Status: inventorydomain.SupplierRejectionStatusDraft, CreatedAt: time.Date(2026, 4, 30, 2, 0, 0, 0, time.UTC)},
+		}},
+	)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/warehouse/daily-board/inbound-metrics?warehouse_id=wh-hcm-fg&date=2026-04-29&shift_code=day",
+		nil,
+	)
+	req.Header.Set(response.HeaderRequestID, "req-warehouse-inbound-metrics")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(authConfig, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var payload response.SuccessEnvelope[warehouseInboundMetricsResponse]
+	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.PurchaseOrdersIncoming != 2 ||
+		payload.Data.ReceivingPending != 3 ||
+		payload.Data.ReceivingDraft != 1 ||
+		payload.Data.ReceivingSubmitted != 1 ||
+		payload.Data.ReceivingInspectReady != 1 ||
+		payload.Data.QCHold != 1 ||
+		payload.Data.QCFail != 1 ||
+		payload.Data.QCPass != 1 ||
+		payload.Data.QCPartial != 1 ||
+		payload.Data.SupplierRejections != 3 ||
+		payload.Data.SupplierRejectionDraft != 1 ||
+		payload.Data.SupplierRejectionSubmitted != 1 ||
+		payload.Data.SupplierRejectionConfirmed != 1 ||
+		payload.Data.SupplierRejectionCancelled != 1 {
+		t.Fatalf("metrics = %+v, want inbound source counts", payload.Data)
+	}
+	if payload.Data.WarehouseID != "wh-hcm-fg" || payload.Data.Date != businessDay || payload.Data.ShiftCode != "day" {
+		t.Fatalf("scope = %+v, want wh-hcm-fg/%s/day", payload.Data, businessDay)
+	}
+	if payload.Data.GeneratedAt == "" {
+		t.Fatal("generated_at is empty")
+	}
+}
+
+func TestWarehouseDailyBoardInboundMetricsHandlerRequiresWarehousePermission(t *testing.T) {
+	handler := warehouseDailyBoardInboundMetricsHandler(
+		testWarehouseDailyBoardPurchaseOrderLister{},
+		testWarehouseDailyBoardReceivingLister{},
+		testWarehouseDailyBoardInboundQCLister{},
+		testWarehouseDailyBoardSupplierRejectionLister{},
+	)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/warehouse/daily-board/inbound-metrics?warehouse_id=wh-hcm-fg&date=2026-04-29",
+		nil,
+	)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "sales@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleSalesOps)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+}
+
 type expectedFulfillmentMetrics struct {
 	total           int
 	newOrders       int
@@ -1241,6 +1351,176 @@ func expectedFulfillmentMetricsFromSources(
 	expected.missing = len(missingOrderNos)
 
 	return expected
+}
+
+type testWarehouseDailyBoardPurchaseOrderLister struct {
+	orders []purchasedomain.PurchaseOrder
+}
+
+func (l testWarehouseDailyBoardPurchaseOrderLister) ListPurchaseOrders(
+	_ context.Context,
+	_ purchaseapp.PurchaseOrderFilter,
+) ([]purchasedomain.PurchaseOrder, error) {
+	return append([]purchasedomain.PurchaseOrder(nil), l.orders...), nil
+}
+
+type testWarehouseDailyBoardReceivingLister struct {
+	receipts []inventorydomain.WarehouseReceiving
+}
+
+func (l testWarehouseDailyBoardReceivingLister) ListWarehouseReceivings(
+	_ context.Context,
+	_ inventorydomain.WarehouseReceivingFilter,
+) ([]inventorydomain.WarehouseReceiving, error) {
+	return append([]inventorydomain.WarehouseReceiving(nil), l.receipts...), nil
+}
+
+type testWarehouseDailyBoardInboundQCLister struct {
+	inspections []qcdomain.InboundQCInspection
+}
+
+func (l testWarehouseDailyBoardInboundQCLister) ListInboundQCInspections(
+	_ context.Context,
+	_ qcapp.InboundQCInspectionFilter,
+) ([]qcdomain.InboundQCInspection, error) {
+	return append([]qcdomain.InboundQCInspection(nil), l.inspections...), nil
+}
+
+type testWarehouseDailyBoardSupplierRejectionLister struct {
+	rejections []inventorydomain.SupplierRejection
+}
+
+func (l testWarehouseDailyBoardSupplierRejectionLister) Execute(
+	_ context.Context,
+	_ inventorydomain.SupplierRejectionFilter,
+) ([]inventorydomain.SupplierRejection, error) {
+	return append([]inventorydomain.SupplierRejection(nil), l.rejections...), nil
+}
+
+func mustWarehouseDailyBoardPurchaseOrder(
+	t *testing.T,
+	id string,
+	status purchasedomain.PurchaseOrderStatus,
+	warehouseID string,
+	expectedDate string,
+) purchasedomain.PurchaseOrder {
+	t.Helper()
+
+	order := approvedTestGoodsReceiptPurchaseOrder()
+	order.ID = id
+	order.PONo = strings.ToUpper(id)
+	order.WarehouseID = warehouseID
+	order.ExpectedDate = expectedDate
+
+	switch status {
+	case purchasedomain.PurchaseOrderStatusApproved:
+		return order
+	case purchasedomain.PurchaseOrderStatusPartiallyReceived:
+		partial, err := order.MarkPartiallyReceived("user-warehouse-lead", time.Date(2026, 4, 29, 9, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatalf("mark purchase order partially received: %v", err)
+		}
+		return partial
+	case purchasedomain.PurchaseOrderStatusReceived:
+		partial, err := order.MarkPartiallyReceived("user-warehouse-lead", time.Date(2026, 4, 29, 9, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatalf("mark purchase order partially received: %v", err)
+		}
+		received, err := partial.MarkReceived("user-warehouse-lead", time.Date(2026, 4, 29, 10, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatalf("mark purchase order received: %v", err)
+		}
+		return received
+	default:
+		order.Status = status
+		return order
+	}
+}
+
+func mustWarehouseDailyBoardReceiving(
+	t *testing.T,
+	id string,
+	status inventorydomain.WarehouseReceivingStatus,
+	warehouseID string,
+	createdAt time.Time,
+) inventorydomain.WarehouseReceiving {
+	t.Helper()
+
+	receipt, err := inventorydomain.NewWarehouseReceiving(inventorydomain.NewWarehouseReceivingInput{
+		ID:               id,
+		OrgID:            "org-my-pham",
+		ReceiptNo:        strings.ToUpper(id),
+		WarehouseID:      warehouseID,
+		WarehouseCode:    strings.ToUpper(warehouseID),
+		LocationID:       "loc-hcm-fg-recv-01",
+		LocationCode:     "FG-RECV-01",
+		ReferenceDocType: "purchase_order",
+		ReferenceDocID:   "po-approved",
+		SupplierID:       "supplier-local",
+		DeliveryNoteNo:   "DN-" + strings.ToUpper(id),
+		Lines: []inventorydomain.NewWarehouseReceivingLineInput{
+			{
+				ID:                  id + "-line-1",
+				PurchaseOrderLineID: "po-line-260427-api-001",
+				ItemID:              "item-cream-50g",
+				SKU:                 "CREAM-50G",
+				ItemName:            "Moisturizing Cream",
+				BatchID:             "batch-cream-2603b",
+				BatchNo:             "LOT-2603B",
+				LotNo:               "LOT-2603B",
+				ExpiryDate:          time.Date(2028, 3, 1, 0, 0, 0, 0, time.UTC),
+				Quantity:            decimal.MustQuantity("12"),
+				UOMCode:             "EA",
+				BaseUOMCode:         "EA",
+				PackagingStatus:     inventorydomain.ReceivingPackagingStatusIntact,
+				QCStatus:            inventorydomain.QCStatusPass,
+			},
+		},
+		CreatedBy: "user-warehouse-lead",
+		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
+	})
+	if err != nil {
+		t.Fatalf("new warehouse receiving: %v", err)
+	}
+
+	switch status {
+	case inventorydomain.WarehouseReceivingStatusDraft:
+		return receipt
+	case inventorydomain.WarehouseReceivingStatusSubmitted:
+		submitted, err := receipt.Submit("user-warehouse-lead", createdAt.Add(10*time.Minute))
+		if err != nil {
+			t.Fatalf("submit receiving: %v", err)
+		}
+		return submitted
+	case inventorydomain.WarehouseReceivingStatusInspectReady:
+		submitted, err := receipt.Submit("user-warehouse-lead", createdAt.Add(10*time.Minute))
+		if err != nil {
+			t.Fatalf("submit receiving: %v", err)
+		}
+		ready, err := submitted.MarkInspectReady("user-qa", createdAt.Add(20*time.Minute))
+		if err != nil {
+			t.Fatalf("mark receiving inspect ready: %v", err)
+		}
+		return ready
+	case inventorydomain.WarehouseReceivingStatusPosted:
+		submitted, err := receipt.Submit("user-warehouse-lead", createdAt.Add(10*time.Minute))
+		if err != nil {
+			t.Fatalf("submit receiving: %v", err)
+		}
+		ready, err := submitted.MarkInspectReady("user-qa", createdAt.Add(20*time.Minute))
+		if err != nil {
+			t.Fatalf("mark receiving inspect ready: %v", err)
+		}
+		posted, err := ready.Post("user-warehouse-lead", createdAt.Add(30*time.Minute))
+		if err != nil {
+			t.Fatalf("post receiving: %v", err)
+		}
+		return posted
+	default:
+		receipt.Status = status
+		return receipt
+	}
 }
 
 func TestConfirmCarrierManifestHandoverHandlerMarksManifestHandedOver(t *testing.T) {
