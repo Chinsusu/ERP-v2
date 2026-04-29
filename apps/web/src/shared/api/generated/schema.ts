@@ -681,6 +681,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/subcontract-orders/{subcontract_order_id}/report-factory-defect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Report subcontract finished goods factory defect */
+        post: operations["reportSubcontractFactoryDefect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/subcontract-orders/{subcontract_order_id}/accept": {
         parameters: {
             query?: never;
@@ -2313,6 +2330,8 @@ export interface components {
         /** @enum {string} */
         SubcontractFinishedGoodsReceiptStatus: "qc_hold";
         /** @enum {string} */
+        SubcontractFactoryClaimStatus: "open" | "acknowledged" | "resolved" | "closed" | "cancelled";
+        /** @enum {string} */
         SubcontractSampleApprovalStatus: "submitted" | "approved" | "rejected";
         /** @enum {string} */
         SubcontractPaymentMilestoneKind: "deposit" | "final_payment";
@@ -2335,6 +2354,9 @@ export interface components {
         };
         ReceiveSubcontractFinishedGoodsSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["ReceiveSubcontractFinishedGoodsResult"];
+        };
+        ReportSubcontractFactoryDefectSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["ReportSubcontractFactoryDefectResult"];
         };
         AcceptSubcontractFinishedGoodsSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["AcceptSubcontractFinishedGoodsResult"];
@@ -2485,6 +2507,25 @@ export interface components {
             /** Format: date-time */
             accepted_at?: string;
             note?: string;
+        };
+        ReportSubcontractFactoryDefectRequest: {
+            expected_version: number;
+            claim_id?: string;
+            claim_no?: string;
+            receipt_id: string;
+            receipt_no?: string;
+            reason_code?: string;
+            reason: string;
+            severity?: string;
+            affected_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_affected_qty?: components["schemas"]["Quantity"];
+            base_uom_code?: components["schemas"]["UOMCode"];
+            evidence: components["schemas"]["SubcontractEvidenceRequest"][];
+            owner_id?: string;
+            opened_by?: string;
+            /** Format: date-time */
+            opened_at?: string;
         };
         SubmitSubcontractSampleRequest: {
             expected_version: number;
@@ -2740,6 +2781,46 @@ export interface components {
             previous_status: components["schemas"]["SubcontractOrderStatus"];
             current_status: components["schemas"]["SubcontractOrderStatus"];
             audit_log_id?: string;
+        };
+        ReportSubcontractFactoryDefectResult: {
+            subcontract_order: components["schemas"]["SubcontractOrder"];
+            claim: components["schemas"]["SubcontractFactoryClaim"];
+            previous_status: components["schemas"]["SubcontractOrderStatus"];
+            current_status: components["schemas"]["SubcontractOrderStatus"];
+            audit_log_id?: string;
+        };
+        SubcontractFactoryClaim: {
+            id: string;
+            org_id: string;
+            claim_no: string;
+            subcontract_order_id: string;
+            subcontract_order_no: string;
+            factory_id: string;
+            factory_code?: string;
+            factory_name: string;
+            receipt_id: string;
+            receipt_no?: string;
+            reason_code?: string;
+            reason: string;
+            severity?: string;
+            status: components["schemas"]["SubcontractFactoryClaimStatus"];
+            affected_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_affected_qty: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            evidence?: components["schemas"]["SubcontractEvidence"][];
+            owner_id?: string;
+            opened_by: string;
+            /** Format: date-time */
+            opened_at: string;
+            /** Format: date-time */
+            due_at: string;
+            blocks_final_payment: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
         };
         SubcontractFinishedGoodsReceipt: {
             id: string;
@@ -5329,6 +5410,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReceiveSubcontractFinishedGoodsSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    reportSubcontractFactoryDefect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportSubcontractFactoryDefectRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract factory defect reported */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSubcontractFactoryDefectSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];
