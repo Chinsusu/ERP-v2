@@ -8,7 +8,9 @@ import (
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
+	purchasedomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
 
 func TestWarehouseReceivingPostCreatesStockMovementAndAudit(t *testing.T) {
@@ -105,8 +107,8 @@ func TestWarehouseReceivingPostRequiresBatchAndQCData(t *testing.T) {
 		ReceiptNo:        "GRN-260427-0999",
 		WarehouseID:      "wh-hcm-fg",
 		LocationID:       "loc-hcm-fg-recv-01",
-		ReferenceDocType: "purchase_order",
-		ReferenceDocID:   "PO-260427-0999",
+		ReferenceDocType: "manual_receiving",
+		ReferenceDocID:   "MANUAL-260427-0999",
 		SupplierID:       "supplier-local",
 		DeliveryNoteNo:   "DN-260427-0999",
 		Lines: []CreateWarehouseReceivingLineInput{
@@ -145,6 +147,72 @@ func TestWarehouseReceivingPostRequiresBatchAndQCData(t *testing.T) {
 	})
 	if !errors.Is(err, domain.ErrReceivingMissingBatchQCData) {
 		t.Fatalf("err = %v, want missing batch/qc data", err)
+	}
+}
+
+func TestWarehouseReceivingRejectsInvalidPurchaseOrderLinkedReceipt(t *testing.T) {
+	service, _, _ := newTestWarehouseReceivingService()
+	ctx := context.Background()
+
+	tests := []struct {
+		name    string
+		mutate  func(*CreateWarehouseReceivingInput)
+		wantErr error
+	}{
+		{
+			name: "supplier mismatch",
+			mutate: func(input *CreateWarehouseReceivingInput) {
+				input.SupplierID = "supplier-other"
+			},
+			wantErr: ErrReceivingPurchaseOrderMismatch,
+		},
+		{
+			name: "wrong po line",
+			mutate: func(input *CreateWarehouseReceivingInput) {
+				input.Lines[0].PurchaseOrderLineID = "po-line-missing"
+			},
+			wantErr: ErrReceivingPurchaseOrderMismatch,
+		},
+		{
+			name: "uom mismatch",
+			mutate: func(input *CreateWarehouseReceivingInput) {
+				input.Lines[0].UOMCode = "BOX"
+			},
+			wantErr: ErrReceivingPurchaseOrderMismatch,
+		},
+		{
+			name: "over receive",
+			mutate: func(input *CreateWarehouseReceivingInput) {
+				input.Lines[0].Quantity = "999"
+			},
+			wantErr: ErrReceivingQuantityExceedsPurchaseOrder,
+		},
+		{
+			name: "missing batch",
+			mutate: func(input *CreateWarehouseReceivingInput) {
+				input.Lines[0].BatchID = ""
+			},
+			wantErr: domain.ErrReceivingRequiredField,
+		},
+		{
+			name: "draft purchase order",
+			mutate: func(input *CreateWarehouseReceivingInput) {
+				input.ReferenceDocID = "po-draft-receiving-test"
+			},
+			wantErr: ErrReceivingPurchaseOrderInvalidState,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := validPurchaseOrderReceivingInputForTest()
+			tt.mutate(&input)
+
+			_, err := service.CreateWarehouseReceiving(ctx, input)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("err = %v, want %v", err, tt.wantErr)
+			}
+		})
 	}
 }
 
@@ -210,10 +278,126 @@ func newTestWarehouseReceivingService() (WarehouseReceivingService, *InMemorySto
 		NewPrototypeBatchCatalog(auditStore),
 		movementStore,
 		auditStore,
-	)
+	).WithPurchaseOrderReader(staticWarehouseReceivingPurchaseOrderReader{
+		orders: testWarehouseReceivingPurchaseOrders(),
+	})
 	service.clock = func() time.Time {
 		return time.Date(2026, 4, 27, 11, 0, 0, 0, time.UTC)
 	}
 
 	return service, movementStore, auditStore
+}
+
+func validPurchaseOrderReceivingInputForTest() CreateWarehouseReceivingInput {
+	return CreateWarehouseReceivingInput{
+		ID:               "grn-po-validation",
+		ReceiptNo:        "GRN-260427-VALIDATE",
+		WarehouseID:      "wh-hcm-fg",
+		LocationID:       "loc-hcm-fg-recv-01",
+		ReferenceDocType: "purchase_order",
+		ReferenceDocID:   "PO-260427-HYDRATE",
+		SupplierID:       "supplier-local",
+		DeliveryNoteNo:   "DN-260427-VALIDATE",
+		Lines: []CreateWarehouseReceivingLineInput{
+			{
+				PurchaseOrderLineID: "po-line-260427-hydrate-001",
+				BatchID:             "batch-cream-2603b",
+				Quantity:            "12",
+				UOMCode:             "EA",
+				BaseUOMCode:         "EA",
+				PackagingStatus:     "intact",
+			},
+		},
+		ActorID: "user-warehouse-lead",
+	}
+}
+
+type staticWarehouseReceivingPurchaseOrderReader struct {
+	orders map[string]purchasedomain.PurchaseOrder
+}
+
+func (r staticWarehouseReceivingPurchaseOrderReader) GetPurchaseOrder(
+	_ context.Context,
+	id string,
+) (purchasedomain.PurchaseOrder, error) {
+	order, ok := r.orders[id]
+	if !ok {
+		return purchasedomain.PurchaseOrder{}, errors.New("purchase order not found")
+	}
+
+	return order.Clone(), nil
+}
+
+func testWarehouseReceivingPurchaseOrders() map[string]purchasedomain.PurchaseOrder {
+	return map[string]purchasedomain.PurchaseOrder{
+		"PO-260427-HYDRATE":       approvedPurchaseOrderForReceiving("PO-260427-HYDRATE", "po-line-260427-hydrate-001", "item-cream-50g", "CREAM-50G", "Moisturizing Cream", "100"),
+		"po-draft-receiving-test": draftPurchaseOrderForReceiving("po-draft-receiving-test", "po-line-260427-hydrate-001", "item-cream-50g", "CREAM-50G", "Moisturizing Cream", "100"),
+		"PO-260427-0001":          approvedPurchaseOrderForReceiving("PO-260427-0001", "po-line-260427-0001-001", "item-serum-30ml", "SERUM-30ML", "Vitamin C Serum", "100"),
+		"PO-260427-0002":          approvedPurchaseOrderForReceiving("PO-260427-0002", "po-line-260427-0002-001", "item-serum-30ml", "SERUM-30ML", "Vitamin C Serum", "100"),
+		"PO-260427-0003":          approvedPurchaseOrderForReceiving("PO-260427-0003", "po-line-260427-0003-001", "item-cream-50g", "CREAM-50G", "Moisturizing Cream", "100"),
+	}
+}
+
+func approvedPurchaseOrderForReceiving(
+	id string,
+	lineID string,
+	itemID string,
+	sku string,
+	itemName string,
+	orderedQty string,
+) purchasedomain.PurchaseOrder {
+	order := draftPurchaseOrderForReceiving(id, lineID, itemID, sku, itemName, orderedQty)
+	submitted, err := order.Submit("user-purchase-ops", time.Date(2026, 4, 27, 9, 30, 0, 0, time.UTC))
+	if err != nil {
+		panic(err)
+	}
+	approved, err := submitted.Approve("user-purchase-ops", time.Date(2026, 4, 27, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		panic(err)
+	}
+
+	return approved
+}
+
+func draftPurchaseOrderForReceiving(
+	id string,
+	lineID string,
+	itemID string,
+	sku string,
+	itemName string,
+	orderedQty string,
+) purchasedomain.PurchaseOrder {
+	order, err := purchasedomain.NewPurchaseOrderDocument(purchasedomain.NewPurchaseOrderDocumentInput{
+		ID:            id,
+		OrgID:         "org-my-pham",
+		PONo:          id,
+		SupplierID:    "supplier-local",
+		SupplierCode:  "SUP-LOCAL",
+		SupplierName:  "Local Supplier",
+		WarehouseID:   "wh-hcm-fg",
+		WarehouseCode: "WH-HCM-FG",
+		ExpectedDate:  "2026-04-29",
+		CurrencyCode:  "VND",
+		Lines: []purchasedomain.NewPurchaseOrderLineInput{
+			{
+				ID:           lineID,
+				LineNo:       1,
+				ItemID:       itemID,
+				SKUCode:      sku,
+				ItemName:     itemName,
+				OrderedQty:   decimal.MustQuantity(orderedQty),
+				UOMCode:      "EA",
+				BaseUOMCode:  "EA",
+				UnitPrice:    decimal.MustUnitPrice("1"),
+				CurrencyCode: "VND",
+			},
+		},
+		CreatedAt: time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC),
+		CreatedBy: "user-purchase-ops",
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	return order
 }

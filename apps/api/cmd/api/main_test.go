@@ -10,10 +10,12 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
+	purchasedomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/domain"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	returnsdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
@@ -22,6 +24,7 @@ import (
 	shippingdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/shipping/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
 
@@ -3061,9 +3064,70 @@ func newTestGoodsReceiptService() (inventoryapp.WarehouseReceivingService, *audi
 		inventoryapp.NewPrototypeBatchCatalog(auditStore),
 		inventoryapp.NewInMemoryStockMovementStore(),
 		auditStore,
-	)
+	).WithPurchaseOrderReader(testGoodsReceiptPurchaseOrderReader{
+		order: approvedTestGoodsReceiptPurchaseOrder(),
+	})
 
 	return service, auditStore
+}
+
+type testGoodsReceiptPurchaseOrderReader struct {
+	order purchasedomain.PurchaseOrder
+}
+
+func (r testGoodsReceiptPurchaseOrderReader) GetPurchaseOrder(
+	_ context.Context,
+	id string,
+) (purchasedomain.PurchaseOrder, error) {
+	if r.order.ID != id {
+		return purchasedomain.PurchaseOrder{}, inventoryapp.ErrReceivingPurchaseOrderMismatch
+	}
+
+	return r.order.Clone(), nil
+}
+
+func approvedTestGoodsReceiptPurchaseOrder() purchasedomain.PurchaseOrder {
+	order, err := purchasedomain.NewPurchaseOrderDocument(purchasedomain.NewPurchaseOrderDocumentInput{
+		ID:            "PO-260427-API",
+		OrgID:         "org-my-pham",
+		PONo:          "PO-260427-API",
+		SupplierID:    "supplier-local",
+		SupplierCode:  "SUP-LOCAL",
+		SupplierName:  "Local Supplier",
+		WarehouseID:   "wh-hcm-fg",
+		WarehouseCode: "WH-HCM-FG",
+		ExpectedDate:  "2026-04-29",
+		CurrencyCode:  "VND",
+		Lines: []purchasedomain.NewPurchaseOrderLineInput{
+			{
+				ID:           "po-line-260427-api-001",
+				LineNo:       1,
+				ItemID:       "item-cream-50g",
+				SKUCode:      "CREAM-50G",
+				ItemName:     "Moisturizing Cream",
+				OrderedQty:   decimal.MustQuantity("12"),
+				UOMCode:      "EA",
+				BaseUOMCode:  "EA",
+				UnitPrice:    decimal.MustUnitPrice("1"),
+				CurrencyCode: "VND",
+			},
+		},
+		CreatedAt: time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC),
+		CreatedBy: "user-purchase-ops",
+	})
+	if err != nil {
+		panic(err)
+	}
+	submitted, err := order.Submit("user-purchase-ops", time.Date(2026, 4, 27, 9, 30, 0, 0, time.UTC))
+	if err != nil {
+		panic(err)
+	}
+	approved, err := submitted.Approve("user-purchase-ops", time.Date(2026, 4, 27, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		panic(err)
+	}
+
+	return approved
 }
 
 func mustDraftCarrierManifestForHandler(t *testing.T) shippingdomain.CarrierManifest {
