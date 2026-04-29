@@ -86,6 +86,28 @@ func TestStockMovementAdjustmentIsAuditable(t *testing.T) {
 	}
 }
 
+func TestSubcontractReceiptQCHoldDoesNotIncreaseAvailable(t *testing.T) {
+	movement, err := NewStockMovement(validMovementInput(func(input *NewStockMovementInput) {
+		input.MovementType = MovementSubcontractReceipt
+		input.StockStatus = StockStatusQCHold
+		input.Quantity = decimal.MustQuantity("80")
+		input.SourceDocType = "subcontract_finished_goods_receipt"
+		input.SourceDocID = "sfgr_001"
+		input.Reason = "subcontract finished goods received into qc hold"
+	}))
+	if err != nil {
+		t.Fatalf("new movement: %v", err)
+	}
+
+	delta, err := movement.BalanceDelta()
+	if err != nil {
+		t.Fatalf("balance delta: %v", err)
+	}
+	if delta.OnHand != "80.000000" || !delta.Available.IsZero() || !delta.Reserved.IsZero() {
+		t.Fatalf("delta = %+v, want on hand +80 and no available/reserved change", delta)
+	}
+}
+
 func validMovementInput(mutators ...func(*NewStockMovementInput)) NewStockMovementInput {
 	input := NewStockMovementInput{
 		MovementNo:    "MOV-20260426-0001",

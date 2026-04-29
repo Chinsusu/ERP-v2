@@ -206,6 +206,16 @@ type IssueSubcontractMaterialLineInput struct {
 	ConversionFactor    decimal.Decimal
 }
 
+type ReceiveSubcontractFinishedGoodsInput struct {
+	ReceiptQty       decimal.Decimal
+	UOMCode          string
+	BaseReceiptQty   decimal.Decimal
+	BaseUOMCode      string
+	ConversionFactor decimal.Decimal
+	ActorID          string
+	ChangedAt        time.Time
+}
+
 var subcontractOrderTransitions = map[SubcontractOrderStatus][]SubcontractOrderStatus{
 	SubcontractOrderStatusDraft: {
 		SubcontractOrderStatusSubmitted,
@@ -738,6 +748,79 @@ func (o SubcontractOrder) StartMassProduction(actorID string, changedAt time.Tim
 
 func (o SubcontractOrder) MarkFinishedGoodsReceived(actorID string, changedAt time.Time) (SubcontractOrder, error) {
 	return o.TransitionTo(SubcontractOrderStatusFinishedGoodsReceived, actorID, changedAt)
+}
+
+func (o SubcontractOrder) ReceiveFinishedGoods(input ReceiveSubcontractFinishedGoodsInput) (SubcontractOrder, error) {
+	actorID := strings.TrimSpace(input.ActorID)
+	if actorID == "" {
+		return SubcontractOrder{}, ErrSubcontractOrderTransitionActorRequired
+	}
+	status := NormalizeSubcontractOrderStatus(o.Status)
+	if status != SubcontractOrderStatusMassProductionStarted && status != SubcontractOrderStatusFinishedGoodsReceived {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidTransition
+	}
+	changedAt := input.ChangedAt
+	if changedAt.IsZero() {
+		changedAt = time.Now().UTC()
+	}
+
+	uomCode := subcontractOrderFirstNonBlank(input.UOMCode, o.UOMCode.String())
+	baseUOMCode := subcontractOrderFirstNonBlank(input.BaseUOMCode, o.BaseUOMCode.String())
+	conversionFactor := input.ConversionFactor
+	if strings.TrimSpace(conversionFactor.String()) == "" {
+		conversionFactor = o.ConversionFactor
+	}
+	receiptQty, baseReceiptQty, normalizedUOMCode, normalizedBaseUOMCode, normalizedConversionFactor, err := normalizeSubcontractOrderQuantitySet(
+		input.ReceiptQty,
+		input.BaseReceiptQty,
+		uomCode,
+		baseUOMCode,
+		conversionFactor,
+		true,
+	)
+	if err != nil {
+		return SubcontractOrder{}, err
+	}
+	if normalizedUOMCode != o.UOMCode || normalizedBaseUOMCode != o.BaseUOMCode || normalizedConversionFactor != o.ConversionFactor {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+	}
+
+	updated := o.Clone()
+	if status == SubcontractOrderStatusMassProductionStarted {
+		updated, err = o.TransitionTo(SubcontractOrderStatusFinishedGoodsReceived, actorID, changedAt)
+		if err != nil {
+			return SubcontractOrder{}, err
+		}
+	} else {
+		updated.UpdatedAt = changedAt.UTC()
+		updated.UpdatedBy = actorID
+		if updated.Version > 0 {
+			updated.Version++
+		}
+	}
+
+	nextReceivedQty, err := decimal.AddQuantity(updated.ReceivedQty, receiptQty)
+	if err != nil {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+	}
+	nextBaseReceivedQty, err := decimal.AddQuantity(updated.BaseReceivedQty, baseReceiptQty)
+	if err != nil {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+	}
+	if err := validateSubcontractOrderProgressQuantity(nextReceivedQty, updated.PlannedQty); err != nil {
+		return SubcontractOrder{}, err
+	}
+	if err := validateSubcontractOrderProgressQuantity(nextBaseReceivedQty, updated.BasePlannedQty); err != nil {
+		return SubcontractOrder{}, err
+	}
+
+	updated.ReceivedQty = nextReceivedQty
+	updated.BaseReceivedQty = nextBaseReceivedQty
+	if err := updated.Validate(); err != nil {
+		return SubcontractOrder{}, err
+	}
+
+	return updated, nil
 }
 
 func (o SubcontractOrder) StartQC(actorID string, changedAt time.Time) (SubcontractOrder, error) {
