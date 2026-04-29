@@ -76,13 +76,17 @@ func TestWarehouseReceivingRejectsInvalidLocation(t *testing.T) {
 		LocationID:       "loc-hcm-rm-recv-01",
 		ReferenceDocType: "purchase_order",
 		ReferenceDocID:   "PO-260427-0100",
+		SupplierID:       "supplier-local",
+		DeliveryNoteNo:   "DN-260427-0100",
 		Lines: []CreateWarehouseReceivingLineInput{
 			{
-				ItemID:      "item-cream-50g",
-				SKU:         "CREAM-50G",
-				BatchID:     "batch-cream-2603b",
-				Quantity:    "12",
-				BaseUOMCode: "EA",
+				PurchaseOrderLineID: "po-line-260427-0100-001",
+				ItemID:              "item-cream-50g",
+				SKU:                 "CREAM-50G",
+				BatchID:             "batch-cream-2603b",
+				Quantity:            "12",
+				BaseUOMCode:         "EA",
+				PackagingStatus:     "intact",
 			},
 		},
 		ActorID: "user-warehouse-lead",
@@ -103,13 +107,17 @@ func TestWarehouseReceivingPostRequiresBatchAndQCData(t *testing.T) {
 		LocationID:       "loc-hcm-fg-recv-01",
 		ReferenceDocType: "purchase_order",
 		ReferenceDocID:   "PO-260427-0999",
+		SupplierID:       "supplier-local",
+		DeliveryNoteNo:   "DN-260427-0999",
 		Lines: []CreateWarehouseReceivingLineInput{
 			{
-				ID:          "line-missing-batch-qc",
-				ItemID:      "item-cream-50g",
-				SKU:         "CREAM-50G",
-				Quantity:    "12",
-				BaseUOMCode: "EA",
+				ID:                  "line-missing-batch-qc",
+				PurchaseOrderLineID: "po-line-260427-0999-001",
+				ItemID:              "item-cream-50g",
+				SKU:                 "CREAM-50G",
+				Quantity:            "12",
+				BaseUOMCode:         "EA",
+				PackagingStatus:     "intact",
 			},
 		},
 		ActorID: "user-warehouse-lead",
@@ -137,6 +145,59 @@ func TestWarehouseReceivingPostRequiresBatchAndQCData(t *testing.T) {
 	})
 	if !errors.Is(err, domain.ErrReceivingMissingBatchQCData) {
 		t.Fatalf("err = %v, want missing batch/qc data", err)
+	}
+}
+
+func TestWarehouseReceivingCreateHydratesInboundFieldsFromBatch(t *testing.T) {
+	service, _, auditStore := newTestWarehouseReceivingService()
+
+	result, err := service.CreateWarehouseReceiving(context.Background(), CreateWarehouseReceivingInput{
+		ID:               "grn-hydrate-inbound-fields",
+		ReceiptNo:        "GRN-260427-HYDRATE",
+		WarehouseID:      "wh-hcm-fg",
+		LocationID:       "loc-hcm-fg-recv-01",
+		ReferenceDocType: "purchase_order",
+		ReferenceDocID:   "PO-260427-HYDRATE",
+		SupplierID:       "supplier-local",
+		DeliveryNoteNo:   "dn-260427-hydrate",
+		Lines: []CreateWarehouseReceivingLineInput{
+			{
+				PurchaseOrderLineID: "po-line-260427-hydrate-001",
+				BatchID:             "batch-cream-2603b",
+				Quantity:            "12",
+				UOMCode:             "ea",
+				BaseUOMCode:         "ea",
+				PackagingStatus:     "intact",
+			},
+		},
+		ActorID:   "user-warehouse-lead",
+		RequestID: "req-receive-hydrate",
+	})
+	if err != nil {
+		t.Fatalf("create receiving: %v", err)
+	}
+	if result.Receipt.DeliveryNoteNo != "DN-260427-HYDRATE" {
+		t.Fatalf("delivery note = %q, want normalized", result.Receipt.DeliveryNoteNo)
+	}
+	line := result.Receipt.Lines[0]
+	if line.ID != "line-001" ||
+		line.ItemID != "item-cream-50g" ||
+		line.SKU != "CREAM-50G" ||
+		line.BatchNo != "LOT-2603B" ||
+		line.LotNo != "LOT-2603B" ||
+		line.ExpiryDate.Format("2006-01-02") != "2028-03-01" ||
+		line.UOMCode.String() != "EA" ||
+		line.PackagingStatus != domain.ReceivingPackagingStatusIntact ||
+		line.QCStatus != domain.QCStatusPass {
+		t.Fatalf("line = %+v, want hydrated batch, expiry, UOM, packaging, QC", line)
+	}
+
+	logs, err := auditStore.List(context.Background(), audit.Query{Action: "inventory.receiving.created"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].AfterData["delivery_note_no"] != "DN-260427-HYDRATE" {
+		t.Fatalf("audit logs = %+v, want delivery note audit data", logs)
 	}
 }
 
