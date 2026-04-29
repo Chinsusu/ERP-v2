@@ -20,6 +20,7 @@ import (
 
 var ErrSubcontractOrderNotFound = errors.New("subcontract order not found")
 var ErrSubcontractOrderVersionConflict = errors.New("subcontract order version conflict")
+var ErrSubcontractSampleApprovalNotFound = errors.New("subcontract sample approval not found")
 
 const (
 	ErrorCodeSubcontractOrderNotFound        response.ErrorCode = "SUBCONTRACT_ORDER_NOT_FOUND"
@@ -30,6 +31,9 @@ const (
 	defaultSubcontractOrderOrgID     = "org-my-pham"
 	subcontractOrderEntityType       = "production.subcontract_order"
 	subcontractMaterialsIssuedAction = "subcontract.materials_issued"
+	subcontractSampleSubmittedAction = "subcontract.sample_submitted"
+	subcontractSampleApprovedAction  = "subcontract.sample_approved"
+	subcontractSampleRejectedAction  = "subcontract.sample_rejected"
 )
 
 type SubcontractOrderStore interface {
@@ -60,6 +64,12 @@ type SubcontractMaterialIssueMovementRecorder interface {
 	Record(ctx context.Context, movement inventorydomain.StockMovement) error
 }
 
+type SubcontractSampleApprovalStore interface {
+	Save(ctx context.Context, sampleApproval productiondomain.SubcontractSampleApproval) error
+	Get(ctx context.Context, id string) (productiondomain.SubcontractSampleApproval, error)
+	GetLatestBySubcontractOrder(ctx context.Context, subcontractOrderID string) (productiondomain.SubcontractSampleApproval, error)
+}
+
 type ConvertSubcontractOrderLineToBaseInput struct {
 	ItemID      string
 	SKU         string
@@ -84,6 +94,8 @@ type SubcontractOrderService struct {
 	materialTransferStore SubcontractMaterialTransferStore
 	materialIssueRecorder SubcontractMaterialIssueMovementRecorder
 	materialTransferBuild SubcontractMaterialTransferService
+	sampleApprovalStore   SubcontractSampleApprovalStore
+	sampleApprovalBuild   SubcontractSampleApprovalService
 	clock                 func() time.Time
 }
 
@@ -196,6 +208,41 @@ type IssueSubcontractMaterialsEvidenceInput struct {
 	Note         string
 }
 
+type SubmitSubcontractSampleInput struct {
+	ID               string
+	ExpectedVersion  int
+	SampleApprovalID string
+	SampleCode       string
+	FormulaVersion   string
+	SpecVersion      string
+	Evidence         []SubcontractSampleEvidenceInput
+	SubmittedBy      string
+	SubmittedAt      time.Time
+	Note             string
+	ActorID          string
+	RequestID        string
+}
+
+type DecideSubcontractSampleInput struct {
+	ID               string
+	ExpectedVersion  int
+	SampleApprovalID string
+	DecisionAt       time.Time
+	Reason           string
+	StorageStatus    string
+	ActorID          string
+	RequestID        string
+}
+
+type SubcontractSampleEvidenceInput struct {
+	ID           string
+	EvidenceType string
+	FileName     string
+	ObjectKey    string
+	ExternalURL  string
+	Note         string
+}
+
 type SubcontractOrderResult struct {
 	SubcontractOrder productiondomain.SubcontractOrder
 	AuditLogID       string
@@ -215,11 +262,24 @@ type IssueSubcontractMaterialsResult struct {
 	AuditLogID       string
 }
 
+type SubcontractSampleApprovalResult struct {
+	SubcontractOrder productiondomain.SubcontractOrder
+	SampleApproval   productiondomain.SubcontractSampleApproval
+	PreviousStatus   productiondomain.SubcontractOrderStatus
+	CurrentStatus    productiondomain.SubcontractOrderStatus
+	AuditLogID       string
+}
+
 type PrototypeSubcontractOrderStore struct {
 	mu       sync.RWMutex
 	records  map[string]productiondomain.SubcontractOrder
 	auditLog audit.LogStore
 	txCount  int
+}
+
+type PrototypeSubcontractSampleApprovalStore struct {
+	mu      sync.RWMutex
+	records map[string]productiondomain.SubcontractSampleApproval
 }
 
 type prototypeSubcontractOrderTx struct {
@@ -239,6 +299,7 @@ func NewSubcontractOrderService(
 		itemRead:              itemRead,
 		uomConverter:          uomConverter,
 		materialTransferBuild: NewSubcontractMaterialTransferService(),
+		sampleApprovalBuild:   NewSubcontractSampleApprovalService(),
 		clock:                 func() time.Time { return time.Now().UTC() },
 	}
 }
@@ -253,11 +314,23 @@ func (s SubcontractOrderService) WithMaterialIssueStores(
 	return s
 }
 
+func (s SubcontractOrderService) WithSampleApprovalStore(
+	sampleApprovalStore SubcontractSampleApprovalStore,
+) SubcontractOrderService {
+	s.sampleApprovalStore = sampleApprovalStore
+
+	return s
+}
+
 func NewPrototypeSubcontractOrderStore(auditLog audit.LogStore) *PrototypeSubcontractOrderStore {
 	return &PrototypeSubcontractOrderStore{
 		records:  make(map[string]productiondomain.SubcontractOrder),
 		auditLog: auditLog,
 	}
+}
+
+func NewPrototypeSubcontractSampleApprovalStore() *PrototypeSubcontractSampleApprovalStore {
+	return &PrototypeSubcontractSampleApprovalStore{records: make(map[string]productiondomain.SubcontractSampleApproval)}
 }
 
 func (s SubcontractOrderService) ListSubcontractOrders(
@@ -622,6 +695,203 @@ func (s SubcontractOrderService) IssueSubcontractMaterials(
 	return result, nil
 }
 
+func (s SubcontractOrderService) SubmitSubcontractSample(
+	ctx context.Context,
+	input SubmitSubcontractSampleInput,
+) (SubcontractSampleApprovalResult, error) {
+	if err := s.ensureReadyForSampleApproval(); err != nil {
+		return SubcontractSampleApprovalResult{}, err
+	}
+	if err := requireSubcontractOrderActor(input.ActorID); err != nil {
+		return SubcontractSampleApprovalResult{}, err
+	}
+
+	var result SubcontractSampleApprovalResult
+	err := s.store.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		current, err := tx.GetForUpdate(txCtx, input.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": strings.TrimSpace(input.ID)})
+		}
+		if err := ensureSubcontractOrderExpectedVersion(current, input.ExpectedVersion); err != nil {
+			return err
+		}
+
+		buildResult, err := s.sampleApprovalBuild.BuildSubmission(txCtx, BuildSubcontractSampleSubmissionInput{
+			ID:             input.SampleApprovalID,
+			Order:          current,
+			SampleCode:     input.SampleCode,
+			FormulaVersion: input.FormulaVersion,
+			SpecVersion:    input.SpecVersion,
+			Evidence:       subcontractSampleBuildEvidenceInputs(input.Evidence),
+			SubmittedBy:    input.SubmittedBy,
+			SubmittedAt:    input.SubmittedAt,
+			Note:           input.Note,
+			ActorID:        input.ActorID,
+		})
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"status":               string(current.Status),
+			})
+		}
+		if err := s.sampleApprovalStore.Save(txCtx, buildResult.SampleApproval); err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"sample_approval_id":   buildResult.SampleApproval.ID,
+			})
+		}
+		if err := tx.Save(txCtx, buildResult.UpdatedOrder); err != nil {
+			return err
+		}
+		afterData := subcontractOrderAuditData(buildResult.UpdatedOrder)
+		for key, value := range subcontractSampleApprovalAuditData(buildResult.SampleApproval) {
+			afterData[key] = value
+		}
+		log, err := newSubcontractOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			subcontractSampleSubmittedAction,
+			buildResult.UpdatedOrder,
+			subcontractOrderAuditData(current),
+			afterData,
+			buildResult.SampleApproval.SubmittedAt,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, log); err != nil {
+			return err
+		}
+		result = SubcontractSampleApprovalResult{
+			SubcontractOrder: buildResult.UpdatedOrder,
+			SampleApproval:   buildResult.SampleApproval,
+			PreviousStatus:   buildResult.PreviousOrderStatus,
+			CurrentStatus:    buildResult.CurrentOrderStatus,
+			AuditLogID:       log.ID,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return SubcontractSampleApprovalResult{}, err
+	}
+
+	return result, nil
+}
+
+func (s SubcontractOrderService) ApproveSubcontractSample(
+	ctx context.Context,
+	input DecideSubcontractSampleInput,
+) (SubcontractSampleApprovalResult, error) {
+	return s.decideSubcontractSample(ctx, input, subcontractSampleApprovedAction, func(
+		buildInput BuildSubcontractSampleDecisionInput,
+	) (SubcontractSampleApprovalBuildResult, error) {
+		return s.sampleApprovalBuild.BuildApproval(ctx, buildInput)
+	})
+}
+
+func (s SubcontractOrderService) RejectSubcontractSample(
+	ctx context.Context,
+	input DecideSubcontractSampleInput,
+) (SubcontractSampleApprovalResult, error) {
+	return s.decideSubcontractSample(ctx, input, subcontractSampleRejectedAction, func(
+		buildInput BuildSubcontractSampleDecisionInput,
+	) (SubcontractSampleApprovalBuildResult, error) {
+		return s.sampleApprovalBuild.BuildRejection(ctx, buildInput)
+	})
+}
+
+func (s SubcontractOrderService) decideSubcontractSample(
+	ctx context.Context,
+	input DecideSubcontractSampleInput,
+	action string,
+	decide func(BuildSubcontractSampleDecisionInput) (SubcontractSampleApprovalBuildResult, error),
+) (SubcontractSampleApprovalResult, error) {
+	if err := s.ensureReadyForSampleApproval(); err != nil {
+		return SubcontractSampleApprovalResult{}, err
+	}
+	if err := requireSubcontractOrderActor(input.ActorID); err != nil {
+		return SubcontractSampleApprovalResult{}, err
+	}
+
+	var result SubcontractSampleApprovalResult
+	err := s.store.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		current, err := tx.GetForUpdate(txCtx, input.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": strings.TrimSpace(input.ID)})
+		}
+		if err := ensureSubcontractOrderExpectedVersion(current, input.ExpectedVersion); err != nil {
+			return err
+		}
+		sampleApproval, err := s.getSubcontractSampleApprovalForDecision(txCtx, input.SampleApprovalID, current.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"sample_approval_id":   input.SampleApprovalID,
+			})
+		}
+
+		buildResult, err := decide(BuildSubcontractSampleDecisionInput{
+			Order:          current,
+			SampleApproval: sampleApproval,
+			DecisionBy:     input.ActorID,
+			DecisionAt:     input.DecisionAt,
+			Reason:         input.Reason,
+			StorageStatus:  input.StorageStatus,
+			ActorID:        input.ActorID,
+		})
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"status":               string(current.Status),
+				"sample_approval_id":   sampleApproval.ID,
+			})
+		}
+		if err := s.sampleApprovalStore.Save(txCtx, buildResult.SampleApproval); err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"sample_approval_id":   buildResult.SampleApproval.ID,
+			})
+		}
+		if err := tx.Save(txCtx, buildResult.UpdatedOrder); err != nil {
+			return err
+		}
+		afterData := subcontractOrderAuditData(buildResult.UpdatedOrder)
+		for key, value := range subcontractSampleApprovalAuditData(buildResult.SampleApproval) {
+			afterData[key] = value
+		}
+		log, err := newSubcontractOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			action,
+			buildResult.UpdatedOrder,
+			subcontractOrderAuditData(current),
+			afterData,
+			buildResult.SampleApproval.UpdatedAt,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, log); err != nil {
+			return err
+		}
+		result = SubcontractSampleApprovalResult{
+			SubcontractOrder: buildResult.UpdatedOrder,
+			SampleApproval:   buildResult.SampleApproval,
+			PreviousStatus:   buildResult.PreviousOrderStatus,
+			CurrentStatus:    buildResult.CurrentOrderStatus,
+			AuditLogID:       log.ID,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return SubcontractSampleApprovalResult{}, err
+	}
+
+	return result, nil
+}
+
 func (s SubcontractOrderService) transition(
 	ctx context.Context,
 	input SubcontractOrderActionInput,
@@ -933,12 +1203,38 @@ func (s SubcontractOrderService) ensureReadyForMaterialIssue() error {
 	return nil
 }
 
+func (s SubcontractOrderService) ensureReadyForSampleApproval() error {
+	if s.store == nil {
+		return errors.New("subcontract order store is required")
+	}
+	if s.sampleApprovalStore == nil {
+		return errors.New("subcontract sample approval store is required")
+	}
+	if s.sampleApprovalBuild.clock == nil {
+		s.sampleApprovalBuild = NewSubcontractSampleApprovalService()
+	}
+
+	return nil
+}
+
 func (s SubcontractOrderService) now() time.Time {
 	if s.clock == nil {
 		return time.Now().UTC()
 	}
 
 	return s.clock().UTC()
+}
+
+func (s SubcontractOrderService) getSubcontractSampleApprovalForDecision(
+	ctx context.Context,
+	sampleApprovalID string,
+	subcontractOrderID string,
+) (productiondomain.SubcontractSampleApproval, error) {
+	if strings.TrimSpace(sampleApprovalID) != "" {
+		return s.sampleApprovalStore.Get(ctx, sampleApprovalID)
+	}
+
+	return s.sampleApprovalStore.GetLatestBySubcontractOrder(ctx, subcontractOrderID)
 }
 
 func (s *PrototypeSubcontractOrderStore) List(
@@ -1061,6 +1357,82 @@ func (tx *prototypeSubcontractOrderTx) RecordAudit(
 	return nil
 }
 
+func (s *PrototypeSubcontractSampleApprovalStore) Save(
+	_ context.Context,
+	sampleApproval productiondomain.SubcontractSampleApproval,
+) error {
+	if s == nil {
+		return errors.New("subcontract sample approval store is required")
+	}
+	if strings.TrimSpace(sampleApproval.ID) == "" {
+		return productiondomain.ErrSubcontractSampleApprovalRequiredField
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.records[sampleApproval.ID] = sampleApproval.Clone()
+
+	return nil
+}
+
+func (s *PrototypeSubcontractSampleApprovalStore) Get(
+	_ context.Context,
+	id string,
+) (productiondomain.SubcontractSampleApproval, error) {
+	if s == nil {
+		return productiondomain.SubcontractSampleApproval{}, errors.New("subcontract sample approval store is required")
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	sampleApproval, ok := s.records[strings.TrimSpace(id)]
+	if !ok {
+		return productiondomain.SubcontractSampleApproval{}, ErrSubcontractSampleApprovalNotFound
+	}
+
+	return sampleApproval.Clone(), nil
+}
+
+func (s *PrototypeSubcontractSampleApprovalStore) GetLatestBySubcontractOrder(
+	_ context.Context,
+	subcontractOrderID string,
+) (productiondomain.SubcontractSampleApproval, error) {
+	if s == nil {
+		return productiondomain.SubcontractSampleApproval{}, errors.New("subcontract sample approval store is required")
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var latest productiondomain.SubcontractSampleApproval
+	for _, sampleApproval := range s.records {
+		if sampleApproval.SubcontractOrderID != strings.TrimSpace(subcontractOrderID) {
+			continue
+		}
+		if latest.ID == "" || sampleApproval.CreatedAt.After(latest.CreatedAt) {
+			latest = sampleApproval
+		}
+	}
+	if latest.ID == "" {
+		return productiondomain.SubcontractSampleApproval{}, ErrSubcontractSampleApprovalNotFound
+	}
+
+	return latest.Clone(), nil
+}
+
+func (s *PrototypeSubcontractSampleApprovalStore) Count() int {
+	if s == nil {
+		return 0
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return len(s.records)
+}
+
 func ensureSubcontractOrderExpectedVersion(order productiondomain.SubcontractOrder, expectedVersion int) error {
 	if expectedVersion <= 0 || order.Version == expectedVersion {
 		return nil
@@ -1129,6 +1501,24 @@ func subcontractMaterialIssueEvidenceInputs(
 	return evidence
 }
 
+func subcontractSampleBuildEvidenceInputs(
+	inputs []SubcontractSampleEvidenceInput,
+) []BuildSubcontractSampleEvidenceInput {
+	evidence := make([]BuildSubcontractSampleEvidenceInput, 0, len(inputs))
+	for _, input := range inputs {
+		evidence = append(evidence, BuildSubcontractSampleEvidenceInput{
+			ID:           input.ID,
+			EvidenceType: input.EvidenceType,
+			FileName:     input.FileName,
+			ObjectKey:    input.ObjectKey,
+			ExternalURL:  input.ExternalURL,
+			Note:         input.Note,
+		})
+	}
+
+	return evidence
+}
+
 func subcontractOrderValidationError(cause error, details map[string]any) error {
 	return apperrors.BadRequest(ErrorCodeSubcontractOrderValidation, "Subcontract order request is invalid", cause, details)
 }
@@ -1142,6 +1532,9 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 	}
 	if errors.Is(err, ErrSubcontractOrderNotFound) {
 		return apperrors.NotFound(ErrorCodeSubcontractOrderNotFound, "Subcontract order not found", err, details)
+	}
+	if errors.Is(err, ErrSubcontractSampleApprovalNotFound) {
+		return apperrors.NotFound(ErrorCodeSubcontractOrderNotFound, "Subcontract sample approval not found", err, details)
 	}
 	if errors.Is(err, productiondomain.ErrSubcontractOrderInvalidTransition) ||
 		errors.Is(err, productiondomain.ErrSubcontractOrderInvalidStatus) ||
@@ -1257,6 +1650,27 @@ func subcontractMaterialIssueAuditData(result SubcontractMaterialTransferBuildRe
 		"transfer_line_count":   len(result.Transfer.Lines),
 		"stock_movement_count":  len(result.StockMovements),
 	}
+}
+
+func subcontractSampleApprovalAuditData(sampleApproval productiondomain.SubcontractSampleApproval) map[string]any {
+	data := map[string]any{
+		"sample_approval_id": sampleApproval.ID,
+		"sample_code":        sampleApproval.SampleCode,
+		"sample_status":      string(sampleApproval.Status),
+		"evidence_count":     len(sampleApproval.Evidence),
+		"submitted_by":       sampleApproval.SubmittedBy,
+	}
+	if strings.TrimSpace(sampleApproval.DecisionBy) != "" {
+		data["decision_by"] = sampleApproval.DecisionBy
+	}
+	if strings.TrimSpace(sampleApproval.DecisionReason) != "" {
+		data["decision_reason"] = sampleApproval.DecisionReason
+	}
+	if strings.TrimSpace(sampleApproval.StorageStatus) != "" {
+		data["storage_status"] = sampleApproval.StorageStatus
+	}
+
+	return data
 }
 
 func subcontractOrderMatchesFilter(order productiondomain.SubcontractOrder, filter SubcontractOrderFilter) bool {
