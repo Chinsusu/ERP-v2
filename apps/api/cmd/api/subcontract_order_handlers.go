@@ -110,6 +110,35 @@ type issueSubcontractMaterialsRequest struct {
 	Evidence            []issueSubcontractMaterialsEvidenceRequest `json:"evidence"`
 }
 
+type subcontractSampleEvidenceRequest struct {
+	ID           string `json:"id"`
+	EvidenceType string `json:"evidence_type"`
+	FileName     string `json:"file_name"`
+	ObjectKey    string `json:"object_key"`
+	ExternalURL  string `json:"external_url"`
+	Note         string `json:"note"`
+}
+
+type submitSubcontractSampleRequest struct {
+	ExpectedVersion  int                                `json:"expected_version"`
+	SampleApprovalID string                             `json:"sample_approval_id"`
+	SampleCode       string                             `json:"sample_code"`
+	FormulaVersion   string                             `json:"formula_version"`
+	SpecVersion      string                             `json:"spec_version"`
+	SubmittedBy      string                             `json:"submitted_by"`
+	SubmittedAt      string                             `json:"submitted_at"`
+	Note             string                             `json:"note"`
+	Evidence         []subcontractSampleEvidenceRequest `json:"evidence"`
+}
+
+type decideSubcontractSampleRequest struct {
+	ExpectedVersion  int    `json:"expected_version"`
+	SampleApprovalID string `json:"sample_approval_id"`
+	DecisionAt       string `json:"decision_at"`
+	Reason           string `json:"reason"`
+	StorageStatus    string `json:"storage_status"`
+}
+
 type subcontractOrderMaterialLineResponse struct {
 	ID               string `json:"id"`
 	LineNo           int    `json:"line_no"`
@@ -293,6 +322,47 @@ type issueSubcontractMaterialsResponse struct {
 	Transfer         subcontractMaterialTransferResponse        `json:"transfer"`
 	StockMovements   []subcontractMaterialIssueMovementResponse `json:"stock_movements"`
 	AuditLogID       string                                     `json:"audit_log_id,omitempty"`
+}
+
+type subcontractSampleEvidenceResponse struct {
+	ID           string `json:"id"`
+	EvidenceType string `json:"evidence_type"`
+	FileName     string `json:"file_name,omitempty"`
+	ObjectKey    string `json:"object_key,omitempty"`
+	ExternalURL  string `json:"external_url,omitempty"`
+	Note         string `json:"note,omitempty"`
+	CreatedAt    string `json:"created_at"`
+	CreatedBy    string `json:"created_by"`
+}
+
+type subcontractSampleApprovalResponse struct {
+	ID                 string                              `json:"id"`
+	OrgID              string                              `json:"org_id"`
+	SubcontractOrderID string                              `json:"subcontract_order_id"`
+	SubcontractOrderNo string                              `json:"subcontract_order_no"`
+	SampleCode         string                              `json:"sample_code"`
+	FormulaVersion     string                              `json:"formula_version,omitempty"`
+	SpecVersion        string                              `json:"spec_version,omitempty"`
+	Status             string                              `json:"status"`
+	Evidence           []subcontractSampleEvidenceResponse `json:"evidence"`
+	SubmittedBy        string                              `json:"submitted_by"`
+	SubmittedAt        string                              `json:"submitted_at"`
+	DecisionBy         string                              `json:"decision_by,omitempty"`
+	DecisionAt         string                              `json:"decision_at,omitempty"`
+	DecisionReason     string                              `json:"decision_reason,omitempty"`
+	StorageStatus      string                              `json:"storage_status,omitempty"`
+	Note               string                              `json:"note,omitempty"`
+	CreatedAt          string                              `json:"created_at"`
+	UpdatedAt          string                              `json:"updated_at"`
+	Version            int                                 `json:"version"`
+}
+
+type subcontractSampleApprovalResultResponse struct {
+	SubcontractOrder subcontractOrderResponse          `json:"subcontract_order"`
+	SampleApproval   subcontractSampleApprovalResponse `json:"sample_approval"`
+	PreviousStatus   string                            `json:"previous_status"`
+	CurrentStatus    string                            `json:"current_status"`
+	AuditLogID       string                            `json:"audit_log_id,omitempty"`
 }
 
 func (a subcontractOrderUOMConverterAdapter) ConvertToBase(
@@ -528,6 +598,130 @@ func subcontractOrderIssueMaterialsHandler(service productionapp.SubcontractOrde
 	}
 }
 
+func subcontractOrderSubmitSampleHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload submitSubcontractSampleRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract sample payload", nil)
+			return
+		}
+		submittedAt, err := parseSubcontractOptionalTime(payload.SubmittedAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract sample payload", map[string]any{"field": "submitted_at"})
+			return
+		}
+
+		result, err := service.SubmitSubcontractSample(r.Context(), productionapp.SubmitSubcontractSampleInput{
+			ID:               r.PathValue("subcontract_order_id"),
+			ExpectedVersion:  payload.ExpectedVersion,
+			SampleApprovalID: payload.SampleApprovalID,
+			SampleCode:       payload.SampleCode,
+			FormulaVersion:   payload.FormulaVersion,
+			SpecVersion:      payload.SpecVersion,
+			Evidence:         subcontractSampleEvidenceInputs(payload.Evidence),
+			SubmittedBy:      payload.SubmittedBy,
+			SubmittedAt:      submittedAt,
+			Note:             payload.Note,
+			ActorID:          principal.UserID,
+			RequestID:        response.RequestID(r),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newSubcontractSampleApprovalResultResponse(result))
+	}
+}
+
+func subcontractOrderApproveSampleHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return subcontractOrderDecideSampleHandler(service, "approve")
+}
+
+func subcontractOrderRejectSampleHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return subcontractOrderDecideSampleHandler(service, "reject")
+}
+
+func subcontractOrderDecideSampleHandler(service productionapp.SubcontractOrderService, decision string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload decideSubcontractSampleRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract sample decision payload", nil)
+			return
+		}
+		decisionAt, err := parseSubcontractOptionalTime(payload.DecisionAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract sample decision payload", map[string]any{"field": "decision_at"})
+			return
+		}
+
+		input := productionapp.DecideSubcontractSampleInput{
+			ID:               r.PathValue("subcontract_order_id"),
+			ExpectedVersion:  payload.ExpectedVersion,
+			SampleApprovalID: payload.SampleApprovalID,
+			DecisionAt:       decisionAt,
+			Reason:           payload.Reason,
+			StorageStatus:    payload.StorageStatus,
+			ActorID:          principal.UserID,
+			RequestID:        response.RequestID(r),
+		}
+		var result productionapp.SubcontractSampleApprovalResult
+		switch decision {
+		case "approve":
+			result, err = service.ApproveSubcontractSample(r.Context(), input)
+		case "reject":
+			result, err = service.RejectSubcontractSample(r.Context(), input)
+		default:
+			response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newSubcontractSampleApprovalResultResponse(result))
+	}
+}
+
 func subcontractOrderActionHandler(service productionapp.SubcontractOrderService, action string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -674,6 +868,24 @@ func issueSubcontractMaterialEvidenceInputs(
 	evidence := make([]productionapp.IssueSubcontractMaterialsEvidenceInput, 0, len(inputs))
 	for _, input := range inputs {
 		evidence = append(evidence, productionapp.IssueSubcontractMaterialsEvidenceInput{
+			ID:           input.ID,
+			EvidenceType: input.EvidenceType,
+			FileName:     input.FileName,
+			ObjectKey:    input.ObjectKey,
+			ExternalURL:  input.ExternalURL,
+			Note:         input.Note,
+		})
+	}
+
+	return evidence
+}
+
+func subcontractSampleEvidenceInputs(
+	inputs []subcontractSampleEvidenceRequest,
+) []productionapp.SubcontractSampleEvidenceInput {
+	evidence := make([]productionapp.SubcontractSampleEvidenceInput, 0, len(inputs))
+	for _, input := range inputs {
+		evidence = append(evidence, productionapp.SubcontractSampleEvidenceInput{
 			ID:           input.ID,
 			EvidenceType: input.EvidenceType,
 			FileName:     input.FileName,
@@ -856,6 +1068,58 @@ func newSubcontractMaterialTransferResponse(
 			ObjectKey:    evidence.ObjectKey,
 			ExternalURL:  evidence.ExternalURL,
 			Note:         evidence.Note,
+		})
+	}
+
+	return payload
+}
+
+func newSubcontractSampleApprovalResultResponse(
+	result productionapp.SubcontractSampleApprovalResult,
+) subcontractSampleApprovalResultResponse {
+	return subcontractSampleApprovalResultResponse{
+		SubcontractOrder: newSubcontractOrderResponse(result.SubcontractOrder, ""),
+		SampleApproval:   newSubcontractSampleApprovalResponse(result.SampleApproval),
+		PreviousStatus:   string(result.PreviousStatus),
+		CurrentStatus:    string(result.CurrentStatus),
+		AuditLogID:       result.AuditLogID,
+	}
+}
+
+func newSubcontractSampleApprovalResponse(
+	sampleApproval productiondomain.SubcontractSampleApproval,
+) subcontractSampleApprovalResponse {
+	payload := subcontractSampleApprovalResponse{
+		ID:                 sampleApproval.ID,
+		OrgID:              sampleApproval.OrgID,
+		SubcontractOrderID: sampleApproval.SubcontractOrderID,
+		SubcontractOrderNo: sampleApproval.SubcontractOrderNo,
+		SampleCode:         sampleApproval.SampleCode,
+		FormulaVersion:     sampleApproval.FormulaVersion,
+		SpecVersion:        sampleApproval.SpecVersion,
+		Status:             string(sampleApproval.Status),
+		Evidence:           make([]subcontractSampleEvidenceResponse, 0, len(sampleApproval.Evidence)),
+		SubmittedBy:        sampleApproval.SubmittedBy,
+		SubmittedAt:        timeString(sampleApproval.SubmittedAt),
+		DecisionBy:         sampleApproval.DecisionBy,
+		DecisionAt:         timeString(sampleApproval.DecisionAt),
+		DecisionReason:     sampleApproval.DecisionReason,
+		StorageStatus:      sampleApproval.StorageStatus,
+		Note:               sampleApproval.Note,
+		CreatedAt:          timeString(sampleApproval.CreatedAt),
+		UpdatedAt:          timeString(sampleApproval.UpdatedAt),
+		Version:            sampleApproval.Version,
+	}
+	for _, evidence := range sampleApproval.Evidence {
+		payload.Evidence = append(payload.Evidence, subcontractSampleEvidenceResponse{
+			ID:           evidence.ID,
+			EvidenceType: evidence.EvidenceType,
+			FileName:     evidence.FileName,
+			ObjectKey:    evidence.ObjectKey,
+			ExternalURL:  evidence.ExternalURL,
+			Note:         evidence.Note,
+			CreatedAt:    timeString(evidence.CreatedAt),
+			CreatedBy:    evidence.CreatedBy,
 		})
 	}
 

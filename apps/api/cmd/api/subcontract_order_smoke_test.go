@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
@@ -296,6 +297,192 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 		}
 	})
 
+	t.Run("submits and approves subcontract samples with audit", func(t *testing.T) {
+		service, sampleStore, auditStore := newTestSubcontractSampleAPIService()
+		orderID := "sco-smoke-260429-sample"
+		createAndSubmitSubcontractOrderForTest(t, service, authConfig, orderID)
+		approveAndConfirmSubcontractOrderForTest(t, service, authConfig, orderID)
+		issueSubcontractMaterialsForTest(t, service, authConfig, orderID, 4)
+
+		submitReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+orderID+"/submit-sample", bytes.NewBufferString(`{
+				"expected_version": 5,
+				"sample_approval_id": "sample-smoke-260429-a",
+				"sample_code": "SCO-SMOKE-260429-SAMPLE-A",
+				"formula_version": "FORMULA-2026.04",
+				"spec_version": "SPEC-2026.04",
+				"submitted_by": "factory-user",
+				"submitted_at": "2026-04-29T10:30:00Z",
+				"evidence": [
+					{
+						"evidence_type": "photo",
+						"file_name": "sample-front.jpg",
+						"object_key": "subcontract/sample-smoke-260429-a/sample-front.jpg"
+					}
+				]
+			}`)),
+			authConfig,
+			auth.RoleProductionOps,
+		)
+		submitReq.SetPathValue("subcontract_order_id", orderID)
+		submitReq.Header.Set(response.HeaderRequestID, "req-subcontract-submit-sample")
+		submitRec := httptest.NewRecorder()
+
+		subcontractOrderSubmitSampleHandler(service).ServeHTTP(submitRec, submitReq)
+
+		if submitRec.Code != http.StatusOK {
+			t.Fatalf("submit sample status = %d, want %d: %s", submitRec.Code, http.StatusOK, submitRec.Body.String())
+		}
+		submitted := decodeSmokeSuccess[subcontractSampleApprovalResultResponse](t, submitRec).Data
+		if submitted.CurrentStatus != "sample_submitted" ||
+			submitted.SampleApproval.Status != "submitted" ||
+			submitted.SampleApproval.SampleCode != "SCO-SMOKE-260429-SAMPLE-A" ||
+			submitted.AuditLogID == "" {
+			t.Fatalf("submitted sample = %+v, want submitted sample and audit", submitted)
+		}
+
+		approveReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+orderID+"/approve-sample", bytes.NewBufferString(`{
+				"expected_version": 6,
+				"sample_approval_id": "sample-smoke-260429-a",
+				"reason": "Approved against retained standard",
+				"storage_status": "retained_in_qa_cabinet",
+				"decision_at": "2026-04-29T11:00:00Z"
+			}`)),
+			authConfig,
+			auth.RoleProductionOps,
+		)
+		approveReq.SetPathValue("subcontract_order_id", orderID)
+		approveReq.Header.Set(response.HeaderRequestID, "req-subcontract-approve-sample")
+		approveRec := httptest.NewRecorder()
+
+		subcontractOrderApproveSampleHandler(service).ServeHTTP(approveRec, approveReq)
+
+		if approveRec.Code != http.StatusOK {
+			t.Fatalf("approve sample status = %d, want %d: %s", approveRec.Code, http.StatusOK, approveRec.Body.String())
+		}
+		approved := decodeSmokeSuccess[subcontractSampleApprovalResultResponse](t, approveRec).Data
+		if approved.CurrentStatus != "sample_approved" ||
+			approved.SampleApproval.Status != "approved" ||
+			approved.SampleApproval.StorageStatus != "retained_in_qa_cabinet" {
+			t.Fatalf("approved sample = %+v, want approved sample and storage status", approved)
+		}
+		if sampleStore.Count() != 1 {
+			t.Fatalf("sample record count = %d, want 1 updated record", sampleStore.Count())
+		}
+		logs, err := auditStore.List(approveReq.Context(), audit.Query{EntityID: orderID})
+		if err != nil {
+			t.Fatalf("list sample audit logs: %v", err)
+		}
+		if !smokeAuditActionsContain(logs, "subcontract.sample_submitted") ||
+			!smokeAuditActionsContain(logs, "subcontract.sample_approved") {
+			t.Fatalf("audit logs = %+v, want sample submit and approve actions", logs)
+		}
+	})
+
+	t.Run("rejects subcontract sample with required reason and audit", func(t *testing.T) {
+		service, sampleStore, auditStore := newTestSubcontractSampleAPIService()
+		orderID := "sco-smoke-260429-sample-reject"
+		createAndSubmitSubcontractOrderForTest(t, service, authConfig, orderID)
+		approveAndConfirmSubcontractOrderForTest(t, service, authConfig, orderID)
+		issueSubcontractMaterialsForTest(t, service, authConfig, orderID, 4)
+
+		submitReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+orderID+"/submit-sample", bytes.NewBufferString(`{
+				"expected_version": 5,
+				"sample_approval_id": "sample-smoke-260429-reject",
+				"sample_code": "SCO-SMOKE-260429-SAMPLE-R",
+				"submitted_by": "factory-user",
+				"evidence": [
+					{
+						"evidence_type": "photo",
+						"object_key": "subcontract/sample-smoke-260429-reject/sample-front.jpg"
+					}
+				]
+			}`)),
+			authConfig,
+			auth.RoleProductionOps,
+		)
+		submitReq.SetPathValue("subcontract_order_id", orderID)
+		submitRec := httptest.NewRecorder()
+
+		subcontractOrderSubmitSampleHandler(service).ServeHTTP(submitRec, submitReq)
+
+		if submitRec.Code != http.StatusOK {
+			t.Fatalf("submit sample status = %d, want %d: %s", submitRec.Code, http.StatusOK, submitRec.Body.String())
+		}
+		rejectReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+orderID+"/reject-sample", bytes.NewBufferString(`{
+				"expected_version": 6,
+				"sample_approval_id": "sample-smoke-260429-reject",
+				"reason": "Label color does not match approved spec"
+			}`)),
+			authConfig,
+			auth.RoleProductionOps,
+		)
+		rejectReq.SetPathValue("subcontract_order_id", orderID)
+		rejectReq.Header.Set(response.HeaderRequestID, "req-subcontract-reject-sample")
+		rejectRec := httptest.NewRecorder()
+
+		subcontractOrderRejectSampleHandler(service).ServeHTTP(rejectRec, rejectReq)
+
+		if rejectRec.Code != http.StatusOK {
+			t.Fatalf("reject sample status = %d, want %d: %s", rejectRec.Code, http.StatusOK, rejectRec.Body.String())
+		}
+		rejected := decodeSmokeSuccess[subcontractSampleApprovalResultResponse](t, rejectRec).Data
+		if rejected.CurrentStatus != "sample_rejected" ||
+			rejected.SampleApproval.Status != "rejected" ||
+			rejected.SubcontractOrder.SampleRejectReason != "Label color does not match approved spec" {
+			t.Fatalf("rejected sample = %+v, want rejected order/sample with reason", rejected)
+		}
+		if sampleStore.Count() != 1 {
+			t.Fatalf("sample record count = %d, want 1 updated record", sampleStore.Count())
+		}
+		logs, err := auditStore.List(rejectReq.Context(), audit.Query{Action: "subcontract.sample_rejected"})
+		if err != nil {
+			t.Fatalf("list reject sample audit logs: %v", err)
+		}
+		if len(logs) != 1 {
+			t.Fatalf("reject sample audit count = %d, want 1", len(logs))
+		}
+	})
+
+	t.Run("denies sample submit without side effects", func(t *testing.T) {
+		service, sampleStore, auditStore := newTestSubcontractSampleAPIService()
+		req := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/sco-smoke-denied/submit-sample", bytes.NewBufferString(`{
+				"sample_approval_id": "sample-denied",
+				"sample_code": "SAMPLE-DENIED",
+				"evidence": [
+					{
+						"evidence_type": "photo",
+						"object_key": "subcontract/sample-denied/photo.jpg"
+					}
+				]
+			}`)),
+			authConfig,
+			auth.RoleFinanceOps,
+		)
+		req.SetPathValue("subcontract_order_id", "sco-smoke-denied")
+		rec := httptest.NewRecorder()
+
+		subcontractOrderSubmitSampleHandler(service).ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusForbidden, rec.Body.String())
+		}
+		if sampleStore.Count() != 0 {
+			t.Fatalf("sample record count = %d, want no side effect", sampleStore.Count())
+		}
+		logs, err := auditStore.List(req.Context(), audit.Query{Action: "subcontract.sample_submitted"})
+		if err != nil {
+			t.Fatalf("list sample audit logs: %v", err)
+		}
+		if len(logs) != 0 {
+			t.Fatalf("sample audit logs = %+v, want none", logs)
+		}
+	})
+
 	t.Run("denies finance role from approval action without audit", func(t *testing.T) {
 		service, auditStore := newTestSubcontractOrderAPIService()
 		createAndSubmitSubcontractOrderForTest(t, service, authConfig, "sco-smoke-260429-denied")
@@ -362,6 +549,31 @@ func newTestSubcontractMaterialIssueAPIService() (
 	).WithMaterialIssueStores(transferStore, movementStore)
 
 	return service, movementStore, transferStore, auditStore
+}
+
+func newTestSubcontractSampleAPIService() (
+	productionapp.SubcontractOrderService,
+	*productionapp.PrototypeSubcontractSampleApprovalStore,
+	audit.LogStore,
+) {
+	auditStore := audit.NewInMemoryLogStore()
+	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditStore)
+	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditStore)
+	uomCatalog := masterdataapp.NewPrototypeUOMCatalog()
+	subcontractOrderStore := productionapp.NewPrototypeSubcontractOrderStore(auditStore)
+	movementStore := inventoryapp.NewInMemoryStockMovementStore()
+	transferStore := productionapp.NewPrototypeSubcontractMaterialTransferStore()
+	sampleStore := productionapp.NewPrototypeSubcontractSampleApprovalStore()
+	service := productionapp.NewSubcontractOrderService(
+		subcontractOrderStore,
+		partyCatalog,
+		itemCatalog,
+		subcontractOrderUOMConverterAdapter{catalog: uomCatalog},
+	).
+		WithMaterialIssueStores(transferStore, movementStore).
+		WithSampleApprovalStore(sampleStore)
+
+	return service, sampleStore, auditStore
 }
 
 func createAndSubmitSubcontractOrderForTest(
@@ -453,4 +665,61 @@ func approveAndConfirmSubcontractOrderForTest(
 	if confirmRec.Code != http.StatusOK {
 		t.Fatalf("confirm factory status = %d, want %d: %s", confirmRec.Code, http.StatusOK, confirmRec.Body.String())
 	}
+}
+
+func issueSubcontractMaterialsForTest(
+	t *testing.T,
+	service productionapp.SubcontractOrderService,
+	authConfig auth.MockConfig,
+	id string,
+	expectedVersion int,
+) {
+	t.Helper()
+
+	issueReq := smokeRequestAsRole(
+		httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+id+"/issue-materials", bytes.NewBufferString(`{
+			"expected_version": `+strconv.Itoa(expectedVersion)+`,
+			"transfer_id": "`+id+`-transfer",
+			"transfer_no": "`+id+`-TRANSFER",
+			"source_warehouse_id": "wh-hcm-rm",
+			"source_warehouse_code": "WH-HCM-RM",
+			"handover_by": "warehouse-user",
+			"received_by": "factory-receiver",
+			"lines": [
+				{
+					"order_material_line_id": "`+id+`-material-01",
+					"issue_qty": "20",
+					"uom_code": "EA",
+					"batch_id": "batch-cream-2603b"
+				}
+			],
+			"evidence": [
+				{
+					"id": "`+id+`-handover",
+					"evidence_type": "handover",
+					"object_key": "subcontract/`+id+`/handover.pdf"
+				}
+			]
+		}`)),
+		authConfig,
+		auth.RoleProductionOps,
+	)
+	issueReq.SetPathValue("subcontract_order_id", id)
+	issueRec := httptest.NewRecorder()
+
+	subcontractOrderIssueMaterialsHandler(service).ServeHTTP(issueRec, issueReq)
+
+	if issueRec.Code != http.StatusOK {
+		t.Fatalf("issue materials status = %d, want %d: %s", issueRec.Code, http.StatusOK, issueRec.Body.String())
+	}
+}
+
+func smokeAuditActionsContain(logs []audit.Log, action string) bool {
+	for _, log := range logs {
+		if log.Action == action {
+			return true
+		}
+	}
+
+	return false
 }
