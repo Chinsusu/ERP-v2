@@ -39,6 +39,42 @@ func TestUOMCatalogConvertsGlobalMassAndVolumeToBaseUOM(t *testing.T) {
 	}
 }
 
+func TestUOMCatalogConvertsFractionalQuantitiesToBaseUOM(t *testing.T) {
+	catalog := NewPrototypeUOMCatalog()
+
+	mass, err := catalog.ConvertToBase(context.Background(), ConvertToBaseInput{
+		SKU:         "VITC-POWDER",
+		Quantity:    decimal.MustQuantity("0.125"),
+		FromUOMCode: "KG",
+		BaseUOMCode: "G",
+	})
+	if err != nil {
+		t.Fatalf("convert fractional mass: %v", err)
+	}
+	if mass.Quantity != "0.125000" ||
+		mass.SourceUOMCode != "KG" ||
+		mass.BaseQuantity != "125.000000" ||
+		mass.BaseUOMCode != "G" ||
+		mass.ConversionFactor != "1000.000000" {
+		t.Fatalf("mass result = %+v, want 0.125 KG converted to 125.000000 G", mass)
+	}
+
+	volume, err := catalog.ConvertToBase(context.Background(), ConvertToBaseInput{
+		SKU:         "TONER-LIQUID",
+		Quantity:    decimal.MustQuantity("0.001"),
+		FromUOMCode: "L",
+		BaseUOMCode: "ML",
+	})
+	if err != nil {
+		t.Fatalf("convert fractional volume: %v", err)
+	}
+	if volume.BaseQuantity != "1.000000" ||
+		volume.BaseUOMCode != "ML" ||
+		volume.ConversionFactor != "1000.000000" {
+		t.Fatalf("volume result = %+v, want 0.001 L converted to 1.000000 ML", volume)
+	}
+}
+
 func TestUOMCatalogConvertsItemSpecificPackUOM(t *testing.T) {
 	catalog := NewPrototypeUOMCatalog()
 

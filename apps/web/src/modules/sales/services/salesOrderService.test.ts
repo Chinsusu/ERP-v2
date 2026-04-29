@@ -133,6 +133,9 @@ describe("salesOrderService", () => {
     expect(order.lines[0]).toMatchObject({
       skuCode: "SERUM-30ML",
       orderedQty: "2.000000",
+      baseOrderedQty: "2.000000",
+      baseUomCode: "EA",
+      conversionFactor: "1.000000",
       unitPrice: "125000.5000",
       lineAmount: "249001.00"
     });
@@ -141,6 +144,33 @@ describe("salesOrderService", () => {
       discountAmount: "1000.00",
       totalAmount: "249001.00"
     });
+  });
+
+  it("calculates fractional quantity money with scaled decimals", async () => {
+    const order = await createSalesOrder({
+      customerId: "cus-dl-minh-anh",
+      channel: "B2B",
+      warehouseId: "wh-hcm-fg",
+      orderDate: "2026-04-28",
+      currencyCode: "VND",
+      lines: [
+        {
+          itemId: "item-serum-30ml",
+          orderedQty: "0.333333",
+          uomCode: "EA",
+          unitPrice: "3"
+        }
+      ]
+    });
+
+    expect(order.lines[0]).toMatchObject({
+      orderedQty: "0.333333",
+      baseOrderedQty: "0.333333",
+      baseUomCode: "EA",
+      unitPrice: "3.0000",
+      lineAmount: "1.00"
+    });
+    expect(order.totalAmount).toBe("1.00");
   });
 
   it("validates that a sales order has at least one line", async () => {
