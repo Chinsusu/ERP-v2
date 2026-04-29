@@ -1320,6 +1320,266 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /inbound-qc-inspections:
+    get:
+      summary: List inbound QC inspections
+      operationId: listInboundQCInspections
+      tags:
+        - qc
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/InboundQCInspectionStatus"
+        - name: goods_receipt_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: goods_receipt_line_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inbound QC inspection rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundQCInspectionListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    post:
+      summary: Create an inbound QC inspection for an inspection-ready goods receipt line
+      operationId: createInboundQCInspection
+      tags:
+        - qc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInboundQCInspectionRequest"
+      responses:
+        "201":
+          description: Inbound QC inspection created and audited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundQCActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /inbound-qc-inspections/{inspection_id}:
+    get:
+      summary: Get inbound QC inspection detail
+      operationId: getInboundQCInspection
+      tags:
+        - qc
+      parameters:
+        - name: inspection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inbound QC inspection detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundQCInspectionSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /inbound-qc-inspections/{inspection_id}/start:
+    post:
+      summary: Start an inbound QC inspection
+      operationId: startInboundQCInspection
+      tags:
+        - qc
+      parameters:
+        - name: inspection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inbound QC inspection started and audited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundQCActionResultSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /inbound-qc-inspections/{inspection_id}/pass:
+    post:
+      summary: Pass an inbound QC inspection
+      operationId: passInboundQCInspection
+      tags:
+        - qc
+      parameters:
+        - name: inspection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InboundQCDecisionRequest"
+      responses:
+        "200":
+          description: Inbound QC inspection passed and audited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundQCActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /inbound-qc-inspections/{inspection_id}/fail:
+    post:
+      summary: Fail an inbound QC inspection
+      operationId: failInboundQCInspection
+      tags:
+        - qc
+      parameters:
+        - name: inspection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InboundQCDecisionRequest"
+      responses:
+        "200":
+          description: Inbound QC inspection failed and audited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundQCActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /inbound-qc-inspections/{inspection_id}/partial:
+    post:
+      summary: Partially pass or hold an inbound QC inspection
+      operationId: partialInboundQCInspection
+      tags:
+        - qc
+      parameters:
+        - name: inspection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InboundQCDecisionRequest"
+      responses:
+        "200":
+          description: Inbound QC inspection partially decided and audited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundQCActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /inbound-qc-inspections/{inspection_id}/hold:
+    post:
+      summary: Put an inbound QC inspection on hold
+      operationId: holdInboundQCInspection
+      tags:
+        - qc
+      parameters:
+        - name: inspection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InboundQCDecisionRequest"
+      responses:
+        "200":
+          description: Inbound QC inspection held and audited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundQCActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /warehouse/end-of-day-reconciliations:
     get:
       summary: List warehouse end-of-day reconciliation sessions
@@ -3867,6 +4127,235 @@ components:
         source_doc_id:
           type: string
         source_doc_line_id:
+          type: string
+    InboundQCInspectionStatus:
+      type: string
+      enum:
+        - pending
+        - in_progress
+        - completed
+        - cancelled
+    InboundQCResult:
+      type: string
+      enum:
+        - pass
+        - fail
+        - hold
+        - partial
+    InboundQCChecklistStatus:
+      type: string
+      enum:
+        - pending
+        - pass
+        - fail
+        - not_applicable
+    InboundQCInspectionListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/InboundQCInspection"
+    InboundQCInspectionSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/InboundQCInspection"
+    InboundQCActionResultSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/InboundQCActionResult"
+    CreateInboundQCInspectionRequest:
+      type: object
+      required:
+        - goods_receipt_id
+        - goods_receipt_line_id
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        goods_receipt_id:
+          type: string
+        goods_receipt_line_id:
+          type: string
+        inspector_id:
+          type: string
+        checklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/InboundQCChecklistItem"
+        note:
+          type: string
+    InboundQCDecisionRequest:
+      type: object
+      properties:
+        passed_qty:
+          $ref: "#/components/schemas/Quantity"
+        failed_qty:
+          $ref: "#/components/schemas/Quantity"
+        hold_qty:
+          $ref: "#/components/schemas/Quantity"
+        checklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/InboundQCChecklistItem"
+        reason:
+          type: string
+        note:
+          type: string
+    InboundQCChecklistItem:
+      type: object
+      required:
+        - id
+        - code
+        - label
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        label:
+          type: string
+        required:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/InboundQCChecklistStatus"
+        note:
+          type: string
+    InboundQCInspection:
+      type: object
+      required:
+        - id
+        - org_id
+        - goods_receipt_id
+        - goods_receipt_line_id
+        - item_id
+        - sku
+        - batch_id
+        - batch_no
+        - lot_no
+        - expiry_date
+        - warehouse_id
+        - location_id
+        - quantity
+        - uom_code
+        - inspector_id
+        - status
+        - checklist
+        - created_at
+        - created_by
+        - updated_at
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        goods_receipt_id:
+          type: string
+        goods_receipt_no:
+          type: string
+        goods_receipt_line_id:
+          type: string
+        purchase_order_id:
+          type: string
+        purchase_order_line_id:
+          type: string
+        item_id:
+          type: string
+        sku:
+          type: string
+        item_name:
+          type: string
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        lot_no:
+          type: string
+        expiry_date:
+          type: string
+          format: date
+        warehouse_id:
+          type: string
+        location_id:
+          type: string
+        quantity:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        inspector_id:
+          type: string
+        status:
+          $ref: "#/components/schemas/InboundQCInspectionStatus"
+        result:
+          $ref: "#/components/schemas/InboundQCResult"
+        passed_qty:
+          $ref: "#/components/schemas/Quantity"
+        failed_qty:
+          $ref: "#/components/schemas/Quantity"
+        hold_qty:
+          $ref: "#/components/schemas/Quantity"
+        checklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/InboundQCChecklistItem"
+        reason:
+          type: string
+        note:
+          type: string
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        updated_by:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        started_by:
+          type: string
+        decided_at:
+          type: string
+          format: date-time
+        decided_by:
+          type: string
+    InboundQCActionResult:
+      type: object
+      required:
+        - inspection
+        - current_status
+      properties:
+        inspection:
+          $ref: "#/components/schemas/InboundQCInspection"
+        previous_status:
+          $ref: "#/components/schemas/InboundQCInspectionStatus"
+        current_status:
+          $ref: "#/components/schemas/InboundQCInspectionStatus"
+        previous_result:
+          $ref: "#/components/schemas/InboundQCResult"
+        current_result:
+          $ref: "#/components/schemas/InboundQCResult"
+        audit_log_id:
           type: string
     EndOfDayReconciliationStatus:
       type: string

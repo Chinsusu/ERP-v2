@@ -18,6 +18,7 @@ import (
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
 	purchaseapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/application"
+	qcapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/application"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	returnsdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
@@ -1101,6 +1102,8 @@ func main() {
 		stockMovementStore,
 		auditLogStore,
 	).WithPurchaseOrderReader(purchaseOrderService)
+	inboundQCStore := qcapp.NewPrototypeInboundQCInspectionStore()
+	inboundQCInspections := qcapp.NewInboundQCInspectionService(inboundQCStore, warehouseReceivingStore, auditLogStore)
 	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	listEndOfDayReconciliations := inventoryapp.NewListEndOfDayReconciliations(reconciliationStore)
 	closeEndOfDayReconciliation := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditLogStore)
@@ -1476,6 +1479,55 @@ func main() {
 			authSessions,
 			auth.PermissionWarehouseView,
 			http.HandlerFunc(goodsReceiptDetailHandler(warehouseReceiving)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/inbound-qc-inspections",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(inboundQCInspectionsHandler(inboundQCInspections)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/inbound-qc-inspections/{inspection_id}/start",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(inboundQCInspectionStartHandler(inboundQCInspections)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/inbound-qc-inspections/{inspection_id}/pass",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(inboundQCInspectionPassHandler(inboundQCInspections)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/inbound-qc-inspections/{inspection_id}/fail",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(inboundQCInspectionFailHandler(inboundQCInspections)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/inbound-qc-inspections/{inspection_id}/partial",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(inboundQCInspectionPartialHandler(inboundQCInspections)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/inbound-qc-inspections/{inspection_id}/hold",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(inboundQCInspectionHoldHandler(inboundQCInspections)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/inbound-qc-inspections/{inspection_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(inboundQCInspectionDetailHandler(inboundQCInspections)),
 		),
 	)
 	mux.Handle(
