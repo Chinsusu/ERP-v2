@@ -1,4 +1,5 @@
 import { ApiError, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
+import type { components, operations } from "../../../shared/api/generated/schema";
 import {
   decimalScales,
   formatDateVI,
@@ -17,111 +18,15 @@ import type {
   UpdatePurchaseOrderInput
 } from "../types";
 
-type PurchaseOrderLineApi = {
-  id: string;
-  line_no: number;
-  item_id: string;
-  sku_code: string;
-  item_name: string;
-  ordered_qty: string;
-  received_qty: string;
-  uom_code: string;
-  base_ordered_qty: string;
-  base_received_qty: string;
-  base_uom_code: string;
-  conversion_factor: string;
-  unit_price: string;
-  currency_code: string;
-  line_amount: string;
-  expected_date: string;
-  note?: string;
-};
-
-type PurchaseOrderApi = {
-  id: string;
-  po_no: string;
-  supplier_id: string;
-  supplier_code?: string;
-  supplier_name: string;
-  warehouse_id: string;
-  warehouse_code?: string;
-  expected_date: string;
-  status: PurchaseOrderStatus;
-  currency_code: string;
-  subtotal_amount: string;
-  total_amount: string;
-  note?: string;
-  lines: PurchaseOrderLineApi[];
-  audit_log_id?: string;
-  created_at: string;
-  updated_at: string;
-  submitted_at?: string;
-  approved_at?: string;
-  closed_at?: string;
-  cancelled_at?: string;
-  rejected_at?: string;
-  cancel_reason?: string;
-  reject_reason?: string;
-  version: number;
-};
-
-type PurchaseOrderListItemApi = {
-  id: string;
-  po_no: string;
-  supplier_id: string;
-  supplier_code?: string;
-  supplier_name: string;
-  warehouse_id: string;
-  warehouse_code?: string;
-  expected_date: string;
-  status: PurchaseOrderStatus;
-  currency_code: string;
-  total_amount: string;
-  line_count: number;
-  received_line_count: number;
-  created_at: string;
-  updated_at: string;
-  version: number;
-};
-
-type PurchaseOrderLineApiRequest = {
-  id?: string;
-  line_no?: number;
-  item_id: string;
-  ordered_qty: string;
-  uom_code: string;
-  unit_price: string;
-  currency_code?: string;
-  expected_date?: string;
-  note?: string;
-};
-
-type CreatePurchaseOrderApiRequest = {
-  id?: string;
-  po_no?: string;
-  supplier_id: string;
-  warehouse_id: string;
-  expected_date: string;
-  currency_code: string;
-  note?: string;
-  lines: PurchaseOrderLineApiRequest[];
-};
-
-type UpdatePurchaseOrderApiRequest = {
-  supplier_id?: string;
-  warehouse_id?: string;
-  expected_date?: string;
-  note?: string;
-  expected_version?: number;
-  lines?: PurchaseOrderLineApiRequest[];
-};
-
-type PurchaseOrderActionApiResult = {
-  purchase_order: PurchaseOrderApi;
-  previous_status: PurchaseOrderStatus;
-  current_status: PurchaseOrderStatus;
-  audit_log_id?: string;
-};
+type PurchaseOrderLineApi = components["schemas"]["PurchaseOrderLine"];
+type PurchaseOrderApi = components["schemas"]["PurchaseOrder"];
+type PurchaseOrderListItemApi = components["schemas"]["PurchaseOrderListItem"];
+type PurchaseOrderLineApiRequest = components["schemas"]["PurchaseOrderLineRequest"];
+type CreatePurchaseOrderApiRequest = components["schemas"]["CreatePurchaseOrderRequest"];
+type UpdatePurchaseOrderApiRequest = Partial<components["schemas"]["UpdatePurchaseOrderRequest"]>;
+type PurchaseOrderActionApiRequest = components["schemas"]["PurchaseOrderActionRequest"];
+type PurchaseOrderActionApiResult = components["schemas"]["PurchaseOrderActionResult"];
+type PurchaseOrderListApiQuery = operations["listPurchaseOrders"]["parameters"]["query"];
 
 type SupplierOption = {
   label: string;
@@ -337,7 +242,7 @@ async function runPurchaseOrderAction(
   reason?: string
 ): Promise<PurchaseOrderActionResult> {
   try {
-    const result = await apiPost<PurchaseOrderActionApiResult, { expected_version?: number; reason?: string }>(
+    const result = await apiPost<PurchaseOrderActionApiResult, PurchaseOrderActionApiRequest>(
       `/purchase-orders/${encodeURIComponent(id)}/${action}`,
       { expected_version: expectedVersion, reason },
       { accessToken: defaultAccessToken }
@@ -485,27 +390,25 @@ function toApiLineInput(line: PurchaseOrderLineInput): PurchaseOrderLineApiReque
 
 function purchaseOrderQueryString(query: PurchaseOrderQuery) {
   const params = new URLSearchParams();
-  if (query.search) {
-    params.set("search", query.search);
-  }
-  if (query.status) {
-    params.set("status", query.status);
-  }
-  if (query.supplierId) {
-    params.set("supplier_id", query.supplierId);
-  }
-  if (query.warehouseId) {
-    params.set("warehouse_id", query.warehouseId);
-  }
-  if (query.expectedFrom) {
-    params.set("expected_from", query.expectedFrom);
-  }
-  if (query.expectedTo) {
-    params.set("expected_to", query.expectedTo);
-  }
+  Object.entries(toApiPurchaseOrderQuery(query) ?? {}).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
 
   const value = params.toString();
   return value ? `?${value}` : "";
+}
+
+function toApiPurchaseOrderQuery(query: PurchaseOrderQuery): PurchaseOrderListApiQuery {
+  return {
+    search: query.search,
+    status: query.status,
+    supplier_id: query.supplierId,
+    warehouse_id: query.warehouseId,
+    expected_from: query.expectedFrom,
+    expected_to: query.expectedTo
+  };
 }
 
 function getPrototypePurchaseOrder(id: string) {

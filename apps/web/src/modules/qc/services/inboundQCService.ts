@@ -1,4 +1,5 @@
 import { ApiError, apiGetRaw, apiPost } from "../../../shared/api/client";
+import type { components, operations } from "../../../shared/api/generated/schema";
 import { decimalScales, formatDateTimeVI, formatQuantity, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type {
   CreateInboundQCInspectionInput,
@@ -12,81 +13,12 @@ import type {
   InboundQCResult
 } from "../types";
 
-type InboundQCChecklistItemApi = {
-  id: string;
-  code: string;
-  label: string;
-  required: boolean;
-  status: InboundQCChecklistStatus;
-  note?: string;
-};
-
-type InboundQCInspectionApi = {
-  id: string;
-  org_id: string;
-  goods_receipt_id: string;
-  goods_receipt_no: string;
-  goods_receipt_line_id: string;
-  purchase_order_id?: string;
-  purchase_order_line_id?: string;
-  item_id: string;
-  sku: string;
-  item_name?: string;
-  batch_id: string;
-  batch_no: string;
-  lot_no: string;
-  expiry_date: string;
-  warehouse_id: string;
-  location_id: string;
-  quantity: string;
-  uom_code: string;
-  inspector_id: string;
-  status: InboundQCInspectionStatus;
-  result?: InboundQCResult;
-  passed_qty: string;
-  failed_qty: string;
-  hold_qty: string;
-  checklist: InboundQCChecklistItemApi[];
-  reason?: string;
-  note?: string;
-  audit_log_id?: string;
-  created_at: string;
-  created_by: string;
-  updated_at: string;
-  updated_by: string;
-  started_at?: string;
-  started_by?: string;
-  decided_at?: string;
-  decided_by?: string;
-};
-
-type CreateInboundQCInspectionApiRequest = {
-  id?: string;
-  org_id?: string;
-  goods_receipt_id: string;
-  goods_receipt_line_id: string;
-  inspector_id?: string;
-  checklist?: InboundQCChecklistItemApi[];
-  note?: string;
-};
-
-type InboundQCDecisionApiRequest = {
-  passed_qty?: string;
-  failed_qty?: string;
-  hold_qty?: string;
-  checklist?: InboundQCChecklistItemApi[];
-  reason?: string;
-  note?: string;
-};
-
-type InboundQCActionResultApi = {
-  inspection: InboundQCInspectionApi;
-  previous_status?: InboundQCInspectionStatus;
-  current_status: InboundQCInspectionStatus;
-  previous_result?: InboundQCResult;
-  current_result?: InboundQCResult;
-  audit_log_id?: string;
-};
+type InboundQCChecklistItemApi = components["schemas"]["InboundQCChecklistItem"];
+type InboundQCInspectionApi = components["schemas"]["InboundQCInspection"];
+type CreateInboundQCInspectionApiRequest = components["schemas"]["CreateInboundQCInspectionRequest"];
+type InboundQCDecisionApiRequest = components["schemas"]["InboundQCDecisionRequest"];
+type InboundQCActionResultApi = components["schemas"]["InboundQCActionResult"];
+type InboundQCInspectionListApiQuery = operations["listInboundQCInspections"]["parameters"]["query"];
 
 type DecisionAction = "pass" | "fail" | "hold" | "partial";
 
@@ -468,21 +400,23 @@ function toApiChecklistItem(item: InboundQCChecklistItem): InboundQCChecklistIte
 
 function inboundQCQueryString(query: InboundQCInspectionQuery) {
   const params = new URLSearchParams();
-  if (query.status) {
-    params.set("status", query.status);
-  }
-  if (query.goodsReceiptId) {
-    params.set("goods_receipt_id", query.goodsReceiptId);
-  }
-  if (query.goodsReceiptLineId) {
-    params.set("goods_receipt_line_id", query.goodsReceiptLineId);
-  }
-  if (query.warehouseId) {
-    params.set("warehouse_id", query.warehouseId);
-  }
+  Object.entries(toApiInboundQCQuery(query) ?? {}).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
 
   const value = params.toString();
   return value ? `?${value}` : "";
+}
+
+function toApiInboundQCQuery(query: InboundQCInspectionQuery): InboundQCInspectionListApiQuery {
+  return {
+    status: query.status,
+    goods_receipt_id: query.goodsReceiptId,
+    goods_receipt_line_id: query.goodsReceiptLineId,
+    warehouse_id: query.warehouseId
+  };
 }
 
 function shouldUsePrototypeFallback(reason: unknown) {

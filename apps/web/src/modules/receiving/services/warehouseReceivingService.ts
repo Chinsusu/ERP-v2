@@ -1,4 +1,5 @@
 import { ApiError, apiGetRaw, apiPost } from "../../../shared/api/client";
+import type { components, operations } from "../../../shared/api/generated/schema";
 import { decimalScales, formatDateTimeVI, formatQuantity, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type {
   BatchQCStatus,
@@ -12,95 +13,12 @@ import type {
   ReceivingPackagingStatus
 } from "../types";
 
-type GoodsReceiptLineApi = {
-  id: string;
-  purchase_order_line_id?: string;
-  item_id: string;
-  sku: string;
-  item_name?: string;
-  batch_id?: string;
-  batch_no?: string;
-  lot_no?: string;
-  expiry_date?: string;
-  warehouse_id: string;
-  location_id: string;
-  quantity: string;
-  uom_code: string;
-  base_uom_code: string;
-  packaging_status: ReceivingPackagingStatus;
-  qc_status?: BatchQCStatus;
-};
-
-type GoodsReceiptStockMovementApi = {
-  movement_no: string;
-  movement_type: "purchase_receipt";
-  item_id: string;
-  batch_id: string;
-  warehouse_id: string;
-  location_id: string;
-  quantity: string;
-  base_uom_code: string;
-  stock_status: "available" | "qc_hold";
-  source_doc_id: string;
-  source_doc_line_id: string;
-};
-
-type GoodsReceiptApi = {
-  id: string;
-  org_id: string;
-  receipt_no: string;
-  warehouse_id: string;
-  warehouse_code: string;
-  location_id: string;
-  location_code: string;
-  reference_doc_type: string;
-  reference_doc_id: string;
-  supplier_id?: string;
-  delivery_note_no?: string;
-  status: GoodsReceiptStatus;
-  lines: GoodsReceiptLineApi[];
-  stock_movements?: GoodsReceiptStockMovementApi[];
-  created_by: string;
-  submitted_by?: string;
-  inspect_ready_by?: string;
-  posted_by?: string;
-  audit_log_id?: string;
-  created_at: string;
-  updated_at: string;
-  submitted_at?: string;
-  inspect_ready_at?: string;
-  posted_at?: string;
-};
-
-type CreateGoodsReceiptLineApiRequest = {
-  id?: string;
-  purchase_order_line_id: string;
-  item_id?: string;
-  sku?: string;
-  item_name?: string;
-  batch_id?: string;
-  batch_no?: string;
-  lot_no: string;
-  expiry_date: string;
-  quantity: string;
-  uom_code: string;
-  base_uom_code: string;
-  packaging_status: ReceivingPackagingStatus;
-  qc_status?: BatchQCStatus;
-};
-
-type CreateGoodsReceiptApiRequest = {
-  id?: string;
-  org_id?: string;
-  receipt_no?: string;
-  warehouse_id: string;
-  location_id: string;
-  reference_doc_type: string;
-  reference_doc_id: string;
-  supplier_id: string;
-  delivery_note_no: string;
-  lines: CreateGoodsReceiptLineApiRequest[];
-};
+type GoodsReceiptLineApi = components["schemas"]["GoodsReceiptLine"];
+type GoodsReceiptStockMovementApi = components["schemas"]["GoodsReceiptStockMovement"];
+type GoodsReceiptApi = components["schemas"]["GoodsReceipt"];
+type CreateGoodsReceiptLineApiRequest = components["schemas"]["CreateGoodsReceiptLineRequest"];
+type CreateGoodsReceiptApiRequest = components["schemas"]["CreateGoodsReceiptRequest"];
+type GoodsReceiptListApiQuery = operations["listGoodsReceipts"]["parameters"]["query"];
 
 type WarehouseOption = {
   label: string;
@@ -424,15 +342,21 @@ function toApiCreateInput(input: CreateGoodsReceiptInput): CreateGoodsReceiptApi
 
 function goodsReceiptQueryString(query: GoodsReceiptQuery) {
   const params = new URLSearchParams();
-  if (query.warehouseId) {
-    params.set("warehouse_id", query.warehouseId);
-  }
-  if (query.status) {
-    params.set("status", query.status);
-  }
+  Object.entries(toApiGoodsReceiptQuery(query) ?? {}).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
 
   const value = params.toString();
   return value ? `?${value}` : "";
+}
+
+function toApiGoodsReceiptQuery(query: GoodsReceiptQuery): GoodsReceiptListApiQuery {
+  return {
+    warehouse_id: query.warehouseId,
+    status: query.status
+  };
 }
 
 function shouldUsePrototypeFallback(reason: unknown) {

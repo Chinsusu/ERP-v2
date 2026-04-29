@@ -4638,6 +4638,7 @@ components:
         - unit_price
         - currency_code
         - line_amount
+        - expected_date
       properties:
         id:
           type: string
@@ -4679,6 +4680,7 @@ components:
       type: object
       required:
         - purchase_order
+        - previous_status
         - current_status
       properties:
         purchase_order:
@@ -4723,6 +4725,8 @@ components:
         - location_id
         - reference_doc_type
         - reference_doc_id
+        - supplier_id
+        - delivery_note_no
         - lines
       properties:
         id:
@@ -4743,6 +4747,8 @@ components:
           example: PO-260427-0001
         supplier_id:
           type: string
+        delivery_note_no:
+          type: string
         lines:
           type: array
           minItems: 1
@@ -4751,10 +4757,17 @@ components:
     CreateGoodsReceiptLineRequest:
       type: object
       required:
+        - purchase_order_line_id
+        - lot_no
+        - expiry_date
         - quantity
+        - uom_code
         - base_uom_code
+        - packaging_status
       properties:
         id:
+          type: string
+        purchase_order_line_id:
           type: string
         item_id:
           type: string
@@ -4766,10 +4779,24 @@ components:
           type: string
         batch_no:
           type: string
+        lot_no:
+          type: string
+        expiry_date:
+          type: string
+          format: date
         quantity:
           $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
         base_uom_code:
           $ref: "#/components/schemas/UOMCode"
+        packaging_status:
+          type: string
+          enum:
+            - intact
+            - damaged
+            - missing_label
+            - leaking
         qc_status:
           $ref: "#/components/schemas/BatchQCStatus"
     GoodsReceipt:
@@ -4810,6 +4837,8 @@ components:
           type: string
         supplier_id:
           type: string
+        delivery_note_no:
+          type: string
         status:
           $ref: "#/components/schemas/GoodsReceiptStatus"
         lines:
@@ -4849,14 +4878,19 @@ components:
       type: object
       required:
         - id
+        - purchase_order_line_id
         - item_id
         - sku
         - warehouse_id
         - location_id
         - quantity
+        - uom_code
         - base_uom_code
+        - packaging_status
       properties:
         id:
+          type: string
+        purchase_order_line_id:
           type: string
         item_id:
           type: string
@@ -4868,14 +4902,28 @@ components:
           type: string
         batch_no:
           type: string
+        lot_no:
+          type: string
+        expiry_date:
+          type: string
+          format: date
         warehouse_id:
           type: string
         location_id:
           type: string
         quantity:
           $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
         base_uom_code:
           $ref: "#/components/schemas/UOMCode"
+        packaging_status:
+          type: string
+          enum:
+            - intact
+            - damaged
+            - missing_label
+            - leaking
         qc_status:
           $ref: "#/components/schemas/BatchQCStatus"
     GoodsReceiptStockMovement:
@@ -5015,6 +5063,8 @@ components:
         - id
         - code
         - label
+        - required
+        - status
       properties:
         id:
           type: string
@@ -5034,9 +5084,13 @@ components:
         - id
         - org_id
         - goods_receipt_id
+        - goods_receipt_no
         - goods_receipt_line_id
+        - purchase_order_id
+        - purchase_order_line_id
         - item_id
         - sku
+        - item_name
         - batch_id
         - batch_no
         - lot_no
@@ -5047,10 +5101,14 @@ components:
         - uom_code
         - inspector_id
         - status
+        - passed_qty
+        - failed_qty
+        - hold_qty
         - checklist
         - created_at
         - created_by
         - updated_at
+        - updated_by
       properties:
         id:
           type: string
