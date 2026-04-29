@@ -447,6 +447,133 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 		}
 	})
 
+	t.Run("receives finished goods into qc hold with movement and audit", func(t *testing.T) {
+		service, movementStore, receiptStore, auditStore := newTestSubcontractFinishedGoodsAPIService()
+		orderID := "sco-smoke-260429-fg-receipt"
+		createAndSubmitSubcontractOrderForTest(t, service, authConfig, orderID)
+		approveAndConfirmSubcontractOrderForTest(t, service, authConfig, orderID)
+		issueSubcontractMaterialsForTest(t, service, authConfig, orderID, 4)
+		submitAndApproveSubcontractSampleForTest(t, service, authConfig, orderID, 5)
+		startMassProductionForTest(t, service, authConfig, orderID, 7)
+
+		receiveReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+orderID+"/receive-finished-goods", bytes.NewBufferString(`{
+				"expected_version": 8,
+				"receipt_id": "sfgr-smoke-260429-001",
+				"receipt_no": "SFGR-SMOKE-260429-001",
+				"warehouse_id": "wh-hcm-fg",
+				"warehouse_code": "WH-HCM-FG",
+				"location_id": "loc-hcm-fg-qc",
+				"location_code": "FG-QC-01",
+				"delivery_note_no": "DN-FACTORY-260429-001",
+				"received_by": "warehouse-user",
+				"received_at": "2026-04-29T14:00:00Z",
+				"lines": [
+					{
+						"receive_qty": "80",
+						"uom_code": "EA",
+						"batch_id": "batch-fg-260429-a",
+						"batch_no": "LOT-FG-260429-A",
+						"lot_no": "LOT-FG-260429-A",
+						"expiry_date": "2028-04-29",
+						"packaging_status": "intact"
+					}
+				],
+				"evidence": [
+					{
+						"evidence_type": "delivery_note",
+						"file_name": "factory-delivery.pdf",
+						"object_key": "subcontract/sfgr-smoke-260429-001/factory-delivery.pdf"
+					}
+				]
+			}`)),
+			authConfig,
+			auth.RoleProductionOps,
+		)
+		receiveReq.SetPathValue("subcontract_order_id", orderID)
+		receiveReq.Header.Set(response.HeaderRequestID, "req-subcontract-receive-fg")
+		receiveRec := httptest.NewRecorder()
+
+		subcontractOrderReceiveFinishedGoodsHandler(service).ServeHTTP(receiveRec, receiveReq)
+
+		if receiveRec.Code != http.StatusOK {
+			t.Fatalf("receive finished goods status = %d, want %d: %s", receiveRec.Code, http.StatusOK, receiveRec.Body.String())
+		}
+		payload := decodeSmokeSuccess[receiveSubcontractFinishedGoodsResponse](t, receiveRec).Data
+		if payload.SubcontractOrder.Status != "finished_goods_received" ||
+			payload.SubcontractOrder.ReceivedQty != "80.000000" ||
+			payload.Receipt.Status != "qc_hold" ||
+			payload.AuditLogID == "" {
+			t.Fatalf("receive payload = %+v, want finished goods received into qc hold with audit", payload)
+		}
+		if len(payload.StockMovements) != 1 ||
+			payload.StockMovements[0].MovementType != string(inventorydomain.MovementSubcontractReceipt) ||
+			payload.StockMovements[0].StockStatus != string(inventorydomain.StockStatusQCHold) ||
+			payload.StockMovements[0].SourceDocID != payload.Receipt.ID {
+			t.Fatalf("stock movements = %+v, want subcontract receipt qc hold movement", payload.StockMovements)
+		}
+		if receiptStore.Count() != 1 {
+			t.Fatalf("receipt count = %d, want 1", receiptStore.Count())
+		}
+		receiptMovement := smokeFindMovementByType(movementStore.Movements(), inventorydomain.MovementSubcontractReceipt)
+		delta, err := receiptMovement.BalanceDelta()
+		if err != nil {
+			t.Fatalf("receipt movement balance delta: %v", err)
+		}
+		if delta.OnHand.String() != "80.000000" || !delta.Available.IsZero() {
+			t.Fatalf("receipt delta = %+v, want on hand 80 and no available increase", delta)
+		}
+		logs, err := auditStore.List(receiveReq.Context(), audit.Query{Action: "subcontract.finished_goods_received"})
+		if err != nil {
+			t.Fatalf("list finished goods receipt audit logs: %v", err)
+		}
+		if len(logs) != 1 || logs[0].AfterData["receipt_status"] != "qc_hold" {
+			t.Fatalf("finished goods audit logs = %+v, want qc hold receipt audit", logs)
+		}
+	})
+
+	t.Run("denies finished goods receipt without side effects", func(t *testing.T) {
+		service, movementStore, receiptStore, auditStore := newTestSubcontractFinishedGoodsAPIService()
+		req := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/sco-smoke-denied/receive-finished-goods", bytes.NewBufferString(`{
+				"warehouse_id": "wh-hcm-fg",
+				"location_id": "loc-hcm-fg-qc",
+				"delivery_note_no": "DN-DENIED",
+				"received_by": "warehouse-user",
+				"lines": [
+					{
+						"receive_qty": "1",
+						"uom_code": "EA",
+						"batch_id": "batch-denied",
+						"batch_no": "LOT-DENIED",
+						"lot_no": "LOT-DENIED",
+						"expiry_date": "2028-04-29"
+					}
+				]
+			}`)),
+			authConfig,
+			auth.RoleFinanceOps,
+		)
+		req.SetPathValue("subcontract_order_id", "sco-smoke-denied")
+		rec := httptest.NewRecorder()
+
+		subcontractOrderReceiveFinishedGoodsHandler(service).ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusForbidden, rec.Body.String())
+		}
+		if movementStore.Count() != 0 || receiptStore.Count() != 0 {
+			t.Fatalf("side effects = movements %d receipts %d, want none", movementStore.Count(), receiptStore.Count())
+		}
+		logs, err := auditStore.List(req.Context(), audit.Query{Action: "subcontract.finished_goods_received"})
+		if err != nil {
+			t.Fatalf("list finished goods receipt audit logs: %v", err)
+		}
+		if len(logs) != 0 {
+			t.Fatalf("finished goods receipt audit logs = %+v, want none", logs)
+		}
+	})
+
 	t.Run("denies sample submit without side effects", func(t *testing.T) {
 		service, sampleStore, auditStore := newTestSubcontractSampleAPIService()
 		req := smokeRequestAsRole(
@@ -574,6 +701,34 @@ func newTestSubcontractSampleAPIService() (
 		WithSampleApprovalStore(sampleStore)
 
 	return service, sampleStore, auditStore
+}
+
+func newTestSubcontractFinishedGoodsAPIService() (
+	productionapp.SubcontractOrderService,
+	*inventoryapp.InMemoryStockMovementStore,
+	*productionapp.PrototypeSubcontractFinishedGoodsReceiptStore,
+	audit.LogStore,
+) {
+	auditStore := audit.NewInMemoryLogStore()
+	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditStore)
+	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditStore)
+	uomCatalog := masterdataapp.NewPrototypeUOMCatalog()
+	subcontractOrderStore := productionapp.NewPrototypeSubcontractOrderStore(auditStore)
+	movementStore := inventoryapp.NewInMemoryStockMovementStore()
+	transferStore := productionapp.NewPrototypeSubcontractMaterialTransferStore()
+	sampleStore := productionapp.NewPrototypeSubcontractSampleApprovalStore()
+	receiptStore := productionapp.NewPrototypeSubcontractFinishedGoodsReceiptStore()
+	service := productionapp.NewSubcontractOrderService(
+		subcontractOrderStore,
+		partyCatalog,
+		itemCatalog,
+		subcontractOrderUOMConverterAdapter{catalog: uomCatalog},
+	).
+		WithMaterialIssueStores(transferStore, movementStore).
+		WithSampleApprovalStore(sampleStore).
+		WithFinishedGoodsReceiptStores(receiptStore, movementStore)
+
+	return service, movementStore, receiptStore, auditStore
 }
 
 func createAndSubmitSubcontractOrderForTest(
@@ -712,6 +867,101 @@ func issueSubcontractMaterialsForTest(
 	if issueRec.Code != http.StatusOK {
 		t.Fatalf("issue materials status = %d, want %d: %s", issueRec.Code, http.StatusOK, issueRec.Body.String())
 	}
+}
+
+func submitAndApproveSubcontractSampleForTest(
+	t *testing.T,
+	service productionapp.SubcontractOrderService,
+	authConfig auth.MockConfig,
+	id string,
+	expectedVersion int,
+) {
+	t.Helper()
+
+	submitReq := smokeRequestAsRole(
+		httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+id+"/submit-sample", bytes.NewBufferString(`{
+			"expected_version": `+strconv.Itoa(expectedVersion)+`,
+			"sample_approval_id": "`+id+`-sample",
+			"sample_code": "`+id+`-SAMPLE",
+			"submitted_by": "factory-user",
+			"evidence": [
+				{
+					"evidence_type": "photo",
+					"object_key": "subcontract/`+id+`/sample.jpg"
+				}
+			]
+		}`)),
+		authConfig,
+		auth.RoleProductionOps,
+	)
+	submitReq.SetPathValue("subcontract_order_id", id)
+	submitRec := httptest.NewRecorder()
+
+	subcontractOrderSubmitSampleHandler(service).ServeHTTP(submitRec, submitReq)
+
+	if submitRec.Code != http.StatusOK {
+		t.Fatalf("submit sample status = %d, want %d: %s", submitRec.Code, http.StatusOK, submitRec.Body.String())
+	}
+
+	approveReq := smokeRequestAsRole(
+		httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+id+"/approve-sample", bytes.NewBufferString(`{
+			"expected_version": `+strconv.Itoa(expectedVersion+1)+`,
+			"sample_approval_id": "`+id+`-sample",
+			"reason": "Approved for mass production",
+			"storage_status": "retained_in_qa_cabinet"
+		}`)),
+		authConfig,
+		auth.RoleProductionOps,
+	)
+	approveReq.SetPathValue("subcontract_order_id", id)
+	approveRec := httptest.NewRecorder()
+
+	subcontractOrderApproveSampleHandler(service).ServeHTTP(approveRec, approveReq)
+
+	if approveRec.Code != http.StatusOK {
+		t.Fatalf("approve sample status = %d, want %d: %s", approveRec.Code, http.StatusOK, approveRec.Body.String())
+	}
+}
+
+func startMassProductionForTest(
+	t *testing.T,
+	service productionapp.SubcontractOrderService,
+	authConfig auth.MockConfig,
+	id string,
+	expectedVersion int,
+) {
+	t.Helper()
+
+	req := smokeRequestAsRole(
+		httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+id+"/start-mass-production", bytes.NewBufferString(`{"expected_version":`+strconv.Itoa(expectedVersion)+`}`)),
+		authConfig,
+		auth.RoleProductionOps,
+	)
+	req.SetPathValue("subcontract_order_id", id)
+	rec := httptest.NewRecorder()
+
+	subcontractOrderStartMassProductionHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("start mass production status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	payload := decodeSmokeSuccess[subcontractOrderActionResultResponse](t, rec).Data
+	if payload.CurrentStatus != "mass_production_started" {
+		t.Fatalf("start mass production payload = %+v, want mass_production_started", payload)
+	}
+}
+
+func smokeFindMovementByType(
+	movements []inventorydomain.StockMovement,
+	movementType inventorydomain.MovementType,
+) inventorydomain.StockMovement {
+	for _, movement := range movements {
+		if movement.MovementType == movementType {
+			return movement
+		}
+	}
+
+	return inventorydomain.StockMovement{}
 }
 
 func smokeAuditActionsContain(logs []audit.Log, action string) bool {

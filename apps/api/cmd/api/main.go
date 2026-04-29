@@ -1118,6 +1118,7 @@ func main() {
 	subcontractOrderStore := productionapp.NewPrototypeSubcontractOrderStore(auditLogStore)
 	subcontractMaterialTransferStore := productionapp.NewPrototypeSubcontractMaterialTransferStore()
 	subcontractSampleApprovalStore := productionapp.NewPrototypeSubcontractSampleApprovalStore()
+	subcontractFinishedGoodsReceiptStore := productionapp.NewPrototypeSubcontractFinishedGoodsReceiptStore()
 	subcontractOrderService := productionapp.NewSubcontractOrderService(
 		subcontractOrderStore,
 		partyCatalog,
@@ -1125,7 +1126,8 @@ func main() {
 		subcontractOrderUOMConverterAdapter{catalog: uomCatalog},
 	).
 		WithMaterialIssueStores(subcontractMaterialTransferStore, stockMovementStore).
-		WithSampleApprovalStore(subcontractSampleApprovalStore)
+		WithSampleApprovalStore(subcontractSampleApprovalStore).
+		WithFinishedGoodsReceiptStores(subcontractFinishedGoodsReceiptStore, stockMovementStore)
 	salesOrderStore := salesapp.NewPrototypeSalesOrderStore(auditLogStore)
 	salesOrderReservationStore := inventoryapp.NewPrototypeSalesOrderReservationStore(auditLogStore)
 	salesOrderService := salesapp.NewSalesOrderService(salesOrderStore, partyCatalog, itemCatalog, warehouseCatalog).
@@ -1451,6 +1453,22 @@ func main() {
 			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(subcontractOrderIssueMaterialsHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}/start-mass-production",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(subcontractOrderStartMassProductionHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}/receive-finished-goods",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(subcontractOrderReceiveFinishedGoodsHandler(subcontractOrderService)),
 		),
 	)
 	mux.Handle(

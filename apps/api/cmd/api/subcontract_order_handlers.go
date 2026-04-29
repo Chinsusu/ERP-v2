@@ -139,6 +139,50 @@ type decideSubcontractSampleRequest struct {
 	StorageStatus    string `json:"storage_status"`
 }
 
+type receiveSubcontractFinishedGoodsLineRequest struct {
+	ID               string `json:"id"`
+	LineNo           int    `json:"line_no"`
+	ItemID           string `json:"item_id"`
+	SKUCode          string `json:"sku_code"`
+	ItemName         string `json:"item_name"`
+	BatchID          string `json:"batch_id"`
+	BatchNo          string `json:"batch_no"`
+	LotNo            string `json:"lot_no"`
+	ExpiryDate       string `json:"expiry_date"`
+	ReceiveQty       string `json:"receive_qty"`
+	UOMCode          string `json:"uom_code"`
+	BaseReceiveQty   string `json:"base_receive_qty"`
+	BaseUOMCode      string `json:"base_uom_code"`
+	ConversionFactor string `json:"conversion_factor"`
+	PackagingStatus  string `json:"packaging_status"`
+	Note             string `json:"note"`
+}
+
+type receiveSubcontractFinishedGoodsEvidenceRequest struct {
+	ID           string `json:"id"`
+	EvidenceType string `json:"evidence_type"`
+	FileName     string `json:"file_name"`
+	ObjectKey    string `json:"object_key"`
+	ExternalURL  string `json:"external_url"`
+	Note         string `json:"note"`
+}
+
+type receiveSubcontractFinishedGoodsRequest struct {
+	ExpectedVersion int                                              `json:"expected_version"`
+	ReceiptID       string                                           `json:"receipt_id"`
+	ReceiptNo       string                                           `json:"receipt_no"`
+	WarehouseID     string                                           `json:"warehouse_id"`
+	WarehouseCode   string                                           `json:"warehouse_code"`
+	LocationID      string                                           `json:"location_id"`
+	LocationCode    string                                           `json:"location_code"`
+	DeliveryNoteNo  string                                           `json:"delivery_note_no"`
+	ReceivedBy      string                                           `json:"received_by"`
+	ReceivedAt      string                                           `json:"received_at"`
+	Note            string                                           `json:"note"`
+	Lines           []receiveSubcontractFinishedGoodsLineRequest     `json:"lines"`
+	Evidence        []receiveSubcontractFinishedGoodsEvidenceRequest `json:"evidence"`
+}
+
 type subcontractOrderMaterialLineResponse struct {
 	ID               string `json:"id"`
 	LineNo           int    `json:"line_no"`
@@ -320,6 +364,66 @@ type subcontractMaterialIssueMovementResponse struct {
 type issueSubcontractMaterialsResponse struct {
 	SubcontractOrder subcontractOrderResponse                   `json:"subcontract_order"`
 	Transfer         subcontractMaterialTransferResponse        `json:"transfer"`
+	StockMovements   []subcontractMaterialIssueMovementResponse `json:"stock_movements"`
+	AuditLogID       string                                     `json:"audit_log_id,omitempty"`
+}
+
+type subcontractFinishedGoodsReceiptLineResponse struct {
+	ID               string `json:"id"`
+	LineNo           int    `json:"line_no"`
+	ItemID           string `json:"item_id"`
+	SKUCode          string `json:"sku_code"`
+	ItemName         string `json:"item_name"`
+	BatchID          string `json:"batch_id"`
+	BatchNo          string `json:"batch_no"`
+	LotNo            string `json:"lot_no"`
+	ExpiryDate       string `json:"expiry_date"`
+	ReceiveQty       string `json:"receive_qty"`
+	UOMCode          string `json:"uom_code"`
+	BaseReceiveQty   string `json:"base_receive_qty"`
+	BaseUOMCode      string `json:"base_uom_code"`
+	ConversionFactor string `json:"conversion_factor"`
+	PackagingStatus  string `json:"packaging_status,omitempty"`
+	Note             string `json:"note,omitempty"`
+}
+
+type subcontractFinishedGoodsReceiptEvidenceResponse struct {
+	ID           string `json:"id"`
+	EvidenceType string `json:"evidence_type"`
+	FileName     string `json:"file_name,omitempty"`
+	ObjectKey    string `json:"object_key,omitempty"`
+	ExternalURL  string `json:"external_url,omitempty"`
+	Note         string `json:"note,omitempty"`
+}
+
+type subcontractFinishedGoodsReceiptResponse struct {
+	ID                 string                                            `json:"id"`
+	OrgID              string                                            `json:"org_id"`
+	ReceiptNo          string                                            `json:"receipt_no"`
+	SubcontractOrderID string                                            `json:"subcontract_order_id"`
+	SubcontractOrderNo string                                            `json:"subcontract_order_no"`
+	FactoryID          string                                            `json:"factory_id"`
+	FactoryCode        string                                            `json:"factory_code,omitempty"`
+	FactoryName        string                                            `json:"factory_name"`
+	WarehouseID        string                                            `json:"warehouse_id"`
+	WarehouseCode      string                                            `json:"warehouse_code,omitempty"`
+	LocationID         string                                            `json:"location_id"`
+	LocationCode       string                                            `json:"location_code,omitempty"`
+	DeliveryNoteNo     string                                            `json:"delivery_note_no"`
+	Status             string                                            `json:"status"`
+	Lines              []subcontractFinishedGoodsReceiptLineResponse     `json:"lines"`
+	Evidence           []subcontractFinishedGoodsReceiptEvidenceResponse `json:"evidence,omitempty"`
+	ReceivedBy         string                                            `json:"received_by"`
+	ReceivedAt         string                                            `json:"received_at"`
+	Note               string                                            `json:"note,omitempty"`
+	CreatedAt          string                                            `json:"created_at"`
+	UpdatedAt          string                                            `json:"updated_at"`
+	Version            int                                               `json:"version"`
+}
+
+type receiveSubcontractFinishedGoodsResponse struct {
+	SubcontractOrder subcontractOrderResponse                   `json:"subcontract_order"`
+	Receipt          subcontractFinishedGoodsReceiptResponse    `json:"receipt"`
 	StockMovements   []subcontractMaterialIssueMovementResponse `json:"stock_movements"`
 	AuditLogID       string                                     `json:"audit_log_id,omitempty"`
 }
@@ -526,6 +630,10 @@ func subcontractOrderConfirmFactoryHandler(service productionapp.SubcontractOrde
 	return subcontractOrderActionHandler(service, "confirm-factory")
 }
 
+func subcontractOrderStartMassProductionHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return subcontractOrderActionHandler(service, "start-mass-production")
+}
+
 func subcontractOrderCancelHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
 	return subcontractOrderActionHandler(service, "cancel")
 }
@@ -592,6 +700,70 @@ func subcontractOrderIssueMaterialsHandler(service productionapp.SubcontractOrde
 		response.WriteSuccess(w, r, http.StatusOK, issueSubcontractMaterialsResponse{
 			SubcontractOrder: newSubcontractOrderResponse(result.SubcontractOrder, ""),
 			Transfer:         newSubcontractMaterialTransferResponse(result.Transfer),
+			StockMovements:   newSubcontractMaterialIssueMovementResponses(result.StockMovements),
+			AuditLogID:       result.AuditLogID,
+		})
+	}
+}
+
+func subcontractOrderReceiveFinishedGoodsHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload receiveSubcontractFinishedGoodsRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract finished goods receipt payload", nil)
+			return
+		}
+		receivedAt, err := parseSubcontractOptionalTime(payload.ReceivedAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract finished goods receipt payload", map[string]any{"field": "received_at"})
+			return
+		}
+
+		result, err := service.ReceiveSubcontractFinishedGoods(r.Context(), productionapp.ReceiveSubcontractFinishedGoodsInput{
+			ID:              r.PathValue("subcontract_order_id"),
+			ExpectedVersion: payload.ExpectedVersion,
+			ReceiptID:       payload.ReceiptID,
+			ReceiptNo:       payload.ReceiptNo,
+			WarehouseID:     payload.WarehouseID,
+			WarehouseCode:   payload.WarehouseCode,
+			LocationID:      payload.LocationID,
+			LocationCode:    payload.LocationCode,
+			DeliveryNoteNo:  payload.DeliveryNoteNo,
+			Lines:           receiveSubcontractFinishedGoodsLineInputs(payload.Lines),
+			Evidence:        receiveSubcontractFinishedGoodsEvidenceInputs(payload.Evidence),
+			ReceivedBy:      payload.ReceivedBy,
+			ReceivedAt:      receivedAt,
+			Note:            payload.Note,
+			ActorID:         principal.UserID,
+			RequestID:       response.RequestID(r),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, receiveSubcontractFinishedGoodsResponse{
+			SubcontractOrder: newSubcontractOrderResponse(result.SubcontractOrder, ""),
+			Receipt:          newSubcontractFinishedGoodsReceiptResponse(result.Receipt),
 			StockMovements:   newSubcontractMaterialIssueMovementResponses(result.StockMovements),
 			AuditLogID:       result.AuditLogID,
 		})
@@ -771,6 +943,8 @@ func subcontractOrderActionHandler(service productionapp.SubcontractOrderService
 			result, err = service.ApproveSubcontractOrder(r.Context(), input)
 		case "confirm-factory":
 			result, err = service.ConfirmFactorySubcontractOrder(r.Context(), input)
+		case "start-mass-production":
+			result, err = service.StartMassProductionSubcontractOrder(r.Context(), input)
 		case "cancel":
 			result, err = service.CancelSubcontractOrder(r.Context(), input)
 		case "close":
@@ -886,6 +1060,52 @@ func subcontractSampleEvidenceInputs(
 	evidence := make([]productionapp.SubcontractSampleEvidenceInput, 0, len(inputs))
 	for _, input := range inputs {
 		evidence = append(evidence, productionapp.SubcontractSampleEvidenceInput{
+			ID:           input.ID,
+			EvidenceType: input.EvidenceType,
+			FileName:     input.FileName,
+			ObjectKey:    input.ObjectKey,
+			ExternalURL:  input.ExternalURL,
+			Note:         input.Note,
+		})
+	}
+
+	return evidence
+}
+
+func receiveSubcontractFinishedGoodsLineInputs(
+	inputs []receiveSubcontractFinishedGoodsLineRequest,
+) []productionapp.ReceiveSubcontractFinishedGoodsLineInput {
+	lines := make([]productionapp.ReceiveSubcontractFinishedGoodsLineInput, 0, len(inputs))
+	for _, input := range inputs {
+		lines = append(lines, productionapp.ReceiveSubcontractFinishedGoodsLineInput{
+			ID:               input.ID,
+			LineNo:           input.LineNo,
+			ItemID:           input.ItemID,
+			SKUCode:          input.SKUCode,
+			ItemName:         input.ItemName,
+			BatchID:          input.BatchID,
+			BatchNo:          input.BatchNo,
+			LotNo:            input.LotNo,
+			ExpiryDate:       input.ExpiryDate,
+			ReceiveQty:       input.ReceiveQty,
+			UOMCode:          input.UOMCode,
+			BaseReceiveQty:   input.BaseReceiveQty,
+			BaseUOMCode:      input.BaseUOMCode,
+			ConversionFactor: input.ConversionFactor,
+			PackagingStatus:  input.PackagingStatus,
+			Note:             input.Note,
+		})
+	}
+
+	return lines
+}
+
+func receiveSubcontractFinishedGoodsEvidenceInputs(
+	inputs []receiveSubcontractFinishedGoodsEvidenceRequest,
+) []productionapp.ReceiveSubcontractFinishedGoodsEvidenceInput {
+	evidence := make([]productionapp.ReceiveSubcontractFinishedGoodsEvidenceInput, 0, len(inputs))
+	for _, input := range inputs {
+		evidence = append(evidence, productionapp.ReceiveSubcontractFinishedGoodsEvidenceInput{
 			ID:           input.ID,
 			EvidenceType: input.EvidenceType,
 			FileName:     input.FileName,
@@ -1062,6 +1282,67 @@ func newSubcontractMaterialTransferResponse(
 	}
 	for _, evidence := range transfer.Evidence {
 		payload.Evidence = append(payload.Evidence, subcontractMaterialTransferEvidenceResponse{
+			ID:           evidence.ID,
+			EvidenceType: evidence.EvidenceType,
+			FileName:     evidence.FileName,
+			ObjectKey:    evidence.ObjectKey,
+			ExternalURL:  evidence.ExternalURL,
+			Note:         evidence.Note,
+		})
+	}
+
+	return payload
+}
+
+func newSubcontractFinishedGoodsReceiptResponse(
+	receipt productiondomain.SubcontractFinishedGoodsReceipt,
+) subcontractFinishedGoodsReceiptResponse {
+	payload := subcontractFinishedGoodsReceiptResponse{
+		ID:                 receipt.ID,
+		OrgID:              receipt.OrgID,
+		ReceiptNo:          receipt.ReceiptNo,
+		SubcontractOrderID: receipt.SubcontractOrderID,
+		SubcontractOrderNo: receipt.SubcontractOrderNo,
+		FactoryID:          receipt.FactoryID,
+		FactoryCode:        receipt.FactoryCode,
+		FactoryName:        receipt.FactoryName,
+		WarehouseID:        receipt.WarehouseID,
+		WarehouseCode:      receipt.WarehouseCode,
+		LocationID:         receipt.LocationID,
+		LocationCode:       receipt.LocationCode,
+		DeliveryNoteNo:     receipt.DeliveryNoteNo,
+		Status:             string(receipt.Status),
+		Lines:              make([]subcontractFinishedGoodsReceiptLineResponse, 0, len(receipt.Lines)),
+		Evidence:           make([]subcontractFinishedGoodsReceiptEvidenceResponse, 0, len(receipt.Evidence)),
+		ReceivedBy:         receipt.ReceivedBy,
+		ReceivedAt:         timeString(receipt.ReceivedAt),
+		Note:               receipt.Note,
+		CreatedAt:          timeString(receipt.CreatedAt),
+		UpdatedAt:          timeString(receipt.UpdatedAt),
+		Version:            receipt.Version,
+	}
+	for _, line := range receipt.Lines {
+		payload.Lines = append(payload.Lines, subcontractFinishedGoodsReceiptLineResponse{
+			ID:               line.ID,
+			LineNo:           line.LineNo,
+			ItemID:           line.ItemID,
+			SKUCode:          line.SKUCode,
+			ItemName:         line.ItemName,
+			BatchID:          line.BatchID,
+			BatchNo:          line.BatchNo,
+			LotNo:            line.LotNo,
+			ExpiryDate:       dateString(line.ExpiryDate),
+			ReceiveQty:       line.ReceiveQty.String(),
+			UOMCode:          line.UOMCode.String(),
+			BaseReceiveQty:   line.BaseReceiveQty.String(),
+			BaseUOMCode:      line.BaseUOMCode.String(),
+			ConversionFactor: line.ConversionFactor.String(),
+			PackagingStatus:  line.PackagingStatus,
+			Note:             line.Note,
+		})
+	}
+	for _, evidence := range receipt.Evidence {
+		payload.Evidence = append(payload.Evidence, subcontractFinishedGoodsReceiptEvidenceResponse{
 			ID:           evidence.ID,
 			EvidenceType: evidence.EvidenceType,
 			FileName:     evidence.FileName,
