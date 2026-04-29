@@ -2875,6 +2875,17 @@ textarea {
   align-items: end;
 }
 
+.erp-subcontract-receipt-controls {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.erp-subcontract-note-field {
+  margin-top: 12px;
+}
+
 .erp-subcontract-line-list,
 .erp-subcontract-movement-list {
   display: grid;
@@ -2897,6 +2908,10 @@ textarea {
 
 .erp-subcontract-line-item--editable {
   grid-template-columns: minmax(150px, 1fr) minmax(150px, 0.8fr) minmax(110px, 0.5fr) minmax(130px, 0.65fr) minmax(100px, 0.45fr) auto;
+}
+
+.erp-subcontract-line-item--receipt {
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 0.8fr) minmax(110px, 0.5fr) minmax(130px, 0.65fr) minmax(130px, 0.65fr) minmax(120px, 0.6fr);
 }
 
 .erp-subcontract-line-item .erp-field {
@@ -4205,6 +4220,7 @@ textarea {
   .erp-subcontract-quality-grid,
   .erp-subcontract-transfer-controls,
   .erp-subcontract-sample-controls,
+  .erp-subcontract-receipt-controls,
   .erp-subcontract-line-item,
   .erp-subcontract-timeline,
   .erp-subcontract-sample-item,
