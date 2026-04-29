@@ -4,12 +4,23 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	productiondomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
+
+type SubcontractMaterialTransferStore interface {
+	Save(ctx context.Context, transfer productiondomain.SubcontractMaterialTransfer) error
+	ListBySubcontractOrder(ctx context.Context, subcontractOrderID string) ([]productiondomain.SubcontractMaterialTransfer, error)
+}
+
+type PrototypeSubcontractMaterialTransferStore struct {
+	mu      sync.RWMutex
+	records map[string]productiondomain.SubcontractMaterialTransfer
+}
 
 type SubcontractMaterialTransferService struct {
 	clock func() time.Time
@@ -65,6 +76,10 @@ type SubcontractMaterialTransferBuildResult struct {
 
 func NewSubcontractMaterialTransferService() SubcontractMaterialTransferService {
 	return SubcontractMaterialTransferService{clock: func() time.Time { return time.Now().UTC() }}
+}
+
+func NewPrototypeSubcontractMaterialTransferStore() *PrototypeSubcontractMaterialTransferStore {
+	return &PrototypeSubcontractMaterialTransferStore{records: make(map[string]productiondomain.SubcontractMaterialTransfer)}
 }
 
 func (s SubcontractMaterialTransferService) BuildIssue(
@@ -321,4 +336,53 @@ func newSubcontractMaterialTransferID(now time.Time) string {
 
 func newSubcontractMaterialTransferNo(now time.Time) string {
 	return fmt.Sprintf("SMT-%s-%06d", now.UTC().Format("060102"), now.UTC().UnixNano()%1000000)
+}
+
+func (s *PrototypeSubcontractMaterialTransferStore) Save(
+	_ context.Context,
+	transfer productiondomain.SubcontractMaterialTransfer,
+) error {
+	if s == nil {
+		return fmt.Errorf("subcontract material transfer store is required")
+	}
+	if err := transfer.Validate(); err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.records[transfer.ID] = transfer.Clone()
+
+	return nil
+}
+
+func (s *PrototypeSubcontractMaterialTransferStore) ListBySubcontractOrder(
+	_ context.Context,
+	subcontractOrderID string,
+) ([]productiondomain.SubcontractMaterialTransfer, error) {
+	if s == nil {
+		return nil, fmt.Errorf("subcontract material transfer store is required")
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	transfers := make([]productiondomain.SubcontractMaterialTransfer, 0)
+	for _, transfer := range s.records {
+		if transfer.SubcontractOrderID == strings.TrimSpace(subcontractOrderID) {
+			transfers = append(transfers, transfer.Clone())
+		}
+	}
+
+	return transfers, nil
+}
+
+func (s *PrototypeSubcontractMaterialTransferStore) Count() int {
+	if s == nil {
+		return 0
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return len(s.records)
 }

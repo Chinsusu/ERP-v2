@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
 	productiondomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
@@ -26,8 +27,9 @@ const (
 	ErrorCodeSubcontractOrderInvalidState    response.ErrorCode = "SUBCONTRACT_ORDER_INVALID_STATE"
 	ErrorCodeSubcontractOrderVersionConflict response.ErrorCode = "SUBCONTRACT_ORDER_VERSION_CONFLICT"
 
-	defaultSubcontractOrderOrgID = "org-my-pham"
-	subcontractOrderEntityType   = "production.subcontract_order"
+	defaultSubcontractOrderOrgID     = "org-my-pham"
+	subcontractOrderEntityType       = "production.subcontract_order"
+	subcontractMaterialsIssuedAction = "subcontract.materials_issued"
 )
 
 type SubcontractOrderStore interface {
@@ -54,6 +56,10 @@ type SubcontractOrderUOMConverter interface {
 	ConvertToBase(ctx context.Context, input ConvertSubcontractOrderLineToBaseInput) (ConvertSubcontractOrderLineToBaseResult, error)
 }
 
+type SubcontractMaterialIssueMovementRecorder interface {
+	Record(ctx context.Context, movement inventorydomain.StockMovement) error
+}
+
 type ConvertSubcontractOrderLineToBaseInput struct {
 	ItemID      string
 	SKU         string
@@ -71,11 +77,14 @@ type ConvertSubcontractOrderLineToBaseResult struct {
 }
 
 type SubcontractOrderService struct {
-	store        SubcontractOrderStore
-	factoryRead  SubcontractOrderFactoryReader
-	itemRead     SubcontractOrderItemReader
-	uomConverter SubcontractOrderUOMConverter
-	clock        func() time.Time
+	store                 SubcontractOrderStore
+	factoryRead           SubcontractOrderFactoryReader
+	itemRead              SubcontractOrderItemReader
+	uomConverter          SubcontractOrderUOMConverter
+	materialTransferStore SubcontractMaterialTransferStore
+	materialIssueRecorder SubcontractMaterialIssueMovementRecorder
+	materialTransferBuild SubcontractMaterialTransferService
+	clock                 func() time.Time
 }
 
 type SubcontractOrderFilter struct {
@@ -143,6 +152,50 @@ type SubcontractOrderActionInput struct {
 	RequestID       string
 }
 
+type IssueSubcontractMaterialsInput struct {
+	ID                  string
+	ExpectedVersion     int
+	TransferID          string
+	TransferNo          string
+	SourceWarehouseID   string
+	SourceWarehouseCode string
+	Lines               []IssueSubcontractMaterialsLineInput
+	Evidence            []IssueSubcontractMaterialsEvidenceInput
+	HandoverBy          string
+	HandoverAt          time.Time
+	ReceivedBy          string
+	ReceiverContact     string
+	VehicleNo           string
+	Note                string
+	ActorID             string
+	RequestID           string
+}
+
+type IssueSubcontractMaterialsLineInput struct {
+	ID                  string
+	LineNo              int
+	OrderMaterialLineID string
+	IssueQty            string
+	UOMCode             string
+	BaseIssueQty        string
+	BaseUOMCode         string
+	ConversionFactor    string
+	BatchID             string
+	BatchNo             string
+	LotNo               string
+	SourceBinID         string
+	Note                string
+}
+
+type IssueSubcontractMaterialsEvidenceInput struct {
+	ID           string
+	EvidenceType string
+	FileName     string
+	ObjectKey    string
+	ExternalURL  string
+	Note         string
+}
+
 type SubcontractOrderResult struct {
 	SubcontractOrder productiondomain.SubcontractOrder
 	AuditLogID       string
@@ -152,6 +205,13 @@ type SubcontractOrderActionResult struct {
 	SubcontractOrder productiondomain.SubcontractOrder
 	PreviousStatus   productiondomain.SubcontractOrderStatus
 	CurrentStatus    productiondomain.SubcontractOrderStatus
+	AuditLogID       string
+}
+
+type IssueSubcontractMaterialsResult struct {
+	SubcontractOrder productiondomain.SubcontractOrder
+	Transfer         productiondomain.SubcontractMaterialTransfer
+	StockMovements   []inventorydomain.StockMovement
 	AuditLogID       string
 }
 
@@ -174,12 +234,23 @@ func NewSubcontractOrderService(
 	uomConverter SubcontractOrderUOMConverter,
 ) SubcontractOrderService {
 	return SubcontractOrderService{
-		store:        store,
-		factoryRead:  factoryRead,
-		itemRead:     itemRead,
-		uomConverter: uomConverter,
-		clock:        func() time.Time { return time.Now().UTC() },
+		store:                 store,
+		factoryRead:           factoryRead,
+		itemRead:              itemRead,
+		uomConverter:          uomConverter,
+		materialTransferBuild: NewSubcontractMaterialTransferService(),
+		clock:                 func() time.Time { return time.Now().UTC() },
 	}
+}
+
+func (s SubcontractOrderService) WithMaterialIssueStores(
+	transferStore SubcontractMaterialTransferStore,
+	movementRecorder SubcontractMaterialIssueMovementRecorder,
+) SubcontractOrderService {
+	s.materialTransferStore = transferStore
+	s.materialIssueRecorder = movementRecorder
+
+	return s
 }
 
 func NewPrototypeSubcontractOrderStore(auditLog audit.LogStore) *PrototypeSubcontractOrderStore {
@@ -457,6 +528,98 @@ func (s SubcontractOrderService) CloseSubcontractOrder(
 	) (productiondomain.SubcontractOrder, error) {
 		return order.Close(actorID, changedAt)
 	})
+}
+
+func (s SubcontractOrderService) IssueSubcontractMaterials(
+	ctx context.Context,
+	input IssueSubcontractMaterialsInput,
+) (IssueSubcontractMaterialsResult, error) {
+	if err := s.ensureReadyForMaterialIssue(); err != nil {
+		return IssueSubcontractMaterialsResult{}, err
+	}
+	if err := requireSubcontractOrderActor(input.ActorID); err != nil {
+		return IssueSubcontractMaterialsResult{}, err
+	}
+
+	var result IssueSubcontractMaterialsResult
+	err := s.store.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		current, err := tx.GetForUpdate(txCtx, input.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": strings.TrimSpace(input.ID)})
+		}
+		if err := ensureSubcontractOrderExpectedVersion(current, input.ExpectedVersion); err != nil {
+			return err
+		}
+
+		buildResult, err := s.materialTransferBuild.BuildIssue(txCtx, BuildSubcontractMaterialTransferInput{
+			ID:                  input.TransferID,
+			TransferNo:          input.TransferNo,
+			Order:               current,
+			SourceWarehouseID:   input.SourceWarehouseID,
+			SourceWarehouseCode: input.SourceWarehouseCode,
+			Lines:               subcontractMaterialIssueLineInputs(input.Lines),
+			Evidence:            subcontractMaterialIssueEvidenceInputs(input.Evidence),
+			HandoverBy:          input.HandoverBy,
+			HandoverAt:          input.HandoverAt,
+			ReceivedBy:          input.ReceivedBy,
+			ReceiverContact:     input.ReceiverContact,
+			VehicleNo:           input.VehicleNo,
+			Note:                input.Note,
+			ActorID:             input.ActorID,
+		})
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"status":               string(current.Status),
+			})
+		}
+		if err := s.materialTransferStore.Save(txCtx, buildResult.Transfer); err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"transfer_id":          buildResult.Transfer.ID,
+			})
+		}
+		for _, movement := range buildResult.StockMovements {
+			if err := s.materialIssueRecorder.Record(txCtx, movement); err != nil {
+				return err
+			}
+		}
+		if err := tx.Save(txCtx, buildResult.UpdatedOrder); err != nil {
+			return err
+		}
+		afterData := subcontractOrderAuditData(buildResult.UpdatedOrder)
+		for key, value := range subcontractMaterialIssueAuditData(buildResult) {
+			afterData[key] = value
+		}
+		log, err := newSubcontractOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			subcontractMaterialsIssuedAction,
+			buildResult.UpdatedOrder,
+			subcontractOrderAuditData(current),
+			afterData,
+			buildResult.Transfer.HandoverAt,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, log); err != nil {
+			return err
+		}
+		result = IssueSubcontractMaterialsResult{
+			SubcontractOrder: buildResult.UpdatedOrder,
+			Transfer:         buildResult.Transfer,
+			StockMovements:   buildResult.StockMovements,
+			AuditLogID:       log.ID,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return IssueSubcontractMaterialsResult{}, err
+	}
+
+	return result, nil
 }
 
 func (s SubcontractOrderService) transition(
@@ -753,6 +916,23 @@ func (s SubcontractOrderService) ensureReadyForWrite() error {
 	return nil
 }
 
+func (s SubcontractOrderService) ensureReadyForMaterialIssue() error {
+	if s.store == nil {
+		return errors.New("subcontract order store is required")
+	}
+	if s.materialTransferStore == nil {
+		return errors.New("subcontract material transfer store is required")
+	}
+	if s.materialIssueRecorder == nil {
+		return errors.New("subcontract material issue movement recorder is required")
+	}
+	if s.materialTransferBuild.clock == nil {
+		s.materialTransferBuild = NewSubcontractMaterialTransferService()
+	}
+
+	return nil
+}
+
 func (s SubcontractOrderService) now() time.Time {
 	if s.clock == nil {
 		return time.Now().UTC()
@@ -906,6 +1086,49 @@ func requireSubcontractOrderActor(actorID string) error {
 	return nil
 }
 
+func subcontractMaterialIssueLineInputs(
+	inputs []IssueSubcontractMaterialsLineInput,
+) []BuildSubcontractMaterialTransferLineInput {
+	lines := make([]BuildSubcontractMaterialTransferLineInput, 0, len(inputs))
+	for _, input := range inputs {
+		lines = append(lines, BuildSubcontractMaterialTransferLineInput{
+			ID:                  input.ID,
+			LineNo:              input.LineNo,
+			OrderMaterialLineID: input.OrderMaterialLineID,
+			IssueQty:            input.IssueQty,
+			UOMCode:             input.UOMCode,
+			BaseIssueQty:        input.BaseIssueQty,
+			BaseUOMCode:         input.BaseUOMCode,
+			ConversionFactor:    input.ConversionFactor,
+			BatchID:             input.BatchID,
+			BatchNo:             input.BatchNo,
+			LotNo:               input.LotNo,
+			SourceBinID:         input.SourceBinID,
+			Note:                input.Note,
+		})
+	}
+
+	return lines
+}
+
+func subcontractMaterialIssueEvidenceInputs(
+	inputs []IssueSubcontractMaterialsEvidenceInput,
+) []BuildSubcontractMaterialTransferEvidenceInput {
+	evidence := make([]BuildSubcontractMaterialTransferEvidenceInput, 0, len(inputs))
+	for _, input := range inputs {
+		evidence = append(evidence, BuildSubcontractMaterialTransferEvidenceInput{
+			ID:           input.ID,
+			EvidenceType: input.EvidenceType,
+			FileName:     input.FileName,
+			ObjectKey:    input.ObjectKey,
+			ExternalURL:  input.ExternalURL,
+			Note:         input.Note,
+		})
+	}
+
+	return evidence
+}
+
 func subcontractOrderValidationError(cause error, details map[string]any) error {
 	return apperrors.BadRequest(ErrorCodeSubcontractOrderValidation, "Subcontract order request is invalid", cause, details)
 }
@@ -925,11 +1148,19 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 		errors.Is(err, productiondomain.ErrSubcontractOrderSampleApprovalRequired) {
 		return apperrors.Conflict(ErrorCodeSubcontractOrderInvalidState, "Subcontract order state is invalid", err, details)
 	}
+	if errors.Is(err, productiondomain.ErrSubcontractMaterialTransferInvalidStatus) {
+		return apperrors.Conflict(ErrorCodeSubcontractOrderInvalidState, "Subcontract material transfer state is invalid", err, details)
+	}
 	if errors.Is(err, productiondomain.ErrSubcontractOrderRequiredField) ||
 		errors.Is(err, productiondomain.ErrSubcontractOrderTransitionActorRequired) ||
 		errors.Is(err, productiondomain.ErrSubcontractOrderInvalidCurrency) ||
 		errors.Is(err, productiondomain.ErrSubcontractOrderInvalidQuantity) ||
-		errors.Is(err, productiondomain.ErrSubcontractOrderInvalidAmount) {
+		errors.Is(err, productiondomain.ErrSubcontractOrderInvalidAmount) ||
+		errors.Is(err, productiondomain.ErrSubcontractOrderMaterialLineNotFound) ||
+		errors.Is(err, productiondomain.ErrSubcontractOrderDuplicateMaterialLine) ||
+		errors.Is(err, productiondomain.ErrSubcontractMaterialTransferRequiredField) ||
+		errors.Is(err, productiondomain.ErrSubcontractMaterialTransferInvalidQuantity) ||
+		errors.Is(err, productiondomain.ErrSubcontractMaterialTransferBatchRequired) {
 		return subcontractOrderValidationError(err, details)
 	}
 
@@ -1009,6 +1240,20 @@ func subcontractOrderAuditData(order productiondomain.SubcontractOrder) map[stri
 	}
 
 	return data
+}
+
+func subcontractMaterialIssueAuditData(result SubcontractMaterialTransferBuildResult) map[string]any {
+	return map[string]any{
+		"transfer_id":           result.Transfer.ID,
+		"transfer_no":           result.Transfer.TransferNo,
+		"transfer_status":       string(result.Transfer.Status),
+		"source_warehouse_id":   result.Transfer.SourceWarehouseID,
+		"source_warehouse_code": result.Transfer.SourceWarehouseCode,
+		"handover_by":           result.Transfer.HandoverBy,
+		"received_by":           result.Transfer.ReceivedBy,
+		"transfer_line_count":   len(result.Transfer.Lines),
+		"stock_movement_count":  len(result.StockMovements),
+	}
 }
 
 func subcontractOrderMatchesFilter(order productiondomain.SubcontractOrder, filter SubcontractOrderFilter) bool {
