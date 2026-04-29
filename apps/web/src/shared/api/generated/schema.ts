@@ -526,6 +526,263 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/subcontract-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List subcontract manufacturing orders */
+        get: operations["listSubcontractOrders"];
+        put?: never;
+        /** Create a subcontract manufacturing order draft */
+        post: operations["createSubcontractOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get subcontract manufacturing order detail */
+        get: operations["getSubcontractOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a subcontract manufacturing order draft */
+        patch: operations["updateSubcontractOrder"];
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a subcontract manufacturing order */
+        post: operations["submitSubcontractOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a subcontract manufacturing order */
+        post: operations["approveSubcontractOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/confirm-factory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm factory acceptance for a subcontract manufacturing order */
+        post: operations["confirmFactorySubcontractOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/record-deposit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record subcontract manufacturing deposit payment */
+        post: operations["recordSubcontractDeposit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/issue-materials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue raw materials and packaging to a subcontract factory */
+        post: operations["issueSubcontractMaterials"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/start-mass-production": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start subcontract factory mass production */
+        post: operations["startMassProductionSubcontractOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/receive-finished-goods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive finished goods from a subcontract factory */
+        post: operations["receiveSubcontractFinishedGoods"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/mark-final-payment-ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark subcontract final payment ready */
+        post: operations["markSubcontractFinalPaymentReady"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/submit-sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a subcontract production sample */
+        post: operations["submitSubcontractSample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/approve-sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a subcontract production sample */
+        post: operations["approveSubcontractSample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/reject-sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a subcontract production sample */
+        post: operations["rejectSubcontractSample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a subcontract manufacturing order */
+        post: operations["cancelSubcontractOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subcontract-orders/{subcontract_order_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a subcontract manufacturing order */
+        post: operations["closeSubcontractOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/inventory/stock-movements": {
         parameters: {
             query?: never;
@@ -947,6 +1204,23 @@ export interface paths {
         };
         /** Get warehouse daily board inbound metrics */
         get: operations["getWarehouseDailyBoardInboundMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/warehouse/daily-board/subcontract-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get warehouse daily board subcontract metrics */
+        get: operations["getWarehouseDailyBoardSubcontractMetrics"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2016,6 +2290,534 @@ export interface components {
             audit_log_id?: string;
         };
         /** @enum {string} */
+        SubcontractOrderStatus: "draft" | "submitted" | "approved" | "factory_confirmed" | "deposit_recorded" | "materials_issued_to_factory" | "sample_submitted" | "sample_approved" | "sample_rejected" | "mass_production_started" | "finished_goods_received" | "qc_in_progress" | "accepted" | "rejected_with_factory_issue" | "final_payment_ready" | "closed" | "cancelled";
+        /** @enum {string} */
+        SubcontractMaterialTransferStatus: "sent_to_factory" | "partially_sent";
+        /** @enum {string} */
+        SubcontractFinishedGoodsReceiptStatus: "qc_hold";
+        /** @enum {string} */
+        SubcontractSampleApprovalStatus: "submitted" | "approved" | "rejected";
+        /** @enum {string} */
+        SubcontractPaymentMilestoneKind: "deposit" | "final_payment";
+        /** @enum {string} */
+        SubcontractPaymentMilestoneStatus: "pending" | "recorded" | "ready" | "blocked" | "cancelled";
+        SubcontractOrderListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SubcontractOrderListItem"][];
+        };
+        SubcontractOrderSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SubcontractOrder"];
+        };
+        SubcontractOrderActionResultSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SubcontractOrderActionResult"];
+        };
+        SubcontractPaymentMilestoneResultSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SubcontractPaymentMilestoneResult"];
+        };
+        IssueSubcontractMaterialsSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["IssueSubcontractMaterialsResult"];
+        };
+        ReceiveSubcontractFinishedGoodsSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["ReceiveSubcontractFinishedGoodsResult"];
+        };
+        SubcontractSampleApprovalResultSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SubcontractSampleApprovalResult"];
+        };
+        CreateSubcontractOrderRequest: {
+            id?: string;
+            order_no?: string;
+            factory_id: string;
+            finished_item_id: string;
+            planned_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            currency_code?: components["schemas"]["CurrencyCode"];
+            spec_summary?: string;
+            /** @default false */
+            sample_required: boolean;
+            /** @default 7 */
+            claim_window_days: number;
+            /** Format: date */
+            target_start_date?: string;
+            /** Format: date */
+            expected_receipt_date: string;
+            material_lines: components["schemas"]["SubcontractOrderMaterialLineRequest"][];
+        };
+        UpdateSubcontractOrderRequest: {
+            factory_id: string;
+            finished_item_id: string;
+            planned_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            spec_summary?: string;
+            sample_required?: boolean;
+            claim_window_days?: number;
+            /** Format: date */
+            target_start_date?: string;
+            /** Format: date */
+            expected_receipt_date: string;
+            expected_version: number;
+            material_lines: components["schemas"]["SubcontractOrderMaterialLineRequest"][];
+        };
+        SubcontractOrderMaterialLineRequest: {
+            id?: string;
+            line_no?: number;
+            item_id: string;
+            planned_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            unit_cost: components["schemas"]["UnitCostAmount"];
+            currency_code?: components["schemas"]["CurrencyCode"];
+            /** @default false */
+            lot_trace_required: boolean;
+            note?: string;
+        };
+        SubcontractOrderActionRequest: {
+            expected_version?: number;
+            reason?: string;
+        };
+        RecordSubcontractDepositRequest: {
+            expected_version: number;
+            milestone_id?: string;
+            milestone_no?: string;
+            amount: components["schemas"]["MoneyAmount"];
+            recorded_by?: string;
+            /** Format: date-time */
+            recorded_at?: string;
+            note?: string;
+        };
+        MarkSubcontractFinalPaymentReadyRequest: {
+            expected_version: number;
+            milestone_id?: string;
+            milestone_no?: string;
+            amount: components["schemas"]["MoneyAmount"];
+            ready_by?: string;
+            /** Format: date-time */
+            ready_at?: string;
+            approved_exception_id?: string;
+            note?: string;
+        };
+        IssueSubcontractMaterialsRequest: {
+            expected_version: number;
+            transfer_id?: string;
+            transfer_no?: string;
+            source_warehouse_id: string;
+            source_warehouse_code?: string;
+            handover_by?: string;
+            /** Format: date-time */
+            handover_at?: string;
+            received_by?: string;
+            receiver_contact?: string;
+            vehicle_no?: string;
+            note?: string;
+            lines: components["schemas"]["IssueSubcontractMaterialsLineRequest"][];
+            evidence?: components["schemas"]["SubcontractEvidenceRequest"][];
+        };
+        IssueSubcontractMaterialsLineRequest: {
+            id?: string;
+            line_no?: number;
+            order_material_line_id: string;
+            issue_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_issue_qty: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            conversion_factor: components["schemas"]["Quantity"];
+            batch_id?: string;
+            batch_no?: string;
+            lot_no?: string;
+            source_bin_id?: string;
+            note?: string;
+        };
+        ReceiveSubcontractFinishedGoodsRequest: {
+            expected_version: number;
+            receipt_id?: string;
+            receipt_no?: string;
+            warehouse_id: string;
+            warehouse_code?: string;
+            location_id: string;
+            location_code?: string;
+            delivery_note_no: string;
+            received_by?: string;
+            /** Format: date-time */
+            received_at?: string;
+            note?: string;
+            lines: components["schemas"]["ReceiveSubcontractFinishedGoodsLineRequest"][];
+            evidence?: components["schemas"]["SubcontractEvidenceRequest"][];
+        };
+        ReceiveSubcontractFinishedGoodsLineRequest: {
+            id?: string;
+            line_no?: number;
+            item_id: string;
+            sku_code?: string;
+            item_name?: string;
+            batch_id?: string;
+            batch_no?: string;
+            lot_no?: string;
+            /** Format: date */
+            expiry_date?: string;
+            receive_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_receive_qty: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            conversion_factor: components["schemas"]["Quantity"];
+            packaging_status?: string;
+            note?: string;
+        };
+        SubmitSubcontractSampleRequest: {
+            expected_version: number;
+            sample_approval_id?: string;
+            sample_code: string;
+            formula_version?: string;
+            spec_version?: string;
+            submitted_by?: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            note?: string;
+            evidence?: components["schemas"]["SubcontractEvidenceRequest"][];
+        };
+        DecideSubcontractSampleRequest: {
+            expected_version: number;
+            sample_approval_id: string;
+            /** Format: date-time */
+            decision_at?: string;
+            reason?: string;
+            storage_status?: string;
+        };
+        SubcontractEvidenceRequest: {
+            id?: string;
+            evidence_type?: string;
+            file_name?: string;
+            object_key?: string;
+            /** Format: uri */
+            external_url?: string;
+            note?: string;
+        };
+        SubcontractOrderListItem: {
+            id: string;
+            order_no: string;
+            factory_id: string;
+            factory_code?: string;
+            factory_name: string;
+            finished_item_id: string;
+            finished_sku_code: string;
+            finished_item_name: string;
+            planned_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            /** Format: date */
+            expected_receipt_date: string;
+            status: components["schemas"]["SubcontractOrderStatus"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            estimated_cost_amount: components["schemas"]["MoneyAmount"];
+            material_line_count: number;
+            sample_required: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        SubcontractOrder: {
+            id: string;
+            org_id: string;
+            order_no: string;
+            factory_id: string;
+            factory_code?: string;
+            factory_name: string;
+            finished_item_id: string;
+            finished_sku_code: string;
+            finished_item_name: string;
+            planned_qty: components["schemas"]["Quantity"];
+            received_qty: components["schemas"]["Quantity"];
+            accepted_qty: components["schemas"]["Quantity"];
+            rejected_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_planned_qty: components["schemas"]["Quantity"];
+            base_received_qty: components["schemas"]["Quantity"];
+            base_accepted_qty: components["schemas"]["Quantity"];
+            base_rejected_qty: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            conversion_factor: components["schemas"]["Quantity"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            estimated_cost_amount: components["schemas"]["MoneyAmount"];
+            deposit_amount: components["schemas"]["MoneyAmount"];
+            spec_summary?: string;
+            sample_required: boolean;
+            claim_window_days: number;
+            /** Format: date */
+            target_start_date?: string;
+            /** Format: date */
+            expected_receipt_date: string;
+            status: components["schemas"]["SubcontractOrderStatus"];
+            material_lines: components["schemas"]["SubcontractOrderMaterialLine"][];
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            /** Format: date-time */
+            approved_at?: string;
+            /** Format: date-time */
+            factory_confirmed_at?: string;
+            /** Format: date-time */
+            deposit_recorded_at?: string;
+            /** Format: date-time */
+            materials_issued_at?: string;
+            /** Format: date-time */
+            sample_submitted_at?: string;
+            /** Format: date-time */
+            sample_approved_at?: string;
+            /** Format: date-time */
+            sample_rejected_at?: string;
+            /** Format: date-time */
+            mass_production_started_at?: string;
+            /** Format: date-time */
+            finished_goods_received_at?: string;
+            /** Format: date-time */
+            qc_started_at?: string;
+            /** Format: date-time */
+            accepted_at?: string;
+            /** Format: date-time */
+            rejected_factory_issue_at?: string;
+            /** Format: date-time */
+            final_payment_ready_at?: string;
+            /** Format: date-time */
+            closed_at?: string;
+            /** Format: date-time */
+            cancelled_at?: string;
+            cancel_reason?: string;
+            sample_reject_reason?: string;
+            factory_issue_reason?: string;
+            version: number;
+        };
+        SubcontractOrderMaterialLine: {
+            id: string;
+            line_no: number;
+            item_id: string;
+            sku_code: string;
+            item_name: string;
+            planned_qty: components["schemas"]["Quantity"];
+            issued_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_planned_qty: components["schemas"]["Quantity"];
+            base_issued_qty: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            conversion_factor: components["schemas"]["Quantity"];
+            unit_cost: components["schemas"]["UnitCostAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            line_cost_amount: components["schemas"]["MoneyAmount"];
+            lot_trace_required: boolean;
+            note?: string;
+        };
+        SubcontractOrderActionResult: {
+            subcontract_order: components["schemas"]["SubcontractOrder"];
+            previous_status: components["schemas"]["SubcontractOrderStatus"];
+            current_status: components["schemas"]["SubcontractOrderStatus"];
+            audit_log_id?: string;
+        };
+        SubcontractPaymentMilestoneResult: {
+            subcontract_order: components["schemas"]["SubcontractOrder"];
+            milestone: components["schemas"]["SubcontractPaymentMilestone"];
+            previous_status: components["schemas"]["SubcontractOrderStatus"];
+            current_status: components["schemas"]["SubcontractOrderStatus"];
+            audit_log_id?: string;
+        };
+        SubcontractPaymentMilestone: {
+            id: string;
+            milestone_no: string;
+            subcontract_order_id: string;
+            subcontract_order_no: string;
+            factory_id: string;
+            factory_code?: string;
+            factory_name: string;
+            kind: components["schemas"]["SubcontractPaymentMilestoneKind"];
+            status: components["schemas"]["SubcontractPaymentMilestoneStatus"];
+            amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            note?: string;
+            approved_exception_id?: string;
+            recorded_by?: string;
+            /** Format: date-time */
+            recorded_at?: string;
+            ready_by?: string;
+            /** Format: date-time */
+            ready_at?: string;
+            blocked_by?: string;
+            /** Format: date-time */
+            blocked_at?: string;
+            block_reason?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        IssueSubcontractMaterialsResult: {
+            subcontract_order: components["schemas"]["SubcontractOrder"];
+            transfer: components["schemas"]["SubcontractMaterialTransfer"];
+            stock_movements: components["schemas"]["SubcontractStockMovement"][];
+            audit_log_id?: string;
+        };
+        SubcontractMaterialTransfer: {
+            id: string;
+            org_id: string;
+            transfer_no: string;
+            subcontract_order_id: string;
+            subcontract_order_no: string;
+            factory_id: string;
+            factory_code?: string;
+            factory_name: string;
+            source_warehouse_id: string;
+            source_warehouse_code?: string;
+            status: components["schemas"]["SubcontractMaterialTransferStatus"];
+            lines: components["schemas"]["SubcontractMaterialTransferLine"][];
+            evidence?: components["schemas"]["SubcontractEvidence"][];
+            handover_by: string;
+            /** Format: date-time */
+            handover_at: string;
+            received_by: string;
+            receiver_contact?: string;
+            vehicle_no?: string;
+            note?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        SubcontractMaterialTransferLine: {
+            id: string;
+            line_no: number;
+            order_material_line_id: string;
+            item_id: string;
+            sku_code: string;
+            item_name: string;
+            issue_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_issue_qty: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            conversion_factor: components["schemas"]["Quantity"];
+            batch_id?: string;
+            batch_no?: string;
+            lot_no?: string;
+            source_bin_id?: string;
+            lot_trace_required: boolean;
+            note?: string;
+        };
+        ReceiveSubcontractFinishedGoodsResult: {
+            subcontract_order: components["schemas"]["SubcontractOrder"];
+            receipt: components["schemas"]["SubcontractFinishedGoodsReceipt"];
+            stock_movements: components["schemas"]["SubcontractStockMovement"][];
+            audit_log_id?: string;
+        };
+        SubcontractFinishedGoodsReceipt: {
+            id: string;
+            org_id: string;
+            receipt_no: string;
+            subcontract_order_id: string;
+            subcontract_order_no: string;
+            factory_id: string;
+            factory_code?: string;
+            factory_name: string;
+            warehouse_id: string;
+            warehouse_code?: string;
+            location_id: string;
+            location_code?: string;
+            delivery_note_no: string;
+            status: components["schemas"]["SubcontractFinishedGoodsReceiptStatus"];
+            lines: components["schemas"]["SubcontractFinishedGoodsReceiptLine"][];
+            evidence?: components["schemas"]["SubcontractEvidence"][];
+            received_by: string;
+            /** Format: date-time */
+            received_at: string;
+            note?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        SubcontractFinishedGoodsReceiptLine: {
+            id: string;
+            line_no: number;
+            item_id: string;
+            sku_code: string;
+            item_name: string;
+            batch_id: string;
+            batch_no: string;
+            lot_no: string;
+            /** Format: date */
+            expiry_date: string;
+            receive_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_receive_qty: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            conversion_factor: components["schemas"]["Quantity"];
+            packaging_status?: string;
+            note?: string;
+        };
+        SubcontractSampleApprovalResult: {
+            subcontract_order: components["schemas"]["SubcontractOrder"];
+            sample_approval: components["schemas"]["SubcontractSampleApproval"];
+            previous_status: components["schemas"]["SubcontractOrderStatus"];
+            current_status: components["schemas"]["SubcontractOrderStatus"];
+            audit_log_id?: string;
+        };
+        SubcontractSampleApproval: {
+            id: string;
+            org_id: string;
+            subcontract_order_id: string;
+            subcontract_order_no: string;
+            sample_code: string;
+            formula_version?: string;
+            spec_version?: string;
+            status: components["schemas"]["SubcontractSampleApprovalStatus"];
+            evidence: components["schemas"]["SubcontractSampleEvidence"][];
+            submitted_by: string;
+            /** Format: date-time */
+            submitted_at: string;
+            decision_by?: string;
+            /** Format: date-time */
+            decision_at?: string;
+            decision_reason?: string;
+            storage_status?: string;
+            note?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        SubcontractEvidence: {
+            id: string;
+            evidence_type: string;
+            file_name?: string;
+            object_key?: string;
+            /** Format: uri */
+            external_url?: string;
+            note?: string;
+        };
+        SubcontractSampleEvidence: components["schemas"]["SubcontractEvidence"] & {
+            /** Format: date-time */
+            created_at?: string;
+            created_by?: string;
+        };
+        SubcontractStockMovement: {
+            movement_no: string;
+            movement_type: string;
+            item_id: string;
+            batch_id?: string;
+            warehouse_id: string;
+            bin_id?: string;
+            quantity: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            source_quantity: components["schemas"]["Quantity"];
+            source_uom_code: components["schemas"]["UOMCode"];
+            conversion_factor: components["schemas"]["Quantity"];
+            stock_status: string;
+            source_doc_type: string;
+            source_doc_id: string;
+            source_doc_line_id: string;
+            reason: string;
+        };
+        /** @enum {string} */
         GoodsReceiptStatus: "draft" | "submitted" | "inspect_ready" | "posted";
         GoodsReceiptListSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["GoodsReceipt"][];
@@ -2348,6 +3150,9 @@ export interface components {
         WarehouseInboundMetricsSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["WarehouseInboundMetrics"];
         };
+        WarehouseSubcontractMetricsSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["WarehouseSubcontractMetrics"];
+        };
         CloseEndOfDayReconciliationRequest: {
             exception_note?: string;
         };
@@ -2387,6 +3192,21 @@ export interface components {
             supplier_rejection_submitted: number;
             supplier_rejection_confirmed: number;
             supplier_rejection_cancelled: number;
+            /** Format: date-time */
+            generated_at: string;
+        };
+        WarehouseSubcontractMetrics: {
+            warehouse_id?: string;
+            /** Format: date */
+            date?: string;
+            shift_code?: string;
+            open_orders: number;
+            material_issued_orders: number;
+            material_transfer_count: number;
+            sample_pending: number;
+            factory_claims: number;
+            factory_claims_overdue: number;
+            final_payment_ready_orders: number;
             /** Format: date-time */
             generated_at: string;
         };
@@ -2955,6 +3775,7 @@ export interface components {
         SearchParam: string;
         /** @description Filter by master data lifecycle status. */
         MasterDataStatusParam: components["schemas"]["MasterDataStatus"];
+        SubcontractOrderIDParam: string;
     };
     requestBodies: never;
     headers: never;
@@ -4150,6 +4971,525 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    listSubcontractOrders: {
+        parameters: {
+            query?: {
+                search?: string;
+                /** @description Comma-separated subcontract order statuses. */
+                status?: string;
+                factory_id?: string;
+                finished_item_id?: string;
+                expected_receipt_from?: string;
+                expected_receipt_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Subcontract order rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractOrderListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createSubcontractOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSubcontractOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract order created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractOrderSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getSubcontractOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Subcontract order detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractOrderSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateSubcontractOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSubcontractOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract order updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractOrderSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    submitSubcontractOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubcontractOrderActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract order submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractOrderActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    approveSubcontractOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubcontractOrderActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract order approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractOrderActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    confirmFactorySubcontractOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubcontractOrderActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Factory acceptance confirmed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractOrderActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    recordSubcontractDeposit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordSubcontractDepositRequest"];
+            };
+        };
+        responses: {
+            /** @description Deposit payment recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractPaymentMilestoneResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    issueSubcontractMaterials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueSubcontractMaterialsRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract materials issued */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueSubcontractMaterialsSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    startMassProductionSubcontractOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubcontractOrderActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Mass production started */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractOrderActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    receiveSubcontractFinishedGoods: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceiveSubcontractFinishedGoodsRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract finished goods received */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceiveSubcontractFinishedGoodsSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    markSubcontractFinalPaymentReady: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkSubcontractFinalPaymentReadyRequest"];
+            };
+        };
+        responses: {
+            /** @description Final payment marked ready */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractPaymentMilestoneResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    submitSubcontractSample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitSubcontractSampleRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract sample submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractSampleApprovalResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    approveSubcontractSample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideSubcontractSampleRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract sample approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractSampleApprovalResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    rejectSubcontractSample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideSubcontractSampleRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract sample rejected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractSampleApprovalResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    cancelSubcontractOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubcontractOrderActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract order cancelled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractOrderActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    closeSubcontractOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubcontractOrderActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract order closed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractOrderActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     recordStockMovement: {
         parameters: {
             query?: never;
@@ -4943,6 +6283,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WarehouseInboundMetricsSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getWarehouseDailyBoardSubcontractMetrics: {
+        parameters: {
+            query?: {
+                warehouse_id?: string;
+                date?: string;
+                shift_code?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse daily board subcontract metrics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseSubcontractMetricsSuccessResponse"];
                 };
             };
             401: components["responses"]["Unauthorized"];
