@@ -499,9 +499,6 @@ func (s WarehouseReceivingService) validatePurchaseOrderReceivingLine(
 	if err != nil {
 		return err
 	}
-	if batch.SupplierID != "" && batch.SupplierID != order.SupplierID {
-		return ErrReceivingPurchaseOrderMismatch
-	}
 	if batch.BatchNo != line.BatchNo || !sameDate(batch.ExpiryDate, line.ExpiryDate) {
 		return ErrReceivingPurchaseOrderMismatch
 	}
