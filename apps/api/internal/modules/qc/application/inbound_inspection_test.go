@@ -13,7 +13,7 @@ import (
 )
 
 func TestInboundQCInspectionServiceCreateStartPassAuditsFlow(t *testing.T) {
-	service, auditStore, movementStore := newTestInboundQCInspectionService()
+	service, auditStore, movementStore, batchUpdater := newTestInboundQCInspectionService()
 	ctx := context.Background()
 
 	created, err := service.CreateInboundQCInspection(ctx, CreateInboundQCInspectionInput{
@@ -106,10 +106,15 @@ func TestInboundQCInspectionServiceCreateStartPassAuditsFlow(t *testing.T) {
 		movementLogs[0].AfterData["delta_available"] != passed.Inspection.Quantity.String() {
 		t.Fatalf("movement audit logs = %+v, want available stock movement audit", movementLogs)
 	}
+	if len(batchUpdater.inputs) != 1 ||
+		batchUpdater.inputs[0].BatchID != passed.Inspection.BatchID ||
+		batchUpdater.inputs[0].NextStatus != inventorydomain.QCStatusPass {
+		t.Fatalf("batch status inputs = %+v, want inbound QC pass to release batch", batchUpdater.inputs)
+	}
 }
 
 func TestInboundQCInspectionServiceRejectsNonInspectableReceiving(t *testing.T) {
-	service, _, _ := newTestInboundQCInspectionService()
+	service, _, _, _ := newTestInboundQCInspectionService()
 
 	_, err := service.CreateInboundQCInspection(context.Background(), CreateInboundQCInspectionInput{
 		GoodsReceiptID:     "grn-hcm-260427-submitted",
@@ -122,7 +127,7 @@ func TestInboundQCInspectionServiceRejectsNonInspectableReceiving(t *testing.T) 
 }
 
 func TestInboundQCInspectionServicePreventsDuplicateOpenReceivingLine(t *testing.T) {
-	service, _, _ := newTestInboundQCInspectionService()
+	service, _, _, _ := newTestInboundQCInspectionService()
 	input := CreateInboundQCInspectionInput{
 		GoodsReceiptID:     "grn-hcm-260427-inspect",
 		GoodsReceiptLineID: "grn-line-draft-001",
@@ -139,7 +144,7 @@ func TestInboundQCInspectionServicePreventsDuplicateOpenReceivingLine(t *testing
 }
 
 func TestInboundQCInspectionServicePartialRequiresValidSplit(t *testing.T) {
-	service, _, movementStore := newTestInboundQCInspectionService()
+	service, _, movementStore, batchUpdater := newTestInboundQCInspectionService()
 	ctx := context.Background()
 	created, err := service.CreateInboundQCInspection(ctx, CreateInboundQCInspectionInput{
 		ID:                 "iqc-partial",
@@ -194,10 +199,14 @@ func TestInboundQCInspectionServicePartialRequiresValidSplit(t *testing.T) {
 	if hold.Quantity.String() != "14.000000" {
 		t.Fatalf("hold movement = %+v, want 14 quarantined quantity", hold)
 	}
+	if len(batchUpdater.inputs) != 1 ||
+		batchUpdater.inputs[0].NextStatus != inventorydomain.QCStatusPass {
+		t.Fatalf("batch status inputs = %+v, want partial with pass quantity to keep batch pass", batchUpdater.inputs)
+	}
 }
 
 func TestInboundQCInspectionServiceHoldQuarantinesStockMovement(t *testing.T) {
-	service, _, movementStore := newTestInboundQCInspectionService()
+	service, _, movementStore, batchUpdater := newTestInboundQCInspectionService()
 	ctx := context.Background()
 	created, err := service.CreateInboundQCInspection(ctx, CreateInboundQCInspectionInput{
 		ID:                 "iqc-hold",
@@ -231,10 +240,14 @@ func TestInboundQCInspectionServiceHoldQuarantinesStockMovement(t *testing.T) {
 		movements[0].Quantity.String() != held.Inspection.Quantity.String() {
 		t.Fatalf("stock movements = %+v, want full qc hold movement", movements)
 	}
+	if len(batchUpdater.inputs) != 1 ||
+		batchUpdater.inputs[0].NextStatus != inventorydomain.QCStatusQuarantine {
+		t.Fatalf("batch status inputs = %+v, want inbound QC hold to quarantine batch", batchUpdater.inputs)
+	}
 }
 
 func TestInboundQCInspectionServiceFailBlocksStockMovementFromAvailable(t *testing.T) {
-	service, _, movementStore := newTestInboundQCInspectionService()
+	service, _, movementStore, batchUpdater := newTestInboundQCInspectionService()
 	ctx := context.Background()
 	created, err := service.CreateInboundQCInspection(ctx, CreateInboundQCInspectionInput{
 		ID:                 "iqc-fail",
@@ -268,21 +281,32 @@ func TestInboundQCInspectionServiceFailBlocksStockMovementFromAvailable(t *testi
 		movements[0].Quantity.String() != failed.Inspection.Quantity.String() {
 		t.Fatalf("stock movements = %+v, want full damaged movement", movements)
 	}
+	if len(batchUpdater.inputs) != 1 ||
+		batchUpdater.inputs[0].NextStatus != inventorydomain.QCStatusFail {
+		t.Fatalf("batch status inputs = %+v, want inbound QC fail to block batch", batchUpdater.inputs)
+	}
 }
 
-func newTestInboundQCInspectionService() (InboundQCInspectionService, *audit.InMemoryLogStore, *inventoryapp.InMemoryStockMovementStore) {
+func newTestInboundQCInspectionService() (
+	InboundQCInspectionService,
+	*audit.InMemoryLogStore,
+	*inventoryapp.InMemoryStockMovementStore,
+	*recordingBatchQCStatusUpdater,
+) {
 	auditStore := audit.NewInMemoryLogStore()
 	movementStore := inventoryapp.NewInMemoryStockMovementStore()
+	batchUpdater := &recordingBatchQCStatusUpdater{}
 	service := NewInboundQCInspectionService(
 		NewPrototypeInboundQCInspectionStore(),
 		inventoryapp.NewPrototypeWarehouseReceivingStore(),
 		auditStore,
-	).WithStockMovementRecorder(movementStore)
+	).WithStockMovementRecorder(movementStore).
+		WithBatchQCStatusUpdater(batchUpdater)
 	service.clock = func() time.Time {
 		return time.Date(2026, 4, 29, 9, 0, 0, 0, time.UTC)
 	}
 
-	return service, auditStore, movementStore
+	return service, auditStore, movementStore, batchUpdater
 }
 
 func completedChecklistInput(status string) []InboundQCChecklistInput {
@@ -304,4 +328,17 @@ func findMovementByStatus(
 	}
 
 	return inventorydomain.StockMovement{}
+}
+
+type recordingBatchQCStatusUpdater struct {
+	inputs []InboundQCBatchQCStatusInput
+}
+
+func (u *recordingBatchQCStatusUpdater) ChangeInboundQCBatchQCStatus(
+	_ context.Context,
+	input InboundQCBatchQCStatusInput,
+) error {
+	u.inputs = append(u.inputs, input)
+
+	return nil
 }

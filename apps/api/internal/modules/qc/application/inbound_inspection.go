@@ -43,10 +43,25 @@ type InboundQCStockMovementRecorder interface {
 	Record(ctx context.Context, movement inventorydomain.StockMovement) error
 }
 
+type InboundQCBatchQCStatusInput struct {
+	BatchID     string
+	NextStatus  inventorydomain.QCStatus
+	ActorID     string
+	Reason      string
+	BusinessRef string
+	RequestID   string
+	ChangedAt   time.Time
+}
+
+type InboundQCBatchQCStatusUpdater interface {
+	ChangeInboundQCBatchQCStatus(ctx context.Context, input InboundQCBatchQCStatusInput) error
+}
+
 type InboundQCInspectionService struct {
 	store         InboundQCInspectionStore
 	receivingRead InboundQCReceivingReader
 	stockMovement InboundQCStockMovementRecorder
+	batchQCStatus InboundQCBatchQCStatusUpdater
 	auditLog      audit.LogStore
 	clock         func() time.Time
 }
@@ -122,6 +137,14 @@ func (s InboundQCInspectionService) WithStockMovementRecorder(
 	recorder InboundQCStockMovementRecorder,
 ) InboundQCInspectionService {
 	s.stockMovement = recorder
+
+	return s
+}
+
+func (s InboundQCInspectionService) WithBatchQCStatusUpdater(
+	updater InboundQCBatchQCStatusUpdater,
+) InboundQCInspectionService {
+	s.batchQCStatus = updater
 
 	return s
 }
@@ -349,10 +372,17 @@ func (s InboundQCInspectionService) transition(
 	if err != nil {
 		return InboundQCInspectionResult{}, err
 	}
+	batchQCStatus, err := s.updateBatchQCStatus(ctx, updated, input.ActorID, input.RequestID, now)
+	if err != nil {
+		return InboundQCInspectionResult{}, err
+	}
 	if err := s.store.Save(ctx, updated); err != nil {
 		return InboundQCInspectionResult{}, err
 	}
 	afterData := inboundQCAuditData(updated)
+	if batchQCStatus != "" {
+		afterData["batch_qc_status"] = string(batchQCStatus)
+	}
 	if len(stockMovements) > 0 {
 		afterData["stock_movement_count"] = len(stockMovements)
 		afterData["stock_movement_no"] = stockMovements[0].MovementNo
@@ -394,6 +424,59 @@ func (s InboundQCInspectionService) transition(
 		CurrentResult:  updated.Result,
 		AuditLogID:     log.ID,
 	}, nil
+}
+
+func (s InboundQCInspectionService) updateBatchQCStatus(
+	ctx context.Context,
+	inspection qcdomain.InboundQCInspection,
+	actorID string,
+	requestID string,
+	changedAt time.Time,
+) (inventorydomain.QCStatus, error) {
+	if s.batchQCStatus == nil {
+		return "", nil
+	}
+	nextStatus, ok := inboundQCBatchQCStatus(inspection)
+	if !ok {
+		return "", nil
+	}
+
+	reason := strings.TrimSpace(inspection.Reason)
+	if reason == "" {
+		reason = fmt.Sprintf("inbound qc %s", inspection.Result)
+	}
+	if err := s.batchQCStatus.ChangeInboundQCBatchQCStatus(ctx, InboundQCBatchQCStatusInput{
+		BatchID:     inspection.BatchID,
+		NextStatus:  nextStatus,
+		ActorID:     actorID,
+		Reason:      reason,
+		BusinessRef: inspection.ID,
+		RequestID:   requestID,
+		ChangedAt:   changedAt,
+	}); err != nil {
+		return "", err
+	}
+
+	return nextStatus, nil
+}
+
+func inboundQCBatchQCStatus(inspection qcdomain.InboundQCInspection) (inventorydomain.QCStatus, bool) {
+	switch inspection.Result {
+	case qcdomain.InboundQCResultPass:
+		return inventorydomain.QCStatusPass, true
+	case qcdomain.InboundQCResultFail:
+		return inventorydomain.QCStatusFail, true
+	case qcdomain.InboundQCResultHold:
+		return inventorydomain.QCStatusQuarantine, true
+	case qcdomain.InboundQCResultPartial:
+		if inspection.PassedQuantity.IsZero() {
+			return inventorydomain.QCStatusQuarantine, true
+		}
+
+		return inventorydomain.QCStatusPass, true
+	default:
+		return "", false
+	}
 }
 
 type inboundQCStockMovementSpec struct {

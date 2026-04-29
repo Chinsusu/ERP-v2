@@ -1104,7 +1104,8 @@ func main() {
 	).WithPurchaseOrderReader(purchaseOrderService)
 	inboundQCStore := qcapp.NewPrototypeInboundQCInspectionStore()
 	inboundQCInspections := qcapp.NewInboundQCInspectionService(inboundQCStore, warehouseReceivingStore, auditLogStore).
-		WithStockMovementRecorder(stockMovementStore)
+		WithStockMovementRecorder(stockMovementStore).
+		WithBatchQCStatusUpdater(inboundQCBatchQCStatusAdapter{catalog: batchCatalog})
 	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	listEndOfDayReconciliations := inventoryapp.NewListEndOfDayReconciliations(reconciliationStore)
 	closeEndOfDayReconciliation := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditLogStore)

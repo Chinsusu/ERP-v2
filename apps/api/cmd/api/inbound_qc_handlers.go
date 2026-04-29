@@ -7,12 +7,17 @@ import (
 	"io"
 	"net/http"
 
+	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	qcapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/application"
 	qcdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
+
+type inboundQCBatchQCStatusAdapter struct {
+	catalog *inventoryapp.BatchCatalog
+}
 
 type inboundQCChecklistItemRequest struct {
 	ID       string `json:"id"`
@@ -97,6 +102,23 @@ type inboundQCActionResultResponse struct {
 	PreviousResult string                      `json:"previous_result,omitempty"`
 	CurrentResult  string                      `json:"current_result,omitempty"`
 	AuditLogID     string                      `json:"audit_log_id,omitempty"`
+}
+
+func (a inboundQCBatchQCStatusAdapter) ChangeInboundQCBatchQCStatus(
+	ctx context.Context,
+	input qcapp.InboundQCBatchQCStatusInput,
+) error {
+	_, err := a.catalog.ChangeQCStatus(ctx, inventoryapp.ChangeBatchQCStatusInput{
+		BatchID:     input.BatchID,
+		NextStatus:  input.NextStatus,
+		ActorID:     input.ActorID,
+		Reason:      input.Reason,
+		BusinessRef: input.BusinessRef,
+		RequestID:   input.RequestID,
+		ChangedAt:   input.ChangedAt,
+	})
+
+	return err
 }
 
 func inboundQCInspectionsHandler(service qcapp.InboundQCInspectionService) http.HandlerFunc {
