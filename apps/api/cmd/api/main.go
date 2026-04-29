@@ -31,6 +31,7 @@ import (
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 	apperrors "github.com/Chinsusu/ERP-v2/apps/api/internal/shared/errors"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/storage"
 )
 
 type healthResponse struct {
@@ -1146,7 +1147,16 @@ func main() {
 	receiveReturn := returnsapp.NewReceiveReturn(returnReceiptStore, auditLogStore)
 	inspectReturn := returnsapp.NewInspectReturn(returnReceiptStore, auditLogStore)
 	applyReturnDisposition := returnsapp.NewApplyReturnDisposition(returnReceiptStore, stockMovementStore, auditLogStore)
-	uploadReturnAttachment := returnsapp.NewUploadReturnAttachment(returnReceiptStore, auditLogStore)
+	attachmentObjectStore := storage.NewS3CompatibleObjectStore(storage.S3Config{
+		Endpoint:     cfg.S3Endpoint,
+		AccessKey:    cfg.S3AccessKey,
+		SecretKey:    cfg.S3SecretKey,
+		UseSSL:       cfg.S3UseSSL,
+		UsePathStyle: cfg.S3UsePathStyle,
+	})
+	uploadReturnAttachment := returnsapp.NewUploadReturnAttachment(returnReceiptStore, auditLogStore).
+		WithObjectStore(attachmentObjectStore).
+		WithStorageBucket(cfg.S3Bucket)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
@@ -4648,19 +4658,6 @@ func returnAttachmentHandler(uploadService returnsapp.UploadReturnAttachment) ht
 		}
 		defer file.Close()
 
-		fileSizeBytes, err := io.Copy(io.Discard, io.LimitReader(file, returnsdomain.ReturnAttachmentMaxFileSizeBytes+1))
-		if err != nil {
-			response.WriteError(
-				w,
-				r,
-				http.StatusBadRequest,
-				response.ErrorCodeValidation,
-				"Invalid return attachment payload",
-				map[string]any{"field": "file"},
-			)
-			return
-		}
-
 		mimeType := fileHeader.Header.Get("Content-Type")
 		if mimeType == "" || mimeType == "application/octet-stream" {
 			mimeType = mime.TypeByExtension(strings.ToLower(filepath.Ext(fileHeader.Filename)))
@@ -4671,7 +4668,8 @@ func returnAttachmentHandler(uploadService returnsapp.UploadReturnAttachment) ht
 			InspectionID:  r.FormValue("inspection_id"),
 			FileName:      fileHeader.Filename,
 			MIMEType:      mimeType,
-			FileSizeBytes: fileSizeBytes,
+			FileSizeBytes: fileHeader.Size,
+			Content:       file,
 			Note:          r.FormValue("note"),
 			ActorID:       principal.UserID,
 			RequestID:     response.RequestID(r),
@@ -5770,6 +5768,15 @@ func writeReturnReceiptError(w http.ResponseWriter, r *http.Request, err error) 
 			response.ErrorCodeConflict,
 			"Return attachment must be linked to an inspected return",
 			map[string]any{"required_status": "inspected or dispositioned"},
+		)
+	case errors.Is(err, returnsapp.ErrReturnAttachmentStorageUnavailable):
+		response.WriteError(
+			w,
+			r,
+			http.StatusServiceUnavailable,
+			response.ErrorCodeConflict,
+			"Return attachment storage is unavailable",
+			nil,
 		)
 	default:
 		response.WriteError(w, r, http.StatusConflict, response.ErrorCodeConflict, "Return receipt could not be processed", nil)

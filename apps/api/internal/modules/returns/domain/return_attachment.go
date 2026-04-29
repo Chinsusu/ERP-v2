@@ -44,6 +44,7 @@ type NewReturnAttachmentInput struct {
 	FileName      string
 	MIMEType      string
 	FileSizeBytes int64
+	StorageBucket string
 	UploadedBy    string
 	Note          string
 	UploadedAt    time.Time
@@ -65,6 +66,10 @@ func NewReturnAttachment(input NewReturnAttachmentInput) (ReturnAttachment, erro
 	if input.FileSizeBytes <= 0 || input.FileSizeBytes > ReturnAttachmentMaxFileSizeBytes {
 		return ReturnAttachment{}, ErrReturnAttachmentInvalidFileSize
 	}
+	storageBucket := strings.TrimSpace(input.StorageBucket)
+	if storageBucket == "" {
+		storageBucket = ReturnAttachmentStorageBucket
+	}
 
 	uploadedAt := input.UploadedAt
 	if uploadedAt.IsZero() {
@@ -80,7 +85,7 @@ func NewReturnAttachment(input NewReturnAttachmentInput) (ReturnAttachment, erro
 		FileExt:       strings.TrimPrefix(strings.ToLower(filepath.Ext(fileName)), "."),
 		MIMEType:      mimeType,
 		FileSizeBytes: input.FileSizeBytes,
-		StorageBucket: ReturnAttachmentStorageBucket,
+		StorageBucket: storageBucket,
 		StorageKey:    fmt.Sprintf("returns/%s/inspections/%s/%s", strings.ToLower(receiptID), strings.ToLower(inspectionID), fileName),
 		Status:        ReturnAttachmentStatusActive,
 		UploadedBy:    uploadedBy,

@@ -3,7 +3,10 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
@@ -12,6 +15,7 @@ import (
 
 var ErrReturnInspectionNotFound = errors.New("return inspection not found")
 var ErrReturnAttachmentNotAllowed = errors.New("return attachment upload is not allowed")
+var ErrReturnAttachmentStorageUnavailable = errors.New("return attachment storage is unavailable")
 
 type ReturnAttachmentStore interface {
 	FindReceiptByID(ctx context.Context, id string) (domain.ReturnReceipt, error)
@@ -19,10 +23,16 @@ type ReturnAttachmentStore interface {
 	SaveAttachment(ctx context.Context, attachment domain.ReturnAttachment) error
 }
 
+type ReturnAttachmentObjectStore interface {
+	PutObject(ctx context.Context, bucket string, key string, contentType string, size int64, body io.Reader) error
+}
+
 type UploadReturnAttachment struct {
-	store    ReturnAttachmentStore
-	auditLog audit.LogStore
-	clock    func() time.Time
+	store         ReturnAttachmentStore
+	objectStore   ReturnAttachmentObjectStore
+	storageBucket string
+	auditLog      audit.LogStore
+	clock         func() time.Time
 }
 
 type UploadReturnAttachmentInput struct {
@@ -31,6 +41,7 @@ type UploadReturnAttachmentInput struct {
 	FileName      string
 	MIMEType      string
 	FileSizeBytes int64
+	Content       io.Reader
 	Note          string
 	ActorID       string
 	RequestID     string
@@ -43,10 +54,25 @@ type ReturnAttachmentResult struct {
 
 func NewUploadReturnAttachment(store ReturnAttachmentStore, auditLog audit.LogStore) UploadReturnAttachment {
 	return UploadReturnAttachment{
-		store:    store,
-		auditLog: auditLog,
-		clock:    func() time.Time { return time.Now().UTC() },
+		store:         store,
+		storageBucket: domain.ReturnAttachmentStorageBucket,
+		auditLog:      auditLog,
+		clock:         func() time.Time { return time.Now().UTC() },
 	}
+}
+
+func (uc UploadReturnAttachment) WithObjectStore(store ReturnAttachmentObjectStore) UploadReturnAttachment {
+	uc.objectStore = store
+
+	return uc
+}
+
+func (uc UploadReturnAttachment) WithStorageBucket(bucket string) UploadReturnAttachment {
+	if strings.TrimSpace(bucket) != "" {
+		uc.storageBucket = strings.TrimSpace(bucket)
+	}
+
+	return uc
 }
 
 func (uc UploadReturnAttachment) Execute(
@@ -83,12 +109,26 @@ func (uc UploadReturnAttachment) Execute(
 		FileName:      input.FileName,
 		MIMEType:      input.MIMEType,
 		FileSizeBytes: input.FileSizeBytes,
+		StorageBucket: uc.storageBucket,
 		UploadedBy:    input.ActorID,
 		Note:          input.Note,
 		UploadedAt:    uc.clock(),
 	})
 	if err != nil {
 		return ReturnAttachmentResult{}, err
+	}
+	if uc.objectStore == nil || input.Content == nil {
+		return ReturnAttachmentResult{}, ErrReturnAttachmentStorageUnavailable
+	}
+	if err := uc.objectStore.PutObject(
+		ctx,
+		attachment.StorageBucket,
+		attachment.StorageKey,
+		attachment.MIMEType,
+		attachment.FileSizeBytes,
+		input.Content,
+	); err != nil {
+		return ReturnAttachmentResult{}, fmt.Errorf("%w: %v", ErrReturnAttachmentStorageUnavailable, err)
 	}
 
 	if err := uc.store.SaveAttachment(ctx, attachment); err != nil {
@@ -138,7 +178,75 @@ func NewPrototypeUploadReturnAttachmentAt(
 	now time.Time,
 ) UploadReturnAttachment {
 	service := NewUploadReturnAttachment(store, auditLog)
+	service.objectStore = NewInMemoryReturnAttachmentObjectStore()
 	service.clock = func() time.Time { return now.UTC() }
 
 	return service
+}
+
+type InMemoryReturnAttachmentObject struct {
+	Bucket      string
+	Key         string
+	ContentType string
+	Size        int64
+	Bytes       []byte
+}
+
+type InMemoryReturnAttachmentObjectStore struct {
+	mu      sync.RWMutex
+	objects map[string]InMemoryReturnAttachmentObject
+}
+
+func NewInMemoryReturnAttachmentObjectStore() *InMemoryReturnAttachmentObjectStore {
+	return &InMemoryReturnAttachmentObjectStore{objects: make(map[string]InMemoryReturnAttachmentObject)}
+}
+
+func (store *InMemoryReturnAttachmentObjectStore) PutObject(
+	_ context.Context,
+	bucket string,
+	key string,
+	contentType string,
+	size int64,
+	body io.Reader,
+) error {
+	if store == nil || body == nil || strings.TrimSpace(bucket) == "" || strings.TrimSpace(key) == "" || size <= 0 {
+		return ErrReturnAttachmentStorageUnavailable
+	}
+	data, err := io.ReadAll(io.LimitReader(body, size+1))
+	if err != nil {
+		return err
+	}
+	if int64(len(data)) != size {
+		return ErrReturnAttachmentStorageUnavailable
+	}
+
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	store.objects[bucket+"/"+key] = InMemoryReturnAttachmentObject{
+		Bucket:      bucket,
+		Key:         key,
+		ContentType: contentType,
+		Size:        size,
+		Bytes:       append([]byte(nil), data...),
+	}
+
+	return nil
+}
+
+func (store *InMemoryReturnAttachmentObjectStore) Get(
+	bucket string,
+	key string,
+) (InMemoryReturnAttachmentObject, bool) {
+	if store == nil {
+		return InMemoryReturnAttachmentObject{}, false
+	}
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	object, ok := store.objects[bucket+"/"+key]
+	if !ok {
+		return InMemoryReturnAttachmentObject{}, false
+	}
+	object.Bytes = append([]byte(nil), object.Bytes...)
+
+	return object, true
 }

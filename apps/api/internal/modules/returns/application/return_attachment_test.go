@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,11 +15,12 @@ func TestUploadReturnAttachmentRecordsMetadataAndAudit(t *testing.T) {
 	store := NewPrototypeReturnReceiptStore()
 	auditStore := audit.NewInMemoryLogStore()
 	inspectReturnForAttachment(t, store, auditStore)
+	objectStore := NewInMemoryReturnAttachmentObjectStore()
 	service := NewPrototypeUploadReturnAttachmentAt(
 		store,
 		auditStore,
 		time.Date(2026, 4, 26, 11, 20, 0, 0, time.UTC),
-	)
+	).WithObjectStore(objectStore)
 
 	result, err := service.Execute(context.Background(), UploadReturnAttachmentInput{
 		ReceiptID:     "rr-260426-0001",
@@ -26,6 +28,7 @@ func TestUploadReturnAttachmentRecordsMetadataAndAudit(t *testing.T) {
 		FileName:      "return-photo.png",
 		MIMEType:      "image/png",
 		FileSizeBytes: 2048,
+		Content:       strings.NewReader(strings.Repeat("a", 2048)),
 		Note:          "seal intact evidence",
 		ActorID:       "user-return-inspector",
 		RequestID:     "req-return-attachment",
@@ -45,6 +48,10 @@ func TestUploadReturnAttachmentRecordsMetadataAndAudit(t *testing.T) {
 	if result.AuditLogID == "" {
 		t.Fatal("audit log id is empty")
 	}
+	object, ok := objectStore.Get(result.Attachment.StorageBucket, result.Attachment.StorageKey)
+	if !ok || object.Size != 2048 || len(object.Bytes) != 2048 {
+		t.Fatalf("stored object = %+v ok=%t, want 2048 bytes in object storage", object, ok)
+	}
 
 	logs, err := auditStore.List(context.Background(), audit.Query{Action: "returns.inspection.attachment_uploaded"})
 	if err != nil {
@@ -56,6 +63,9 @@ func TestUploadReturnAttachmentRecordsMetadataAndAudit(t *testing.T) {
 	if logs[0].AfterData["inspection_id"] != "inspect-rr-260426-0001-intact" ||
 		logs[0].AfterData["file_name"] != "return-photo.png" {
 		t.Fatalf("audit after data = %+v, want inspection and file metadata", logs[0].AfterData)
+	}
+	if _, ok := logs[0].AfterData["file_content"]; ok {
+		t.Fatalf("audit after data = %+v, must not contain file content", logs[0].AfterData)
 	}
 }
 
@@ -74,6 +84,7 @@ func TestUploadReturnAttachmentRejectsPendingInvalidAndMismatchedInputs(t *testi
 		FileName:      "return-photo.png",
 		MIMEType:      "image/png",
 		FileSizeBytes: 2048,
+		Content:       strings.NewReader(strings.Repeat("a", 2048)),
 		ActorID:       "user-return-inspector",
 	})
 	if !errors.Is(err, ErrReturnAttachmentNotAllowed) {
@@ -87,6 +98,7 @@ func TestUploadReturnAttachmentRejectsPendingInvalidAndMismatchedInputs(t *testi
 		FileName:      "return-photo.png",
 		MIMEType:      "image/png",
 		FileSizeBytes: 2048,
+		Content:       strings.NewReader(strings.Repeat("a", 2048)),
 		ActorID:       "user-return-inspector",
 	})
 	if !errors.Is(err, ErrReturnInspectionNotFound) {
@@ -99,6 +111,7 @@ func TestUploadReturnAttachmentRejectsPendingInvalidAndMismatchedInputs(t *testi
 		FileName:      "return-photo.exe",
 		MIMEType:      "application/octet-stream",
 		FileSizeBytes: 2048,
+		Content:       strings.NewReader(strings.Repeat("a", 2048)),
 		ActorID:       "user-return-inspector",
 	})
 	if !errors.Is(err, domain.ErrReturnAttachmentInvalidFileType) {
