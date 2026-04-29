@@ -17,6 +17,7 @@ import (
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
+	productionapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/application"
 	purchaseapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/application"
 	purchasedomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/domain"
 	qcapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/application"
@@ -1114,6 +1115,13 @@ func main() {
 		warehouseCatalog,
 		purchaseOrderUOMConverterAdapter{catalog: uomCatalog},
 	)
+	subcontractOrderStore := productionapp.NewPrototypeSubcontractOrderStore(auditLogStore)
+	subcontractOrderService := productionapp.NewSubcontractOrderService(
+		subcontractOrderStore,
+		partyCatalog,
+		itemCatalog,
+		subcontractOrderUOMConverterAdapter{catalog: uomCatalog},
+	)
 	salesOrderStore := salesapp.NewPrototypeSalesOrderStore(auditLogStore)
 	salesOrderReservationStore := inventoryapp.NewPrototypeSalesOrderReservationStore(auditLogStore)
 	salesOrderService := salesapp.NewSalesOrderService(salesOrderStore, partyCatalog, itemCatalog, warehouseCatalog).
@@ -1391,6 +1399,62 @@ func main() {
 			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(purchaseOrderCloseHandler(purchaseOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/subcontract-orders",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionSubcontractView,
+			http.HandlerFunc(subcontractOrdersHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionSubcontractView,
+			http.HandlerFunc(subcontractOrderDetailHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}/submit",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(subcontractOrderSubmitHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}/approve",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(subcontractOrderApproveHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}/confirm-factory",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(subcontractOrderConfirmFactoryHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}/cancel",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(subcontractOrderCancelHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}/close",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(subcontractOrderCloseHandler(subcontractOrderService)),
 		),
 	)
 	mux.Handle(
