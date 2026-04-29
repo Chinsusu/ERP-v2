@@ -12,6 +12,7 @@ import {
   summarizeSubcontractMaterialTransfers
 } from "../services/subcontractMaterialTransferService";
 import {
+  addSubcontractFactoryClaimEvidence,
   approveSubcontractOrder,
   approveSubcontractSample,
   availableSubcontractOrderActions,
@@ -19,7 +20,9 @@ import {
   changeSubcontractOrderStatus,
   closeSubcontractOrder,
   confirmFactorySubcontractOrder,
+  createSubcontractFactoryClaim,
   createSubcontractOrder,
+  formatSubcontractFactoryClaimStatus,
   formatSubcontractDepositStatus,
   formatSubcontractOrderStatus,
   getSubcontractOrder,
@@ -29,6 +32,8 @@ import {
   receiveSubcontractFinishedGoods,
   rejectSubcontractSample,
   startMassProductionSubcontractOrder,
+  subcontractFactoryClaimSlaLabel,
+  subcontractFactoryClaimStatusTone,
   subcontractDepositStatusOptions,
   subcontractFactoryOptions,
   subcontractMaterialItemOptions,
@@ -43,6 +48,8 @@ import {
 } from "../services/subcontractOrderService";
 import type {
   SubcontractDepositStatus,
+  SubcontractFactoryClaim,
+  SubcontractFactoryClaimSeverity,
   SubcontractFinishedGoodsPackagingStatus,
   SubcontractFinishedGoodsReceipt,
   SubcontractFinalPaymentStatus,
@@ -150,18 +157,6 @@ const subcontractDetailTabs = [
   "Payment"
 ];
 
-const prototypeFactoryClaims = [
-  {
-    issueType: "Packaging scuff",
-    affectedQty: 120,
-    detectedAt: "2026-04-26",
-    responseDeadline: "2026-04-30",
-    severity: "P1",
-    status: "Open",
-    slaLabel: "4 days"
-  }
-] as const;
-
 export function SubcontractOrderPrototype() {
   const [factoryId, setFactoryId] = useState(subcontractFactoryOptions[0].id);
   const [productId, setProductId] = useState(subcontractProductOptions[0].id);
@@ -218,6 +213,17 @@ export function SubcontractOrderPrototype() {
   const [receiptMovements, setReceiptMovements] = useState<SubcontractStockMovement[]>([]);
   const [receiptFeedback, setReceiptFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
   const [isReceivingFinishedGoods, setIsReceivingFinishedGoods] = useState(false);
+  const [factoryClaims, setFactoryClaims] = useState<SubcontractFactoryClaim[]>([]);
+  const [claimReasonCode, setClaimReasonCode] = useState("PACKAGING_DAMAGED");
+  const [claimReason, setClaimReason] = useState("Outer cartons damaged during factory delivery");
+  const [claimSeverity, setClaimSeverity] = useState<SubcontractFactoryClaimSeverity>("P1");
+  const [claimAffectedQty, setClaimAffectedQty] = useState("0.000000");
+  const [claimOwner, setClaimOwner] = useState("factory-owner");
+  const [claimEvidenceName, setClaimEvidenceName] = useState("factory-claim-photo.jpg");
+  const [claimEvidenceNote, setClaimEvidenceNote] = useState("Inbound QC fail evidence");
+  const [claimFeedback, setClaimFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
+  const [isSavingClaim, setIsSavingClaim] = useState(false);
+  const [isAddingClaimEvidence, setIsAddingClaimEvidence] = useState(false);
   const summary = useMemo(() => summarizeSubcontractOrders(orders), [orders]);
   const transferSummary = useMemo(() => summarizeSubcontractMaterialTransfers(transfers), [transfers]);
   const orderColumns = useMemo(() => subcontractOrderColumns(handleOpenOrder), []);
@@ -259,6 +265,14 @@ export function SubcontractOrderPrototype() {
   const latestReceiptMovements = latestFinishedGoodsReceipt
     ? receiptMovements.filter((movement) => movement.sourceDocId === latestFinishedGoodsReceipt.id)
     : [];
+  const selectedFactoryClaims = selectedOrder
+    ? factoryClaims.filter((claim) => claim.orderId === selectedOrder.id)
+    : [];
+  const latestFactoryClaim = selectedFactoryClaims[0] ?? null;
+  const canCreateFactoryClaim =
+    !!selectedOrder &&
+    !!latestFinishedGoodsReceipt &&
+    ["finished_goods_received", "qc_in_progress"].includes(selectedOrder.status);
   const canIssueSelectedOrder =
     selectedOrder?.status === "factory_confirmed" || selectedOrder?.status === "deposit_recorded";
   const canSubmitSample =
@@ -340,7 +354,21 @@ export function SubcontractOrderPrototype() {
     setPackagingStatus("intact");
     setReceiptEvidenceName("factory-delivery.pdf");
     setReceiptNote("");
+    setClaimReasonCode("PACKAGING_DAMAGED");
+    setClaimReason("Outer cartons damaged during factory delivery");
+    setClaimSeverity("P1");
+    setClaimAffectedQty(remainingFinishedGoodsQty(selectedOrder));
+    setClaimOwner("factory-owner");
+    setClaimEvidenceName("factory-claim-photo.jpg");
+    setClaimEvidenceNote("Inbound QC fail evidence");
   }, [selectedOrder?.id, selectedOrder?.version]);
+
+  useEffect(() => {
+    const latestLine = latestFinishedGoodsReceipt?.lines[0];
+    if (latestLine) {
+      setClaimAffectedQty(latestLine.receiveQty);
+    }
+  }, [latestFinishedGoodsReceipt?.id]);
 
   useEffect(() => {
     let active = true;
@@ -746,6 +774,85 @@ export function SubcontractOrderPrototype() {
       });
     } finally {
       setIsReceivingFinishedGoods(false);
+    }
+  }
+
+  async function handleCreateFactoryClaim() {
+    if (!selectedOrder || !latestFinishedGoodsReceipt) {
+      return;
+    }
+
+    try {
+      setIsSavingClaim(true);
+      const result = await createSubcontractFactoryClaim({
+        order: selectedOrder,
+        claimId: `${selectedOrder.id}-factory-claim-${Date.now()}`,
+        receiptId: latestFinishedGoodsReceipt.id,
+        receiptNo: latestFinishedGoodsReceipt.receiptNo,
+        reasonCode: claimReasonCode,
+        reason: claimReason,
+        severity: claimSeverity,
+        affectedQty: claimAffectedQty,
+        uomCode: latestFinishedGoodsReceipt.lines[0]?.uomCode ?? "EA",
+        baseAffectedQty: claimAffectedQty,
+        baseUOMCode: latestFinishedGoodsReceipt.lines[0]?.baseUOMCode ?? "EA",
+        ownerId: claimOwner,
+        openedBy: "qa-user",
+        openedAt: new Date().toISOString(),
+        evidence: [
+          {
+            evidenceType: "qc_photo",
+            fileName: claimEvidenceName,
+            objectKey: `subcontract/${selectedOrder.id}/${claimEvidenceName || "factory-claim-photo.jpg"}`,
+            note: claimEvidenceNote
+          }
+        ]
+      });
+
+      setOrders((current) => [result.order, ...current.filter((order) => order.id !== result.order.id)]);
+      setSelectedOrderId(result.order.id);
+      setFactoryClaims((current) => [result.claim, ...current.filter((claim) => claim.id !== result.claim.id)]);
+      setLastAudit(result.auditLog);
+      setClaimFeedback({
+        tone: "danger",
+        message: `${result.claim.claimNo} opened; final payment on hold`
+      });
+    } catch (error) {
+      setClaimFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "Factory claim could not be created"
+      });
+    } finally {
+      setIsSavingClaim(false);
+    }
+  }
+
+  async function handleAddClaimEvidence() {
+    if (!latestFactoryClaim) {
+      return;
+    }
+
+    try {
+      setIsAddingClaimEvidence(true);
+      const updated = await addSubcontractFactoryClaimEvidence(latestFactoryClaim.id, {
+        evidenceType: "inspection_note",
+        fileName: claimEvidenceName,
+        objectKey: `subcontract/${latestFactoryClaim.orderId}/${claimEvidenceName || "factory-claim-note.pdf"}`,
+        note: claimEvidenceNote
+      });
+
+      setFactoryClaims((current) => [updated, ...current.filter((claim) => claim.id !== updated.id)]);
+      setClaimFeedback({
+        tone: "info",
+        message: `${updated.claimNo} evidence updated`
+      });
+    } catch (error) {
+      setClaimFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "Factory claim evidence could not be updated"
+      });
+    } finally {
+      setIsAddingClaimEvidence(false);
     }
   }
 
@@ -1541,25 +1648,150 @@ export function SubcontractOrderPrototype() {
         <div className="erp-card erp-card--padded erp-subcontract-card">
           <div className="erp-section-header">
             <h2 className="erp-section-title">Factory claim</h2>
-            <StatusChip tone="danger">P1 open</StatusChip>
+            <StatusChip tone={latestFactoryClaim ? subcontractFactoryClaimStatusTone(latestFactoryClaim.status) : "normal"}>
+              {latestFactoryClaim ? formatSubcontractFactoryClaimStatus(latestFactoryClaim.status) : "No claim"}
+            </StatusChip>
           </div>
-          <div className="erp-subcontract-claim-list">
-            {prototypeFactoryClaims.map((claim) => (
-              <div className="erp-subcontract-claim-item" key={`${claim.issueType}-${claim.detectedAt}`}>
-                <strong>{claim.issueType}</strong>
-                <span>{formatQuantity(claim.affectedQty)} affected</span>
-                <span>Detected {claim.detectedAt}</span>
-                <span>Deadline {claim.responseDeadline}</span>
-                <StatusChip tone="danger">{claim.severity}</StatusChip>
-                <StatusChip tone="warning">{claim.status}</StatusChip>
-                <StatusChip tone="warning">SLA {claim.slaLabel}</StatusChip>
+
+          <div className="erp-subcontract-claim-controls">
+            <label className="erp-field">
+              <span>Reason code</span>
+              <select
+                className="erp-input"
+                value={claimReasonCode}
+                onChange={(event) => setClaimReasonCode(event.target.value)}
+              >
+                <option value="PACKAGING_DAMAGED">Packaging damaged</option>
+                <option value="SPEC_MISMATCH">Spec mismatch</option>
+                <option value="QTY_SHORT">Quantity short</option>
+                <option value="QUALITY_FAIL">Quality fail</option>
+              </select>
+            </label>
+            <label className="erp-field">
+              <span>Severity</span>
+              <select
+                className="erp-input"
+                value={claimSeverity}
+                onChange={(event) => setClaimSeverity(event.target.value as SubcontractFactoryClaimSeverity)}
+              >
+                <option value="P1">P1</option>
+                <option value="P2">P2</option>
+                <option value="P3">P3</option>
+              </select>
+            </label>
+            <label className="erp-field">
+              <span>Affected qty</span>
+              <input
+                className="erp-input"
+                inputMode="decimal"
+                type="text"
+                value={claimAffectedQty}
+                onChange={(event) => setClaimAffectedQty(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Owner</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={claimOwner}
+                onChange={(event) => setClaimOwner(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Evidence file</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={claimEvidenceName}
+                onChange={(event) => setClaimEvidenceName(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <label className="erp-field erp-subcontract-note-field">
+            <span>Claim reason</span>
+            <input
+              className="erp-input"
+              type="text"
+              value={claimReason}
+              onChange={(event) => setClaimReason(event.target.value)}
+            />
+          </label>
+          <label className="erp-field erp-subcontract-note-field">
+            <span>Evidence note</span>
+            <input
+              className="erp-input"
+              type="text"
+              value={claimEvidenceNote}
+              onChange={(event) => setClaimEvidenceNote(event.target.value)}
+            />
+          </label>
+
+          {selectedFactoryClaims.length > 0 ? (
+            <>
+              <div className="erp-subcontract-fact-grid erp-subcontract-claim-facts">
+                <SubcontractFact label="Claim" value={latestFactoryClaim?.claimNo ?? "-"} />
+                <SubcontractFact label="Receipt" value={latestFactoryClaim?.receiptNo ?? "-"} />
+                <SubcontractFact label="Owner" value={latestFactoryClaim?.ownerId ?? "-"} />
+                <SubcontractFact label="SLA" value={latestFactoryClaim ? subcontractFactoryClaimSlaLabel(latestFactoryClaim) : "-"} />
               </div>
-            ))}
-          </div>
+              <div className="erp-subcontract-claim-list">
+                {selectedFactoryClaims.map((claim) => (
+                  <div className="erp-subcontract-claim-item" key={claim.id}>
+                    <strong>{claim.reasonCode}</strong>
+                    <span>
+                      {Number(claim.affectedQty).toLocaleString("en-US")} {claim.uomCode}
+                    </span>
+                    <span>Opened {claim.openedAt.slice(0, 10)}</span>
+                    <span>Due {claim.dueAt.slice(0, 10)}</span>
+                    <StatusChip tone={claim.severity === "P1" ? "danger" : "warning"}>{claim.severity}</StatusChip>
+                    <StatusChip tone={subcontractFactoryClaimStatusTone(claim.status)}>
+                      {formatSubcontractFactoryClaimStatus(claim.status)}
+                    </StatusChip>
+                    <StatusChip tone={claim.blocksFinalPayment ? "danger" : "success"}>
+                      {claim.blocksFinalPayment ? "Payment hold" : "Payment clear"}
+                    </StatusChip>
+                  </div>
+                ))}
+              </div>
+              <div className="erp-subcontract-attachment-list" aria-label="Factory claim evidence">
+                {latestFactoryClaim?.evidence.map((evidence) => (
+                  <StatusChip key={evidence.id} tone="info">
+                    {evidence.fileName ?? evidence.objectKey ?? evidence.evidenceType}
+                  </StatusChip>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="erp-subcontract-empty-state">No factory claim opened for this order</div>
+          )}
+
           <div className="erp-subcontract-actions">
-            <button className="erp-button erp-button--danger" type="button">
+            <button
+              className="erp-button erp-button--danger"
+              type="button"
+              disabled={
+                !canCreateFactoryClaim ||
+                isSavingClaim ||
+                claimReason.trim() === "" ||
+                claimAffectedQty.trim() === "" ||
+                claimOwner.trim() === "" ||
+                claimEvidenceName.trim() === ""
+              }
+              onClick={handleCreateFactoryClaim}
+            >
               Create claim
             </button>
+            <button
+              className="erp-button erp-button--secondary"
+              type="button"
+              disabled={!latestFactoryClaim || isAddingClaimEvidence || claimEvidenceName.trim() === ""}
+              onClick={handleAddClaimEvidence}
+            >
+              Add evidence
+            </button>
+            {claimFeedback ? <StatusChip tone={claimFeedback.tone}>{claimFeedback.message}</StatusChip> : null}
           </div>
         </div>
       </section>

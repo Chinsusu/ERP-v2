@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   approveSubcontractOrder,
   approveSubcontractSample,
+  addSubcontractFactoryClaimEvidence,
   changeSubcontractOrderStatus,
   confirmFactorySubcontractOrder,
+  createSubcontractFactoryClaim,
   createSubcontractOrder,
   formatSubcontractDepositStatus,
   formatSubcontractOrderStatus,
@@ -15,6 +17,7 @@ import {
   resetPrototypeSubcontractOrdersForTest,
   startMassProductionSubcontractOrder,
   subcontractDepositStatusTone,
+  subcontractFactoryClaimSlaLabel,
   subcontractOrderStatusOptions,
   subcontractOrderStatusTone,
   submitSubcontractSample,
@@ -478,6 +481,98 @@ describe("subcontractOrderService", () => {
       targetLocation: "HCM/FG-QC-01:qc_hold"
     });
     expect(received.auditLog.action).toBe("subcontract.finished_goods_received");
+  });
+
+  it("creates a factory claim with SLA and appends evidence", async () => {
+    const draft = await createSubcontractOrder({
+      factoryId: "sup-out-lotus",
+      productId: "item-serum-30ml",
+      quantity: 1200,
+      specVersion: "SPEC-SERUM-2026.04",
+      sampleRequired: false,
+      expectedDeliveryDate: "2026-05-20",
+      depositStatus: "pending",
+      materialItemId: "item-cream-50g",
+      materialQty: "20",
+      materialUnitCost: "58000"
+    });
+    const submitted = await submitSubcontractOrder(draft.id, draft.version);
+    const approved = await approveSubcontractOrder(submitted.order.id, submitted.order.version);
+    const confirmed = await confirmFactorySubcontractOrder(approved.order.id, approved.order.version);
+    const issued = await issueSubcontractMaterials({
+      order: confirmed.order,
+      sourceWarehouseId: "wh-hcm",
+      sourceWarehouseCode: "HCM",
+      handoverBy: "warehouse-user",
+      receivedBy: "factory-receiver",
+      lines: [
+        {
+          orderMaterialLineId: confirmed.order.materialLines[0].id,
+          issueQty: "20",
+          uomCode: "EA",
+          batchNo: "CREAM-LOT-001"
+        }
+      ]
+    });
+    const massStarted = await startMassProductionSubcontractOrder(issued.order.id, issued.order.version);
+    const received = await receiveSubcontractFinishedGoods({
+      order: massStarted.order,
+      warehouseId: "wh-hcm",
+      warehouseCode: "HCM",
+      locationId: "loc-hcm-fg-qc",
+      locationCode: "FG-QC-01",
+      deliveryNoteNo: "DN-FACTORY-FAIL",
+      receivedBy: "warehouse-user",
+      lines: [
+        {
+          receiveQty: "80",
+          uomCode: "EA",
+          batchNo: "FG-LOT-FAIL",
+          lotNo: "FG-LOT-FAIL",
+          expiryDate: "2028-04-29",
+          packagingStatus: "damaged"
+        }
+      ]
+    });
+
+    const claimResult = await createSubcontractFactoryClaim({
+      order: received.order,
+      receiptId: received.receipt.id,
+      receiptNo: received.receipt.receiptNo,
+      reasonCode: "PACKAGING_DAMAGED",
+      reason: "Outer cartons crushed on receipt",
+      severity: "P1",
+      affectedQty: "12",
+      uomCode: "EA",
+      ownerId: "factory-owner",
+      openedBy: "qa-user",
+      openedAt: "2026-04-29T12:00:00Z",
+      evidence: [
+        {
+          evidenceType: "qc_photo",
+          fileName: "damaged-cartons.jpg",
+          objectKey: "subcontract/claim/damaged-cartons.jpg"
+        }
+      ]
+    });
+    const updatedClaim = await addSubcontractFactoryClaimEvidence(claimResult.claim.id, {
+      evidenceType: "inspection_note",
+      fileName: "inspection-note.pdf",
+      objectKey: "subcontract/claim/inspection-note.pdf"
+    });
+
+    expect(claimResult.order.status).toBe("rejected_with_factory_issue");
+    expect(claimResult.order.finalPaymentStatus).toBe("hold");
+    expect(claimResult.claim).toMatchObject({
+      receiptId: received.receipt.id,
+      reasonCode: "PACKAGING_DAMAGED",
+      status: "open",
+      blocksFinalPayment: true,
+      affectedQty: "12.000000"
+    });
+    expect(subcontractFactoryClaimSlaLabel(claimResult.claim, "2026-05-03T00:00:00Z")).toBe("4 days left");
+    expect(updatedClaim.evidence).toHaveLength(2);
+    expect(claimResult.auditLog.action).toBe("subcontract.factory_claim_opened");
   });
 
   it("maps subcontract status and deposit status to UI labels and tones", () => {

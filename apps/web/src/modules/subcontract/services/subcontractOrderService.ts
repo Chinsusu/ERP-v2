@@ -3,6 +3,7 @@ import { decimalScales, normalizeDecimalInput } from "../../../shared/format/num
 import type { AuditLogItem } from "@/modules/audit/types";
 import type {
   ChangeSubcontractOrderStatusInput,
+  CreateSubcontractFactoryClaimInput,
   CreateSubcontractOrderInput,
   DecideSubcontractSampleInput,
   IssueSubcontractMaterialsInput,
@@ -11,6 +12,10 @@ import type {
   ReceiveSubcontractFinishedGoodsResult,
   SubcontractDepositStatus,
   SubcontractFactory,
+  SubcontractFactoryClaim,
+  SubcontractFactoryClaimEvidenceInput,
+  SubcontractFactoryClaimResult,
+  SubcontractFactoryClaimStatus,
   SubcontractFinishedGoodsReceipt,
   SubcontractFinalPaymentStatus,
   SubcontractMaterialTransfer,
@@ -419,6 +424,8 @@ let subcontractAuditSequence = 1;
 let prototypeSampleApprovalSequence = 1;
 let prototypeSampleApprovalStore: SubcontractSampleApproval[] = [];
 let prototypeFinishedGoodsReceiptSequence = 1;
+let prototypeFactoryClaimSequence = 1;
+let prototypeFactoryClaimStore: SubcontractFactoryClaim[] = [];
 
 export const subcontractFactoryOptions: SubcontractFactory[] = [
   { id: "sup-out-lotus", code: "SUP-OUT-LOTUS", name: "Lotus Filling Partner" },
@@ -725,6 +732,19 @@ export async function receiveSubcontractFinishedGoods(
   }
 }
 
+export async function createSubcontractFactoryClaim(
+  input: CreateSubcontractFactoryClaimInput
+): Promise<SubcontractFactoryClaimResult> {
+  return createPrototypeSubcontractFactoryClaim(input);
+}
+
+export async function addSubcontractFactoryClaimEvidence(
+  claimId: string,
+  evidence: SubcontractFactoryClaimEvidenceInput
+): Promise<SubcontractFactoryClaim> {
+  return addPrototypeSubcontractFactoryClaimEvidence(claimId, evidence);
+}
+
 export function changeSubcontractOrderStatus(input: ChangeSubcontractOrderStatusInput): SubcontractStatusChangeResult {
   const nextStatus = normalizeOrderStatus(input.nextStatus);
   const beforeStatus = input.order.status;
@@ -801,6 +821,59 @@ export function subcontractDepositStatusTone(
   }
 }
 
+export function subcontractFactoryClaimStatusTone(
+  status: SubcontractFactoryClaimStatus
+): "normal" | "success" | "warning" | "danger" | "info" {
+  switch (status) {
+    case "open":
+      return "danger";
+    case "acknowledged":
+      return "warning";
+    case "resolved":
+    case "closed":
+      return "success";
+    case "cancelled":
+      return "normal";
+    default:
+      return "info";
+  }
+}
+
+export function formatSubcontractFactoryClaimStatus(status: SubcontractFactoryClaimStatus) {
+  switch (status) {
+    case "open":
+      return "Open";
+    case "acknowledged":
+      return "Acknowledged";
+    case "resolved":
+      return "Resolved";
+    case "closed":
+      return "Closed";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return status;
+  }
+}
+
+export function subcontractFactoryClaimSlaLabel(claim: SubcontractFactoryClaim, now = new Date().toISOString()) {
+  const dueAt = new Date(claim.dueAt).getTime();
+  const current = new Date(now).getTime();
+  if (Number.isNaN(dueAt) || Number.isNaN(current)) {
+    return "SLA pending";
+  }
+
+  const days = Math.ceil((dueAt - current) / 86_400_000);
+  if (days < 0) {
+    return `${Math.abs(days)} day overdue`;
+  }
+  if (days === 0) {
+    return "Due today";
+  }
+
+  return `${days} day${days === 1 ? "" : "s"} left`;
+}
+
 export function formatSubcontractOrderStatus(status: SubcontractOrderStatus) {
   return subcontractOrderStatusOptions.find((option) => option.value === status)?.label ?? status;
 }
@@ -838,6 +911,8 @@ export function resetPrototypeSubcontractOrdersForTest() {
   prototypeSampleApprovalSequence = 1;
   prototypeSampleApprovalStore = [];
   prototypeFinishedGoodsReceiptSequence = 1;
+  prototypeFactoryClaimSequence = 1;
+  prototypeFactoryClaimStore = [];
   prototypeStore = prototypeSubcontractOrders.map(cloneSubcontractOrder);
 }
 
@@ -1798,6 +1873,98 @@ function receivePrototypeSubcontractFinishedGoods(
   };
 }
 
+function createPrototypeSubcontractFactoryClaim(input: CreateSubcontractFactoryClaimInput): SubcontractFactoryClaimResult {
+  const current = input.order;
+  if (!["finished_goods_received", "qc_in_progress"].includes(current.status)) {
+    throw new Error(`Cannot create factory claim from ${formatSubcontractOrderStatus(current.status)}`);
+  }
+  if (input.evidence.length === 0) {
+    throw new Error("Factory claim evidence is required");
+  }
+  const reason = normalizeRequiredText(input.reason, "Factory claim reason is required");
+  const reasonCode = normalizeRequiredText(input.reasonCode, "Factory claim reason code is required").toUpperCase();
+  const affectedQty = normalizeDecimalInput(input.affectedQty, decimalScales.quantity);
+  if (toScaledBigInt(affectedQty, decimalScales.quantity) <= BigInt(0)) {
+    throw new Error("Factory claim affected quantity must be greater than zero");
+  }
+  const sequence = prototypeFactoryClaimSequence++;
+  const openedAt = input.openedAt || new Date().toISOString();
+  const claimId = input.claimId || `sfc-${current.id}-${String(sequence).padStart(4, "0")}`;
+  const claimNo = input.claimNo || `SFC-260429-${String(sequence).padStart(4, "0")}`;
+  const claim: SubcontractFactoryClaim = {
+    id: claimId,
+    claimNo,
+    orderId: current.id,
+    orderNo: current.orderNo,
+    factoryId: current.factoryId,
+    factoryCode: current.factoryCode,
+    factoryName: current.factoryName,
+    receiptId: input.receiptId,
+    receiptNo: input.receiptNo,
+    reasonCode,
+    reason,
+    severity: input.severity,
+    status: "open",
+    affectedQty,
+    uomCode: input.uomCode,
+    baseAffectedQty: normalizeDecimalInput(input.baseAffectedQty || input.affectedQty, decimalScales.quantity),
+    baseUOMCode: input.baseUOMCode || input.uomCode,
+    evidence: input.evidence.map((evidence, index) =>
+      createSubcontractFactoryClaimEvidence(claimId, evidence, index, openedAt, input.openedBy)
+    ),
+    ownerId: normalizeRequiredText(input.ownerId, "Factory claim owner is required"),
+    openedBy: normalizeRequiredText(input.openedBy, "Factory claim opener is required"),
+    openedAt,
+    dueAt: addDaysISO(openedAt, 7),
+    blocksFinalPayment: true,
+    createdAt: openedAt,
+    updatedAt: openedAt,
+    version: 1
+  };
+  const order = createSubcontractOrderRecord({
+    ...current,
+    status: "rejected_with_factory_issue",
+    rejectedQty: addQuantityStrings(current.rejectedQty ?? "0.000000", affectedQty),
+    finalPaymentStatus: "hold",
+    updatedAt: openedAt,
+    version: current.version + 1
+  });
+  const auditLog = createFactoryClaimAuditLog(order, claim, current.status);
+  order.auditLogIds = [...order.auditLogIds, auditLog.id];
+  prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== order.id)];
+  prototypeFactoryClaimStore = [claim, ...prototypeFactoryClaimStore.filter((candidate) => candidate.id !== claim.id)];
+
+  return {
+    order,
+    claim,
+    auditLog,
+    auditLogId: auditLog.id
+  };
+}
+
+function addPrototypeSubcontractFactoryClaimEvidence(
+  claimId: string,
+  evidence: SubcontractFactoryClaimEvidenceInput
+): SubcontractFactoryClaim {
+  const current = prototypeFactoryClaimStore.find((claim) => claim.id === claimId);
+  if (!current) {
+    throw new Error("Factory claim not found");
+  }
+  const updatedAt = new Date().toISOString();
+  const updated: SubcontractFactoryClaim = {
+    ...current,
+    evidence: [
+      ...current.evidence,
+      createSubcontractFactoryClaimEvidence(current.id, evidence, current.evidence.length, updatedAt, current.openedBy)
+    ],
+    updatedAt,
+    version: current.version + 1
+  };
+  prototypeFactoryClaimStore = [updated, ...prototypeFactoryClaimStore.filter((claim) => claim.id !== current.id)];
+
+  return updated;
+}
+
 function latestPrototypeSampleApproval(orderId: string, sampleApprovalId?: string) {
   const samples = prototypeSampleApprovalStore.filter((sample) =>
     sampleApprovalId ? sample.id === sampleApprovalId : sample.orderId === orderId
@@ -1987,6 +2154,72 @@ function createFinishedGoodsReceiptAuditLog(
     },
     createdAt: receipt.receivedAt || prototypeNow
   };
+}
+
+function createFactoryClaimAuditLog(
+  order: SubcontractOrder,
+  claim: SubcontractFactoryClaim,
+  beforeStatus: SubcontractOrderStatus
+): AuditLogItem {
+  const id = `audit-subcontract-factory-claim-${String(subcontractAuditSequence++).padStart(4, "0")}`;
+
+  return {
+    id,
+    actorId: claim.openedBy,
+    action: "subcontract.factory_claim_opened",
+    entityType: "subcontract_order",
+    entityId: order.id,
+    requestId: `req_${id}`,
+    beforeData: {
+      status: beforeStatus
+    },
+    afterData: {
+      status: order.status,
+      factory_claim_no: claim.claimNo,
+      factory_claim_status: claim.status,
+      reason_code: claim.reasonCode,
+      affected_qty: claim.affectedQty,
+      blocks_final_payment: claim.blocksFinalPayment
+    },
+    metadata: {
+      order_no: order.orderNo,
+      factory: order.factoryName,
+      receipt_no: claim.receiptNo ?? "",
+      owner_id: claim.ownerId,
+      due_at: claim.dueAt,
+      evidence_count: claim.evidence.length
+    },
+    createdAt: claim.openedAt || prototypeNow
+  };
+}
+
+function createSubcontractFactoryClaimEvidence(
+  claimId: string,
+  evidence: SubcontractFactoryClaimEvidenceInput,
+  index: number,
+  createdAt: string,
+  createdBy: string
+) {
+  return {
+    id: evidence.id || `${claimId}-evidence-${index + 1}`,
+    evidenceType: evidence.evidenceType,
+    fileName: evidence.fileName,
+    objectKey: evidence.objectKey,
+    externalURL: evidence.externalURL,
+    note: evidence.note,
+    createdAt,
+    createdBy: createdBy || "qa-user"
+  };
+}
+
+function addDaysISO(value: string, days: number) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  parsed.setUTCDate(parsed.getUTCDate() + days);
+
+  return parsed.toISOString();
 }
 
 function addQuantityStrings(left: string, right: string) {
