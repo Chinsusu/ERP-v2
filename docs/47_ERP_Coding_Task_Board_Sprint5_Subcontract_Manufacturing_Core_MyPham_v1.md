@@ -6,7 +6,7 @@ Sprint: Sprint 5 - Subcontract Manufacturing / Gia cong ngoai
 Document role: Coding task board for Sprint 5 implementation
 Version: v1.0
 Primary stack: Go backend, PostgreSQL, Next.js frontend, OpenAPI, MinIO/S3 attachments
-Status: Ready for Sprint 5 planning
+Status: Implemented on dev/main; release tag hold until GitHub Actions billing blocker is cleared
 
 ---
 
@@ -307,6 +307,7 @@ POST   /api/v1/subcontract-orders/{id}/start-mass-production
 POST   /api/v1/subcontract-orders/{id}/receive-finished-goods
 POST   /api/v1/subcontract-orders/{id}/report-factory-defect
 POST   /api/v1/subcontract-orders/{id}/accept
+POST   /api/v1/subcontract-orders/{id}/partial-accept
 POST   /api/v1/subcontract-orders/{id}/mark-final-payment-ready
 POST   /api/v1/subcontract-orders/{id}/close
 POST   /api/v1/subcontract-orders/{id}/cancel
