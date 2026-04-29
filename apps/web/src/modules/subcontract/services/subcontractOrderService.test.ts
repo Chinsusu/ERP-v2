@@ -1,68 +1,89 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
+  approveSubcontractOrder,
   changeSubcontractOrderStatus,
   createSubcontractOrder,
   formatSubcontractDepositStatus,
   formatSubcontractOrderStatus,
   getSubcontractOrders,
   prototypeSubcontractOrders,
+  resetPrototypeSubcontractOrdersForTest,
   subcontractDepositStatusTone,
   subcontractOrderStatusOptions,
   subcontractOrderStatusTone,
+  submitSubcontractOrder,
   summarizeSubcontractOrders
 } from "./subcontractOrderService";
 
 describe("subcontractOrderService", () => {
-  it("creates an external factory order with the required skeleton fields", () => {
-    const order = createSubcontractOrder({
-      factoryId: "factory-lotus",
-      productId: "product-repair-cream-50ml",
+  beforeEach(() => {
+    resetPrototypeSubcontractOrdersForTest();
+  });
+
+  it("creates an external factory order with the required API fields", async () => {
+    const order = await createSubcontractOrder({
+      factoryId: "sup-out-lotus",
+      productId: "item-serum-30ml",
       quantity: 1200,
-      specVersion: "SPEC-CREAM-50ML-v4",
+      specVersion: "SPEC-SERUM-2026.04",
       sampleRequired: true,
       expectedDeliveryDate: "2026-05-20",
       depositStatus: "pending",
-      depositAmount: 5000000
+      depositAmount: 5000000,
+      materialItemId: "item-cream-50g",
+      materialQty: "20",
+      materialUnitCost: "58000"
     });
 
     expect(order).toMatchObject({
-      factoryName: "Lotus GMP Factory",
-      productName: "Repair Cream 50ml",
+      factoryName: "Lotus Filling Partner",
+      productName: "Hydrating Serum 30ml",
       quantity: 1200,
-      specVersion: "SPEC-CREAM-50ML-v4",
+      specVersion: "SPEC-SERUM-2026.04",
       sampleRequired: true,
       expectedDeliveryDate: "2026-05-20",
       depositStatus: "pending",
-      status: "DRAFT"
+      estimatedCostAmount: "1160000.00",
+      status: "draft"
     });
   });
 
-  it("rejects invalid external factory orders before creating a draft", () => {
-    expect(() =>
+  it("rejects invalid external factory orders before creating a draft", async () => {
+    await expect(
       createSubcontractOrder({
         factoryId: "",
-        productId: "product-repair-cream-50ml",
+        productId: "item-serum-30ml",
         quantity: 0,
-        specVersion: "SPEC-CREAM-50ML-v4",
+        specVersion: "SPEC-SERUM-2026.04",
         sampleRequired: true,
         expectedDeliveryDate: "2026-05-20",
-        depositStatus: "pending"
+        depositStatus: "pending",
+        materialItemId: "item-cream-50g",
+        materialQty: "20",
+        materialUnitCost: "58000"
       })
-    ).toThrow("Factory is required");
+    ).rejects.toThrow("Factory is required");
   });
 
-  it("defines the Sprint 0 subcontract status model", () => {
+  it("defines the Sprint 5 subcontract status model", () => {
     expect(subcontractOrderStatusOptions.map((option) => option.value)).toEqual([
-      "DRAFT",
-      "CONFIRMED",
-      "MATERIAL_TRANSFERRED",
-      "SAMPLE_APPROVED",
-      "IN_PRODUCTION",
-      "DELIVERED",
-      "QC_REVIEW",
-      "ACCEPTED",
-      "REJECTED",
-      "CLOSED"
+      "draft",
+      "submitted",
+      "approved",
+      "factory_confirmed",
+      "deposit_recorded",
+      "materials_issued_to_factory",
+      "sample_submitted",
+      "sample_approved",
+      "sample_rejected",
+      "mass_production_started",
+      "finished_goods_received",
+      "qc_in_progress",
+      "accepted",
+      "rejected_with_factory_issue",
+      "final_payment_ready",
+      "closed",
+      "cancelled"
     ]);
   });
 
@@ -70,7 +91,7 @@ describe("subcontractOrderService", () => {
     const [order] = prototypeSubcontractOrders;
     const result = changeSubcontractOrderStatus({
       order,
-      nextStatus: "MATERIAL_TRANSFERRED",
+      nextStatus: "materials_issued_to_factory",
       actorId: "user-subcontract-coordinator",
       actorName: "Subcontract Coordinator",
       note: "Materials handover recorded"
@@ -78,7 +99,7 @@ describe("subcontractOrderService", () => {
 
     expect(result.order).toMatchObject({
       id: order.id,
-      status: "MATERIAL_TRANSFERRED"
+      status: "materials_issued_to_factory"
     });
     expect(result.order.auditLogIds).toContain(result.auditLog.id);
     expect(result.auditLog).toMatchObject({
@@ -86,10 +107,10 @@ describe("subcontractOrderService", () => {
       entityType: "subcontract_order",
       entityId: order.id,
       beforeData: {
-        status: "CONFIRMED"
+        status: "approved"
       },
       afterData: {
-        status: "MATERIAL_TRANSFERRED"
+        status: "materials_issued_to_factory"
       },
       metadata: {
         note: "Materials handover recorded"
@@ -98,10 +119,10 @@ describe("subcontractOrderService", () => {
   });
 
   it("filters and summarizes subcontract orders", async () => {
-    await expect(getSubcontractOrders({ status: "CONFIRMED" })).resolves.toMatchObject([
+    await expect(getSubcontractOrders({ status: "approved" })).resolves.toMatchObject([
       {
-        orderNo: "SUB-260426-0001",
-        status: "CONFIRMED"
+        orderNo: "SCO-260429-0001",
+        status: "approved"
       }
     ]);
 
@@ -109,14 +130,35 @@ describe("subcontractOrderService", () => {
       total: 1,
       confirmed: 1,
       active: 1,
-      nextDeliveryDate: "2026-05-12"
+      nextDeliveryDate: "2026-05-20"
     });
   });
 
+  it("runs submit and approve actions against the prototype fallback", async () => {
+    const draft = await createSubcontractOrder({
+      factoryId: "sup-out-lotus",
+      productId: "item-serum-30ml",
+      quantity: 1200,
+      specVersion: "SPEC-SERUM-2026.04",
+      sampleRequired: true,
+      expectedDeliveryDate: "2026-05-20",
+      depositStatus: "pending",
+      materialItemId: "item-cream-50g",
+      materialQty: "20",
+      materialUnitCost: "58000"
+    });
+
+    const submitted = await submitSubcontractOrder(draft.id, draft.version);
+    const approved = await approveSubcontractOrder(submitted.order.id, submitted.order.version);
+
+    expect(submitted.order.status).toBe("submitted");
+    expect(approved.order.status).toBe("approved");
+  });
+
   it("maps subcontract status and deposit status to UI labels and tones", () => {
-    expect(formatSubcontractOrderStatus("MATERIAL_TRANSFERRED")).toBe("Material transferred");
-    expect(subcontractOrderStatusTone("REJECTED")).toBe("danger");
-    expect(subcontractOrderStatusTone("ACCEPTED")).toBe("success");
+    expect(formatSubcontractOrderStatus("materials_issued_to_factory")).toBe("Materials issued");
+    expect(subcontractOrderStatusTone("rejected_with_factory_issue")).toBe("danger");
+    expect(subcontractOrderStatusTone("accepted")).toBe("success");
     expect(formatSubcontractDepositStatus("not_required")).toBe("Not required");
     expect(subcontractDepositStatusTone("pending")).toBe("warning");
   });

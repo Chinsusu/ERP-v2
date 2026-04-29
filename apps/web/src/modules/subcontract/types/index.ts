@@ -1,16 +1,23 @@
 import type { AuditLogItem } from "@/modules/audit/types";
 
 export type SubcontractOrderStatus =
-  | "DRAFT"
-  | "CONFIRMED"
-  | "MATERIAL_TRANSFERRED"
-  | "SAMPLE_APPROVED"
-  | "IN_PRODUCTION"
-  | "DELIVERED"
-  | "QC_REVIEW"
-  | "ACCEPTED"
-  | "REJECTED"
-  | "CLOSED";
+  | "draft"
+  | "submitted"
+  | "approved"
+  | "factory_confirmed"
+  | "deposit_recorded"
+  | "materials_issued_to_factory"
+  | "sample_submitted"
+  | "sample_approved"
+  | "sample_rejected"
+  | "mass_production_started"
+  | "finished_goods_received"
+  | "qc_in_progress"
+  | "accepted"
+  | "rejected_with_factory_issue"
+  | "final_payment_ready"
+  | "closed"
+  | "cancelled";
 
 export type SubcontractDepositStatus = "not_required" | "pending" | "paid";
 
@@ -56,10 +63,30 @@ export type SubcontractOrder = {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  version: number;
+  estimatedCostAmount: string;
+  materialLines: SubcontractOrderMaterialLine[];
   auditLogIds: string[];
 };
 
+export type SubcontractOrderMaterialLine = {
+  id: string;
+  itemId: string;
+  skuCode: string;
+  itemName: string;
+  plannedQty: string;
+  issuedQty: string;
+  uomCode: string;
+  unitCost: string;
+  currencyCode: string;
+  lineCostAmount: string;
+  lotTraceRequired: boolean;
+  note?: string;
+};
+
 export type CreateSubcontractOrderInput = {
+  id?: string;
+  orderNo?: string;
   factoryId: string;
   factoryName?: string;
   productId: string;
@@ -70,13 +97,24 @@ export type CreateSubcontractOrderInput = {
   expectedDeliveryDate: string;
   depositStatus: SubcontractDepositStatus;
   depositAmount?: number;
+  materialItemId: string;
+  materialQty: string;
+  materialUnitCost: string;
+  materialLotTraceRequired?: boolean;
   createdBy?: string;
 };
 
+export type UpdateSubcontractOrderInput = Partial<CreateSubcontractOrderInput> & {
+  expectedVersion: number;
+};
+
 export type SubcontractOrderQuery = {
+  search?: string;
   factoryId?: string;
   productId?: string;
   status?: SubcontractOrderStatus;
+  expectedReceiptFrom?: string;
+  expectedReceiptTo?: string;
 };
 
 export type ChangeSubcontractOrderStatusInput = {
@@ -90,6 +128,7 @@ export type ChangeSubcontractOrderStatusInput = {
 export type SubcontractStatusChangeResult = {
   order: SubcontractOrder;
   auditLog: AuditLogItem;
+  auditLogId?: string;
 };
 
 export type SubcontractOrderSummary = {

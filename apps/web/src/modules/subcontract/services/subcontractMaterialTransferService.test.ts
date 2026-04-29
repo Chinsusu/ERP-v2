@@ -21,10 +21,10 @@ describe("subcontractMaterialTransferService", () => {
     });
 
     expect(transfer).toMatchObject({
-      orderNo: "SUB-260426-0001",
+      orderNo: "SCO-260429-0001",
       sourceWarehouseId: "wh-hcm",
       sourceWarehouseCode: "HCM",
-      factoryId: "factory-lotus",
+      factoryId: "sup-out-lotus",
       signedHandover: true,
       status: "SENT"
     });
@@ -39,7 +39,7 @@ describe("subcontractMaterialTransferService", () => {
       movementType: "SUBCONTRACT_ISSUE",
       itemCode: "RM-CREAM-BASE",
       batchNo: "RM-260426-A",
-      targetLocation: "stock_in_subcontractor_hold:LOTUS"
+      targetLocation: "stock_in_subcontractor_hold:SUP-OUT-LOTUS"
     });
   });
 
