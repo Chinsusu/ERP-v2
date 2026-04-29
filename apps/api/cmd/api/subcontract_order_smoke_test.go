@@ -272,14 +272,13 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 
 	t.Run("denies material issue without side effects", func(t *testing.T) {
 		service, movementStore, transferStore, auditStore := newTestSubcontractMaterialIssueAPIService()
-		req := smokeRequestAsRole(
+		req := smokeSubcontractViewOnlyRequest(
 			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/sco-smoke-denied/issue-materials", bytes.NewBufferString(`{
 				"source_warehouse_id": "wh-hcm-rm",
 				"received_by": "factory-receiver",
 				"lines": []
 			}`)),
 			authConfig,
-			auth.RoleFinanceOps,
 		)
 		req.SetPathValue("subcontract_order_id", "sco-smoke-denied")
 		rec := httptest.NewRecorder()
@@ -292,13 +291,7 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 		if movementStore.Count() != 0 || transferStore.Count() != 0 {
 			t.Fatalf("side effects = movements %d transfers %d, want none", movementStore.Count(), transferStore.Count())
 		}
-		logs, err := auditStore.List(req.Context(), audit.Query{Action: "subcontract.materials_issued"})
-		if err != nil {
-			t.Fatalf("list material issue audit logs: %v", err)
-		}
-		if len(logs) != 0 {
-			t.Fatalf("material issue audit logs = %+v, want none", logs)
-		}
+		requireNoSmokeAuditAction(t, auditStore, req.Context(), "subcontract.materials_issued")
 	})
 
 	t.Run("submits and approves subcontract samples with audit", func(t *testing.T) {
@@ -538,7 +531,7 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 
 	t.Run("denies finished goods receipt without side effects", func(t *testing.T) {
 		service, movementStore, receiptStore, auditStore := newTestSubcontractFinishedGoodsAPIService()
-		req := smokeRequestAsRole(
+		req := smokeSubcontractViewOnlyRequest(
 			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/sco-smoke-denied/receive-finished-goods", bytes.NewBufferString(`{
 				"warehouse_id": "wh-hcm-fg",
 				"location_id": "loc-hcm-fg-qc",
@@ -556,7 +549,6 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 				]
 			}`)),
 			authConfig,
-			auth.RoleFinanceOps,
 		)
 		req.SetPathValue("subcontract_order_id", "sco-smoke-denied")
 		rec := httptest.NewRecorder()
@@ -569,18 +561,12 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 		if movementStore.Count() != 0 || receiptStore.Count() != 0 {
 			t.Fatalf("side effects = movements %d receipts %d, want none", movementStore.Count(), receiptStore.Count())
 		}
-		logs, err := auditStore.List(req.Context(), audit.Query{Action: "subcontract.finished_goods_received"})
-		if err != nil {
-			t.Fatalf("list finished goods receipt audit logs: %v", err)
-		}
-		if len(logs) != 0 {
-			t.Fatalf("finished goods receipt audit logs = %+v, want none", logs)
-		}
+		requireNoSmokeAuditAction(t, auditStore, req.Context(), "subcontract.finished_goods_received")
 	})
 
 	t.Run("denies sample submit without side effects", func(t *testing.T) {
 		service, sampleStore, auditStore := newTestSubcontractSampleAPIService()
-		req := smokeRequestAsRole(
+		req := smokeSubcontractViewOnlyRequest(
 			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/sco-smoke-denied/submit-sample", bytes.NewBufferString(`{
 				"sample_approval_id": "sample-denied",
 				"sample_code": "SAMPLE-DENIED",
@@ -592,7 +578,6 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 				]
 			}`)),
 			authConfig,
-			auth.RoleFinanceOps,
 		)
 		req.SetPathValue("subcontract_order_id", "sco-smoke-denied")
 		rec := httptest.NewRecorder()
@@ -605,13 +590,7 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 		if sampleStore.Count() != 0 {
 			t.Fatalf("sample record count = %d, want no side effect", sampleStore.Count())
 		}
-		logs, err := auditStore.List(req.Context(), audit.Query{Action: "subcontract.sample_submitted"})
-		if err != nil {
-			t.Fatalf("list sample audit logs: %v", err)
-		}
-		if len(logs) != 0 {
-			t.Fatalf("sample audit logs = %+v, want none", logs)
-		}
+		requireNoSmokeAuditAction(t, auditStore, req.Context(), "subcontract.sample_submitted")
 	})
 
 	t.Run("records subcontract deposit with milestone and audit", func(t *testing.T) {
@@ -711,15 +690,151 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 		}
 	})
 
-	t.Run("denies finance role from approval action without audit", func(t *testing.T) {
-		service, auditStore := newTestSubcontractOrderAPIService()
-		createAndSubmitSubcontractOrderForTest(t, service, authConfig, "sco-smoke-260429-denied")
-		req := smokeRequestAsRole(
-			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/sco-smoke-260429-denied/approve", bytes.NewBufferString(`{"expected_version":2}`)),
+	t.Run("denies payment milestones without side effects", func(t *testing.T) {
+		service, paymentStore, auditStore, orderStore := newTestSubcontractPaymentAPIService()
+		orderID := "sco-smoke-260429-payment-denied"
+		createAndSubmitSubcontractOrderForTest(t, service, authConfig, orderID)
+		approveAndConfirmSubcontractOrderForTest(t, service, authConfig, orderID)
+
+		depositReq := smokeSubcontractViewOnlyRequest(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+orderID+"/record-deposit", bytes.NewBufferString(`{
+				"expected_version": 4,
+				"milestone_id": "spm-smoke-deposit-denied",
+				"amount": "250000",
+				"recorded_by": "finance-user"
+			}`)),
 			authConfig,
-			auth.RoleFinanceOps,
 		)
-		req.SetPathValue("subcontract_order_id", "sco-smoke-260429-denied")
+		depositReq.SetPathValue("subcontract_order_id", orderID)
+		depositRec := httptest.NewRecorder()
+
+		subcontractOrderRecordDepositHandler(service).ServeHTTP(depositRec, depositReq)
+
+		if depositRec.Code != http.StatusForbidden {
+			t.Fatalf("deposit status = %d, want %d: %s", depositRec.Code, http.StatusForbidden, depositRec.Body.String())
+		}
+		if paymentStore.Count() != 0 {
+			t.Fatalf("payment milestone count = %d, want none after denied deposit", paymentStore.Count())
+		}
+		depositOrder, err := service.GetSubcontractOrder(depositReq.Context(), orderID)
+		if err != nil {
+			t.Fatalf("get denied deposit order: %v", err)
+		}
+		if depositOrder.Status != productiondomain.SubcontractOrderStatusFactoryConfirmed || depositOrder.Version != 4 {
+			t.Fatalf("deposit order = %+v, want factory_confirmed version 4", depositOrder)
+		}
+		requireNoSmokeAuditAction(t, auditStore, depositReq.Context(), "subcontract.deposit_recorded")
+
+		acceptedOrder := subcontractPaymentAcceptedSmokeOrder(t)
+		if err := orderStore.WithinTx(context.Background(), func(txCtx context.Context, tx productionapp.SubcontractOrderTx) error {
+			return tx.Save(txCtx, acceptedOrder)
+		}); err != nil {
+			t.Fatalf("seed denied final payment order: %v", err)
+		}
+		finalReq := smokeSubcontractViewOnlyRequest(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+acceptedOrder.ID+"/mark-final-payment-ready", bytes.NewBufferString(`{
+				"expected_version": `+strconv.Itoa(acceptedOrder.Version)+`,
+				"milestone_id": "spm-smoke-final-denied",
+				"ready_by": "finance-user"
+			}`)),
+			authConfig,
+		)
+		finalReq.SetPathValue("subcontract_order_id", acceptedOrder.ID)
+		finalRec := httptest.NewRecorder()
+
+		subcontractOrderMarkFinalPaymentReadyHandler(service).ServeHTTP(finalRec, finalReq)
+
+		if finalRec.Code != http.StatusForbidden {
+			t.Fatalf("final payment status = %d, want %d: %s", finalRec.Code, http.StatusForbidden, finalRec.Body.String())
+		}
+		if paymentStore.Count() != 0 {
+			t.Fatalf("payment milestone count = %d, want none after denied final payment", paymentStore.Count())
+		}
+		finalOrder, err := service.GetSubcontractOrder(finalReq.Context(), acceptedOrder.ID)
+		if err != nil {
+			t.Fatalf("get denied final payment order: %v", err)
+		}
+		if finalOrder.Status != productiondomain.SubcontractOrderStatusAccepted || finalOrder.Version != acceptedOrder.Version {
+			t.Fatalf("final payment order = %+v, want accepted version %d", finalOrder, acceptedOrder.Version)
+		}
+		requireNoSmokeAuditAction(t, auditStore, finalReq.Context(), "subcontract.final_payment_ready")
+	})
+
+	t.Run("denies sample decisions without side effects", func(t *testing.T) {
+		service, sampleStore, auditStore := newTestSubcontractSampleAPIService()
+		orderID := "sco-smoke-260429-sample-decision-denied"
+		sampleID := orderID + "-sample"
+		createAndSubmitSubcontractOrderForTest(t, service, authConfig, orderID)
+		approveAndConfirmSubcontractOrderForTest(t, service, authConfig, orderID)
+		issueSubcontractMaterialsForTest(t, service, authConfig, orderID, 4)
+		submitSubcontractSampleForTest(t, service, authConfig, orderID, 5)
+
+		for _, tc := range []struct {
+			name        string
+			path        string
+			handler     http.HandlerFunc
+			body        string
+			auditAction string
+		}{
+			{
+				name:        "approve",
+				path:        "/api/v1/subcontract-orders/" + orderID + "/approve-sample",
+				handler:     subcontractOrderApproveSampleHandler(service),
+				body:        `{"expected_version":6,"sample_approval_id":"` + sampleID + `","reason":"Approved","storage_status":"retained_in_qa_cabinet"}`,
+				auditAction: "subcontract.sample_approved",
+			},
+			{
+				name:        "reject",
+				path:        "/api/v1/subcontract-orders/" + orderID + "/reject-sample",
+				handler:     subcontractOrderRejectSampleHandler(service),
+				body:        `{"expected_version":6,"sample_approval_id":"` + sampleID + `","reason":"Rejected"}`,
+				auditAction: "subcontract.sample_rejected",
+			},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				req := smokeSubcontractViewOnlyRequest(
+					httptest.NewRequest(http.MethodPost, tc.path, bytes.NewBufferString(tc.body)),
+					authConfig,
+				)
+				req.SetPathValue("subcontract_order_id", orderID)
+				rec := httptest.NewRecorder()
+
+				tc.handler.ServeHTTP(rec, req)
+
+				if rec.Code != http.StatusForbidden {
+					t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusForbidden, rec.Body.String())
+				}
+				if sampleStore.Count() != 1 {
+					t.Fatalf("sample record count = %d, want original submitted sample only", sampleStore.Count())
+				}
+				sample, err := sampleStore.Get(req.Context(), sampleID)
+				if err != nil {
+					t.Fatalf("get submitted sample: %v", err)
+				}
+				if sample.Status != productiondomain.SubcontractSampleApprovalStatusSubmitted || sample.Version != 1 {
+					t.Fatalf("sample = %+v, want submitted version 1", sample)
+				}
+				order, err := service.GetSubcontractOrder(req.Context(), orderID)
+				if err != nil {
+					t.Fatalf("get sample decision denied order: %v", err)
+				}
+				if order.Status != productiondomain.SubcontractOrderStatusSampleSubmitted || order.Version != 6 {
+					t.Fatalf("order = %+v, want sample_submitted version 6", order)
+				}
+				requireNoSmokeAuditAction(t, auditStore, req.Context(), tc.auditAction)
+			})
+		}
+	})
+
+	t.Run("denies missing record create from approval without side effects", func(t *testing.T) {
+		service, auditStore := newTestSubcontractOrderAPIService()
+		orderID := "sco-smoke-260429-denied"
+		createAndSubmitSubcontractOrderForTest(t, service, authConfig, orderID)
+		req := smokeSubcontractViewOnlyRequest(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+orderID+"/approve", bytes.NewBufferString(`{"expected_version":2}`)),
+			authConfig,
+		)
+		req.SetPathValue("subcontract_order_id", orderID)
 		rec := httptest.NewRecorder()
 
 		subcontractOrderApproveHandler(service).ServeHTTP(rec, req)
@@ -731,13 +846,14 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 		if payload.Error.Code != response.ErrorCodeForbidden {
 			t.Fatalf("code = %s, want %s", payload.Error.Code, response.ErrorCodeForbidden)
 		}
-		logs, err := auditStore.List(req.Context(), audit.Query{Action: "subcontract.order.approved"})
+		order, err := service.GetSubcontractOrder(req.Context(), orderID)
 		if err != nil {
-			t.Fatalf("list audit logs: %v", err)
+			t.Fatalf("get denied approval order: %v", err)
 		}
-		if len(logs) != 0 {
-			t.Fatalf("approval audit log count = %d, want 0 for denied action", len(logs))
+		if order.Status != productiondomain.SubcontractOrderStatusSubmitted || order.Version != 2 {
+			t.Fatalf("order = %+v, want submitted version 2", order)
 		}
+		requireNoSmokeAuditAction(t, auditStore, req.Context(), "subcontract.order.approved")
 	})
 }
 
@@ -995,6 +1111,41 @@ func issueSubcontractMaterialsForTest(
 	}
 }
 
+func submitSubcontractSampleForTest(
+	t *testing.T,
+	service productionapp.SubcontractOrderService,
+	authConfig auth.MockConfig,
+	id string,
+	expectedVersion int,
+) {
+	t.Helper()
+
+	submitReq := smokeRequestAsRole(
+		httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+id+"/submit-sample", bytes.NewBufferString(`{
+			"expected_version": `+strconv.Itoa(expectedVersion)+`,
+			"sample_approval_id": "`+id+`-sample",
+			"sample_code": "`+id+`-SAMPLE",
+			"submitted_by": "factory-user",
+			"evidence": [
+				{
+					"evidence_type": "photo",
+					"object_key": "subcontract/`+id+`/sample.jpg"
+				}
+			]
+		}`)),
+		authConfig,
+		auth.RoleProductionOps,
+	)
+	submitReq.SetPathValue("subcontract_order_id", id)
+	submitRec := httptest.NewRecorder()
+
+	subcontractOrderSubmitSampleHandler(service).ServeHTTP(submitRec, submitReq)
+
+	if submitRec.Code != http.StatusOK {
+		t.Fatalf("submit sample status = %d, want %d: %s", submitRec.Code, http.StatusOK, submitRec.Body.String())
+	}
+}
+
 func submitAndApproveSubcontractSampleForTest(
 	t *testing.T,
 	service productionapp.SubcontractOrderService,
@@ -1171,4 +1322,33 @@ func smokeAuditActionsContain(logs []audit.Log, action string) bool {
 	}
 
 	return false
+}
+
+func smokeSubcontractViewOnlyRequest(req *http.Request, authConfig auth.MockConfig) *http.Request {
+	principal := auth.Principal{
+		UserID:      "user-subcontract-view-only",
+		Email:       authConfig.Email,
+		Name:        "Subcontract View Only",
+		Role:        auth.RoleKey("SUBCONTRACT_VIEW_ONLY"),
+		Permissions: []auth.PermissionKey{auth.PermissionSubcontractView},
+	}
+
+	return req.WithContext(auth.WithPrincipal(req.Context(), principal))
+}
+
+func requireNoSmokeAuditAction(
+	t *testing.T,
+	auditStore audit.LogStore,
+	ctx context.Context,
+	action string,
+) {
+	t.Helper()
+
+	logs, err := auditStore.List(ctx, audit.Query{Action: action})
+	if err != nil {
+		t.Fatalf("list %s audit logs: %v", action, err)
+	}
+	if len(logs) != 0 {
+		t.Fatalf("%s audit logs = %+v, want none", action, logs)
+	}
 }
