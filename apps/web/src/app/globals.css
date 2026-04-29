@@ -942,9 +942,12 @@ textarea {
 }
 
 .erp-warehouse-kpi-button {
+  display: grid;
   width: 100%;
   min-width: 0;
+  color: inherit;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -958,6 +961,34 @@ textarea {
 .erp-warehouse-kpi-button:focus-visible {
   outline: 2px solid rgba(213, 12, 45, 0.2);
   outline-offset: 2px;
+}
+
+.erp-warehouse-kpi-button.is-muted {
+  background: var(--erp-neutral-bg);
+  border-color: var(--erp-border-soft);
+  box-shadow: none;
+}
+
+.erp-warehouse-kpi-button.is-muted .erp-kpi-value {
+  color: var(--erp-neutral);
+}
+
+.erp-warehouse-kpi-button.is-warning,
+.erp-warehouse-kpi-button.is-critical {
+  position: relative;
+  overflow: hidden;
+  background: var(--erp-surface);
+  box-shadow: inset 3px 0 0 var(--erp-warning);
+}
+
+.erp-warehouse-kpi-button.is-critical {
+  border-color: var(--erp-danger);
+  box-shadow: inset 3px 0 0 var(--erp-danger);
+}
+
+.erp-warehouse-kpi-button.is-critical .erp-kpi-value,
+.erp-warehouse-kpi-button.is-critical .erp-warehouse-kpi-action {
+  color: var(--erp-danger);
 }
 
 .erp-warehouse-kpi-footer {

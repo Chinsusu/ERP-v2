@@ -581,7 +581,7 @@ export function AvailableStockPrototype() {
         />
       </section>
 
-      <section className="erp-card erp-card--padded erp-module-table-card">
+      <section className="erp-card erp-card--padded erp-module-table-card" id="stock-counts">
         <div className="erp-section-header">
           <h2 className="erp-section-title">Stock counts</h2>
           <StatusChip tone={activeOpenStockCount ? "warning" : "info"}>
@@ -645,7 +645,7 @@ export function AvailableStockPrototype() {
         />
       </section>
 
-      <section className="erp-card erp-card--padded erp-module-table-card">
+      <section className="erp-card erp-card--padded erp-module-table-card" id="stock-adjustments">
         <div className="erp-section-header">
           <h2 className="erp-section-title">Adjustment approvals</h2>
           <StatusChip tone={selectedAdjustment ? stockAdjustmentStatusTone(selectedAdjustment.status) : "info"}>
