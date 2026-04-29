@@ -10,6 +10,7 @@ import (
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
+	purchasedomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
@@ -17,6 +18,10 @@ import (
 var ErrWarehouseReceivingNotFound = errors.New("warehouse receiving not found")
 var ErrReceivingInvalidLocation = errors.New("warehouse receiving location is invalid")
 var ErrReceivingBatchMismatch = errors.New("warehouse receiving batch does not match line")
+var ErrReceivingPurchaseOrderRequired = errors.New("warehouse receiving purchase order reader is required")
+var ErrReceivingPurchaseOrderInvalidState = errors.New("warehouse receiving purchase order status is invalid")
+var ErrReceivingPurchaseOrderMismatch = errors.New("warehouse receiving purchase order data mismatch")
+var ErrReceivingQuantityExceedsPurchaseOrder = errors.New("warehouse receiving quantity exceeds purchase order remaining quantity")
 
 const (
 	receivingAuditEntityType = "inventory.receiving"
@@ -38,13 +43,18 @@ type WarehouseReceivingBatchReader interface {
 	GetBatch(ctx context.Context, id string) (domain.Batch, error)
 }
 
+type WarehouseReceivingPurchaseOrderReader interface {
+	GetPurchaseOrder(ctx context.Context, id string) (purchasedomain.PurchaseOrder, error)
+}
+
 type WarehouseReceivingService struct {
-	store        WarehouseReceivingStore
-	locationRead WarehouseReceivingLocationReader
-	batchRead    WarehouseReceivingBatchReader
-	movement     StockMovementStore
-	auditLog     audit.LogStore
-	clock        func() time.Time
+	store             WarehouseReceivingStore
+	locationRead      WarehouseReceivingLocationReader
+	batchRead         WarehouseReceivingBatchReader
+	purchaseOrderRead WarehouseReceivingPurchaseOrderReader
+	movement          StockMovementStore
+	auditLog          audit.LogStore
+	clock             func() time.Time
 }
 
 type CreateWarehouseReceivingInput struct {
@@ -112,6 +122,14 @@ func NewWarehouseReceivingService(
 	}
 }
 
+func (s WarehouseReceivingService) WithPurchaseOrderReader(
+	reader WarehouseReceivingPurchaseOrderReader,
+) WarehouseReceivingService {
+	s.purchaseOrderRead = reader
+
+	return s
+}
+
 func NewPrototypeWarehouseReceivingStore() *PrototypeWarehouseReceivingStore {
 	store := &PrototypeWarehouseReceivingStore{receipts: make(map[string]domain.WarehouseReceiving)}
 	for _, receipt := range prototypeWarehouseReceivings() {
@@ -158,6 +176,9 @@ func (s WarehouseReceivingService) CreateWarehouseReceiving(
 	}
 	lines, err := s.newReceivingLines(ctx, input.Lines)
 	if err != nil {
+		return WarehouseReceivingResult{}, err
+	}
+	if err := s.validatePurchaseOrderReceiving(ctx, input, lines, location); err != nil {
 		return WarehouseReceivingResult{}, err
 	}
 
@@ -414,6 +435,121 @@ func (s WarehouseReceivingService) readBatch(ctx context.Context, id string) (do
 	}
 
 	return s.batchRead.GetBatch(ctx, id)
+}
+
+func (s WarehouseReceivingService) validatePurchaseOrderReceiving(
+	ctx context.Context,
+	input CreateWarehouseReceivingInput,
+	lines []domain.NewWarehouseReceivingLineInput,
+	location masterdatadomain.Location,
+) error {
+	if domain.NormalizeReceivingReferenceDocType(input.ReferenceDocType) != domain.ReceivingReferenceDocTypePurchaseOrder {
+		return nil
+	}
+	if s.purchaseOrderRead == nil {
+		return ErrReceivingPurchaseOrderRequired
+	}
+	order, err := s.purchaseOrderRead.GetPurchaseOrder(ctx, input.ReferenceDocID)
+	if err != nil {
+		return ErrReceivingPurchaseOrderMismatch
+	}
+	if !isReceivingPurchaseOrderOpen(order.Status) {
+		return ErrReceivingPurchaseOrderInvalidState
+	}
+	if order.SupplierID != strings.TrimSpace(input.SupplierID) ||
+		order.WarehouseID != location.WarehouseID {
+		return ErrReceivingPurchaseOrderMismatch
+	}
+	for _, line := range lines {
+		if err := s.validatePurchaseOrderReceivingLine(ctx, order, line); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s WarehouseReceivingService) validatePurchaseOrderReceivingLine(
+	ctx context.Context,
+	order purchasedomain.PurchaseOrder,
+	line domain.NewWarehouseReceivingLineInput,
+) error {
+	poLine, ok := purchaseOrderLineByID(order, line.PurchaseOrderLineID)
+	if !ok {
+		return ErrReceivingPurchaseOrderMismatch
+	}
+	if strings.TrimSpace(line.BatchID) == "" ||
+		strings.TrimSpace(line.LotNo) == "" ||
+		line.ExpiryDate.IsZero() {
+		return domain.ErrReceivingRequiredField
+	}
+	if line.ItemID != poLine.ItemID ||
+		strings.ToUpper(strings.TrimSpace(line.SKU)) != poLine.SKUCode {
+		return ErrReceivingPurchaseOrderMismatch
+	}
+	uomCode, err := decimal.NormalizeUOMCode(line.UOMCode)
+	if err != nil || uomCode != poLine.UOMCode {
+		return ErrReceivingPurchaseOrderMismatch
+	}
+	baseUOMCode, err := decimal.NormalizeUOMCode(line.BaseUOMCode)
+	if err != nil || baseUOMCode != poLine.BaseUOMCode {
+		return ErrReceivingPurchaseOrderMismatch
+	}
+	batch, err := s.readBatch(ctx, line.BatchID)
+	if err != nil {
+		return err
+	}
+	if batch.SupplierID != "" && batch.SupplierID != order.SupplierID {
+		return ErrReceivingPurchaseOrderMismatch
+	}
+	if batch.BatchNo != line.BatchNo || !sameDate(batch.ExpiryDate, line.ExpiryDate) {
+		return ErrReceivingPurchaseOrderMismatch
+	}
+	remainingQty, err := decimal.SubtractQuantity(poLine.BaseOrderedQty, poLine.BaseReceivedQty)
+	if err != nil || remainingQty.IsNegative() {
+		return ErrReceivingPurchaseOrderMismatch
+	}
+	afterReceive, err := decimal.SubtractQuantity(remainingQty, line.Quantity)
+	if err != nil {
+		return err
+	}
+	if afterReceive.IsNegative() {
+		return ErrReceivingQuantityExceedsPurchaseOrder
+	}
+
+	return nil
+}
+
+func isReceivingPurchaseOrderOpen(status purchasedomain.PurchaseOrderStatus) bool {
+	switch purchasedomain.NormalizePurchaseOrderStatus(status) {
+	case purchasedomain.PurchaseOrderStatusApproved,
+		purchasedomain.PurchaseOrderStatusPartiallyReceived:
+		return true
+	default:
+		return false
+	}
+}
+
+func purchaseOrderLineByID(
+	order purchasedomain.PurchaseOrder,
+	id string,
+) (purchasedomain.PurchaseOrderLine, bool) {
+	id = strings.TrimSpace(id)
+	for _, line := range order.Lines {
+		if line.ID == id {
+			return line, true
+		}
+	}
+
+	return purchasedomain.PurchaseOrderLine{}, false
+}
+
+func sameDate(left time.Time, right time.Time) bool {
+	if left.IsZero() || right.IsZero() {
+		return left.IsZero() && right.IsZero()
+	}
+
+	return left.UTC().Format("2006-01-02") == right.UTC().Format("2006-01-02")
 }
 
 func hydrateLineFromBatch(line *domain.NewWarehouseReceivingLineInput, batch domain.Batch) error {

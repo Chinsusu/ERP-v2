@@ -1100,7 +1100,7 @@ func main() {
 		batchCatalog,
 		stockMovementStore,
 		auditLogStore,
-	)
+	).WithPurchaseOrderReader(purchaseOrderService)
 	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	listEndOfDayReconciliations := inventoryapp.NewListEndOfDayReconciliations(reconciliationStore)
 	closeEndOfDayReconciliation := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditLogStore)
@@ -5364,6 +5364,25 @@ func writeWarehouseReceivingError(w http.ResponseWriter, r *http.Request, err er
 			http.StatusConflict,
 			response.ErrorCodeConflict,
 			"Goods receipt batch does not match the receiving line",
+			nil,
+		)
+	case errors.Is(err, inventoryapp.ErrReceivingPurchaseOrderInvalidState):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Purchase order is not open for goods receiving",
+			nil,
+		)
+	case errors.Is(err, inventoryapp.ErrReceivingPurchaseOrderMismatch),
+		errors.Is(err, inventoryapp.ErrReceivingQuantityExceedsPurchaseOrder):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Goods receipt does not match the linked purchase order",
 			nil,
 		)
 	case errors.Is(err, domain.ErrReceivingRequiredField),
