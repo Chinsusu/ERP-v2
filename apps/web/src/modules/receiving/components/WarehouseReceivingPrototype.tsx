@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   ConfirmDialog,
   DataTable,
@@ -9,6 +9,15 @@ import {
   type DataTableColumn,
   type StatusTone
 } from "@/shared/design-system/components";
+import {
+  formatPurchaseOrderStatus,
+  formatPurchaseQuantity,
+  getPurchaseOrder,
+  getPurchaseOrders,
+  purchaseOrderStatusTone,
+  purchaseSupplierOptions
+} from "../../purchase/services/purchaseOrderService";
+import type { PurchaseOrder, PurchaseOrderLine } from "../../purchase/types";
 import { useGoodsReceipts } from "../hooks/useGoodsReceipts";
 import {
   createGoodsReceipt,
@@ -22,10 +31,18 @@ import {
   qcStatusTone,
   receivingBatchOptions,
   receivingLocationOptions,
+  receivingPackagingStatusOptions,
   receivingWarehouseOptions,
   submitGoodsReceipt
 } from "../services/warehouseReceivingService";
-import type { GoodsReceipt, GoodsReceiptLine, GoodsReceiptQuery, GoodsReceiptStatus, GoodsReceiptStockMovement } from "../types";
+import type {
+  GoodsReceipt,
+  GoodsReceiptLine,
+  GoodsReceiptQuery,
+  GoodsReceiptStatus,
+  GoodsReceiptStockMovement,
+  ReceivingPackagingStatus
+} from "../types";
 
 type StatusFilter = "" | GoodsReceiptStatus;
 
@@ -37,6 +54,8 @@ const statusOptions: { label: string; value: StatusFilter }[] = [
   { label: "Posted", value: "posted" }
 ];
 
+const defaultBatch = receivingBatchOptions[1] ?? receivingBatchOptions[0];
+
 const receiptColumns: DataTableColumn<GoodsReceipt>[] = [
   {
     key: "receipt",
@@ -44,22 +63,22 @@ const receiptColumns: DataTableColumn<GoodsReceipt>[] = [
     render: (row) => (
       <span className="erp-receiving-receipt-cell">
         <strong>{row.receiptNo}</strong>
-        <small>{row.referenceDocId}</small>
+        <small>{row.deliveryNoteNo ?? row.referenceDocId}</small>
       </span>
     ),
     width: "190px"
+  },
+  {
+    key: "reference",
+    header: "PO",
+    render: (row) => row.referenceDocId,
+    width: "170px"
   },
   {
     key: "warehouse",
     header: "Warehouse",
     render: (row) => row.warehouseCode,
     width: "150px"
-  },
-  {
-    key: "location",
-    header: "Location",
-    render: (row) => row.locationCode,
-    width: "140px"
   },
   {
     key: "status",
@@ -100,10 +119,27 @@ const lineColumns: DataTableColumn<GoodsReceiptLine>[] = [
     )
   },
   {
-    key: "batch",
-    header: "Batch",
-    render: (row) => row.batchNo ?? row.batchId ?? "-",
-    width: "160px"
+    key: "poLine",
+    header: "PO line",
+    render: (row) => row.purchaseOrderLineId ?? "-",
+    width: "180px"
+  },
+  {
+    key: "lot",
+    header: "Lot / Expiry",
+    render: (row) => (
+      <span className="erp-receiving-receipt-cell">
+        <strong>{row.lotNo ?? row.batchNo ?? row.batchId ?? "-"}</strong>
+        <small>{row.expiryDate ?? "-"}</small>
+      </span>
+    ),
+    width: "150px"
+  },
+  {
+    key: "packaging",
+    header: "Packaging",
+    render: (row) => <StatusChip tone={row.packagingStatus === "intact" ? "success" : "warning"}>{formatPackagingStatus(row.packagingStatus)}</StatusChip>,
+    width: "150px"
   },
   {
     key: "qc",
@@ -145,9 +181,24 @@ export function WarehouseReceivingPrototype() {
   const [warehouseId, setWarehouseId] = useState("wh-hcm-fg");
   const [status, setStatus] = useState<StatusFilter>("");
   const [locationId, setLocationId] = useState("loc-hcm-fg-recv-01");
-  const [referenceDocId, setReferenceDocId] = useState("PO-260427-UI");
-  const [batchId, setBatchId] = useState("batch-cream-2603b");
+  const [supplierId, setSupplierId] = useState("sup-rm-bioactive");
+  const [selectedPurchaseOrderId, setSelectedPurchaseOrderId] = useState("");
+  const [purchaseOrderDetail, setPurchaseOrderDetail] = useState<PurchaseOrder | null>(null);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [purchaseOrdersLoading, setPurchaseOrdersLoading] = useState(false);
+  const [purchaseOrderError, setPurchaseOrderError] = useState<string | null>(null);
+  const [referenceDocId, setReferenceDocId] = useState("");
+  const [purchaseOrderLineId, setPurchaseOrderLineId] = useState("");
+  const [deliveryNoteNo, setDeliveryNoteNo] = useState("DN-260429-UI");
+  const [batchId, setBatchId] = useState(defaultBatch.value);
+  const [lotNo, setLotNo] = useState(defaultBatch.lotNo);
+  const [expiryDate, setExpiryDate] = useState(defaultBatch.expiryDate);
   const [quantity, setQuantity] = useState("12");
+  const [uomCode, setUomCode] = useState(defaultBatch.baseUomCode);
+  const [baseUomCode, setBaseUomCode] = useState(defaultBatch.baseUomCode);
+  const [packagingStatus, setPackagingStatus] = useState<ReceivingPackagingStatus>("intact");
+  const [receivingNote, setReceivingNote] = useState("");
+  const [attachmentRef, setAttachmentRef] = useState("");
   const [localReceipts, setLocalReceipts] = useState<GoodsReceipt[]>([]);
   const [selectedReceiptId, setSelectedReceiptId] = useState("grn-hcm-260427-inspect");
   const [feedback, setFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
@@ -163,14 +214,116 @@ export function WarehouseReceivingPrototype() {
   const { receipts, loading, error } = useGoodsReceipts(query);
   const visibleReceipts = useMemo(() => mergeReceipts(localReceipts, receipts, query), [localReceipts, query, receipts]);
   const selectedReceipt = visibleReceipts.find((receipt) => receipt.id === selectedReceiptId) ?? visibleReceipts[0] ?? null;
-  const selectedBatch = receivingBatchOptions.find((batch) => batch.value === batchId) ?? receivingBatchOptions[0];
+  const selectedBatch = receivingBatchOptions.find((batch) => batch.value === batchId) ?? defaultBatch;
+  const selectedPurchaseOrderLine = purchaseOrderDetail?.lines.find((line) => line.id === purchaseOrderLineId);
+  const availableBatchOptions = useMemo(() => {
+    const matches = selectedPurchaseOrderLine
+      ? receivingBatchOptions.filter((batch) => batch.itemId === selectedPurchaseOrderLine.itemId)
+      : receivingBatchOptions;
+
+    return matches.length > 0 ? matches : receivingBatchOptions;
+  }, [selectedPurchaseOrderLine]);
   const locationOptions = receivingLocationOptions.filter((location) => location.warehouseId === warehouseId);
   const totals = summarizeReceipts(visibleReceipts);
+
+  useEffect(() => {
+    let active = true;
+    setPurchaseOrdersLoading(true);
+    setPurchaseOrderError(null);
+
+    Promise.all([
+      getPurchaseOrders({ warehouseId, status: "approved" }),
+      getPurchaseOrders({ warehouseId, status: "partially_received" })
+    ])
+      .then(([approved, partial]) => {
+        if (active) {
+          setPurchaseOrders(uniquePurchaseOrders([...approved, ...partial]));
+        }
+      })
+      .catch((reason) => {
+        if (active) {
+          setPurchaseOrderError(reason instanceof Error ? reason.message : "Purchase orders could not be loaded");
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setPurchaseOrdersLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [warehouseId]);
 
   function handleWarehouseChange(nextWarehouseId: string) {
     setWarehouseId(nextWarehouseId);
     const nextLocation = receivingLocationOptions.find((location) => location.warehouseId === nextWarehouseId);
     setLocationId(nextLocation?.value ?? "");
+    setSelectedPurchaseOrderId("");
+    setPurchaseOrderDetail(null);
+    setReferenceDocId("");
+    setPurchaseOrderLineId("");
+  }
+
+  async function handlePurchaseOrderChange(nextPurchaseOrderId: string) {
+    setSelectedPurchaseOrderId(nextPurchaseOrderId);
+    setPurchaseOrderError(null);
+    if (!nextPurchaseOrderId) {
+      setPurchaseOrderDetail(null);
+      return;
+    }
+
+    setPurchaseOrdersLoading(true);
+    try {
+      const order = await getPurchaseOrder(nextPurchaseOrderId);
+      setPurchaseOrderDetail(order);
+      applyPurchaseOrder(order, order.lines[0]?.id);
+    } catch (reason) {
+      setPurchaseOrderDetail(null);
+      setPurchaseOrderError(reason instanceof Error ? reason.message : "Purchase order could not be loaded");
+    } finally {
+      setPurchaseOrdersLoading(false);
+    }
+  }
+
+  function applyPurchaseOrder(order: PurchaseOrder, lineId?: string) {
+    setReferenceDocId(order.id);
+    setSupplierId(order.supplierId);
+    setWarehouseId(order.warehouseId);
+    const nextLocation = receivingLocationOptions.find((location) => location.warehouseId === order.warehouseId);
+    setLocationId(nextLocation?.value ?? "");
+    const nextLine = lineId ? order.lines.find((line) => line.id === lineId) : order.lines[0];
+    if (nextLine) {
+      applyPurchaseOrderLine(nextLine);
+    }
+  }
+
+  function applyPurchaseOrderLine(line: PurchaseOrderLine) {
+    setPurchaseOrderLineId(line.id);
+    setQuantity(line.orderedQty);
+    setUomCode(line.uomCode);
+    setBaseUomCode(line.baseUomCode);
+    const nextBatch = receivingBatchOptions.find((batch) => batch.itemId === line.itemId) ?? defaultBatch;
+    applyBatch(nextBatch.value, line);
+  }
+
+  function applyBatch(nextBatchId: string, line: PurchaseOrderLine | undefined = selectedPurchaseOrderLine) {
+    const nextBatch = receivingBatchOptions.find((batch) => batch.value === nextBatchId) ?? defaultBatch;
+    setBatchId(nextBatch.value);
+    setLotNo(nextBatch.lotNo);
+    setExpiryDate(nextBatch.expiryDate);
+    setUomCode(line?.uomCode ?? nextBatch.baseUomCode);
+    setBaseUomCode(line?.baseUomCode ?? nextBatch.baseUomCode);
+  }
+
+  function handlePurchaseOrderLineChange(nextLineId: string) {
+    const nextLine = purchaseOrderDetail?.lines.find((line) => line.id === nextLineId);
+    if (nextLine) {
+      applyPurchaseOrderLine(nextLine);
+    } else {
+      setPurchaseOrderLineId(nextLineId);
+    }
   }
 
   async function handleCreateDraft(event: FormEvent<HTMLFormElement>) {
@@ -185,14 +338,26 @@ export function WarehouseReceivingPrototype() {
       const receipt = await createGoodsReceipt({
         warehouseId,
         locationId,
+        supplierId,
+        deliveryNoteNo,
         referenceDocType: "purchase_order",
         referenceDocId,
         lines: [
           {
             id: "line-ui-001",
+            purchaseOrderLineId,
+            itemId: selectedPurchaseOrderLine?.itemId ?? selectedBatch.itemId,
+            sku: selectedPurchaseOrderLine?.skuCode ?? selectedBatch.sku,
+            itemName: selectedPurchaseOrderLine?.itemName ?? selectedBatch.itemName,
             batchId,
+            batchNo: selectedBatch.batchNo,
+            lotNo,
+            expiryDate,
             quantity,
-            baseUomCode: selectedBatch.baseUomCode
+            uomCode,
+            baseUomCode,
+            packagingStatus,
+            qcStatus: selectedBatch.qcStatus
           }
         ]
       });
@@ -241,7 +406,7 @@ export function WarehouseReceivingPrototype() {
         <div>
           <p className="erp-module-eyebrow">RC</p>
           <h1 className="erp-page-title">Warehouse Receiving</h1>
-          <p className="erp-page-description">Goods receipt draft, inspection handoff, posting, and movement evidence</p>
+          <p className="erp-page-description">Goods receipt draft, delivery document, lot, expiry, packaging check, and movement evidence</p>
         </div>
         <div className="erp-page-actions">
           <a className="erp-button erp-button--secondary" href="#receiving-draft">
@@ -290,58 +455,209 @@ export function WarehouseReceivingPrototype() {
         <form className="erp-card erp-card--padded erp-receiving-draft" id="receiving-draft" onSubmit={handleCreateDraft}>
           <div className="erp-section-header">
             <h2 className="erp-section-title">New receipt draft</h2>
-            <StatusChip tone={feedback?.tone ?? "info"}>{feedback?.message ?? "Ready"}</StatusChip>
+            <StatusChip tone={feedback?.tone ?? (purchaseOrderError ? "danger" : "info")}>
+              {feedback?.message ?? purchaseOrderError ?? "Ready"}
+            </StatusChip>
           </div>
 
-          <div className="erp-receiving-form-grid">
-            <label className="erp-field">
-              <span>Location</span>
-              <select className="erp-input" value={locationId} onChange={(event) => setLocationId(event.target.value)}>
-                {locationOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="erp-field">
-              <span>Reference</span>
-              <input
-                className="erp-input"
-                type="text"
-                value={referenceDocId}
-                onChange={(event) => setReferenceDocId(event.target.value.toUpperCase())}
-                required
-              />
-            </label>
-            <label className="erp-field">
-              <span>Batch / SKU</span>
-              <select className="erp-input" value={batchId} onChange={(event) => setBatchId(event.target.value)}>
-                {receivingBatchOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="erp-field">
-              <span>Quantity</span>
-              <input
-                className="erp-input"
-                min="0.000001"
-                step="0.000001"
-                type="number"
-                value={quantity}
-                onChange={(event) => setQuantity(event.target.value)}
-                required
-              />
+          <div className="erp-receiving-form-section">
+            <div className="erp-receiving-section-label">
+              <strong>PO context</strong>
+              <StatusChip tone={purchaseOrdersLoading ? "info" : purchaseOrders.length > 0 ? "success" : "warning"}>
+                {purchaseOrdersLoading ? "Loading" : `${purchaseOrders.length} open`}
+              </StatusChip>
+            </div>
+            <div className="erp-receiving-form-grid">
+              <label className="erp-field">
+                <span>Open PO</span>
+                <select
+                  className="erp-input"
+                  value={selectedPurchaseOrderId}
+                  onChange={(event) => void handlePurchaseOrderChange(event.target.value)}
+                >
+                  <option value="">Manual reference</option>
+                  {purchaseOrders.map((order) => (
+                    <option key={order.id} value={order.id}>
+                      {order.poNo} / {order.supplierCode ?? order.supplierName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="erp-field">
+                <span>PO reference</span>
+                <input
+                  className="erp-input"
+                  type="text"
+                  value={referenceDocId}
+                  onChange={(event) => setReferenceDocId(event.target.value)}
+                  required
+                />
+              </label>
+              <label className="erp-field">
+                <span>Supplier</span>
+                <select className="erp-input" value={supplierId} onChange={(event) => setSupplierId(event.target.value)} required>
+                  {purchaseSupplierOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="erp-field">
+                <span>PO line</span>
+                {purchaseOrderDetail?.lines.length ? (
+                  <select
+                    className="erp-input"
+                    value={purchaseOrderLineId}
+                    onChange={(event) => handlePurchaseOrderLineChange(event.target.value)}
+                    required
+                  >
+                    {purchaseOrderDetail.lines.map((line) => (
+                      <option key={line.id} value={line.id}>
+                        {line.lineNo} / {line.skuCode} / {formatPurchaseQuantity(line.receivedQty, line.baseUomCode)} of{" "}
+                        {formatPurchaseQuantity(line.orderedQty, line.baseUomCode)}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    className="erp-input"
+                    type="text"
+                    value={purchaseOrderLineId}
+                    onChange={(event) => setPurchaseOrderLineId(event.target.value)}
+                    required
+                  />
+                )}
+              </label>
+            </div>
+            {purchaseOrderDetail ? (
+              <div className="erp-receiving-po-summary">
+                <StatusChip tone={purchaseOrderStatusTone(purchaseOrderDetail.status)}>
+                  {formatPurchaseOrderStatus(purchaseOrderDetail.status)}
+                </StatusChip>
+                <span>{purchaseOrderDetail.poNo}</span>
+                <strong>{purchaseOrderDetail.supplierName}</strong>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="erp-receiving-form-section">
+            <div className="erp-receiving-section-label">
+              <strong>Delivery check</strong>
+              <StatusChip tone={packagingStatus === "intact" ? "success" : "warning"}>{formatPackagingStatus(packagingStatus)}</StatusChip>
+            </div>
+            <div className="erp-receiving-form-grid">
+              <label className="erp-field">
+                <span>Delivery note</span>
+                <input
+                  className="erp-input"
+                  type="text"
+                  value={deliveryNoteNo}
+                  onChange={(event) => setDeliveryNoteNo(event.target.value.toUpperCase())}
+                  required
+                />
+              </label>
+              <label className="erp-field">
+                <span>Location</span>
+                <select className="erp-input" value={locationId} onChange={(event) => setLocationId(event.target.value)} required>
+                  {locationOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="erp-field">
+                <span>Packaging</span>
+                <select
+                  className="erp-input"
+                  value={packagingStatus}
+                  onChange={(event) => setPackagingStatus(event.target.value as ReceivingPackagingStatus)}
+                  required
+                >
+                  {receivingPackagingStatusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="erp-field">
+                <span>Attachment ref</span>
+                <input
+                  className="erp-input"
+                  type="text"
+                  value={attachmentRef}
+                  onChange={(event) => setAttachmentRef(event.target.value)}
+                  placeholder="DN scan, COA, packaging photo"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="erp-receiving-form-section">
+            <div className="erp-receiving-section-label">
+              <strong>Line check</strong>
+              <StatusChip tone={qcStatusTone(selectedBatch.qcStatus)}>{formatQCStatus(selectedBatch.qcStatus)}</StatusChip>
+            </div>
+            <div className="erp-receiving-form-grid">
+              <label className="erp-field">
+                <span>Batch / SKU</span>
+                <select className="erp-input" value={batchId} onChange={(event) => applyBatch(event.target.value)} required>
+                  {availableBatchOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="erp-field">
+                <span>Quantity</span>
+                <input
+                  className="erp-input"
+                  min="0.000001"
+                  step="0.000001"
+                  type="number"
+                  value={quantity}
+                  onChange={(event) => setQuantity(event.target.value)}
+                  required
+                />
+              </label>
+              <label className="erp-field">
+                <span>UOM</span>
+                <input className="erp-input" type="text" value={uomCode} onChange={(event) => setUomCode(event.target.value.toUpperCase())} required />
+              </label>
+              <label className="erp-field">
+                <span>Base UOM</span>
+                <input
+                  className="erp-input"
+                  type="text"
+                  value={baseUomCode}
+                  onChange={(event) => setBaseUomCode(event.target.value.toUpperCase())}
+                  required
+                />
+              </label>
+              <label className="erp-field">
+                <span>Lot</span>
+                <input className="erp-input" type="text" value={lotNo} onChange={(event) => setLotNo(event.target.value.toUpperCase())} required />
+              </label>
+              <label className="erp-field">
+                <span>Expiry</span>
+                <input className="erp-input" type="date" value={expiryDate} onChange={(event) => setExpiryDate(event.target.value)} required />
+              </label>
+            </div>
+            <label className="erp-field erp-receiving-note-field">
+              <span>Receiving note</span>
+              <textarea className="erp-input" value={receivingNote} onChange={(event) => setReceivingNote(event.target.value)} rows={3} />
             </label>
           </div>
 
           <div className="erp-receiving-selected-line">
             <StatusChip tone={qcStatusTone(selectedBatch.qcStatus)}>{formatQCStatus(selectedBatch.qcStatus)}</StatusChip>
-            <span>{selectedBatch.itemName}</span>
-            <strong>{formatReceivingQuantity(quantity || "0", selectedBatch.baseUomCode)}</strong>
+            <span>
+              {selectedPurchaseOrderLine?.skuCode ?? selectedBatch.sku} / {lotNo} / {expiryDate}
+            </span>
+            <strong>{formatReceivingQuantity(quantity || "0", baseUomCode)}</strong>
           </div>
 
           <div className="erp-receiving-actions">
@@ -365,7 +681,9 @@ export function WarehouseReceivingPrototype() {
             <>
               <div className="erp-receiving-detail-grid">
                 <ReceivingFact label="Receipt" value={selectedReceipt.receiptNo} />
-                <ReceivingFact label="Reference" value={selectedReceipt.referenceDocId} />
+                <ReceivingFact label="Delivery note" value={selectedReceipt.deliveryNoteNo ?? "-"} />
+                <ReceivingFact label="PO" value={selectedReceipt.referenceDocId} />
+                <ReceivingFact label="Supplier" value={selectedReceipt.supplierId ?? "-"} />
                 <ReceivingFact label="Warehouse" value={selectedReceipt.warehouseCode} />
                 <ReceivingFact label="Location" value={selectedReceipt.locationCode} />
                 <ReceivingFact label="Updated" value={formatReceivingDateTime(selectedReceipt.updatedAt)} />
@@ -492,6 +810,21 @@ function ReceivingFact({ label, value }: { label: string; value: string }) {
       <strong>{value}</strong>
     </div>
   );
+}
+
+function formatPackagingStatus(status: ReceivingPackagingStatus) {
+  return receivingPackagingStatusOptions.find((option) => option.value === status)?.label ?? status;
+}
+
+function uniquePurchaseOrders(orders: PurchaseOrder[]) {
+  const seen = new Set<string>();
+  return orders.filter((order) => {
+    if (seen.has(order.id)) {
+      return false;
+    }
+    seen.add(order.id);
+    return true;
+  });
 }
 
 function mergeReceipts(localReceipts: GoodsReceipt[], remoteReceipts: GoodsReceipt[], query: GoodsReceiptQuery) {

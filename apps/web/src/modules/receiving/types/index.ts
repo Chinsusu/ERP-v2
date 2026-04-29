@@ -2,17 +2,24 @@ export type GoodsReceiptStatus = "draft" | "submitted" | "inspect_ready" | "post
 
 export type BatchQCStatus = "hold" | "pass" | "fail" | "quarantine" | "retest_required";
 
+export type ReceivingPackagingStatus = "intact" | "damaged" | "missing_label" | "leaking";
+
 export type GoodsReceiptLine = {
   id: string;
+  purchaseOrderLineId?: string;
   itemId: string;
   sku: string;
   itemName?: string;
   batchId?: string;
   batchNo?: string;
+  lotNo?: string;
+  expiryDate?: string;
   warehouseId: string;
   locationId: string;
   quantity: string;
+  uomCode: string;
   baseUomCode: string;
+  packagingStatus: ReceivingPackagingStatus;
   qcStatus?: BatchQCStatus;
 };
 
@@ -41,6 +48,7 @@ export type GoodsReceipt = {
   referenceDocType: string;
   referenceDocId: string;
   supplierId?: string;
+  deliveryNoteNo?: string;
   status: GoodsReceiptStatus;
   lines: GoodsReceiptLine[];
   stockMovements?: GoodsReceiptStockMovement[];
@@ -63,13 +71,18 @@ export type GoodsReceiptQuery = {
 
 export type CreateGoodsReceiptLineInput = {
   id?: string;
+  purchaseOrderLineId: string;
   itemId?: string;
   sku?: string;
   itemName?: string;
   batchId?: string;
   batchNo?: string;
+  lotNo: string;
+  expiryDate: string;
   quantity: string;
+  uomCode: string;
   baseUomCode: string;
+  packagingStatus: ReceivingPackagingStatus;
   qcStatus?: BatchQCStatus;
 };
 
@@ -81,6 +94,7 @@ export type CreateGoodsReceiptInput = {
   locationId: string;
   referenceDocType: string;
   referenceDocId: string;
-  supplierId?: string;
+  supplierId: string;
+  deliveryNoteNo: string;
   lines: CreateGoodsReceiptLineInput[];
 };

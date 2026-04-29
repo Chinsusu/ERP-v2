@@ -1,5 +1,4 @@
-import { apiGet, apiPost } from "../../../shared/api/client";
-import type { components, operations } from "../../../shared/api/generated/schema";
+import { ApiError, apiGetRaw, apiPost } from "../../../shared/api/client";
 import { decimalScales, formatDateTimeVI, formatQuantity, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type {
   BatchQCStatus,
@@ -9,12 +8,99 @@ import type {
   GoodsReceiptLine,
   GoodsReceiptQuery,
   GoodsReceiptStatus,
-  GoodsReceiptStockMovement
+  GoodsReceiptStockMovement,
+  ReceivingPackagingStatus
 } from "../types";
 
-type GoodsReceiptApi = components["schemas"]["GoodsReceipt"];
-type GoodsReceiptApiQuery = operations["listGoodsReceipts"]["parameters"]["query"];
-type CreateGoodsReceiptApiRequest = components["schemas"]["CreateGoodsReceiptRequest"];
+type GoodsReceiptLineApi = {
+  id: string;
+  purchase_order_line_id?: string;
+  item_id: string;
+  sku: string;
+  item_name?: string;
+  batch_id?: string;
+  batch_no?: string;
+  lot_no?: string;
+  expiry_date?: string;
+  warehouse_id: string;
+  location_id: string;
+  quantity: string;
+  uom_code: string;
+  base_uom_code: string;
+  packaging_status: ReceivingPackagingStatus;
+  qc_status?: BatchQCStatus;
+};
+
+type GoodsReceiptStockMovementApi = {
+  movement_no: string;
+  movement_type: "purchase_receipt";
+  item_id: string;
+  batch_id: string;
+  warehouse_id: string;
+  location_id: string;
+  quantity: string;
+  base_uom_code: string;
+  stock_status: "available" | "qc_hold";
+  source_doc_id: string;
+  source_doc_line_id: string;
+};
+
+type GoodsReceiptApi = {
+  id: string;
+  org_id: string;
+  receipt_no: string;
+  warehouse_id: string;
+  warehouse_code: string;
+  location_id: string;
+  location_code: string;
+  reference_doc_type: string;
+  reference_doc_id: string;
+  supplier_id?: string;
+  delivery_note_no?: string;
+  status: GoodsReceiptStatus;
+  lines: GoodsReceiptLineApi[];
+  stock_movements?: GoodsReceiptStockMovementApi[];
+  created_by: string;
+  submitted_by?: string;
+  inspect_ready_by?: string;
+  posted_by?: string;
+  audit_log_id?: string;
+  created_at: string;
+  updated_at: string;
+  submitted_at?: string;
+  inspect_ready_at?: string;
+  posted_at?: string;
+};
+
+type CreateGoodsReceiptLineApiRequest = {
+  id?: string;
+  purchase_order_line_id: string;
+  item_id?: string;
+  sku?: string;
+  item_name?: string;
+  batch_id?: string;
+  batch_no?: string;
+  lot_no: string;
+  expiry_date: string;
+  quantity: string;
+  uom_code: string;
+  base_uom_code: string;
+  packaging_status: ReceivingPackagingStatus;
+  qc_status?: BatchQCStatus;
+};
+
+type CreateGoodsReceiptApiRequest = {
+  id?: string;
+  org_id?: string;
+  receipt_no?: string;
+  warehouse_id: string;
+  location_id: string;
+  reference_doc_type: string;
+  reference_doc_id: string;
+  supplier_id: string;
+  delivery_note_no: string;
+  lines: CreateGoodsReceiptLineApiRequest[];
+};
 
 type WarehouseOption = {
   label: string;
@@ -33,6 +119,8 @@ type BatchOption = {
   label: string;
   value: string;
   batchNo: string;
+  lotNo: string;
+  expiryDate: string;
   itemId: string;
   sku: string;
   itemName: string;
@@ -61,6 +149,8 @@ export const receivingBatchOptions: BatchOption[] = [
     label: "LOT-2604A / SERUM-30ML",
     value: "batch-serum-2604a",
     batchNo: "LOT-2604A",
+    lotNo: "LOT-2604A",
+    expiryDate: "2027-04-01",
     itemId: "item-serum-30ml",
     sku: "SERUM-30ML",
     itemName: "Vitamin C Serum",
@@ -71,6 +161,8 @@ export const receivingBatchOptions: BatchOption[] = [
     label: "LOT-2603B / CREAM-50G",
     value: "batch-cream-2603b",
     batchNo: "LOT-2603B",
+    lotNo: "LOT-2603B",
+    expiryDate: "2028-03-01",
     itemId: "item-cream-50g",
     sku: "CREAM-50G",
     itemName: "Moisturizing Cream",
@@ -81,6 +173,8 @@ export const receivingBatchOptions: BatchOption[] = [
     label: "LOT-2604C / TONER-100ML",
     value: "batch-toner-2604c",
     batchNo: "LOT-2604C",
+    lotNo: "LOT-2604C",
+    expiryDate: "2027-10-10",
     itemId: "item-toner-100ml",
     sku: "TONER-100ML",
     itemName: "Hydrating Toner",
@@ -89,17 +183,27 @@ export const receivingBatchOptions: BatchOption[] = [
   }
 ];
 
+export const receivingPackagingStatusOptions: { label: string; value: ReceivingPackagingStatus }[] = [
+  { label: "Intact", value: "intact" },
+  { label: "Damaged", value: "damaged" },
+  { label: "Missing label", value: "missing_label" },
+  { label: "Leaking", value: "leaking" }
+];
+
 let prototypeGoodsReceipts = createPrototypeGoodsReceipts();
 
 export async function getGoodsReceipts(query: GoodsReceiptQuery = {}): Promise<GoodsReceipt[]> {
   try {
-    const receipts = await apiGet("/goods-receipts", {
-      accessToken: defaultAccessToken,
-      query: toApiQuery(query)
+    const receipts = await apiGetRaw<GoodsReceiptApi[]>(`/goods-receipts${goodsReceiptQueryString(query)}`, {
+      accessToken: defaultAccessToken
     });
 
     return receipts.map(fromApiGoodsReceipt);
-  } catch {
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
     return filterPrototypeReceipts(query);
   }
 }
@@ -113,7 +217,11 @@ export async function createGoodsReceipt(input: CreateGoodsReceiptInput): Promis
     );
 
     return fromApiGoodsReceipt(receipt);
-  } catch {
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
     return createPrototypeGoodsReceipt(input);
   }
 }
@@ -209,7 +317,11 @@ async function transitionGoodsReceipt(id: string, status: GoodsReceiptStatus, pa
     const receipt = await apiPost<GoodsReceiptApi, Record<string, never>>(path, {}, { accessToken: defaultAccessToken });
 
     return fromApiGoodsReceipt(receipt);
-  } catch {
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
     return transitionPrototypeReceipt(id, status);
   }
 }
@@ -226,6 +338,7 @@ function fromApiGoodsReceipt(receipt: GoodsReceiptApi): GoodsReceipt {
     referenceDocType: receipt.reference_doc_type,
     referenceDocId: receipt.reference_doc_id,
     supplierId: receipt.supplier_id,
+    deliveryNoteNo: receipt.delivery_note_no,
     status: receipt.status,
     lines: receipt.lines.map(fromApiGoodsReceiptLine),
     stockMovements: receipt.stock_movements?.map(fromApiGoodsReceiptStockMovement),
@@ -242,25 +355,28 @@ function fromApiGoodsReceipt(receipt: GoodsReceiptApi): GoodsReceipt {
   };
 }
 
-function fromApiGoodsReceiptLine(line: components["schemas"]["GoodsReceiptLine"]): GoodsReceiptLine {
+function fromApiGoodsReceiptLine(line: GoodsReceiptLineApi): GoodsReceiptLine {
   return {
     id: line.id,
+    purchaseOrderLineId: line.purchase_order_line_id,
     itemId: line.item_id,
     sku: line.sku,
     itemName: line.item_name,
     batchId: line.batch_id,
     batchNo: line.batch_no,
+    lotNo: line.lot_no,
+    expiryDate: line.expiry_date,
     warehouseId: line.warehouse_id,
     locationId: line.location_id,
     quantity: line.quantity,
+    uomCode: line.uom_code,
     baseUomCode: line.base_uom_code,
+    packagingStatus: line.packaging_status,
     qcStatus: line.qc_status
   };
 }
 
-function fromApiGoodsReceiptStockMovement(
-  movement: components["schemas"]["GoodsReceiptStockMovement"]
-): GoodsReceiptStockMovement {
+function fromApiGoodsReceiptStockMovement(movement: GoodsReceiptStockMovementApi): GoodsReceiptStockMovement {
   return {
     movementNo: movement.movement_no,
     movementType: movement.movement_type,
@@ -276,13 +392,6 @@ function fromApiGoodsReceiptStockMovement(
   };
 }
 
-function toApiQuery(query: GoodsReceiptQuery): GoodsReceiptApiQuery {
-  return {
-    warehouse_id: query.warehouseId,
-    status: query.status
-  };
-}
-
 function toApiCreateInput(input: CreateGoodsReceiptInput): CreateGoodsReceiptApiRequest {
   return {
     id: input.id,
@@ -293,18 +402,45 @@ function toApiCreateInput(input: CreateGoodsReceiptInput): CreateGoodsReceiptApi
     reference_doc_type: input.referenceDocType,
     reference_doc_id: input.referenceDocId,
     supplier_id: input.supplierId,
+    delivery_note_no: input.deliveryNoteNo,
     lines: input.lines.map((line) => ({
       id: line.id,
+      purchase_order_line_id: line.purchaseOrderLineId,
       item_id: line.itemId,
       sku: line.sku,
       item_name: line.itemName,
       batch_id: line.batchId,
       batch_no: line.batchNo,
+      lot_no: line.lotNo,
+      expiry_date: line.expiryDate,
       quantity: line.quantity,
+      uom_code: line.uomCode,
       base_uom_code: line.baseUomCode,
+      packaging_status: line.packagingStatus,
       qc_status: line.qcStatus
     }))
   };
+}
+
+function goodsReceiptQueryString(query: GoodsReceiptQuery) {
+  const params = new URLSearchParams();
+  if (query.warehouseId) {
+    params.set("warehouse_id", query.warehouseId);
+  }
+  if (query.status) {
+    params.set("status", query.status);
+  }
+
+  const value = params.toString();
+  return value ? `?${value}` : "";
+}
+
+function shouldUsePrototypeFallback(reason: unknown) {
+  if (reason instanceof ApiError) {
+    return false;
+  }
+
+  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
 }
 
 function filterPrototypeReceipts(query: GoodsReceiptQuery): GoodsReceipt[] {
@@ -328,8 +464,15 @@ function createPrototypeGoodsReceipt(input: CreateGoodsReceiptInput): GoodsRecei
   const location = receivingLocationOptions.find(
     (option) => option.value === input.locationId && option.warehouseId === input.warehouseId
   );
-  if (!warehouse || !location || input.referenceDocType.trim() === "" || input.referenceDocId.trim() === "") {
-    throw new Error("Warehouse, location, and reference document are required");
+  if (
+    !warehouse ||
+    !location ||
+    input.referenceDocType.trim() === "" ||
+    input.referenceDocId.trim() === "" ||
+    input.supplierId.trim() === "" ||
+    input.deliveryNoteNo.trim() === ""
+  ) {
+    throw new Error("Warehouse, location, supplier, delivery note, and reference document are required");
   }
   if (input.lines.length === 0) {
     throw new Error("At least one receiving line is required");
@@ -348,7 +491,8 @@ function createPrototypeGoodsReceipt(input: CreateGoodsReceiptInput): GoodsRecei
     locationCode: location.code,
     referenceDocType: input.referenceDocType.trim(),
     referenceDocId: input.referenceDocId.trim(),
-    supplierId: input.supplierId?.trim() || undefined,
+    supplierId: input.supplierId.trim(),
+    deliveryNoteNo: input.deliveryNoteNo.trim().toUpperCase(),
     status: "draft",
     lines,
     createdBy: "user-warehouse-lead",
@@ -372,21 +516,32 @@ function createPrototypeLine(
   if (Number(quantity) <= 0) {
     throw new Error("Quantity must be positive");
   }
-  if (!batch && (!input.itemId || !input.sku)) {
-    throw new Error("Item/SKU or batch is required");
+  if (!batch && (!input.itemId || !input.sku || !input.batchNo)) {
+    throw new Error("Item/SKU and batch are required");
+  }
+  if (input.purchaseOrderLineId.trim() === "" || input.lotNo.trim() === "" || input.expiryDate.trim() === "") {
+    throw new Error("Purchase order line, lot, and expiry date are required");
+  }
+  if (!receivingPackagingStatusOptions.some((option) => option.value === input.packagingStatus)) {
+    throw new Error("Packaging status is invalid");
   }
 
   return {
     id: input.id?.trim() || `line-${index + 1}`,
+    purchaseOrderLineId: input.purchaseOrderLineId.trim(),
     itemId: input.itemId?.trim() || batch?.itemId || "",
     sku: input.sku?.trim().toUpperCase() || batch?.sku || "",
     itemName: input.itemName?.trim() || batch?.itemName,
     batchId: input.batchId?.trim() || undefined,
     batchNo: input.batchNo?.trim().toUpperCase() || batch?.batchNo,
+    lotNo: input.lotNo.trim().toUpperCase(),
+    expiryDate: input.expiryDate.trim(),
     warehouseId,
     locationId,
     quantity,
+    uomCode: (input.uomCode || batch?.baseUomCode || "EA").trim().toUpperCase(),
     baseUomCode: (input.baseUomCode || batch?.baseUomCode || "EA").trim().toUpperCase(),
+    packagingStatus: input.packagingStatus,
     qcStatus: input.qcStatus || batch?.qcStatus
   };
 }
@@ -457,12 +612,23 @@ function createPrototypeGoodsReceipts(): GoodsReceipt[] {
       locationId: "loc-hcm-fg-recv-01",
       locationCode: "FG-RECV-01",
       referenceDocType: "purchase_order",
-      referenceDocId: "PO-260427-0001",
-      supplierId: "supplier-local",
+      referenceDocId: "po-260429-0003",
+      supplierId: "sup-rm-bioactive",
+      deliveryNoteNo: "DN-260427-0001",
       status: "draft",
       lines: [
         createPrototypeLine(
-          { id: "grn-line-draft-001", batchId: "batch-serum-2604a", quantity: "24", baseUomCode: "EA" },
+          {
+            id: "grn-line-draft-001",
+            purchaseOrderLineId: "po-260429-0003-line-01",
+            batchId: "batch-serum-2604a",
+            lotNo: "LOT-2604A",
+            expiryDate: "2027-04-01",
+            quantity: "24",
+            uomCode: "EA",
+            baseUomCode: "EA",
+            packagingStatus: "intact"
+          },
           0,
           "wh-hcm-fg",
           "loc-hcm-fg-recv-01"
@@ -481,12 +647,23 @@ function createPrototypeGoodsReceipts(): GoodsReceipt[] {
       locationId: "loc-hcm-fg-recv-01",
       locationCode: "FG-RECV-01",
       referenceDocType: "purchase_order",
-      referenceDocId: "PO-260427-0003",
-      supplierId: "supplier-local",
+      referenceDocId: "po-260429-0003",
+      supplierId: "sup-rm-bioactive",
+      deliveryNoteNo: "DN-260427-0003",
       status: "inspect_ready",
       lines: [
         createPrototypeLine(
-          { id: "grn-line-inspect-001", batchId: "batch-cream-2603b", quantity: "12", baseUomCode: "EA" },
+          {
+            id: "grn-line-inspect-001",
+            purchaseOrderLineId: "po-260429-0003-line-01",
+            batchId: "batch-cream-2603b",
+            lotNo: "LOT-2603B",
+            expiryDate: "2028-03-01",
+            quantity: "12",
+            uomCode: "EA",
+            baseUomCode: "EA",
+            packagingStatus: "intact"
+          },
           0,
           "wh-hcm-fg",
           "loc-hcm-fg-recv-01"

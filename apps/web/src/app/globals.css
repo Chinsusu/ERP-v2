@@ -2126,6 +2126,45 @@ textarea {
   gap: 12px;
 }
 
+.erp-receiving-form-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-receiving-section-label,
+.erp-receiving-po-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.erp-receiving-section-label strong,
+.erp-receiving-po-summary strong,
+.erp-receiving-po-summary span {
+  overflow-wrap: anywhere;
+}
+
+.erp-receiving-po-summary {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+}
+
+.erp-receiving-note-field {
+  margin-top: 0;
+}
+
+.erp-receiving-note-field textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
 .erp-receiving-selected-line {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
