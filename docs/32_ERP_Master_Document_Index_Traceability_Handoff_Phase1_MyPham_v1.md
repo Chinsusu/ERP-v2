@@ -155,6 +155,7 @@ Một tài liệu chỉ có giá trị khi nó giúp:
 | 42 | `42_ERP_Sprint2_Changelog_Order_Fulfillment_Core_MyPham_v1.md` | Changelog/release note Sprint 2 | PM, Tech Lead, QA | Khi theo dõi kickoff và release evidence Sprint 2 |
 | 43 | `43_ERP_Coding_Task_Board_Sprint3_Returns_Reconciliation_Core_MyPham_v1.md` | Sprint 3 Returns Reconciliation Core task board | PM, Tech Lead, Dev, QA | Khi triển khai returns, stock count, adjustment, shift closing |
 | 44 | `44_ERP_Sprint3_Changelog_Returns_Reconciliation_Core_MyPham_v1.md` | Changelog/release note Sprint 3 | PM, Tech Lead, QA, DevOps | Khi theo dõi release evidence Sprint 3 |
+| 45 | `45_ERP_Coding_Task_Board_Sprint4_Purchase_Inbound_QC_Core_MyPham_v1.md` | Sprint 4 Purchase Order + Inbound QC task board | PM, Tech Lead, Dev, QA, DevOps | Khi triển khai purchase, receiving, inbound QC, supplier rejection |
 
 ### 4.5. Nhóm tích hợp, test, delivery và vận hành
 
