@@ -4,6 +4,7 @@ import type { AuditLogItem } from "@/modules/audit/types";
 import type {
   ChangeSubcontractOrderStatusInput,
   CreateSubcontractOrderInput,
+  DecideSubcontractSampleInput,
   IssueSubcontractMaterialsInput,
   IssueSubcontractMaterialsResult,
   SubcontractDepositStatus,
@@ -13,10 +14,14 @@ import type {
   SubcontractOrder,
   SubcontractOrderMaterialLine,
   SubcontractOrderQuery,
+  SubcontractSampleApproval,
+  SubcontractSampleApprovalResult,
+  SubcontractSampleApprovalStatus,
   SubcontractOrderStatus,
   SubcontractStockMovement,
   SubcontractOrderSummary,
   SubcontractProduct,
+  SubmitSubcontractSampleInput,
   SubcontractStatusChangeResult,
   UpdateSubcontractOrderInput
 } from "../types";
@@ -74,6 +79,7 @@ type SubcontractOrderApi = {
   cancelled_at?: string;
   closed_at?: string;
   cancel_reason?: string;
+  sample_reject_reason?: string;
   version: number;
 };
 
@@ -229,12 +235,83 @@ type IssueSubcontractMaterialsApiResult = {
   audit_log_id?: string;
 };
 
+type SubcontractSampleEvidenceApiRequest = {
+  id?: string;
+  evidence_type: string;
+  file_name?: string;
+  object_key?: string;
+  external_url?: string;
+  note?: string;
+};
+
+type SubmitSubcontractSampleApiRequest = {
+  expected_version: number;
+  sample_approval_id?: string;
+  sample_code: string;
+  formula_version?: string;
+  spec_version?: string;
+  submitted_by: string;
+  submitted_at?: string;
+  note?: string;
+  evidence: SubcontractSampleEvidenceApiRequest[];
+};
+
+type DecideSubcontractSampleApiRequest = {
+  expected_version: number;
+  sample_approval_id?: string;
+  decision_at?: string;
+  reason: string;
+  storage_status?: string;
+};
+
+type SubcontractSampleEvidenceApi = {
+  id: string;
+  evidence_type: string;
+  file_name?: string;
+  object_key?: string;
+  external_url?: string;
+  note?: string;
+  created_at: string;
+  created_by: string;
+};
+
+type SubcontractSampleApprovalApi = {
+  id: string;
+  subcontract_order_id: string;
+  subcontract_order_no: string;
+  sample_code: string;
+  formula_version?: string;
+  spec_version?: string;
+  status: SubcontractSampleApprovalStatus;
+  evidence: SubcontractSampleEvidenceApi[];
+  submitted_by: string;
+  submitted_at: string;
+  decision_by?: string;
+  decision_at?: string;
+  decision_reason?: string;
+  storage_status?: string;
+  note?: string;
+  created_at: string;
+  updated_at: string;
+  version: number;
+};
+
+type SubcontractSampleApprovalApiResult = {
+  subcontract_order: SubcontractOrderApi;
+  sample_approval: SubcontractSampleApprovalApi;
+  previous_status: SubcontractOrderStatus;
+  current_status: SubcontractOrderStatus;
+  audit_log_id?: string;
+};
+
 type SubcontractOrderAction = "submit" | "approve" | "confirm-factory" | "cancel" | "close";
 
 const defaultAccessToken = "local-dev-access-token";
 const prototypeNow = "2026-04-29T10:00:00Z";
 let subcontractOrderSequence = 2;
 let subcontractAuditSequence = 1;
+let prototypeSampleApprovalSequence = 1;
+let prototypeSampleApprovalStore: SubcontractSampleApproval[] = [];
 
 export const subcontractFactoryOptions: SubcontractFactory[] = [
   { id: "sup-out-lotus", code: "SUP-OUT-LOTUS", name: "Lotus Filling Partner" },
@@ -450,6 +527,66 @@ export async function issueSubcontractMaterials(
   }
 }
 
+export async function submitSubcontractSample(
+  input: SubmitSubcontractSampleInput
+): Promise<SubcontractSampleApprovalResult> {
+  try {
+    const result = await apiPost<SubcontractSampleApprovalApiResult, SubmitSubcontractSampleApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/submit-sample`,
+      toApiSubmitSampleInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiSampleApprovalResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return submitPrototypeSubcontractSample(input);
+  }
+}
+
+export async function approveSubcontractSample(
+  input: DecideSubcontractSampleInput
+): Promise<SubcontractSampleApprovalResult> {
+  try {
+    const result = await apiPost<SubcontractSampleApprovalApiResult, DecideSubcontractSampleApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/approve-sample`,
+      toApiDecideSampleInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiSampleApprovalResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return decidePrototypeSubcontractSample(input, "approved");
+  }
+}
+
+export async function rejectSubcontractSample(
+  input: DecideSubcontractSampleInput
+): Promise<SubcontractSampleApprovalResult> {
+  try {
+    const result = await apiPost<SubcontractSampleApprovalApiResult, DecideSubcontractSampleApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/reject-sample`,
+      toApiDecideSampleInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiSampleApprovalResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return decidePrototypeSubcontractSample(input, "rejected");
+  }
+}
+
 export function changeSubcontractOrderStatus(input: ChangeSubcontractOrderStatusInput): SubcontractStatusChangeResult {
   const nextStatus = normalizeOrderStatus(input.nextStatus);
   const beforeStatus = input.order.status;
@@ -553,6 +690,8 @@ export function availableSubcontractOrderActions(status: SubcontractOrderStatus)
 export function resetPrototypeSubcontractOrdersForTest() {
   subcontractOrderSequence = 2;
   subcontractAuditSequence = 1;
+  prototypeSampleApprovalSequence = 1;
+  prototypeSampleApprovalStore = [];
   prototypeStore = prototypeSubcontractOrders.map(cloneSubcontractOrder);
 }
 
@@ -611,7 +750,8 @@ function fromApiSubcontractOrderListItem(order: SubcontractOrderApiListItem): Su
     version: order.version ?? 1,
     estimatedCostAmount: order.estimated_cost_amount,
     materialLines: [],
-    auditLogIds: order.audit_log_id ? [order.audit_log_id] : []
+    auditLogIds: order.audit_log_id ? [order.audit_log_id] : [],
+    sampleRejectReason: order.sample_reject_reason
   };
 }
 
@@ -670,6 +810,57 @@ function fromApiIssueMaterialsResult(result: IssueSubcontractMaterialsApiResult)
     stockMovements,
     auditLog,
     auditLogId: result.audit_log_id
+  };
+}
+
+function fromApiSampleApprovalResult(result: SubcontractSampleApprovalApiResult): SubcontractSampleApprovalResult {
+  const order = fromApiSubcontractOrder(result.subcontract_order);
+  const sampleApproval = fromApiSampleApproval(result.sample_approval);
+  const auditLog = createSampleApprovalAuditLog(
+    order,
+    sampleApproval,
+    result.previous_status,
+    result.current_status,
+    result.audit_log_id
+  );
+
+  return {
+    order,
+    sampleApproval,
+    auditLog,
+    auditLogId: result.audit_log_id
+  };
+}
+
+function fromApiSampleApproval(sampleApproval: SubcontractSampleApprovalApi): SubcontractSampleApproval {
+  return {
+    id: sampleApproval.id,
+    orderId: sampleApproval.subcontract_order_id,
+    orderNo: sampleApproval.subcontract_order_no,
+    sampleCode: sampleApproval.sample_code,
+    formulaVersion: sampleApproval.formula_version,
+    specVersion: sampleApproval.spec_version,
+    status: sampleApproval.status,
+    evidence: sampleApproval.evidence.map((evidence) => ({
+      id: evidence.id,
+      evidenceType: evidence.evidence_type,
+      fileName: evidence.file_name,
+      objectKey: evidence.object_key,
+      externalURL: evidence.external_url,
+      note: evidence.note,
+      createdAt: evidence.created_at,
+      createdBy: evidence.created_by
+    })),
+    submittedBy: sampleApproval.submitted_by,
+    submittedAt: sampleApproval.submitted_at,
+    decisionBy: sampleApproval.decision_by,
+    decisionAt: sampleApproval.decision_at,
+    decisionReason: sampleApproval.decision_reason,
+    storageStatus: sampleApproval.storage_status,
+    note: sampleApproval.note,
+    createdAt: sampleApproval.created_at,
+    updatedAt: sampleApproval.updated_at,
+    version: sampleApproval.version
   };
 }
 
@@ -773,6 +964,37 @@ function toApiIssueMaterialsInput(input: IssueSubcontractMaterialsInput): IssueS
       external_url: evidence.externalURL,
       note: evidence.note
     }))
+  };
+}
+
+function toApiSubmitSampleInput(input: SubmitSubcontractSampleInput): SubmitSubcontractSampleApiRequest {
+  return {
+    expected_version: input.order.version,
+    sample_approval_id: input.sampleApprovalId,
+    sample_code: input.sampleCode,
+    formula_version: input.formulaVersion,
+    spec_version: input.specVersion,
+    submitted_by: input.submittedBy,
+    submitted_at: input.submittedAt,
+    note: input.note,
+    evidence: input.evidence.map((evidence) => ({
+      id: evidence.id,
+      evidence_type: evidence.evidenceType,
+      file_name: evidence.fileName,
+      object_key: evidence.objectKey,
+      external_url: evidence.externalURL,
+      note: evidence.note
+    }))
+  };
+}
+
+function toApiDecideSampleInput(input: DecideSubcontractSampleInput): DecideSubcontractSampleApiRequest {
+  return {
+    expected_version: input.order.version,
+    sample_approval_id: input.sampleApprovalId,
+    decision_at: input.decisionAt,
+    reason: input.reason,
+    storage_status: input.storageStatus
   };
 }
 
@@ -1059,6 +1281,129 @@ function issuePrototypeSubcontractMaterials(input: IssueSubcontractMaterialsInpu
   };
 }
 
+function submitPrototypeSubcontractSample(input: SubmitSubcontractSampleInput): SubcontractSampleApprovalResult {
+  const current = getPrototypeSubcontractOrder(input.order.id);
+  if (input.order.version && input.order.version !== current.version) {
+    throw new Error("Subcontract order version changed");
+  }
+  if (!["materials_issued_to_factory", "sample_rejected"].includes(current.status)) {
+    throw new Error(`Cannot submit sample from ${formatSubcontractOrderStatus(current.status)}`);
+  }
+  if (input.evidence.length === 0) {
+    throw new Error("Sample evidence is required");
+  }
+  const sampleApproval: SubcontractSampleApproval = {
+    id: input.sampleApprovalId || `sample-${current.id}-${String(prototypeSampleApprovalSequence++).padStart(4, "0")}`,
+    orderId: current.id,
+    orderNo: current.orderNo,
+    sampleCode: input.sampleCode.trim() || `${current.orderNo}-SAMPLE-${prototypeSampleApprovalSequence}`,
+    formulaVersion: input.formulaVersion,
+    specVersion: input.specVersion || current.specVersion,
+    status: "submitted",
+    evidence: input.evidence.map((evidence, index) => ({
+      id: evidence.id || `${current.id}-sample-evidence-${index + 1}`,
+      evidenceType: evidence.evidenceType,
+      fileName: evidence.fileName,
+      objectKey: evidence.objectKey,
+      externalURL: evidence.externalURL,
+      note: evidence.note,
+      createdAt: input.submittedAt || prototypeNow,
+      createdBy: input.submittedBy || "factory-user"
+    })),
+    submittedBy: input.submittedBy || "factory-user",
+    submittedAt: input.submittedAt || prototypeNow,
+    note: input.note,
+    createdAt: input.submittedAt || prototypeNow,
+    updatedAt: input.submittedAt || prototypeNow,
+    version: 1
+  };
+  const order = createSubcontractOrderRecord({
+    ...current,
+    status: "sample_submitted",
+    sampleRejectReason: undefined,
+    updatedAt: prototypeNow,
+    version: current.version + 1
+  });
+  const auditLog = createSampleApprovalAuditLog(order, sampleApproval, current.status, order.status);
+  order.auditLogIds = [...order.auditLogIds, auditLog.id];
+  prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== current.id)];
+  prototypeSampleApprovalStore = [
+    sampleApproval,
+    ...prototypeSampleApprovalStore.filter((candidate) => candidate.id !== sampleApproval.id)
+  ];
+
+  return {
+    order,
+    sampleApproval,
+    auditLog,
+    auditLogId: auditLog.id
+  };
+}
+
+function decidePrototypeSubcontractSample(
+  input: DecideSubcontractSampleInput,
+  status: Exclude<SubcontractSampleApprovalStatus, "submitted">
+): SubcontractSampleApprovalResult {
+  const current = getPrototypeSubcontractOrder(input.order.id);
+  if (input.order.version && input.order.version !== current.version) {
+    throw new Error("Subcontract order version changed");
+  }
+  if (current.status !== "sample_submitted") {
+    throw new Error(`Cannot decide sample from ${formatSubcontractOrderStatus(current.status)}`);
+  }
+  const existingSample = latestPrototypeSampleApproval(current.id, input.sampleApprovalId);
+  if (!existingSample) {
+    throw new Error("Sample approval record is required");
+  }
+  if (status === "rejected" && input.reason.trim() === "") {
+    throw new Error("Sample rejection reason is required");
+  }
+  if (status === "approved" && !input.storageStatus?.trim()) {
+    throw new Error("Approved sample storage status is required");
+  }
+  const sampleApproval: SubcontractSampleApproval = {
+    ...existingSample,
+    status,
+    decisionBy: "qa-lead",
+    decisionAt: input.decisionAt || prototypeNow,
+    decisionReason: input.reason,
+    storageStatus: status === "approved" ? input.storageStatus : undefined,
+    updatedAt: input.decisionAt || prototypeNow,
+    version: existingSample.version + 1
+  };
+  const nextStatus: SubcontractOrderStatus = status === "approved" ? "sample_approved" : "sample_rejected";
+  const order = createSubcontractOrderRecord({
+    ...current,
+    status: nextStatus,
+    updatedAt: prototypeNow,
+    version: current.version + 1,
+    auditLogIds: [...current.auditLogIds],
+    ...(status === "rejected" ? { sampleRejectReason: input.reason } : {})
+  });
+  const auditLog = createSampleApprovalAuditLog(order, sampleApproval, current.status, order.status);
+  order.auditLogIds = [...order.auditLogIds, auditLog.id];
+  prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== current.id)];
+  prototypeSampleApprovalStore = [
+    sampleApproval,
+    ...prototypeSampleApprovalStore.filter((candidate) => candidate.id !== sampleApproval.id)
+  ];
+
+  return {
+    order,
+    sampleApproval,
+    auditLog,
+    auditLogId: auditLog.id
+  };
+}
+
+function latestPrototypeSampleApproval(orderId: string, sampleApprovalId?: string) {
+  const samples = prototypeSampleApprovalStore.filter((sample) =>
+    sampleApprovalId ? sample.id === sampleApprovalId : sample.orderId === orderId
+  );
+
+  return samples[0];
+}
+
 function nextPrototypeStatus(currentStatus: SubcontractOrderStatus, action: SubcontractOrderAction) {
   if (action === "submit" && currentStatus === "draft") {
     return "submitted";
@@ -1149,6 +1494,47 @@ function createMaterialIssueAuditLog(
       actor_name: transfer.createdBy
     },
     createdAt: transfer.createdAt || prototypeNow
+  };
+}
+
+function createSampleApprovalAuditLog(
+  order: SubcontractOrder,
+  sampleApproval: SubcontractSampleApproval,
+  beforeStatus: SubcontractOrderStatus,
+  afterStatus: SubcontractOrderStatus,
+  auditLogId?: string
+): AuditLogItem {
+  const id = auditLogId ?? `audit-subcontract-sample-${String(subcontractAuditSequence++).padStart(4, "0")}`;
+  const action =
+    sampleApproval.status === "approved"
+      ? "subcontract.sample_approved"
+      : sampleApproval.status === "rejected"
+        ? "subcontract.sample_rejected"
+        : "subcontract.sample_submitted";
+
+  return {
+    id,
+    actorId: "user-subcontract-qa",
+    action,
+    entityType: "subcontract_order",
+    entityId: order.id,
+    requestId: `req_${id}`,
+    beforeData: {
+      status: beforeStatus
+    },
+    afterData: {
+      status: afterStatus,
+      sample_approval_id: sampleApproval.id,
+      sample_status: sampleApproval.status
+    },
+    metadata: {
+      order_no: order.orderNo,
+      sample_code: sampleApproval.sampleCode,
+      evidence_count: sampleApproval.evidence.length,
+      decision_reason: sampleApproval.decisionReason ?? "",
+      storage_status: sampleApproval.storageStatus ?? ""
+    },
+    createdAt: sampleApproval.updatedAt || prototypeNow
   };
 }
 

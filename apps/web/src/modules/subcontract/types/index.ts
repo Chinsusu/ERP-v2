@@ -67,6 +67,7 @@ export type SubcontractOrder = {
   estimatedCostAmount: string;
   materialLines: SubcontractOrderMaterialLine[];
   auditLogIds: string[];
+  sampleRejectReason?: string;
 };
 
 export type SubcontractOrderMaterialLine = {
@@ -172,6 +173,76 @@ export type IssueSubcontractMaterialsResult = {
   order: SubcontractOrder;
   transfer: SubcontractMaterialTransfer;
   stockMovements: SubcontractStockMovement[];
+  auditLog: AuditLogItem;
+  auditLogId?: string;
+};
+
+export type SubcontractSampleApprovalStatus = "submitted" | "approved" | "rejected";
+
+export type SubcontractSampleEvidenceInput = {
+  id?: string;
+  evidenceType: "photo" | "coa" | "spec_sheet" | "label" | "decision_note";
+  fileName?: string;
+  objectKey?: string;
+  externalURL?: string;
+  note?: string;
+};
+
+export type SubmitSubcontractSampleInput = {
+  order: SubcontractOrder;
+  sampleApprovalId?: string;
+  sampleCode: string;
+  formulaVersion?: string;
+  specVersion?: string;
+  submittedBy: string;
+  submittedAt?: string;
+  note?: string;
+  evidence: SubcontractSampleEvidenceInput[];
+};
+
+export type DecideSubcontractSampleInput = {
+  order: SubcontractOrder;
+  sampleApprovalId?: string;
+  reason: string;
+  storageStatus?: string;
+  decisionAt?: string;
+};
+
+export type SubcontractSampleEvidence = {
+  id: string;
+  evidenceType: string;
+  fileName?: string;
+  objectKey?: string;
+  externalURL?: string;
+  note?: string;
+  createdAt: string;
+  createdBy: string;
+};
+
+export type SubcontractSampleApproval = {
+  id: string;
+  orderId: string;
+  orderNo: string;
+  sampleCode: string;
+  formulaVersion?: string;
+  specVersion?: string;
+  status: SubcontractSampleApprovalStatus;
+  evidence: SubcontractSampleEvidence[];
+  submittedBy: string;
+  submittedAt: string;
+  decisionBy?: string;
+  decisionAt?: string;
+  decisionReason?: string;
+  storageStatus?: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
+export type SubcontractSampleApprovalResult = {
+  order: SubcontractOrder;
+  sampleApproval: SubcontractSampleApproval;
   auditLog: AuditLogItem;
   auditLogId?: string;
 };

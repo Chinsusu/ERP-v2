@@ -13,6 +13,7 @@ import {
 } from "../services/subcontractMaterialTransferService";
 import {
   approveSubcontractOrder,
+  approveSubcontractSample,
   availableSubcontractOrderActions,
   cancelSubcontractOrder,
   changeSubcontractOrderStatus,
@@ -25,6 +26,7 @@ import {
   getSubcontractOrders,
   issueSubcontractMaterials,
   prototypeSubcontractOrders,
+  rejectSubcontractSample,
   subcontractDepositStatusOptions,
   subcontractFactoryOptions,
   subcontractMaterialItemOptions,
@@ -32,6 +34,7 @@ import {
   subcontractOrderStatusOptions,
   subcontractOrderStatusTone,
   subcontractProductOptions,
+  submitSubcontractSample,
   submitSubcontractOrder,
   summarizeSubcontractOrders,
   updateSubcontractOrder
@@ -41,7 +44,8 @@ import type {
   SubcontractFinalPaymentStatus,
   SubcontractMaterialTransfer,
   SubcontractOrder,
-  SubcontractOrderStatus
+  SubcontractOrderStatus,
+  SubcontractSampleApproval
 } from "../types";
 
 function subcontractOrderColumns(onOpen: (order: SubcontractOrder) => void): DataTableColumn<SubcontractOrder>[] {
@@ -141,25 +145,6 @@ const subcontractDetailTabs = [
   "Payment"
 ];
 
-const prototypeSampleApprovals = [
-  {
-    sampleNo: "M01",
-    receivedAt: "2026-04-14",
-    reviewer: "QA A",
-    result: "Fail",
-    fileLabel: "photo-m01",
-    note: "Scent is not within approved range"
-  },
-  {
-    sampleNo: "M02",
-    receivedAt: "2026-04-16",
-    reviewer: "QA A",
-    result: "Pass",
-    fileLabel: "photo-m02",
-    note: "Approved retained sample"
-  }
-] as const;
-
 const prototypeFactoryClaims = [
   {
     issueType: "Packaging scuff",
@@ -204,6 +189,14 @@ export function SubcontractOrderPrototype() {
   const [isCreatingTransfer, setIsCreatingTransfer] = useState(false);
   const [transfers, setTransfers] = useState<SubcontractMaterialTransfer[]>([]);
   const [transferFeedback, setTransferFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
+  const [sampleApprovals, setSampleApprovals] = useState<SubcontractSampleApproval[]>([]);
+  const [sampleCode, setSampleCode] = useState("SAMPLE-A");
+  const [sampleFormulaVersion, setSampleFormulaVersion] = useState("FORMULA-2026.04");
+  const [sampleEvidenceName, setSampleEvidenceName] = useState("sample-front.jpg");
+  const [sampleDecisionReason, setSampleDecisionReason] = useState("Approved against retained standard");
+  const [sampleStorageStatus, setSampleStorageStatus] = useState("retained_in_qa_cabinet");
+  const [sampleFeedback, setSampleFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
+  const [isSavingSample, setIsSavingSample] = useState(false);
   const summary = useMemo(() => summarizeSubcontractOrders(orders), [orders]);
   const transferSummary = useMemo(() => summarizeSubcontractMaterialTransfers(transfers), [transfers]);
   const orderColumns = useMemo(() => subcontractOrderColumns(handleOpenOrder), []);
@@ -238,8 +231,14 @@ export function SubcontractOrderPrototype() {
   );
   const selectedOrder = orders.find((order) => order.id === selectedOrderId) ?? orders[0] ?? null;
   const latestTransfer = transfers[0] ?? null;
+  const latestSampleApproval =
+    sampleApprovals.find((sampleApproval) => sampleApproval.orderId === selectedOrder?.id) ?? null;
   const canIssueSelectedOrder =
     selectedOrder?.status === "factory_confirmed" || selectedOrder?.status === "deposit_recorded";
+  const canSubmitSample =
+    selectedOrder?.sampleRequired &&
+    (selectedOrder.status === "materials_issued_to_factory" || selectedOrder.status === "sample_rejected");
+  const canDecideSample = selectedOrder?.status === "sample_submitted" && latestSampleApproval?.status === "submitted";
 
   useEffect(() => {
     if (!selectedOrder) {
@@ -281,6 +280,22 @@ export function SubcontractOrderPrototype() {
     );
     setSignedHandover(false);
     setHandoverReceiver("Factory receiver");
+  }, [selectedOrder?.id, selectedOrder?.version]);
+
+  useEffect(() => {
+    if (!selectedOrder) {
+      return;
+    }
+
+    setSampleCode(`${selectedOrder.orderNo}-SAMPLE-A`);
+    setSampleFormulaVersion("FORMULA-2026.04");
+    setSampleEvidenceName("sample-front.jpg");
+    setSampleDecisionReason(
+      selectedOrder.status === "sample_rejected" && selectedOrder.sampleRejectReason
+        ? selectedOrder.sampleRejectReason
+        : "Approved against retained standard"
+    );
+    setSampleStorageStatus("retained_in_qa_cabinet");
   }, [selectedOrder?.id, selectedOrder?.version]);
 
   useEffect(() => {
@@ -526,6 +541,90 @@ export function SubcontractOrderPrototype() {
       });
     } finally {
       setIsCreatingTransfer(false);
+    }
+  }
+
+  async function handleSubmitSample() {
+    if (!selectedOrder) {
+      return;
+    }
+
+    try {
+      setIsSavingSample(true);
+      const result = await submitSubcontractSample({
+        order: selectedOrder,
+        sampleApprovalId: `${selectedOrder.id}-sample-${Date.now()}`,
+        sampleCode,
+        formulaVersion: sampleFormulaVersion,
+        specVersion: selectedOrder.specVersion,
+        submittedBy: "factory-user",
+        submittedAt: new Date().toISOString(),
+        evidence: [
+          {
+            evidenceType: "photo",
+            fileName: sampleEvidenceName,
+            objectKey: `subcontract/${selectedOrder.id}/${sampleEvidenceName || "sample-front.jpg"}`
+          }
+        ]
+      });
+
+      setOrders((current) => [result.order, ...current.filter((order) => order.id !== result.order.id)]);
+      setSelectedOrderId(result.order.id);
+      setSampleApprovals((current) => [
+        result.sampleApproval,
+        ...current.filter((sampleApproval) => sampleApproval.id !== result.sampleApproval.id)
+      ]);
+      setLastAudit(result.auditLog);
+      setSampleFeedback({
+        tone: "info",
+        message: `${result.sampleApproval.sampleCode} submitted`
+      });
+    } catch (error) {
+      setSampleFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "Sample could not be submitted"
+      });
+    } finally {
+      setIsSavingSample(false);
+    }
+  }
+
+  async function handleDecideSample(decision: "approve" | "reject") {
+    if (!selectedOrder || !latestSampleApproval) {
+      return;
+    }
+
+    try {
+      setIsSavingSample(true);
+      const input = {
+        order: selectedOrder,
+        sampleApprovalId: latestSampleApproval.id,
+        reason: sampleDecisionReason,
+        decisionAt: new Date().toISOString()
+      };
+      const result =
+        decision === "approve"
+          ? await approveSubcontractSample({ ...input, storageStatus: sampleStorageStatus })
+          : await rejectSubcontractSample(input);
+
+      setOrders((current) => [result.order, ...current.filter((order) => order.id !== result.order.id)]);
+      setSelectedOrderId(result.order.id);
+      setSampleApprovals((current) => [
+        result.sampleApproval,
+        ...current.filter((sampleApproval) => sampleApproval.id !== result.sampleApproval.id)
+      ]);
+      setLastAudit(result.auditLog);
+      setSampleFeedback({
+        tone: decision === "approve" ? "success" : "danger",
+        message: `${result.sampleApproval.sampleCode} ${result.sampleApproval.status}`
+      });
+    } catch (error) {
+      setSampleFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "Sample decision could not be saved"
+      });
+    } finally {
+      setIsSavingSample(false);
     }
   }
 
@@ -1013,24 +1112,104 @@ export function SubcontractOrderPrototype() {
         <div className="erp-card erp-card--padded erp-subcontract-card">
           <div className="erp-section-header">
             <h2 className="erp-section-title">Sample approval</h2>
-            <StatusChip tone="success">Sample approved</StatusChip>
+            <StatusChip tone={latestSampleApproval ? sampleApprovalTone(latestSampleApproval.status) : "normal"}>
+              {latestSampleApproval ? formatSampleApprovalStatus(latestSampleApproval.status) : "No sample"}
+            </StatusChip>
           </div>
-          <div className="erp-subcontract-sample-list">
-            {prototypeSampleApprovals.map((sample) => (
-              <div className="erp-subcontract-sample-item" key={sample.sampleNo}>
-                <strong>{sample.sampleNo}</strong>
-                <span>{sample.receivedAt}</span>
-                <span>{sample.reviewer}</span>
-                <StatusChip tone={sample.result === "Pass" ? "success" : "danger"}>{sample.result}</StatusChip>
-                <span>{sample.fileLabel}</span>
-                <span>{sample.note}</span>
+
+          <div className="erp-subcontract-sample-controls">
+            <label className="erp-field">
+              <span>Sample code</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={sampleCode}
+                onChange={(event) => setSampleCode(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Formula</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={sampleFormulaVersion}
+                onChange={(event) => setSampleFormulaVersion(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Evidence file</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={sampleEvidenceName}
+                onChange={(event) => setSampleEvidenceName(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Decision note</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={sampleDecisionReason}
+                onChange={(event) => setSampleDecisionReason(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Storage status</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={sampleStorageStatus}
+                onChange={(event) => setSampleStorageStatus(event.target.value)}
+              />
+            </label>
+          </div>
+
+          {latestSampleApproval ? (
+            <div className="erp-subcontract-sample-list">
+              <div className="erp-subcontract-sample-item">
+                <strong>{latestSampleApproval.sampleCode}</strong>
+                <span>{latestSampleApproval.submittedAt.slice(0, 10)}</span>
+                <span>{latestSampleApproval.submittedBy}</span>
+                <StatusChip tone={sampleApprovalTone(latestSampleApproval.status)}>
+                  {formatSampleApprovalStatus(latestSampleApproval.status)}
+                </StatusChip>
+                <span>{latestSampleApproval.evidence[0]?.fileName ?? latestSampleApproval.evidence[0]?.objectKey ?? "-"}</span>
+                <span>
+                  {latestSampleApproval.decisionReason || latestSampleApproval.storageStatus || latestSampleApproval.note || "-"}
+                </span>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="erp-subcontract-empty-state">No sample decision recorded</div>
+          )}
+
           <div className="erp-subcontract-actions">
-            <button className="erp-button erp-button--secondary" type="button">
+            <button
+              className="erp-button erp-button--secondary"
+              type="button"
+              disabled={!selectedOrder || !canSubmitSample || isSavingSample || sampleCode.trim() === ""}
+              onClick={handleSubmitSample}
+            >
+              Submit sample
+            </button>
+            <button
+              className="erp-button erp-button--primary"
+              type="button"
+              disabled={!canDecideSample || isSavingSample || sampleStorageStatus.trim() === ""}
+              onClick={() => handleDecideSample("approve")}
+            >
               Approve sample
             </button>
+            <button
+              className="erp-button erp-button--danger"
+              type="button"
+              disabled={!canDecideSample || isSavingSample || sampleDecisionReason.trim() === ""}
+              onClick={() => handleDecideSample("reject")}
+            >
+              Reject sample
+            </button>
+            {sampleFeedback ? <StatusChip tone={sampleFeedback.tone}>{sampleFeedback.message}</StatusChip> : null}
           </div>
         </div>
 
@@ -1180,6 +1359,30 @@ function formatFinalPaymentStatus(status: SubcontractFinalPaymentStatus) {
     case "pending":
     default:
       return "Pending";
+  }
+}
+
+function formatSampleApprovalStatus(status: SubcontractSampleApproval["status"]) {
+  switch (status) {
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "submitted":
+    default:
+      return "Submitted";
+  }
+}
+
+function sampleApprovalTone(status: SubcontractSampleApproval["status"]): StatusTone {
+  switch (status) {
+    case "approved":
+      return "success";
+    case "rejected":
+      return "danger";
+    case "submitted":
+    default:
+      return "warning";
   }
 }
 
