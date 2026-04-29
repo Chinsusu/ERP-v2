@@ -2863,7 +2863,7 @@ textarea {
 
 .erp-subcontract-transfer-controls {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 220px);
+  grid-template-columns: repeat(4, minmax(160px, 1fr)) minmax(160px, 220px);
   gap: 12px;
   align-items: end;
 }
@@ -2886,6 +2886,14 @@ textarea {
   background: var(--erp-section-bg);
   border: 1px solid var(--erp-border-soft);
   border-radius: var(--erp-radius);
+}
+
+.erp-subcontract-line-item--editable {
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 0.8fr) minmax(110px, 0.5fr) minmax(130px, 0.65fr) minmax(100px, 0.45fr) auto;
+}
+
+.erp-subcontract-line-item .erp-field {
+  margin: 0;
 }
 
 .erp-subcontract-line-item strong,
