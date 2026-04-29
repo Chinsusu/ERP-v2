@@ -7,12 +7,13 @@ import (
 	"time"
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
+	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	qcdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 )
 
 func TestInboundQCInspectionServiceCreateStartPassAuditsFlow(t *testing.T) {
-	service, auditStore := newTestInboundQCInspectionService()
+	service, auditStore, movementStore := newTestInboundQCInspectionService()
 	ctx := context.Background()
 
 	created, err := service.CreateInboundQCInspection(ctx, CreateInboundQCInspectionInput{
@@ -71,13 +72,44 @@ func TestInboundQCInspectionServiceCreateStartPassAuditsFlow(t *testing.T) {
 	}
 	if logs[0].Action != "qc.inbound_inspection.passed" ||
 		logs[0].AfterData["result"] != "pass" ||
+		logs[0].AfterData["stock_movement_count"] != 1 ||
 		logs[0].Metadata["goods_receipt_id"] != "grn-hcm-260427-inspect" {
 		t.Fatalf("latest audit log = %+v, want passed inspection metadata", logs[0])
+	}
+	movements := movementStore.Movements()
+	if len(movements) != 1 {
+		t.Fatalf("stock movements = %d, want 1", len(movements))
+	}
+	movement := movements[0]
+	if movement.MovementType != inventorydomain.MovementPurchaseReceipt ||
+		movement.StockStatus != inventorydomain.StockStatusAvailable ||
+		movement.SourceDocType != inboundQCStockMovementSourceDoc ||
+		movement.SourceDocID != created.Inspection.ID ||
+		movement.SourceDocLineID != created.Inspection.GoodsReceiptLineID ||
+		movement.Quantity.String() != passed.Inspection.Quantity.String() {
+		t.Fatalf("stock movement = %+v, want available purchase receipt from inbound QC pass", movement)
+	}
+	delta, err := movement.BalanceDelta()
+	if err != nil {
+		t.Fatalf("movement balance delta: %v", err)
+	}
+	if delta.OnHand.String() != passed.Inspection.Quantity.String() ||
+		delta.Available.String() != passed.Inspection.Quantity.String() {
+		t.Fatalf("movement delta = %+v, want on hand and available full pass quantity", delta)
+	}
+	movementLogs, err := auditStore.List(ctx, audit.Query{Action: inboundQCStockMovementAction})
+	if err != nil {
+		t.Fatalf("list movement audit logs: %v", err)
+	}
+	if len(movementLogs) != 1 ||
+		movementLogs[0].AfterData["stock_status"] != "available" ||
+		movementLogs[0].AfterData["delta_available"] != passed.Inspection.Quantity.String() {
+		t.Fatalf("movement audit logs = %+v, want available stock movement audit", movementLogs)
 	}
 }
 
 func TestInboundQCInspectionServiceRejectsNonInspectableReceiving(t *testing.T) {
-	service, _ := newTestInboundQCInspectionService()
+	service, _, _ := newTestInboundQCInspectionService()
 
 	_, err := service.CreateInboundQCInspection(context.Background(), CreateInboundQCInspectionInput{
 		GoodsReceiptID:     "grn-hcm-260427-submitted",
@@ -90,7 +122,7 @@ func TestInboundQCInspectionServiceRejectsNonInspectableReceiving(t *testing.T) 
 }
 
 func TestInboundQCInspectionServicePreventsDuplicateOpenReceivingLine(t *testing.T) {
-	service, _ := newTestInboundQCInspectionService()
+	service, _, _ := newTestInboundQCInspectionService()
 	input := CreateInboundQCInspectionInput{
 		GoodsReceiptID:     "grn-hcm-260427-inspect",
 		GoodsReceiptLineID: "grn-line-draft-001",
@@ -107,7 +139,7 @@ func TestInboundQCInspectionServicePreventsDuplicateOpenReceivingLine(t *testing
 }
 
 func TestInboundQCInspectionServicePartialRequiresValidSplit(t *testing.T) {
-	service, _ := newTestInboundQCInspectionService()
+	service, _, movementStore := newTestInboundQCInspectionService()
 	ctx := context.Background()
 	created, err := service.CreateInboundQCInspection(ctx, CreateInboundQCInspectionInput{
 		ID:                 "iqc-partial",
@@ -150,20 +182,24 @@ func TestInboundQCInspectionServicePartialRequiresValidSplit(t *testing.T) {
 		partial.Inspection.HoldQuantity.String() != "14.000000" {
 		t.Fatalf("partial result = %+v, want 10 pass and 14 hold", partial)
 	}
+	if movementStore.Count() != 0 {
+		t.Fatalf("stock movements = %d, want none for partial in S4-04-01", movementStore.Count())
+	}
 }
 
-func newTestInboundQCInspectionService() (InboundQCInspectionService, *audit.InMemoryLogStore) {
+func newTestInboundQCInspectionService() (InboundQCInspectionService, *audit.InMemoryLogStore, *inventoryapp.InMemoryStockMovementStore) {
 	auditStore := audit.NewInMemoryLogStore()
+	movementStore := inventoryapp.NewInMemoryStockMovementStore()
 	service := NewInboundQCInspectionService(
 		NewPrototypeInboundQCInspectionStore(),
 		inventoryapp.NewPrototypeWarehouseReceivingStore(),
 		auditStore,
-	)
+	).WithStockMovementRecorder(movementStore)
 	service.clock = func() time.Time {
 		return time.Date(2026, 4, 29, 9, 0, 0, 0, time.UTC)
 	}
 
-	return service, auditStore
+	return service, auditStore, movementStore
 }
 
 func completedChecklistInput(status string) []InboundQCChecklistInput {

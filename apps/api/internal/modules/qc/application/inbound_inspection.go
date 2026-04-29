@@ -22,8 +22,11 @@ var ErrInboundQCReceivingLineNotFound = errors.New("inbound qc receiving line no
 var ErrInboundQCDuplicateReceivingLine = errors.New("inbound qc inspection already exists for receiving line")
 
 const (
-	inboundQCAuditEntityType = "qc.inbound_inspection"
-	defaultInboundQCOrgID    = "org-my-pham"
+	inboundQCAuditEntityType         = "qc.inbound_inspection"
+	inboundQCStockMovementEntityType = "qc.inbound_inspection_stock_movement"
+	inboundQCStockMovementAction     = "qc.inbound_inspection.stock_movement.recorded"
+	inboundQCStockMovementSourceDoc  = "inbound_qc_inspection"
+	defaultInboundQCOrgID            = "org-my-pham"
 )
 
 type InboundQCInspectionStore interface {
@@ -36,9 +39,14 @@ type InboundQCReceivingReader interface {
 	Get(ctx context.Context, id string) (inventorydomain.WarehouseReceiving, error)
 }
 
+type InboundQCStockMovementRecorder interface {
+	Record(ctx context.Context, movement inventorydomain.StockMovement) error
+}
+
 type InboundQCInspectionService struct {
 	store         InboundQCInspectionStore
 	receivingRead InboundQCReceivingReader
+	stockMovement InboundQCStockMovementRecorder
 	auditLog      audit.LogStore
 	clock         func() time.Time
 }
@@ -108,6 +116,14 @@ func NewInboundQCInspectionService(
 		auditLog:      auditLog,
 		clock:         func() time.Time { return time.Now().UTC() },
 	}
+}
+
+func (s InboundQCInspectionService) WithStockMovementRecorder(
+	recorder InboundQCStockMovementRecorder,
+) InboundQCInspectionService {
+	s.stockMovement = recorder
+
+	return s
 }
 
 func NewPrototypeInboundQCInspectionStore(
@@ -329,8 +345,19 @@ func (s InboundQCInspectionService) transition(
 	if err != nil {
 		return InboundQCInspectionResult{}, err
 	}
+	stockMovements, err := s.recordPassStockMovement(ctx, updated, input.ActorID, now)
+	if err != nil {
+		return InboundQCInspectionResult{}, err
+	}
 	if err := s.store.Save(ctx, updated); err != nil {
 		return InboundQCInspectionResult{}, err
+	}
+	afterData := inboundQCAuditData(updated)
+	if len(stockMovements) > 0 {
+		afterData["stock_movement_count"] = len(stockMovements)
+		afterData["stock_movement_no"] = stockMovements[0].MovementNo
+		afterData["stock_movement_type"] = string(stockMovements[0].MovementType)
+		afterData["target_stock_status"] = string(stockMovements[0].StockStatus)
 	}
 	log, err := newInboundQCAuditLog(
 		input.ActorID,
@@ -338,7 +365,7 @@ func (s InboundQCInspectionService) transition(
 		action,
 		updated,
 		inboundQCAuditData(current),
-		inboundQCAuditData(updated),
+		afterData,
 		now,
 	)
 	if err != nil {
@@ -346,6 +373,15 @@ func (s InboundQCInspectionService) transition(
 	}
 	if err := s.auditLog.Record(ctx, log); err != nil {
 		return InboundQCInspectionResult{}, err
+	}
+	for _, movement := range stockMovements {
+		movementLog, err := newInboundQCStockMovementAuditLog(input.ActorID, input.RequestID, updated, movement, now)
+		if err != nil {
+			return InboundQCInspectionResult{}, err
+		}
+		if err := s.auditLog.Record(ctx, movementLog); err != nil {
+			return InboundQCInspectionResult{}, err
+		}
 	}
 
 	return InboundQCInspectionResult{
@@ -356,6 +392,50 @@ func (s InboundQCInspectionService) transition(
 		CurrentResult:  updated.Result,
 		AuditLogID:     log.ID,
 	}, nil
+}
+
+func (s InboundQCInspectionService) recordPassStockMovement(
+	ctx context.Context,
+	inspection qcdomain.InboundQCInspection,
+	actorID string,
+	movementAt time.Time,
+) ([]inventorydomain.StockMovement, error) {
+	if inspection.Result != qcdomain.InboundQCResultPass {
+		return nil, nil
+	}
+	if s.stockMovement == nil {
+		return nil, errors.New("stock movement store is required")
+	}
+
+	movement, err := inventorydomain.NewStockMovement(inventorydomain.NewStockMovementInput{
+		MovementNo:       fmt.Sprintf("%s-PASS-001", strings.ToUpper(inspection.ID)),
+		MovementType:     inventorydomain.MovementPurchaseReceipt,
+		OrgID:            inspection.OrgID,
+		ItemID:           inspection.ItemID,
+		BatchID:          inspection.BatchID,
+		WarehouseID:      inspection.WarehouseID,
+		BinID:            inspection.LocationID,
+		Quantity:         inspection.PassedQuantity,
+		BaseUOMCode:      inspection.UOMCode.String(),
+		SourceQuantity:   inspection.PassedQuantity,
+		SourceUOMCode:    inspection.UOMCode.String(),
+		ConversionFactor: decimal.MustQuantity("1"),
+		StockStatus:      inventorydomain.StockStatusAvailable,
+		SourceDocType:    inboundQCStockMovementSourceDoc,
+		SourceDocID:      inspection.ID,
+		SourceDocLineID:  inspection.GoodsReceiptLineID,
+		Reason:           "inbound qc pass released to available",
+		CreatedBy:        actorID,
+		MovementAt:       movementAt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := s.stockMovement.Record(ctx, movement); err != nil {
+		return nil, err
+	}
+
+	return []inventorydomain.StockMovement{movement}, nil
 }
 
 func (s InboundQCInspectionService) ensureReadyForWrite() error {
@@ -621,6 +701,59 @@ func newInboundQCAuditLog(
 			"lot_no":                inspection.LotNo,
 			"warehouse_id":          inspection.WarehouseID,
 			"source":                "inbound qc inspection",
+		},
+		CreatedAt: createdAt,
+	})
+}
+
+func newInboundQCStockMovementAuditLog(
+	actorID string,
+	requestID string,
+	inspection qcdomain.InboundQCInspection,
+	movement inventorydomain.StockMovement,
+	createdAt time.Time,
+) (audit.Log, error) {
+	direction, err := movement.Direction()
+	if err != nil {
+		return audit.Log{}, err
+	}
+	delta, err := movement.BalanceDelta()
+	if err != nil {
+		return audit.Log{}, err
+	}
+
+	return audit.NewLog(audit.NewLogInput{
+		OrgID:      movement.OrgID,
+		ActorID:    strings.TrimSpace(actorID),
+		Action:     inboundQCStockMovementAction,
+		EntityType: inboundQCStockMovementEntityType,
+		EntityID:   movement.MovementNo,
+		RequestID:  strings.TrimSpace(requestID),
+		AfterData: map[string]any{
+			"inspection_id":         inspection.ID,
+			"goods_receipt_id":      inspection.GoodsReceiptID,
+			"goods_receipt_line_id": inspection.GoodsReceiptLineID,
+			"movement_no":           movement.MovementNo,
+			"movement_type":         string(movement.MovementType),
+			"direction":             string(direction),
+			"sku":                   inspection.SKU,
+			"batch_id":              inspection.BatchID,
+			"lot_no":                inspection.LotNo,
+			"quantity":              movement.Quantity.String(),
+			"base_uom_code":         movement.BaseUOMCode.String(),
+			"stock_status":          string(movement.StockStatus),
+			"source_doc_type":       movement.SourceDocType,
+			"source_doc_id":         movement.SourceDocID,
+			"source_doc_line_id":    movement.SourceDocLineID,
+			"delta_on_hand":         delta.OnHand.String(),
+			"delta_reserved":        delta.Reserved.String(),
+			"delta_available":       delta.Available.String(),
+		},
+		Metadata: map[string]any{
+			"source":       "inbound qc pass stock movement",
+			"warehouse_id": movement.WarehouseID,
+			"location_id":  movement.BinID,
+			"reason":       movement.Reason,
 		},
 		CreatedAt: createdAt,
 	})

@@ -140,7 +140,7 @@ func newTestInboundQCHandlerService() (qcapp.InboundQCInspectionService, *audit.
 		qcapp.NewPrototypeInboundQCInspectionStore(),
 		inventoryapp.NewPrototypeWarehouseReceivingStore(),
 		auditStore,
-	)
+	).WithStockMovementRecorder(inventoryapp.NewInMemoryStockMovementStore())
 
 	return service, auditStore
 }
