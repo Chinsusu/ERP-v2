@@ -2,17 +2,21 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	productionapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/application"
+	productiondomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
 
@@ -610,6 +614,103 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 		}
 	})
 
+	t.Run("records subcontract deposit with milestone and audit", func(t *testing.T) {
+		service, paymentStore, auditStore, _ := newTestSubcontractPaymentAPIService()
+		orderID := "sco-smoke-260429-deposit"
+		createAndSubmitSubcontractOrderForTest(t, service, authConfig, orderID)
+		approveAndConfirmSubcontractOrderForTest(t, service, authConfig, orderID)
+
+		req := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+orderID+"/record-deposit", bytes.NewBufferString(`{
+				"expected_version": 4,
+				"milestone_id": "spm-smoke-deposit-001",
+				"milestone_no": "SPM-SMOKE-DEPOSIT-001",
+				"amount": "250000",
+				"recorded_by": "finance-user",
+				"recorded_at": "2026-04-29T16:30:00Z",
+				"note": "Deposit transfer confirmed"
+			}`)),
+			authConfig,
+			auth.RoleProductionOps,
+		)
+		req.SetPathValue("subcontract_order_id", orderID)
+		req.Header.Set(response.HeaderRequestID, "req-subcontract-record-deposit")
+		rec := httptest.NewRecorder()
+
+		subcontractOrderRecordDepositHandler(service).ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("record deposit status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+		}
+		payload := decodeSmokeSuccess[subcontractPaymentMilestoneResultResponse](t, rec).Data
+		if payload.CurrentStatus != "deposit_recorded" ||
+			payload.SubcontractOrder.DepositAmount != "250000.00" ||
+			payload.Milestone.Status != "recorded" ||
+			payload.Milestone.Kind != "deposit" ||
+			payload.AuditLogID == "" {
+			t.Fatalf("record deposit payload = %+v, want deposit milestone and audit", payload)
+		}
+		if paymentStore.Count() != 1 {
+			t.Fatalf("payment milestone count = %d, want 1", paymentStore.Count())
+		}
+		logs, err := auditStore.List(req.Context(), audit.Query{Action: "subcontract.deposit_recorded"})
+		if err != nil {
+			t.Fatalf("list deposit audit logs: %v", err)
+		}
+		if len(logs) != 1 {
+			t.Fatalf("deposit audit logs = %+v, want one", logs)
+		}
+	})
+
+	t.Run("marks final payment ready with milestone and audit", func(t *testing.T) {
+		service, paymentStore, auditStore, orderStore := newTestSubcontractPaymentAPIService()
+		order := subcontractPaymentAcceptedSmokeOrder(t)
+		if err := orderStore.WithinTx(context.Background(), func(txCtx context.Context, tx productionapp.SubcontractOrderTx) error {
+			return tx.Save(txCtx, order)
+		}); err != nil {
+			t.Fatalf("seed accepted order: %v", err)
+		}
+
+		req := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders/"+order.ID+"/mark-final-payment-ready", bytes.NewBufferString(`{
+				"expected_version": `+strconv.Itoa(order.Version)+`,
+				"milestone_id": "spm-smoke-final-001",
+				"milestone_no": "SPM-SMOKE-FINAL-001",
+				"ready_by": "finance-user",
+				"ready_at": "2026-04-29T18:00:00Z",
+				"note": "Accepted goods cleared"
+			}`)),
+			authConfig,
+			auth.RoleProductionOps,
+		)
+		req.SetPathValue("subcontract_order_id", order.ID)
+		req.Header.Set(response.HeaderRequestID, "req-subcontract-final-payment-ready")
+		rec := httptest.NewRecorder()
+
+		subcontractOrderMarkFinalPaymentReadyHandler(service).ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("final payment status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+		}
+		payload := decodeSmokeSuccess[subcontractPaymentMilestoneResultResponse](t, rec).Data
+		if payload.CurrentStatus != "final_payment_ready" ||
+			payload.Milestone.Status != "ready" ||
+			payload.Milestone.Kind != "final_payment" ||
+			payload.AuditLogID == "" {
+			t.Fatalf("final payment payload = %+v, want final payment milestone and audit", payload)
+		}
+		if paymentStore.Count() != 1 {
+			t.Fatalf("payment milestone count = %d, want 1", paymentStore.Count())
+		}
+		logs, err := auditStore.List(req.Context(), audit.Query{Action: "subcontract.final_payment_ready"})
+		if err != nil {
+			t.Fatalf("list final payment audit logs: %v", err)
+		}
+		if len(logs) != 1 {
+			t.Fatalf("final payment audit logs = %+v, want one", logs)
+		}
+	})
+
 	t.Run("denies finance role from approval action without audit", func(t *testing.T) {
 		service, auditStore := newTestSubcontractOrderAPIService()
 		createAndSubmitSubcontractOrderForTest(t, service, authConfig, "sco-smoke-260429-denied")
@@ -729,6 +830,31 @@ func newTestSubcontractFinishedGoodsAPIService() (
 		WithFinishedGoodsReceiptStores(receiptStore, movementStore)
 
 	return service, movementStore, receiptStore, auditStore
+}
+
+func newTestSubcontractPaymentAPIService() (
+	productionapp.SubcontractOrderService,
+	*productionapp.PrototypeSubcontractPaymentMilestoneStore,
+	audit.LogStore,
+	*productionapp.PrototypeSubcontractOrderStore,
+) {
+	auditStore := audit.NewInMemoryLogStore()
+	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditStore)
+	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditStore)
+	uomCatalog := masterdataapp.NewPrototypeUOMCatalog()
+	subcontractOrderStore := productionapp.NewPrototypeSubcontractOrderStore(auditStore)
+	claimStore := productionapp.NewPrototypeSubcontractFactoryClaimStore()
+	paymentStore := productionapp.NewPrototypeSubcontractPaymentMilestoneStore()
+	service := productionapp.NewSubcontractOrderService(
+		subcontractOrderStore,
+		partyCatalog,
+		itemCatalog,
+		subcontractOrderUOMConverterAdapter{catalog: uomCatalog},
+	).
+		WithFactoryClaimStore(claimStore).
+		WithPaymentMilestoneStore(paymentStore)
+
+	return service, paymentStore, auditStore, subcontractOrderStore
 }
 
 func createAndSubmitSubcontractOrderForTest(
@@ -949,6 +1075,79 @@ func startMassProductionForTest(
 	if payload.CurrentStatus != "mass_production_started" {
 		t.Fatalf("start mass production payload = %+v, want mass_production_started", payload)
 	}
+}
+
+func subcontractPaymentAcceptedSmokeOrder(t *testing.T) productiondomain.SubcontractOrder {
+	t.Helper()
+
+	order, err := productiondomain.NewSubcontractOrderDocument(productiondomain.NewSubcontractOrderDocumentInput{
+		ID:                  "sco-smoke-260429-final-payment",
+		OrgID:               "org-my-pham",
+		OrderNo:             "SCO-SMOKE-260429-FINAL",
+		FactoryID:           "sup-out-lotus",
+		FactoryCode:         "SUP-OUT-LOTUS",
+		FactoryName:         "Lotus Filling Partner",
+		FinishedItemID:      "item-serum-30ml",
+		FinishedSKUCode:     "SERUM-30ML",
+		FinishedItemName:    "Hydrating Serum 30ml",
+		PlannedQty:          decimal.MustQuantity("100"),
+		UOMCode:             "EA",
+		BasePlannedQty:      decimal.MustQuantity("100"),
+		BaseUOMCode:         "EA",
+		ConversionFactor:    decimal.MustQuantity("1"),
+		CurrencyCode:        "VND",
+		SpecSummary:         "Smoke accepted final payment batch",
+		SampleRequired:      false,
+		ClaimWindowDays:     7,
+		TargetStartDate:     "2026-05-04",
+		ExpectedReceiptDate: "2026-05-20",
+		CreatedAt:           timeNowForSubcontractSmoke(),
+		CreatedBy:           "subcontract-user",
+		MaterialLines: []productiondomain.NewSubcontractMaterialLineInput{
+			{
+				ID:               "sco-smoke-260429-final-material-01",
+				LineNo:           1,
+				ItemID:           "item-cream-50g",
+				SKUCode:          "CREAM-50G",
+				ItemName:         "Repair Cream 50g",
+				PlannedQty:       decimal.MustQuantity("20"),
+				UOMCode:          "EA",
+				BasePlannedQty:   decimal.MustQuantity("20"),
+				BaseUOMCode:      "EA",
+				ConversionFactor: decimal.MustQuantity("1"),
+				UnitCost:         decimal.MustUnitCost("58000"),
+				CurrencyCode:     "VND",
+				LotTraceRequired: true,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("new subcontract order: %v", err)
+	}
+	for _, step := range []struct {
+		name string
+		fn   func(productiondomain.SubcontractOrder, string, time.Time) (productiondomain.SubcontractOrder, error)
+	}{
+		{"submit", productiondomain.SubcontractOrder.Submit},
+		{"approve", productiondomain.SubcontractOrder.Approve},
+		{"confirm factory", productiondomain.SubcontractOrder.ConfirmFactory},
+		{"materials issued", productiondomain.SubcontractOrder.MarkMaterialsIssued},
+		{"mass production", productiondomain.SubcontractOrder.StartMassProduction},
+		{"finished goods received", productiondomain.SubcontractOrder.MarkFinishedGoodsReceived},
+		{"qc started", productiondomain.SubcontractOrder.StartQC},
+		{"accepted", productiondomain.SubcontractOrder.Accept},
+	} {
+		order, err = step.fn(order, "subcontract-user", timeNowForSubcontractSmoke())
+		if err != nil {
+			t.Fatalf("%s: %v", step.name, err)
+		}
+	}
+
+	return order
+}
+
+func timeNowForSubcontractSmoke() time.Time {
+	return time.Date(2026, 4, 29, 12, 0, 0, 0, time.UTC)
 }
 
 func smokeFindMovementByType(

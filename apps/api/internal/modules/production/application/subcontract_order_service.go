@@ -36,6 +36,8 @@ const (
 	subcontractSampleRejectedAction  = "subcontract.sample_rejected"
 	subcontractFinishedGoodsAction   = "subcontract.finished_goods_received"
 	subcontractFactoryClaimAction    = "subcontract.factory_claim_opened"
+	subcontractDepositRecordedAction = "subcontract.deposit_recorded"
+	subcontractFinalPaymentAction    = "subcontract.final_payment_ready"
 )
 
 type SubcontractOrderStore interface {
@@ -107,6 +109,8 @@ type SubcontractOrderService struct {
 	finishedGoodsBuild    SubcontractFinishedGoodsReceiptService
 	factoryClaimStore     SubcontractFactoryClaimStore
 	factoryClaimBuild     SubcontractFactoryClaimService
+	paymentMilestoneStore SubcontractPaymentMilestoneStore
+	paymentMilestoneBuild SubcontractPaymentMilestoneService
 	clock                 func() time.Time
 }
 
@@ -332,6 +336,33 @@ type CreateSubcontractFactoryClaimEvidenceInput struct {
 	Note         string
 }
 
+type RecordSubcontractDepositInput struct {
+	ID              string
+	ExpectedVersion int
+	MilestoneID     string
+	MilestoneNo     string
+	Amount          string
+	RecordedBy      string
+	RecordedAt      time.Time
+	Note            string
+	ActorID         string
+	RequestID       string
+}
+
+type MarkSubcontractFinalPaymentReadyInput struct {
+	ID                  string
+	ExpectedVersion     int
+	MilestoneID         string
+	MilestoneNo         string
+	Amount              string
+	ReadyBy             string
+	ReadyAt             time.Time
+	ApprovedExceptionID string
+	Note                string
+	ActorID             string
+	RequestID           string
+}
+
 type SubcontractOrderResult struct {
 	SubcontractOrder productiondomain.SubcontractOrder
 	AuditLogID       string
@@ -374,6 +405,14 @@ type CreateSubcontractFactoryClaimResult struct {
 	AuditLogID       string
 }
 
+type SubcontractPaymentMilestoneResult struct {
+	SubcontractOrder productiondomain.SubcontractOrder
+	Milestone        productiondomain.SubcontractPaymentMilestone
+	PreviousStatus   productiondomain.SubcontractOrderStatus
+	CurrentStatus    productiondomain.SubcontractOrderStatus
+	AuditLogID       string
+}
+
 type PrototypeSubcontractOrderStore struct {
 	mu       sync.RWMutex
 	records  map[string]productiondomain.SubcontractOrder
@@ -406,6 +445,7 @@ func NewSubcontractOrderService(
 		sampleApprovalBuild:   NewSubcontractSampleApprovalService(),
 		finishedGoodsBuild:    NewSubcontractFinishedGoodsReceiptService(),
 		factoryClaimBuild:     NewSubcontractFactoryClaimService(),
+		paymentMilestoneBuild: NewSubcontractPaymentMilestoneService(),
 		clock:                 func() time.Time { return time.Now().UTC() },
 	}
 }
@@ -442,6 +482,14 @@ func (s SubcontractOrderService) WithFactoryClaimStore(
 	claimStore SubcontractFactoryClaimStore,
 ) SubcontractOrderService {
 	s.factoryClaimStore = claimStore
+
+	return s
+}
+
+func (s SubcontractOrderService) WithPaymentMilestoneStore(
+	paymentMilestoneStore SubcontractPaymentMilestoneStore,
+) SubcontractOrderService {
+	s.paymentMilestoneStore = paymentMilestoneStore
 
 	return s
 }
@@ -1121,6 +1169,181 @@ func (s SubcontractOrderService) CreateSubcontractFactoryClaim(
 	return result, nil
 }
 
+func (s SubcontractOrderService) RecordSubcontractDeposit(
+	ctx context.Context,
+	input RecordSubcontractDepositInput,
+) (SubcontractPaymentMilestoneResult, error) {
+	if err := s.ensureReadyForPaymentMilestone(); err != nil {
+		return SubcontractPaymentMilestoneResult{}, err
+	}
+	if err := requireSubcontractOrderActor(input.ActorID); err != nil {
+		return SubcontractPaymentMilestoneResult{}, err
+	}
+
+	var result SubcontractPaymentMilestoneResult
+	err := s.store.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		current, err := tx.GetForUpdate(txCtx, input.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": strings.TrimSpace(input.ID)})
+		}
+		if err := ensureSubcontractOrderExpectedVersion(current, input.ExpectedVersion); err != nil {
+			return err
+		}
+
+		buildResult, err := s.paymentMilestoneBuild.BuildDepositMilestone(txCtx, BuildSubcontractDepositMilestoneInput{
+			ID:          input.MilestoneID,
+			MilestoneNo: input.MilestoneNo,
+			Order:       current,
+			Amount:      input.Amount,
+			RecordedBy:  input.RecordedBy,
+			RecordedAt:  input.RecordedAt,
+			ActorID:     input.ActorID,
+			Note:        input.Note,
+		})
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"status":               string(current.Status),
+			})
+		}
+		if err := s.paymentMilestoneStore.Save(txCtx, buildResult.Milestone); err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id":       current.ID,
+				"payment_milestone_id":       buildResult.Milestone.ID,
+				"payment_milestone_kind":     string(buildResult.Milestone.Kind),
+				"payment_milestone_currency": buildResult.Milestone.CurrencyCode.String(),
+			})
+		}
+		if err := tx.Save(txCtx, buildResult.UpdatedOrder); err != nil {
+			return err
+		}
+		afterData := subcontractOrderAuditData(buildResult.UpdatedOrder)
+		for key, value := range subcontractPaymentMilestoneAuditData(buildResult.Milestone) {
+			afterData[key] = value
+		}
+		log, err := newSubcontractOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			subcontractDepositRecordedAction,
+			buildResult.UpdatedOrder,
+			subcontractOrderAuditData(current),
+			afterData,
+			buildResult.Milestone.RecordedAt,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, log); err != nil {
+			return err
+		}
+		result = SubcontractPaymentMilestoneResult{
+			SubcontractOrder: buildResult.UpdatedOrder,
+			Milestone:        buildResult.Milestone,
+			PreviousStatus:   buildResult.PreviousStatus,
+			CurrentStatus:    buildResult.CurrentStatus,
+			AuditLogID:       log.ID,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return SubcontractPaymentMilestoneResult{}, err
+	}
+
+	return result, nil
+}
+
+func (s SubcontractOrderService) MarkSubcontractFinalPaymentReady(
+	ctx context.Context,
+	input MarkSubcontractFinalPaymentReadyInput,
+) (SubcontractPaymentMilestoneResult, error) {
+	if err := s.ensureReadyForFinalPaymentMilestone(); err != nil {
+		return SubcontractPaymentMilestoneResult{}, err
+	}
+	if err := requireSubcontractOrderActor(input.ActorID); err != nil {
+		return SubcontractPaymentMilestoneResult{}, err
+	}
+
+	var result SubcontractPaymentMilestoneResult
+	err := s.store.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		current, err := tx.GetForUpdate(txCtx, input.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": strings.TrimSpace(input.ID)})
+		}
+		if err := ensureSubcontractOrderExpectedVersion(current, input.ExpectedVersion); err != nil {
+			return err
+		}
+
+		claims, err := s.factoryClaimStore.ListBySubcontractOrder(txCtx, current.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": current.ID})
+		}
+		buildResult, err := s.paymentMilestoneBuild.BuildFinalPaymentMilestone(txCtx, BuildSubcontractFinalPaymentMilestoneInput{
+			ID:                  input.MilestoneID,
+			MilestoneNo:         input.MilestoneNo,
+			Order:               current,
+			Amount:              input.Amount,
+			ReadyBy:             input.ReadyBy,
+			ReadyAt:             input.ReadyAt,
+			BlockingClaims:      claims,
+			ApprovedExceptionID: input.ApprovedExceptionID,
+			ActorID:             input.ActorID,
+			Note:                input.Note,
+		})
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"status":               string(current.Status),
+				"blocking_claim_count": countBlockingSubcontractFactoryClaims(claims),
+			})
+		}
+		if err := s.paymentMilestoneStore.Save(txCtx, buildResult.Milestone); err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id":   current.ID,
+				"payment_milestone_id":   buildResult.Milestone.ID,
+				"payment_milestone_kind": string(buildResult.Milestone.Kind),
+			})
+		}
+		if err := tx.Save(txCtx, buildResult.UpdatedOrder); err != nil {
+			return err
+		}
+		afterData := subcontractOrderAuditData(buildResult.UpdatedOrder)
+		for key, value := range subcontractPaymentMilestoneAuditData(buildResult.Milestone) {
+			afterData[key] = value
+		}
+		afterData["blocking_claim_count"] = countBlockingSubcontractFactoryClaims(claims)
+		log, err := newSubcontractOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			subcontractFinalPaymentAction,
+			buildResult.UpdatedOrder,
+			subcontractOrderAuditData(current),
+			afterData,
+			buildResult.Milestone.ReadyAt,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, log); err != nil {
+			return err
+		}
+		result = SubcontractPaymentMilestoneResult{
+			SubcontractOrder: buildResult.UpdatedOrder,
+			Milestone:        buildResult.Milestone,
+			PreviousStatus:   buildResult.PreviousStatus,
+			CurrentStatus:    buildResult.CurrentStatus,
+			AuditLogID:       log.ID,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return SubcontractPaymentMilestoneResult{}, err
+	}
+
+	return result, nil
+}
+
 func (s SubcontractOrderService) decideSubcontractSample(
 	ctx context.Context,
 	input DecideSubcontractSampleInput,
@@ -1568,6 +1791,31 @@ func (s SubcontractOrderService) ensureReadyForFactoryClaim() error {
 	return nil
 }
 
+func (s SubcontractOrderService) ensureReadyForPaymentMilestone() error {
+	if s.store == nil {
+		return errors.New("subcontract order store is required")
+	}
+	if s.paymentMilestoneStore == nil {
+		return errors.New("subcontract payment milestone store is required")
+	}
+	if s.paymentMilestoneBuild.clock == nil {
+		s.paymentMilestoneBuild = NewSubcontractPaymentMilestoneService()
+	}
+
+	return nil
+}
+
+func (s SubcontractOrderService) ensureReadyForFinalPaymentMilestone() error {
+	if err := s.ensureReadyForPaymentMilestone(); err != nil {
+		return err
+	}
+	if s.factoryClaimStore == nil {
+		return errors.New("subcontract factory claim store is required")
+	}
+
+	return nil
+}
+
 func (s SubcontractOrderService) now() time.Time {
 	if s.clock == nil {
 		return time.Now().UTC()
@@ -1916,6 +2164,17 @@ func receiveSubcontractFinishedGoodsBuildEvidenceInputs(
 	return evidence
 }
 
+func countBlockingSubcontractFactoryClaims(claims []productiondomain.SubcontractFactoryClaim) int {
+	count := 0
+	for _, claim := range claims {
+		if claim.BlocksFinalPayment() {
+			count++
+		}
+	}
+
+	return count
+}
+
 func createSubcontractFactoryClaimBuildEvidenceInputs(
 	inputs []CreateSubcontractFactoryClaimEvidenceInput,
 ) []BuildSubcontractFactoryClaimEvidenceInput {
@@ -1954,12 +2213,18 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 	if errors.Is(err, ErrSubcontractFactoryClaimNotFound) {
 		return apperrors.NotFound(ErrorCodeSubcontractOrderNotFound, "Subcontract factory claim not found", err, details)
 	}
+	if errors.Is(err, ErrSubcontractPaymentMilestoneNotFound) {
+		return apperrors.NotFound(ErrorCodeSubcontractOrderNotFound, "Subcontract payment milestone not found", err, details)
+	}
 	if errors.Is(err, productiondomain.ErrSubcontractOrderInvalidTransition) ||
 		errors.Is(err, productiondomain.ErrSubcontractOrderInvalidStatus) ||
 		errors.Is(err, productiondomain.ErrSubcontractOrderSampleApprovalRequired) ||
 		errors.Is(err, productiondomain.ErrSubcontractSampleApprovalInvalidStatus) ||
 		errors.Is(err, productiondomain.ErrSubcontractSampleApprovalInvalidTransition) ||
-		errors.Is(err, productiondomain.ErrSubcontractFactoryClaimInvalidStatus) {
+		errors.Is(err, productiondomain.ErrSubcontractFactoryClaimInvalidStatus) ||
+		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneInvalidStatus) ||
+		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneInvalidTransition) ||
+		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneBlocked) {
 		return apperrors.Conflict(ErrorCodeSubcontractOrderInvalidState, "Subcontract order state is invalid", err, details)
 	}
 	if errors.Is(err, productiondomain.ErrSubcontractMaterialTransferInvalidStatus) {
@@ -1981,7 +2246,11 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 		errors.Is(err, productiondomain.ErrSubcontractFinishedGoodsReceiptInvalidStatus) ||
 		errors.Is(err, productiondomain.ErrSubcontractFactoryClaimRequiredField) ||
 		errors.Is(err, productiondomain.ErrSubcontractFactoryClaimInvalidQuantity) ||
-		errors.Is(err, productiondomain.ErrSubcontractFactoryClaimInvalidSLA) {
+		errors.Is(err, productiondomain.ErrSubcontractFactoryClaimInvalidSLA) ||
+		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneRequiredField) ||
+		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneInvalidKind) ||
+		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneInvalidCurrency) ||
+		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneInvalidAmount) {
 		return subcontractOrderValidationError(err, details)
 	}
 
@@ -2051,6 +2320,7 @@ func subcontractOrderAuditData(order productiondomain.SubcontractOrder) map[stri
 		"status":                string(order.Status),
 		"currency_code":         order.CurrencyCode.String(),
 		"estimated_cost_amount": order.EstimatedCostAmount.String(),
+		"deposit_amount":        order.DepositAmount.String(),
 		"sample_required":       order.SampleRequired,
 		"claim_window_days":     order.ClaimWindowDays,
 		"material_line_count":   len(order.MaterialLines),
@@ -2104,6 +2374,19 @@ func subcontractFactoryClaimAuditData(claim productiondomain.SubcontractFactoryC
 		"due_at":               claim.DueAt.Format(time.RFC3339),
 		"evidence_count":       len(claim.Evidence),
 		"blocks_final_payment": claim.BlocksFinalPayment(),
+	}
+}
+
+func subcontractPaymentMilestoneAuditData(milestone productiondomain.SubcontractPaymentMilestone) map[string]any {
+	return map[string]any{
+		"payment_milestone_id":           milestone.ID,
+		"payment_milestone_no":           milestone.MilestoneNo,
+		"payment_milestone_kind":         string(milestone.Kind),
+		"payment_milestone_status":       string(milestone.Status),
+		"payment_milestone_amount":       milestone.Amount.String(),
+		"payment_milestone_currency":     milestone.CurrencyCode.String(),
+		"approved_exception_id":          milestone.ApprovedExceptionID,
+		"payment_milestone_blocks_final": milestone.BlocksFinalPayment(),
 	}
 }
 

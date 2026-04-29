@@ -39,6 +39,10 @@ export type SubcontractFactoryClaimStatus = "open" | "acknowledged" | "resolved"
 
 export type SubcontractFactoryClaimSeverity = "P1" | "P2" | "P3";
 
+export type SubcontractPaymentMilestoneKind = "deposit" | "final_payment";
+
+export type SubcontractPaymentMilestoneStatus = "pending" | "recorded" | "ready" | "blocked" | "cancelled";
+
 export type SubcontractFactory = {
   id: string;
   code: string;
@@ -434,6 +438,60 @@ export type SubcontractFactoryClaim = {
 export type SubcontractFactoryClaimResult = {
   order: SubcontractOrder;
   claim: SubcontractFactoryClaim;
+  auditLog: AuditLogItem;
+  auditLogId?: string;
+};
+
+export type SubcontractPaymentMilestone = {
+  id: string;
+  milestoneNo: string;
+  orderId: string;
+  orderNo: string;
+  factoryId: string;
+  factoryCode?: string;
+  factoryName: string;
+  kind: SubcontractPaymentMilestoneKind;
+  status: SubcontractPaymentMilestoneStatus;
+  amount: string;
+  currencyCode: string;
+  note?: string;
+  approvedExceptionId?: string;
+  recordedBy?: string;
+  recordedAt?: string;
+  readyBy?: string;
+  readyAt?: string;
+  blockedBy?: string;
+  blockedAt?: string;
+  blockReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
+export type RecordSubcontractDepositInput = {
+  order: SubcontractOrder;
+  milestoneId?: string;
+  milestoneNo?: string;
+  amount: string;
+  recordedBy: string;
+  recordedAt?: string;
+  note?: string;
+};
+
+export type MarkSubcontractFinalPaymentReadyInput = {
+  order: SubcontractOrder;
+  milestoneId?: string;
+  milestoneNo?: string;
+  amount?: string;
+  readyBy: string;
+  readyAt?: string;
+  approvedExceptionId?: string;
+  note?: string;
+};
+
+export type SubcontractPaymentMilestoneResult = {
+  order: SubcontractOrder;
+  milestone: SubcontractPaymentMilestone;
   auditLog: AuditLogItem;
   auditLogId?: string;
 };

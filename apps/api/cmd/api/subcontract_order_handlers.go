@@ -69,6 +69,27 @@ type subcontractOrderActionRequest struct {
 	Reason          string `json:"reason"`
 }
 
+type recordSubcontractDepositRequest struct {
+	ExpectedVersion int    `json:"expected_version"`
+	MilestoneID     string `json:"milestone_id"`
+	MilestoneNo     string `json:"milestone_no"`
+	Amount          string `json:"amount"`
+	RecordedBy      string `json:"recorded_by"`
+	RecordedAt      string `json:"recorded_at"`
+	Note            string `json:"note"`
+}
+
+type markSubcontractFinalPaymentReadyRequest struct {
+	ExpectedVersion     int    `json:"expected_version"`
+	MilestoneID         string `json:"milestone_id"`
+	MilestoneNo         string `json:"milestone_no"`
+	Amount              string `json:"amount"`
+	ReadyBy             string `json:"ready_by"`
+	ReadyAt             string `json:"ready_at"`
+	ApprovedExceptionID string `json:"approved_exception_id"`
+	Note                string `json:"note"`
+}
+
 type issueSubcontractMaterialsLineRequest struct {
 	ID                  string `json:"id"`
 	LineNo              int    `json:"line_no"`
@@ -286,6 +307,40 @@ type subcontractOrderActionResultResponse struct {
 	PreviousStatus   string                   `json:"previous_status"`
 	CurrentStatus    string                   `json:"current_status"`
 	AuditLogID       string                   `json:"audit_log_id,omitempty"`
+}
+
+type subcontractPaymentMilestoneResponse struct {
+	ID                  string `json:"id"`
+	MilestoneNo         string `json:"milestone_no"`
+	SubcontractOrderID  string `json:"subcontract_order_id"`
+	SubcontractOrderNo  string `json:"subcontract_order_no"`
+	FactoryID           string `json:"factory_id"`
+	FactoryCode         string `json:"factory_code,omitempty"`
+	FactoryName         string `json:"factory_name"`
+	Kind                string `json:"kind"`
+	Status              string `json:"status"`
+	Amount              string `json:"amount"`
+	CurrencyCode        string `json:"currency_code"`
+	Note                string `json:"note,omitempty"`
+	ApprovedExceptionID string `json:"approved_exception_id,omitempty"`
+	RecordedBy          string `json:"recorded_by,omitempty"`
+	RecordedAt          string `json:"recorded_at,omitempty"`
+	ReadyBy             string `json:"ready_by,omitempty"`
+	ReadyAt             string `json:"ready_at,omitempty"`
+	BlockedBy           string `json:"blocked_by,omitempty"`
+	BlockedAt           string `json:"blocked_at,omitempty"`
+	BlockReason         string `json:"block_reason,omitempty"`
+	CreatedAt           string `json:"created_at"`
+	UpdatedAt           string `json:"updated_at"`
+	Version             int    `json:"version"`
+}
+
+type subcontractPaymentMilestoneResultResponse struct {
+	SubcontractOrder subcontractOrderResponse            `json:"subcontract_order"`
+	Milestone        subcontractPaymentMilestoneResponse `json:"milestone"`
+	PreviousStatus   string                              `json:"previous_status"`
+	CurrentStatus    string                              `json:"current_status"`
+	AuditLogID       string                              `json:"audit_log_id,omitempty"`
 }
 
 type subcontractMaterialTransferLineResponse struct {
@@ -640,6 +695,113 @@ func subcontractOrderCancelHandler(service productionapp.SubcontractOrderService
 
 func subcontractOrderCloseHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
 	return subcontractOrderActionHandler(service, "close")
+}
+
+func subcontractOrderRecordDepositHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload recordSubcontractDepositRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract deposit payload", nil)
+			return
+		}
+		recordedAt, err := parseSubcontractOptionalTime(payload.RecordedAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract deposit payload", map[string]any{"field": "recorded_at"})
+			return
+		}
+
+		result, err := service.RecordSubcontractDeposit(r.Context(), productionapp.RecordSubcontractDepositInput{
+			ID:              r.PathValue("subcontract_order_id"),
+			ExpectedVersion: payload.ExpectedVersion,
+			MilestoneID:     payload.MilestoneID,
+			MilestoneNo:     payload.MilestoneNo,
+			Amount:          payload.Amount,
+			RecordedBy:      payload.RecordedBy,
+			RecordedAt:      recordedAt,
+			Note:            payload.Note,
+			ActorID:         principal.UserID,
+			RequestID:       response.RequestID(r),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newSubcontractPaymentMilestoneResultResponse(result))
+	}
+}
+
+func subcontractOrderMarkFinalPaymentReadyHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload markSubcontractFinalPaymentReadyRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract final payment payload", nil)
+			return
+		}
+		readyAt, err := parseSubcontractOptionalTime(payload.ReadyAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract final payment payload", map[string]any{"field": "ready_at"})
+			return
+		}
+
+		result, err := service.MarkSubcontractFinalPaymentReady(r.Context(), productionapp.MarkSubcontractFinalPaymentReadyInput{
+			ID:                  r.PathValue("subcontract_order_id"),
+			ExpectedVersion:     payload.ExpectedVersion,
+			MilestoneID:         payload.MilestoneID,
+			MilestoneNo:         payload.MilestoneNo,
+			Amount:              payload.Amount,
+			ReadyBy:             payload.ReadyBy,
+			ReadyAt:             readyAt,
+			ApprovedExceptionID: payload.ApprovedExceptionID,
+			Note:                payload.Note,
+			ActorID:             principal.UserID,
+			RequestID:           response.RequestID(r),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newSubcontractPaymentMilestoneResultResponse(result))
+	}
 }
 
 func subcontractOrderIssueMaterialsHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
@@ -1230,6 +1392,48 @@ func newSubcontractOrderResponse(order productiondomain.SubcontractOrder, auditL
 	}
 
 	return payload
+}
+
+func newSubcontractPaymentMilestoneResultResponse(
+	result productionapp.SubcontractPaymentMilestoneResult,
+) subcontractPaymentMilestoneResultResponse {
+	return subcontractPaymentMilestoneResultResponse{
+		SubcontractOrder: newSubcontractOrderResponse(result.SubcontractOrder, ""),
+		Milestone:        newSubcontractPaymentMilestoneResponse(result.Milestone),
+		PreviousStatus:   string(result.PreviousStatus),
+		CurrentStatus:    string(result.CurrentStatus),
+		AuditLogID:       result.AuditLogID,
+	}
+}
+
+func newSubcontractPaymentMilestoneResponse(
+	milestone productiondomain.SubcontractPaymentMilestone,
+) subcontractPaymentMilestoneResponse {
+	return subcontractPaymentMilestoneResponse{
+		ID:                  milestone.ID,
+		MilestoneNo:         milestone.MilestoneNo,
+		SubcontractOrderID:  milestone.SubcontractOrderID,
+		SubcontractOrderNo:  milestone.SubcontractOrderNo,
+		FactoryID:           milestone.FactoryID,
+		FactoryCode:         milestone.FactoryCode,
+		FactoryName:         milestone.FactoryName,
+		Kind:                string(milestone.Kind),
+		Status:              string(milestone.Status),
+		Amount:              milestone.Amount.String(),
+		CurrencyCode:        milestone.CurrencyCode.String(),
+		Note:                milestone.Note,
+		ApprovedExceptionID: milestone.ApprovedExceptionID,
+		RecordedBy:          milestone.RecordedBy,
+		RecordedAt:          timeString(milestone.RecordedAt),
+		ReadyBy:             milestone.ReadyBy,
+		ReadyAt:             timeString(milestone.ReadyAt),
+		BlockedBy:           milestone.BlockedBy,
+		BlockedAt:           timeString(milestone.BlockedAt),
+		BlockReason:         milestone.BlockReason,
+		CreatedAt:           timeString(milestone.CreatedAt),
+		UpdatedAt:           timeString(milestone.UpdatedAt),
+		Version:             milestone.Version,
+	}
 }
 
 func newSubcontractMaterialTransferResponse(

@@ -1119,6 +1119,8 @@ func main() {
 	subcontractMaterialTransferStore := productionapp.NewPrototypeSubcontractMaterialTransferStore()
 	subcontractSampleApprovalStore := productionapp.NewPrototypeSubcontractSampleApprovalStore()
 	subcontractFinishedGoodsReceiptStore := productionapp.NewPrototypeSubcontractFinishedGoodsReceiptStore()
+	subcontractFactoryClaimStore := productionapp.NewPrototypeSubcontractFactoryClaimStore()
+	subcontractPaymentMilestoneStore := productionapp.NewPrototypeSubcontractPaymentMilestoneStore()
 	subcontractOrderService := productionapp.NewSubcontractOrderService(
 		subcontractOrderStore,
 		partyCatalog,
@@ -1127,7 +1129,9 @@ func main() {
 	).
 		WithMaterialIssueStores(subcontractMaterialTransferStore, stockMovementStore).
 		WithSampleApprovalStore(subcontractSampleApprovalStore).
-		WithFinishedGoodsReceiptStores(subcontractFinishedGoodsReceiptStore, stockMovementStore)
+		WithFinishedGoodsReceiptStores(subcontractFinishedGoodsReceiptStore, stockMovementStore).
+		WithFactoryClaimStore(subcontractFactoryClaimStore).
+		WithPaymentMilestoneStore(subcontractPaymentMilestoneStore)
 	salesOrderStore := salesapp.NewPrototypeSalesOrderStore(auditLogStore)
 	salesOrderReservationStore := inventoryapp.NewPrototypeSalesOrderReservationStore(auditLogStore)
 	salesOrderService := salesapp.NewSalesOrderService(salesOrderStore, partyCatalog, itemCatalog, warehouseCatalog).
@@ -1448,6 +1452,14 @@ func main() {
 		),
 	)
 	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}/record-deposit",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(subcontractOrderRecordDepositHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
 		"/api/v1/subcontract-orders/{subcontract_order_id}/issue-materials",
 		auth.RequireSessionPermission(
 			authSessions,
@@ -1469,6 +1481,14 @@ func main() {
 			authSessions,
 			auth.PermissionRecordCreate,
 			http.HandlerFunc(subcontractOrderReceiveFinishedGoodsHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}/mark-final-payment-ready",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(subcontractOrderMarkFinalPaymentReadyHandler(subcontractOrderService)),
 		),
 	)
 	mux.Handle(
