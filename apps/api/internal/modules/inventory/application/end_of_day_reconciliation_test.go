@@ -83,7 +83,8 @@ func TestCloseEndOfDayReconciliationRecordsAuditLog(t *testing.T) {
 
 func TestCloseEndOfDayReconciliationBlocksUnresolvedOperationalIssue(t *testing.T) {
 	store := NewPrototypeEndOfDayReconciliationStore()
-	usecase := NewCloseEndOfDayReconciliation(store, audit.NewInMemoryLogStore())
+	auditStore := audit.NewInMemoryLogStore()
+	usecase := NewCloseEndOfDayReconciliation(store, auditStore)
 
 	_, err := usecase.Execute(context.Background(), CloseEndOfDayReconciliationInput{
 		ID:            "rec-hcm-260426-day",
@@ -93,6 +94,13 @@ func TestCloseEndOfDayReconciliationBlocksUnresolvedOperationalIssue(t *testing.
 	})
 	if !errors.Is(err, domain.ErrReconciliationUnresolvedIssue) {
 		t.Fatalf("close err = %v, want ErrReconciliationUnresolvedIssue", err)
+	}
+	logs, err := auditStore.List(context.Background(), audit.Query{Action: "warehouse.shift.closed"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 0 {
+		t.Fatalf("audit logs = %d, want 0", len(logs))
 	}
 }
 
