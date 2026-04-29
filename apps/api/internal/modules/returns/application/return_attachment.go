@@ -250,3 +250,13 @@ func (store *InMemoryReturnAttachmentObjectStore) Get(
 
 	return object, true
 }
+
+func (store *InMemoryReturnAttachmentObjectStore) Len() int {
+	if store == nil {
+		return 0
+	}
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+
+	return len(store.objects)
+}

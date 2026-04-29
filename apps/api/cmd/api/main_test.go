@@ -2089,6 +2089,10 @@ func TestReturnAttachmentHandlerUploadsInspectionEvidence(t *testing.T) {
 	if _, ok := objectStore.Get(payload.Data.StorageBucket, payload.Data.StorageKey); !ok {
 		t.Fatalf("object %s/%s was not stored", payload.Data.StorageBucket, payload.Data.StorageKey)
 	}
+	if payload.Data.StorageBucket == "" ||
+		payload.Data.StorageKey != "returns/rr-260426-0001/inspections/inspect-rr-260426-0001-intact/return-photo.png" {
+		t.Fatalf("storage metadata = %s/%s, want deterministic bucket and key", payload.Data.StorageBucket, payload.Data.StorageKey)
+	}
 
 	logs, err := auditStore.List(req.Context(), audit.Query{Action: "returns.inspection.attachment_uploaded"})
 	if err != nil {
@@ -2096,6 +2100,59 @@ func TestReturnAttachmentHandlerUploadsInspectionEvidence(t *testing.T) {
 	}
 	if len(logs) != 1 {
 		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+	if logs[0].AfterData["storage_bucket"] != payload.Data.StorageBucket ||
+		logs[0].AfterData["storage_key"] != payload.Data.StorageKey {
+		t.Fatalf("audit after data = %+v, want storage metadata", logs[0].AfterData)
+	}
+	if _, ok := logs[0].AfterData["file_content"]; ok {
+		t.Fatalf("audit after data = %+v, must not contain file content", logs[0].AfterData)
+	}
+}
+
+func TestReturnAttachmentHandlerBlocksUnauthorizedUpload(t *testing.T) {
+	store := returnsapp.NewPrototypeReturnReceiptStore()
+	auditStore := audit.NewInMemoryLogStore()
+	if _, err := returnsapp.NewInspectReturn(store, auditStore).Execute(context.Background(), returnsapp.InspectReturnInput{
+		ReceiptID:   "rr-260426-0001",
+		Condition:   "intact",
+		Disposition: "reusable",
+		ActorID:     "user-return-inspector",
+		RequestID:   "req-return-inspect",
+	}); err != nil {
+		t.Fatalf("inspect return: %v", err)
+	}
+	objectStore := returnsapp.NewInMemoryReturnAttachmentObjectStore()
+	handler := returnAttachmentHandler(
+		returnsapp.NewUploadReturnAttachment(store, auditStore).WithObjectStore(objectStore),
+	)
+
+	unauthenticated := newReturnAttachmentRequest(t, "rr-260426-0001", "inspect-rr-260426-0001-intact", "return-photo.png", "fake image bytes")
+	unauthenticated = unauthenticated.WithContext(context.Background())
+	unauthenticatedRec := httptest.NewRecorder()
+	handler.ServeHTTP(unauthenticatedRec, unauthenticated)
+	if unauthenticatedRec.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthenticated status = %d, want %d: %s", unauthenticatedRec.Code, http.StatusUnauthorized, unauthenticatedRec.Body.String())
+	}
+
+	forbidden := newReturnAttachmentRequest(t, "rr-260426-0001", "inspect-rr-260426-0001-intact", "return-photo.png", "fake image bytes")
+	forbidden = forbidden.WithContext(auth.WithPrincipal(context.Background(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "staff@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseStaff)))
+	forbiddenRec := httptest.NewRecorder()
+	handler.ServeHTTP(forbiddenRec, forbidden)
+	if forbiddenRec.Code != http.StatusForbidden {
+		t.Fatalf("forbidden status = %d, want %d: %s", forbiddenRec.Code, http.StatusForbidden, forbiddenRec.Body.String())
+	}
+
+	logs, err := auditStore.List(context.Background(), audit.Query{Action: "returns.inspection.attachment_uploaded"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 0 || objectStore.Len() != 0 {
+		t.Fatalf("blocked upload wrote logs=%d objects=%d, want none", len(logs), objectStore.Len())
 	}
 }
 
