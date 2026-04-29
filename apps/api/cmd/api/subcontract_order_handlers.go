@@ -211,6 +211,30 @@ type acceptSubcontractFinishedGoodsRequest struct {
 	Note            string `json:"note"`
 }
 
+type partialAcceptSubcontractFinishedGoodsRequest struct {
+	ExpectedVersion int                                             `json:"expected_version"`
+	AcceptedQty     string                                          `json:"accepted_qty"`
+	UOMCode         string                                          `json:"uom_code"`
+	BaseAcceptedQty string                                          `json:"base_accepted_qty"`
+	BaseUOMCode     string                                          `json:"base_uom_code"`
+	RejectedQty     string                                          `json:"rejected_qty"`
+	BaseRejectedQty string                                          `json:"base_rejected_qty"`
+	ClaimID         string                                          `json:"claim_id"`
+	ClaimNo         string                                          `json:"claim_no"`
+	ReceiptID       string                                          `json:"receipt_id"`
+	ReceiptNo       string                                          `json:"receipt_no"`
+	ReasonCode      string                                          `json:"reason_code"`
+	Reason          string                                          `json:"reason"`
+	Severity        string                                          `json:"severity"`
+	Evidence        []reportSubcontractFactoryDefectEvidenceRequest `json:"evidence"`
+	OwnerID         string                                          `json:"owner_id"`
+	AcceptedBy      string                                          `json:"accepted_by"`
+	AcceptedAt      string                                          `json:"accepted_at"`
+	OpenedBy        string                                          `json:"opened_by"`
+	OpenedAt        string                                          `json:"opened_at"`
+	Note            string                                          `json:"note"`
+}
+
 type reportSubcontractFactoryDefectEvidenceRequest struct {
 	ID           string `json:"id"`
 	EvidenceType string `json:"evidence_type"`
@@ -524,6 +548,16 @@ type acceptSubcontractFinishedGoodsResponse struct {
 	PreviousStatus   string                                     `json:"previous_status"`
 	CurrentStatus    string                                     `json:"current_status"`
 	AuditLogID       string                                     `json:"audit_log_id,omitempty"`
+}
+
+type partialAcceptSubcontractFinishedGoodsResponse struct {
+	SubcontractOrder subcontractOrderResponse                   `json:"subcontract_order"`
+	Claim            subcontractFactoryClaimResponse            `json:"claim"`
+	StockMovements   []subcontractMaterialIssueMovementResponse `json:"stock_movements"`
+	PreviousStatus   string                                     `json:"previous_status"`
+	CurrentStatus    string                                     `json:"current_status"`
+	AcceptAuditLogID string                                     `json:"accept_audit_log_id,omitempty"`
+	ClaimAuditLogID  string                                     `json:"claim_audit_log_id,omitempty"`
 }
 
 type subcontractFactoryClaimEvidenceResponse struct {
@@ -1074,6 +1108,86 @@ func subcontractOrderAcceptFinishedGoodsHandler(service productionapp.Subcontrac
 			PreviousStatus:   string(result.PreviousStatus),
 			CurrentStatus:    string(result.CurrentStatus),
 			AuditLogID:       result.AuditLogID,
+		})
+	}
+}
+
+func subcontractOrderPartialAcceptFinishedGoodsHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload partialAcceptSubcontractFinishedGoodsRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract finished goods partial accept payload", nil)
+			return
+		}
+		acceptedAt, err := parseSubcontractOptionalTime(payload.AcceptedAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract finished goods partial accept payload", map[string]any{"field": "accepted_at"})
+			return
+		}
+		openedAt, err := parseSubcontractOptionalTime(payload.OpenedAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract finished goods partial accept payload", map[string]any{"field": "opened_at"})
+			return
+		}
+
+		result, err := service.PartialAcceptSubcontractFinishedGoods(r.Context(), productionapp.PartialAcceptSubcontractFinishedGoodsInput{
+			ID:              r.PathValue("subcontract_order_id"),
+			ExpectedVersion: payload.ExpectedVersion,
+			AcceptedQty:     payload.AcceptedQty,
+			UOMCode:         payload.UOMCode,
+			BaseAcceptedQty: payload.BaseAcceptedQty,
+			BaseUOMCode:     payload.BaseUOMCode,
+			RejectedQty:     payload.RejectedQty,
+			BaseRejectedQty: payload.BaseRejectedQty,
+			ClaimID:         payload.ClaimID,
+			ClaimNo:         payload.ClaimNo,
+			ReceiptID:       payload.ReceiptID,
+			ReceiptNo:       payload.ReceiptNo,
+			ReasonCode:      payload.ReasonCode,
+			Reason:          payload.Reason,
+			Severity:        payload.Severity,
+			Evidence:        reportSubcontractFactoryDefectEvidenceInputs(payload.Evidence),
+			OwnerID:         payload.OwnerID,
+			AcceptedBy:      payload.AcceptedBy,
+			AcceptedAt:      acceptedAt,
+			OpenedBy:        payload.OpenedBy,
+			OpenedAt:        openedAt,
+			Note:            payload.Note,
+			ActorID:         principal.UserID,
+			RequestID:       response.RequestID(r),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, partialAcceptSubcontractFinishedGoodsResponse{
+			SubcontractOrder: newSubcontractOrderResponse(result.SubcontractOrder, ""),
+			Claim:            newSubcontractFactoryClaimResponse(result.Claim),
+			StockMovements:   newSubcontractMaterialIssueMovementResponses(result.StockMovements),
+			PreviousStatus:   string(result.PreviousStatus),
+			CurrentStatus:    string(result.CurrentStatus),
+			AcceptAuditLogID: result.AcceptAuditLogID,
+			ClaimAuditLogID:  result.ClaimAuditLogID,
 		})
 	}
 }

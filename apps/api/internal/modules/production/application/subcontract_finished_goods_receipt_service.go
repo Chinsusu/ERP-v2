@@ -315,27 +315,7 @@ func buildSubcontractFinishedGoodsAcceptanceMovements(
 	movements := make([]inventorydomain.StockMovement, 0, lineCount)
 	for _, receipt := range receipts {
 		for _, line := range receipt.Lines {
-			movement, err := inventorydomain.NewStockMovement(inventorydomain.NewStockMovementInput{
-				MovementNo:       fmt.Sprintf("%s-ACCEPT-MOV-%02d", receipt.ReceiptNo, line.LineNo),
-				MovementType:     inventorydomain.MovementQCRelease,
-				OrgID:            receipt.OrgID,
-				ItemID:           line.ItemID,
-				BatchID:          line.BatchID,
-				WarehouseID:      receipt.WarehouseID,
-				BinID:            receipt.LocationID,
-				Quantity:         line.BaseReceiveQty,
-				BaseUOMCode:      line.BaseUOMCode.String(),
-				SourceQuantity:   line.ReceiveQty,
-				SourceUOMCode:    line.UOMCode.String(),
-				ConversionFactor: line.ConversionFactor,
-				StockStatus:      inventorydomain.StockStatusAvailable,
-				SourceDocType:    subcontractFinishedGoodsReceiptSourceDoc,
-				SourceDocID:      receipt.ID,
-				SourceDocLineID:  line.ID,
-				Reason:           "subcontract finished goods accepted from qc hold",
-				CreatedBy:        actorID,
-				MovementAt:       acceptedAt,
-			})
+			movement, err := newSubcontractFinishedGoodsAcceptanceMovement(receipt, line, line.ReceiveQty, line.BaseReceiveQty, actorID, acceptedAt)
 			if err != nil {
 				return nil, err
 			}
@@ -344,6 +324,84 @@ func buildSubcontractFinishedGoodsAcceptanceMovements(
 	}
 
 	return movements, nil
+}
+
+func buildSubcontractFinishedGoodsAcceptanceMovementsForQuantity(
+	receipts []productiondomain.SubcontractFinishedGoodsReceipt,
+	acceptedQty decimal.Decimal,
+	baseAcceptedQty decimal.Decimal,
+	actorID string,
+	acceptedAt time.Time,
+) ([]inventorydomain.StockMovement, error) {
+	remainingQty := acceptedQty
+	remainingBaseQty := baseAcceptedQty
+	movements := make([]inventorydomain.StockMovement, 0, len(receipts))
+	for _, receipt := range receipts {
+		for _, line := range receipt.Lines {
+			if remainingBaseQty.IsZero() {
+				break
+			}
+			releaseQty := line.ReceiveQty
+			releaseBaseQty := line.BaseReceiveQty
+			baseDiff, err := decimal.SubtractQuantity(remainingBaseQty, line.BaseReceiveQty)
+			if err != nil {
+				return nil, productiondomain.ErrSubcontractFinishedGoodsReceiptInvalidQuantity
+			}
+			if baseDiff.IsNegative() {
+				releaseQty = remainingQty
+				releaseBaseQty = remainingBaseQty
+			}
+			movement, err := newSubcontractFinishedGoodsAcceptanceMovement(receipt, line, releaseQty, releaseBaseQty, actorID, acceptedAt)
+			if err != nil {
+				return nil, err
+			}
+			movements = append(movements, movement)
+			remainingQty, err = decimal.SubtractQuantity(remainingQty, releaseQty)
+			if err != nil || remainingQty.IsNegative() {
+				return nil, productiondomain.ErrSubcontractFinishedGoodsReceiptInvalidQuantity
+			}
+			remainingBaseQty, err = decimal.SubtractQuantity(remainingBaseQty, releaseBaseQty)
+			if err != nil || remainingBaseQty.IsNegative() {
+				return nil, productiondomain.ErrSubcontractFinishedGoodsReceiptInvalidQuantity
+			}
+		}
+	}
+	if !remainingQty.IsZero() || !remainingBaseQty.IsZero() {
+		return nil, productiondomain.ErrSubcontractFinishedGoodsReceiptInvalidQuantity
+	}
+
+	return movements, nil
+}
+
+func newSubcontractFinishedGoodsAcceptanceMovement(
+	receipt productiondomain.SubcontractFinishedGoodsReceipt,
+	line productiondomain.SubcontractFinishedGoodsReceiptLine,
+	releaseQty decimal.Decimal,
+	releaseBaseQty decimal.Decimal,
+	actorID string,
+	acceptedAt time.Time,
+) (inventorydomain.StockMovement, error) {
+	return inventorydomain.NewStockMovement(inventorydomain.NewStockMovementInput{
+		MovementNo:       fmt.Sprintf("%s-ACCEPT-MOV-%02d", receipt.ReceiptNo, line.LineNo),
+		MovementType:     inventorydomain.MovementQCRelease,
+		OrgID:            receipt.OrgID,
+		ItemID:           line.ItemID,
+		BatchID:          line.BatchID,
+		WarehouseID:      receipt.WarehouseID,
+		BinID:            receipt.LocationID,
+		Quantity:         releaseBaseQty,
+		BaseUOMCode:      line.BaseUOMCode.String(),
+		SourceQuantity:   releaseQty,
+		SourceUOMCode:    line.UOMCode.String(),
+		ConversionFactor: line.ConversionFactor,
+		StockStatus:      inventorydomain.StockStatusAvailable,
+		SourceDocType:    subcontractFinishedGoodsReceiptSourceDoc,
+		SourceDocID:      receipt.ID,
+		SourceDocLineID:  line.ID,
+		Reason:           "subcontract finished goods accepted from qc hold",
+		CreatedBy:        actorID,
+		MovementAt:       acceptedAt,
+	})
 }
 
 func parseSubcontractFinishedGoodsReceiptDate(value string) time.Time {

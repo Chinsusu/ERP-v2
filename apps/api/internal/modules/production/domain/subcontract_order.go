@@ -216,6 +216,17 @@ type ReceiveSubcontractFinishedGoodsInput struct {
 	ChangedAt        time.Time
 }
 
+type PartialAcceptSubcontractFinishedGoodsInput struct {
+	AcceptedQty     decimal.Decimal
+	UOMCode         string
+	BaseAcceptedQty decimal.Decimal
+	BaseUOMCode     string
+	RejectedQty     decimal.Decimal
+	BaseRejectedQty decimal.Decimal
+	ActorID         string
+	ChangedAt       time.Time
+}
+
 var subcontractOrderTransitions = map[SubcontractOrderStatus][]SubcontractOrderStatus{
 	SubcontractOrderStatusDraft: {
 		SubcontractOrderStatusSubmitted,
@@ -850,6 +861,76 @@ func (o SubcontractOrder) AcceptFinishedGoods(actorID string, changedAt time.Tim
 	accepted.BaseAcceptedQty = accepted.BaseReceivedQty
 	accepted.RejectedQty = decimal.MustQuantity("0")
 	accepted.BaseRejectedQty = decimal.MustQuantity("0")
+	if err := accepted.Validate(); err != nil {
+		return SubcontractOrder{}, err
+	}
+
+	return accepted, nil
+}
+
+func (o SubcontractOrder) PartialAcceptFinishedGoods(input PartialAcceptSubcontractFinishedGoodsInput) (SubcontractOrder, error) {
+	actorID := strings.TrimSpace(input.ActorID)
+	if actorID == "" {
+		return SubcontractOrder{}, ErrSubcontractOrderTransitionActorRequired
+	}
+	if strings.TrimSpace(input.UOMCode) != "" && strings.ToUpper(strings.TrimSpace(input.UOMCode)) != o.UOMCode.String() {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+	}
+	if strings.TrimSpace(input.BaseUOMCode) != "" && strings.ToUpper(strings.TrimSpace(input.BaseUOMCode)) != o.BaseUOMCode.String() {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+	}
+	acceptedQty, baseAcceptedQty, err := normalizeSubcontractOrderProgressQuantity(
+		input.AcceptedQty,
+		input.BaseAcceptedQty,
+		o.BaseUOMCode,
+		o.UOMCode,
+		o.ConversionFactor,
+	)
+	if err != nil || acceptedQty.IsZero() || baseAcceptedQty.IsZero() {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+	}
+	rejectedQty, baseRejectedQty, err := normalizeSubcontractOrderProgressQuantity(
+		input.RejectedQty,
+		input.BaseRejectedQty,
+		o.BaseUOMCode,
+		o.UOMCode,
+		o.ConversionFactor,
+	)
+	if err != nil || rejectedQty.IsZero() || baseRejectedQty.IsZero() {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+	}
+	totalQty, err := decimal.AddQuantity(acceptedQty, rejectedQty)
+	if err != nil {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+	}
+	totalBaseQty, err := decimal.AddQuantity(baseAcceptedQty, baseRejectedQty)
+	if err != nil {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+	}
+	if compare, err := compareSubcontractOrderQuantity(totalQty, o.ReceivedQty); err != nil || compare != 0 {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+	}
+	if compare, err := compareSubcontractOrderQuantity(totalBaseQty, o.BaseReceivedQty); err != nil || compare != 0 {
+		return SubcontractOrder{}, ErrSubcontractOrderInvalidQuantity
+	}
+
+	current := o
+	status := NormalizeSubcontractOrderStatus(current.Status)
+	if status == SubcontractOrderStatusFinishedGoodsReceived {
+		next, err := current.StartQC(actorID, input.ChangedAt)
+		if err != nil {
+			return SubcontractOrder{}, err
+		}
+		current = next
+	}
+	accepted, err := current.Accept(actorID, input.ChangedAt)
+	if err != nil {
+		return SubcontractOrder{}, err
+	}
+	accepted.AcceptedQty = acceptedQty
+	accepted.BaseAcceptedQty = baseAcceptedQty
+	accepted.RejectedQty = rejectedQty
+	accepted.BaseRejectedQty = baseRejectedQty
 	if err := accepted.Validate(); err != nil {
 		return SubcontractOrder{}, err
 	}
