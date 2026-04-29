@@ -21,7 +21,7 @@ describe("stockAdjustmentService", () => {
     const rows = await getStockAdjustments();
 
     expect(rows[0]).toMatchObject({
-      adjustmentNo: "ADJ-260427-0001",
+      adjustmentNo: "ADJ-260426-0001",
       status: "submitted",
       requestedBy: "user-warehouse"
     });

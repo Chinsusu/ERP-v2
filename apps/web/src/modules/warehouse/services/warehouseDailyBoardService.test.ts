@@ -38,7 +38,13 @@ describe("warehouseDailyBoardService", () => {
       packed: 1,
       handover: 0,
       returns: 0,
+      returnPending: 0,
+      qaHold: 0,
+      adjustmentPending: 0,
       reconciliationMismatch: 0,
+      stockCountVariance: 0,
+      closingBlocked: 0,
+      closingReady: 0,
       overdue: 0
     });
   });
@@ -85,6 +91,42 @@ describe("warehouseDailyBoardService", () => {
           reference: "VAR-20260426-SERUM-30ML",
           status: "mismatch",
           source: "reconciliation"
+        }
+      ]
+    });
+  });
+
+  it("shows S3-06-01 return, QA hold, adjustment, variance, and closing widgets", async () => {
+    await expect(
+      getWarehouseDailyBoard({
+        warehouseId: "wh-hcm",
+        date: "2026-04-26",
+        shiftCode: "day"
+      })
+    ).resolves.toMatchObject({
+      warehouseCode: "HCM",
+      summary: {
+        returnPending: 1,
+        qaHold: 1,
+        adjustmentPending: 1,
+        stockCountVariance: 1,
+        closingBlocked: 1
+      }
+    });
+
+    await expect(
+      getWarehouseDailyBoard({
+        warehouseId: "wh-hcm",
+        date: "2026-04-26",
+        shiftCode: "day",
+        status: "adjustment"
+      })
+    ).resolves.toMatchObject({
+      tasks: [
+        {
+          reference: "ADJ-260426-0001",
+          source: "adjustment",
+          status: "adjustment"
         }
       ]
     });
@@ -215,7 +257,9 @@ describe("warehouseDailyBoardService", () => {
 
     expect(board.shiftStatus).toBe("open");
     expect(board.summary.reconciliationMismatch).toBe(1);
-    expect(board.summary.overdue).toBe(1);
+    expect(board.summary.qaHold).toBe(1);
+    expect(board.summary.closingBlocked).toBe(1);
+    expect(board.summary.overdue).toBe(3);
     expect(board.sourceFields.find((source) => source.counter === "reconciliationMismatch")?.fields).toContain(
       "reconciliation_lines.variance_quantity"
     );
@@ -256,12 +300,19 @@ describe("warehouseDailyBoardService", () => {
       packed: 0,
       handover: 1,
       returns: 1,
+      returnPending: 1,
+      qaHold: 0,
+      adjustmentPending: 0,
       reconciliationMismatch: 2,
-      overdue: 2
+      stockCountVariance: 2,
+      closingBlocked: 1,
+      closingReady: 0,
+      overdue: 3
     });
     expect(board.tasks.map((task) => task.source)).toEqual([
       "stock_movement",
       "reconciliation",
+      "closing",
       "shipping",
       "returns",
       "receiving"

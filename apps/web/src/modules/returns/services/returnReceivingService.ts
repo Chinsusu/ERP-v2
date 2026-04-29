@@ -697,6 +697,40 @@ function createPrototypeReturnReceipts(): ReturnReceipt[] {
       ],
       investigationNote: "Customer reported wrong shade",
       createdAt: "2026-04-26T08:30:00Z"
+    }),
+    createReturnReceipt({
+      id: "rr-260426-qa-hold",
+      receiptNo: "RR-260426-QA-001",
+      warehouseId: "wh-hcm",
+      warehouseCode: "HCM",
+      source: "MARKETPLACE",
+      receivedBy: "Return Inspector",
+      receivedAt: "2026-04-26T08:00:00Z",
+      packageCondition: "seal torn",
+      status: "inspected",
+      disposition: "needs_inspection",
+      targetLocation: "return-qa-hold",
+      originalOrderNo: "SO-260425-120",
+      trackingNo: "GHN260425120",
+      returnCode: "RET-260425-120",
+      channel: "Marketplace",
+      batchNo: "SER-260425-QA",
+      deliveredAt: "2026-04-24",
+      returnReason: "Seal torn",
+      scanCode: "GHN260425120",
+      customerName: "Pham Linh",
+      unknownCase: false,
+      lines: [
+        {
+          id: "line-serum-qa-hold",
+          sku: "SERUM-30ML",
+          productName: "Hydrating Serum 30ml",
+          quantity: 1,
+          condition: "seal torn"
+        }
+      ],
+      investigationNote: "Needs QA release before restock decision",
+      createdAt: "2026-04-26T08:00:00Z"
     })
   ];
 }

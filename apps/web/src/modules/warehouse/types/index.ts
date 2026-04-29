@@ -1,4 +1,13 @@
-export type WarehouseDailyTaskStatus = "waiting" | "picking" | "packed" | "handover" | "returns" | "mismatch";
+export type WarehouseDailyTaskStatus =
+  | "waiting"
+  | "picking"
+  | "packed"
+  | "handover"
+  | "returns"
+  | "qa_hold"
+  | "adjustment"
+  | "mismatch"
+  | "closing";
 
 export type WarehouseDailyTaskPriority = "P0" | "P1" | "P2";
 
@@ -9,8 +18,10 @@ export type WarehouseDailyTaskSource =
   | "receiving"
   | "shipping"
   | "returns"
+  | "adjustment"
   | "stock_movement"
-  | "reconciliation";
+  | "reconciliation"
+  | "closing";
 
 export type WarehouseDailyTask = {
   id: string;
@@ -43,7 +54,13 @@ export type WarehouseDailyBoardSummary = {
   packed: number;
   handover: number;
   returns: number;
+  returnPending: number;
+  qaHold: number;
+  adjustmentPending: number;
   reconciliationMismatch: number;
+  stockCountVariance: number;
+  closingBlocked: number;
+  closingReady: number;
   overdue: number;
 };
 

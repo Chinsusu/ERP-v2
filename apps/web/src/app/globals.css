@@ -888,7 +888,7 @@ textarea {
 }
 
 .erp-warehouse-kpis {
-  grid-template-columns: repeat(7, minmax(112px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
 }
 
 .erp-warehouse-fulfillment {
