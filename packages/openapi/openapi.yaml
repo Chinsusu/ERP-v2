@@ -1250,6 +1250,541 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /subcontract-orders:
+    get:
+      summary: List subcontract manufacturing orders
+      operationId: listSubcontractOrders
+      tags:
+        - production
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated subcontract order statuses.
+        - name: factory_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: finished_item_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: expected_receipt_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: expected_receipt_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Subcontract order rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractOrderListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    post:
+      summary: Create a subcontract manufacturing order draft
+      operationId: createSubcontractOrder
+      tags:
+        - production
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSubcontractOrderRequest"
+      responses:
+        "201":
+          description: Subcontract order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractOrderSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}:
+    get:
+      summary: Get subcontract manufacturing order detail
+      operationId: getSubcontractOrder
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      responses:
+        "200":
+          description: Subcontract order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractOrderSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update a subcontract manufacturing order draft
+      operationId: updateSubcontractOrder
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSubcontractOrderRequest"
+      responses:
+        "200":
+          description: Subcontract order updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractOrderSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/submit:
+    post:
+      summary: Submit a subcontract manufacturing order
+      operationId: submitSubcontractOrder
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubcontractOrderActionRequest"
+      responses:
+        "200":
+          description: Subcontract order submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractOrderActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/approve:
+    post:
+      summary: Approve a subcontract manufacturing order
+      operationId: approveSubcontractOrder
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubcontractOrderActionRequest"
+      responses:
+        "200":
+          description: Subcontract order approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractOrderActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/confirm-factory:
+    post:
+      summary: Confirm factory acceptance for a subcontract manufacturing order
+      operationId: confirmFactorySubcontractOrder
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubcontractOrderActionRequest"
+      responses:
+        "200":
+          description: Factory acceptance confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractOrderActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/record-deposit:
+    post:
+      summary: Record subcontract manufacturing deposit payment
+      operationId: recordSubcontractDeposit
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordSubcontractDepositRequest"
+      responses:
+        "200":
+          description: Deposit payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractPaymentMilestoneResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/issue-materials:
+    post:
+      summary: Issue raw materials and packaging to a subcontract factory
+      operationId: issueSubcontractMaterials
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IssueSubcontractMaterialsRequest"
+      responses:
+        "200":
+          description: Subcontract materials issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueSubcontractMaterialsSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/start-mass-production:
+    post:
+      summary: Start subcontract factory mass production
+      operationId: startMassProductionSubcontractOrder
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubcontractOrderActionRequest"
+      responses:
+        "200":
+          description: Mass production started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractOrderActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/receive-finished-goods:
+    post:
+      summary: Receive finished goods from a subcontract factory
+      operationId: receiveSubcontractFinishedGoods
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiveSubcontractFinishedGoodsRequest"
+      responses:
+        "200":
+          description: Subcontract finished goods received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiveSubcontractFinishedGoodsSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/mark-final-payment-ready:
+    post:
+      summary: Mark subcontract final payment ready
+      operationId: markSubcontractFinalPaymentReady
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkSubcontractFinalPaymentReadyRequest"
+      responses:
+        "200":
+          description: Final payment marked ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractPaymentMilestoneResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/submit-sample:
+    post:
+      summary: Submit a subcontract production sample
+      operationId: submitSubcontractSample
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitSubcontractSampleRequest"
+      responses:
+        "200":
+          description: Subcontract sample submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractSampleApprovalResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/approve-sample:
+    post:
+      summary: Approve a subcontract production sample
+      operationId: approveSubcontractSample
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecideSubcontractSampleRequest"
+      responses:
+        "200":
+          description: Subcontract sample approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractSampleApprovalResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/reject-sample:
+    post:
+      summary: Reject a subcontract production sample
+      operationId: rejectSubcontractSample
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecideSubcontractSampleRequest"
+      responses:
+        "200":
+          description: Subcontract sample rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractSampleApprovalResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/cancel:
+    post:
+      summary: Cancel a subcontract manufacturing order
+      operationId: cancelSubcontractOrder
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubcontractOrderActionRequest"
+      responses:
+        "200":
+          description: Subcontract order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractOrderActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/close:
+    post:
+      summary: Close a subcontract manufacturing order
+      operationId: closeSubcontractOrder
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubcontractOrderActionRequest"
+      responses:
+        "200":
+          description: Subcontract order closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractOrderActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /inventory/stock-movements:
     post:
       summary: Record stock movement
@@ -2153,6 +2688,42 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+  /warehouse/daily-board/subcontract-metrics:
+    get:
+      summary: Get warehouse daily board subcontract metrics
+      operationId: getWarehouseDailyBoardSubcontractMetrics
+      tags:
+        - warehouse
+      parameters:
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: shift_code
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Warehouse daily board subcontract metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseSubcontractMetricsSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /sales-orders:
     get:
       summary: List sales orders
@@ -2851,6 +3422,12 @@ components:
       schema:
         $ref: "#/components/schemas/MasterDataStatus"
       description: Filter by master data lifecycle status.
+    SubcontractOrderIDParam:
+      name: subcontract_order_id
+      in: path
+      required: true
+      schema:
+        type: string
   securitySchemes:
     bearerAuth:
       type: http
@@ -4691,6 +5268,1339 @@ components:
           $ref: "#/components/schemas/PurchaseOrderStatus"
         audit_log_id:
           type: string
+    SubcontractOrderStatus:
+      type: string
+      enum:
+        - draft
+        - submitted
+        - approved
+        - factory_confirmed
+        - deposit_recorded
+        - materials_issued_to_factory
+        - sample_submitted
+        - sample_approved
+        - sample_rejected
+        - mass_production_started
+        - finished_goods_received
+        - qc_in_progress
+        - accepted
+        - rejected_with_factory_issue
+        - final_payment_ready
+        - closed
+        - cancelled
+    SubcontractMaterialTransferStatus:
+      type: string
+      enum:
+        - sent_to_factory
+        - partially_sent
+    SubcontractFinishedGoodsReceiptStatus:
+      type: string
+      enum:
+        - qc_hold
+    SubcontractSampleApprovalStatus:
+      type: string
+      enum:
+        - submitted
+        - approved
+        - rejected
+    SubcontractPaymentMilestoneKind:
+      type: string
+      enum:
+        - deposit
+        - final_payment
+    SubcontractPaymentMilestoneStatus:
+      type: string
+      enum:
+        - pending
+        - recorded
+        - ready
+        - blocked
+        - cancelled
+    SubcontractOrderListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/SubcontractOrderListItem"
+    SubcontractOrderSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SubcontractOrder"
+    SubcontractOrderActionResultSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SubcontractOrderActionResult"
+    SubcontractPaymentMilestoneResultSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SubcontractPaymentMilestoneResult"
+    IssueSubcontractMaterialsSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/IssueSubcontractMaterialsResult"
+    ReceiveSubcontractFinishedGoodsSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ReceiveSubcontractFinishedGoodsResult"
+    SubcontractSampleApprovalResultSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SubcontractSampleApprovalResult"
+    CreateSubcontractOrderRequest:
+      type: object
+      required:
+        - factory_id
+        - finished_item_id
+        - planned_qty
+        - uom_code
+        - expected_receipt_date
+        - material_lines
+      properties:
+        id:
+          type: string
+        order_no:
+          type: string
+        factory_id:
+          type: string
+        finished_item_id:
+          type: string
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        spec_summary:
+          type: string
+        sample_required:
+          type: boolean
+          default: false
+        claim_window_days:
+          type: integer
+          minimum: 3
+          maximum: 7
+          default: 7
+        target_start_date:
+          type: string
+          format: date
+        expected_receipt_date:
+          type: string
+          format: date
+        material_lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SubcontractOrderMaterialLineRequest"
+    UpdateSubcontractOrderRequest:
+      type: object
+      required:
+        - factory_id
+        - finished_item_id
+        - planned_qty
+        - uom_code
+        - expected_receipt_date
+        - expected_version
+        - material_lines
+      properties:
+        factory_id:
+          type: string
+        finished_item_id:
+          type: string
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        spec_summary:
+          type: string
+        sample_required:
+          type: boolean
+        claim_window_days:
+          type: integer
+          minimum: 3
+          maximum: 7
+        target_start_date:
+          type: string
+          format: date
+        expected_receipt_date:
+          type: string
+          format: date
+        expected_version:
+          type: integer
+          minimum: 0
+        material_lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SubcontractOrderMaterialLineRequest"
+    SubcontractOrderMaterialLineRequest:
+      type: object
+      required:
+        - item_id
+        - planned_qty
+        - uom_code
+        - unit_cost
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+          minimum: 1
+        item_id:
+          type: string
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        unit_cost:
+          $ref: "#/components/schemas/UnitCostAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        lot_trace_required:
+          type: boolean
+          default: false
+        note:
+          type: string
+    SubcontractOrderActionRequest:
+      type: object
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+    RecordSubcontractDepositRequest:
+      type: object
+      required:
+        - expected_version
+        - amount
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        milestone_id:
+          type: string
+        milestone_no:
+          type: string
+        amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        recorded_by:
+          type: string
+        recorded_at:
+          type: string
+          format: date-time
+        note:
+          type: string
+    MarkSubcontractFinalPaymentReadyRequest:
+      type: object
+      required:
+        - expected_version
+        - amount
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        milestone_id:
+          type: string
+        milestone_no:
+          type: string
+        amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        ready_by:
+          type: string
+        ready_at:
+          type: string
+          format: date-time
+        approved_exception_id:
+          type: string
+        note:
+          type: string
+    IssueSubcontractMaterialsRequest:
+      type: object
+      required:
+        - expected_version
+        - source_warehouse_id
+        - lines
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        transfer_id:
+          type: string
+        transfer_no:
+          type: string
+        source_warehouse_id:
+          type: string
+        source_warehouse_code:
+          type: string
+        handover_by:
+          type: string
+        handover_at:
+          type: string
+          format: date-time
+        received_by:
+          type: string
+        receiver_contact:
+          type: string
+        vehicle_no:
+          type: string
+        note:
+          type: string
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/IssueSubcontractMaterialsLineRequest"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractEvidenceRequest"
+    IssueSubcontractMaterialsLineRequest:
+      type: object
+      required:
+        - order_material_line_id
+        - issue_qty
+        - uom_code
+        - base_issue_qty
+        - base_uom_code
+        - conversion_factor
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+          minimum: 1
+        order_material_line_id:
+          type: string
+        issue_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_issue_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        conversion_factor:
+          $ref: "#/components/schemas/Quantity"
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        lot_no:
+          type: string
+        source_bin_id:
+          type: string
+        note:
+          type: string
+    ReceiveSubcontractFinishedGoodsRequest:
+      type: object
+      required:
+        - expected_version
+        - warehouse_id
+        - location_id
+        - delivery_note_no
+        - lines
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        receipt_id:
+          type: string
+        receipt_no:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        location_id:
+          type: string
+        location_code:
+          type: string
+        delivery_note_no:
+          type: string
+        received_by:
+          type: string
+        received_at:
+          type: string
+          format: date-time
+        note:
+          type: string
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ReceiveSubcontractFinishedGoodsLineRequest"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractEvidenceRequest"
+    ReceiveSubcontractFinishedGoodsLineRequest:
+      type: object
+      required:
+        - item_id
+        - receive_qty
+        - uom_code
+        - base_receive_qty
+        - base_uom_code
+        - conversion_factor
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+          minimum: 1
+        item_id:
+          type: string
+        sku_code:
+          type: string
+        item_name:
+          type: string
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        lot_no:
+          type: string
+        expiry_date:
+          type: string
+          format: date
+        receive_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_receive_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        conversion_factor:
+          $ref: "#/components/schemas/Quantity"
+        packaging_status:
+          type: string
+        note:
+          type: string
+    SubmitSubcontractSampleRequest:
+      type: object
+      required:
+        - expected_version
+        - sample_code
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        sample_approval_id:
+          type: string
+        sample_code:
+          type: string
+        formula_version:
+          type: string
+        spec_version:
+          type: string
+        submitted_by:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+        note:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractEvidenceRequest"
+    DecideSubcontractSampleRequest:
+      type: object
+      required:
+        - expected_version
+        - sample_approval_id
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        sample_approval_id:
+          type: string
+        decision_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+        storage_status:
+          type: string
+    SubcontractEvidenceRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        evidence_type:
+          type: string
+        file_name:
+          type: string
+        object_key:
+          type: string
+        external_url:
+          type: string
+          format: uri
+        note:
+          type: string
+    SubcontractOrderListItem:
+      type: object
+      required:
+        - id
+        - order_no
+        - factory_id
+        - factory_name
+        - finished_item_id
+        - finished_sku_code
+        - finished_item_name
+        - planned_qty
+        - uom_code
+        - expected_receipt_date
+        - status
+        - currency_code
+        - estimated_cost_amount
+        - material_line_count
+        - sample_required
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        order_no:
+          type: string
+        factory_id:
+          type: string
+        factory_code:
+          type: string
+        factory_name:
+          type: string
+        finished_item_id:
+          type: string
+        finished_sku_code:
+          type: string
+        finished_item_name:
+          type: string
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        expected_receipt_date:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        estimated_cost_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        material_line_count:
+          type: integer
+          minimum: 0
+        sample_required:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 0
+    SubcontractOrder:
+      type: object
+      required:
+        - id
+        - org_id
+        - order_no
+        - factory_id
+        - factory_name
+        - finished_item_id
+        - finished_sku_code
+        - finished_item_name
+        - planned_qty
+        - received_qty
+        - accepted_qty
+        - rejected_qty
+        - uom_code
+        - base_planned_qty
+        - base_received_qty
+        - base_accepted_qty
+        - base_rejected_qty
+        - base_uom_code
+        - conversion_factor
+        - currency_code
+        - estimated_cost_amount
+        - deposit_amount
+        - sample_required
+        - claim_window_days
+        - expected_receipt_date
+        - status
+        - material_lines
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        order_no:
+          type: string
+        factory_id:
+          type: string
+        factory_code:
+          type: string
+        factory_name:
+          type: string
+        finished_item_id:
+          type: string
+        finished_sku_code:
+          type: string
+        finished_item_name:
+          type: string
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        received_qty:
+          $ref: "#/components/schemas/Quantity"
+        accepted_qty:
+          $ref: "#/components/schemas/Quantity"
+        rejected_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_received_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_accepted_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_rejected_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        conversion_factor:
+          $ref: "#/components/schemas/Quantity"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        estimated_cost_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        deposit_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        spec_summary:
+          type: string
+        sample_required:
+          type: boolean
+        claim_window_days:
+          type: integer
+          minimum: 3
+          maximum: 7
+        target_start_date:
+          type: string
+          format: date
+        expected_receipt_date:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
+        material_lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractOrderMaterialLine"
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        submitted_at:
+          type: string
+          format: date-time
+        approved_at:
+          type: string
+          format: date-time
+        factory_confirmed_at:
+          type: string
+          format: date-time
+        deposit_recorded_at:
+          type: string
+          format: date-time
+        materials_issued_at:
+          type: string
+          format: date-time
+        sample_submitted_at:
+          type: string
+          format: date-time
+        sample_approved_at:
+          type: string
+          format: date-time
+        sample_rejected_at:
+          type: string
+          format: date-time
+        mass_production_started_at:
+          type: string
+          format: date-time
+        finished_goods_received_at:
+          type: string
+          format: date-time
+        qc_started_at:
+          type: string
+          format: date-time
+        accepted_at:
+          type: string
+          format: date-time
+        rejected_factory_issue_at:
+          type: string
+          format: date-time
+        final_payment_ready_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: string
+          format: date-time
+        cancelled_at:
+          type: string
+          format: date-time
+        cancel_reason:
+          type: string
+        sample_reject_reason:
+          type: string
+        factory_issue_reason:
+          type: string
+        version:
+          type: integer
+          minimum: 0
+    SubcontractOrderMaterialLine:
+      type: object
+      required:
+        - id
+        - line_no
+        - item_id
+        - sku_code
+        - item_name
+        - planned_qty
+        - issued_qty
+        - uom_code
+        - base_planned_qty
+        - base_issued_qty
+        - base_uom_code
+        - conversion_factor
+        - unit_cost
+        - currency_code
+        - line_cost_amount
+        - lot_trace_required
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+          minimum: 1
+        item_id:
+          type: string
+        sku_code:
+          type: string
+        item_name:
+          type: string
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        issued_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_issued_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        conversion_factor:
+          $ref: "#/components/schemas/Quantity"
+        unit_cost:
+          $ref: "#/components/schemas/UnitCostAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        line_cost_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        lot_trace_required:
+          type: boolean
+        note:
+          type: string
+    SubcontractOrderActionResult:
+      type: object
+      required:
+        - subcontract_order
+        - previous_status
+        - current_status
+      properties:
+        subcontract_order:
+          $ref: "#/components/schemas/SubcontractOrder"
+        previous_status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
+        current_status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
+        audit_log_id:
+          type: string
+    SubcontractPaymentMilestoneResult:
+      type: object
+      required:
+        - subcontract_order
+        - milestone
+        - previous_status
+        - current_status
+      properties:
+        subcontract_order:
+          $ref: "#/components/schemas/SubcontractOrder"
+        milestone:
+          $ref: "#/components/schemas/SubcontractPaymentMilestone"
+        previous_status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
+        current_status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
+        audit_log_id:
+          type: string
+    SubcontractPaymentMilestone:
+      type: object
+      required:
+        - id
+        - milestone_no
+        - subcontract_order_id
+        - subcontract_order_no
+        - factory_id
+        - factory_name
+        - kind
+        - status
+        - amount
+        - currency_code
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        milestone_no:
+          type: string
+        subcontract_order_id:
+          type: string
+        subcontract_order_no:
+          type: string
+        factory_id:
+          type: string
+        factory_code:
+          type: string
+        factory_name:
+          type: string
+        kind:
+          $ref: "#/components/schemas/SubcontractPaymentMilestoneKind"
+        status:
+          $ref: "#/components/schemas/SubcontractPaymentMilestoneStatus"
+        amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        note:
+          type: string
+        approved_exception_id:
+          type: string
+        recorded_by:
+          type: string
+        recorded_at:
+          type: string
+          format: date-time
+        ready_by:
+          type: string
+        ready_at:
+          type: string
+          format: date-time
+        blocked_by:
+          type: string
+        blocked_at:
+          type: string
+          format: date-time
+        block_reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 0
+    IssueSubcontractMaterialsResult:
+      type: object
+      required:
+        - subcontract_order
+        - transfer
+        - stock_movements
+      properties:
+        subcontract_order:
+          $ref: "#/components/schemas/SubcontractOrder"
+        transfer:
+          $ref: "#/components/schemas/SubcontractMaterialTransfer"
+        stock_movements:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractStockMovement"
+        audit_log_id:
+          type: string
+    SubcontractMaterialTransfer:
+      type: object
+      required:
+        - id
+        - org_id
+        - transfer_no
+        - subcontract_order_id
+        - subcontract_order_no
+        - factory_id
+        - factory_name
+        - source_warehouse_id
+        - status
+        - lines
+        - handover_by
+        - handover_at
+        - received_by
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        transfer_no:
+          type: string
+        subcontract_order_id:
+          type: string
+        subcontract_order_no:
+          type: string
+        factory_id:
+          type: string
+        factory_code:
+          type: string
+        factory_name:
+          type: string
+        source_warehouse_id:
+          type: string
+        source_warehouse_code:
+          type: string
+        status:
+          $ref: "#/components/schemas/SubcontractMaterialTransferStatus"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractMaterialTransferLine"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractEvidence"
+        handover_by:
+          type: string
+        handover_at:
+          type: string
+          format: date-time
+        received_by:
+          type: string
+        receiver_contact:
+          type: string
+        vehicle_no:
+          type: string
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 0
+    SubcontractMaterialTransferLine:
+      type: object
+      required:
+        - id
+        - line_no
+        - order_material_line_id
+        - item_id
+        - sku_code
+        - item_name
+        - issue_qty
+        - uom_code
+        - base_issue_qty
+        - base_uom_code
+        - conversion_factor
+        - lot_trace_required
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+          minimum: 1
+        order_material_line_id:
+          type: string
+        item_id:
+          type: string
+        sku_code:
+          type: string
+        item_name:
+          type: string
+        issue_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_issue_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        conversion_factor:
+          $ref: "#/components/schemas/Quantity"
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        lot_no:
+          type: string
+        source_bin_id:
+          type: string
+        lot_trace_required:
+          type: boolean
+        note:
+          type: string
+    ReceiveSubcontractFinishedGoodsResult:
+      type: object
+      required:
+        - subcontract_order
+        - receipt
+        - stock_movements
+      properties:
+        subcontract_order:
+          $ref: "#/components/schemas/SubcontractOrder"
+        receipt:
+          $ref: "#/components/schemas/SubcontractFinishedGoodsReceipt"
+        stock_movements:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractStockMovement"
+        audit_log_id:
+          type: string
+    SubcontractFinishedGoodsReceipt:
+      type: object
+      required:
+        - id
+        - org_id
+        - receipt_no
+        - subcontract_order_id
+        - subcontract_order_no
+        - factory_id
+        - factory_name
+        - warehouse_id
+        - location_id
+        - delivery_note_no
+        - status
+        - lines
+        - received_by
+        - received_at
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        receipt_no:
+          type: string
+        subcontract_order_id:
+          type: string
+        subcontract_order_no:
+          type: string
+        factory_id:
+          type: string
+        factory_code:
+          type: string
+        factory_name:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        location_id:
+          type: string
+        location_code:
+          type: string
+        delivery_note_no:
+          type: string
+        status:
+          $ref: "#/components/schemas/SubcontractFinishedGoodsReceiptStatus"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractFinishedGoodsReceiptLine"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractEvidence"
+        received_by:
+          type: string
+        received_at:
+          type: string
+          format: date-time
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 0
+    SubcontractFinishedGoodsReceiptLine:
+      type: object
+      required:
+        - id
+        - line_no
+        - item_id
+        - sku_code
+        - item_name
+        - batch_id
+        - batch_no
+        - lot_no
+        - expiry_date
+        - receive_qty
+        - uom_code
+        - base_receive_qty
+        - base_uom_code
+        - conversion_factor
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+          minimum: 1
+        item_id:
+          type: string
+        sku_code:
+          type: string
+        item_name:
+          type: string
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        lot_no:
+          type: string
+        expiry_date:
+          type: string
+          format: date
+        receive_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_receive_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        conversion_factor:
+          $ref: "#/components/schemas/Quantity"
+        packaging_status:
+          type: string
+        note:
+          type: string
+    SubcontractSampleApprovalResult:
+      type: object
+      required:
+        - subcontract_order
+        - sample_approval
+        - previous_status
+        - current_status
+      properties:
+        subcontract_order:
+          $ref: "#/components/schemas/SubcontractOrder"
+        sample_approval:
+          $ref: "#/components/schemas/SubcontractSampleApproval"
+        previous_status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
+        current_status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
+        audit_log_id:
+          type: string
+    SubcontractSampleApproval:
+      type: object
+      required:
+        - id
+        - org_id
+        - subcontract_order_id
+        - subcontract_order_no
+        - sample_code
+        - status
+        - evidence
+        - submitted_by
+        - submitted_at
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        subcontract_order_id:
+          type: string
+        subcontract_order_no:
+          type: string
+        sample_code:
+          type: string
+        formula_version:
+          type: string
+        spec_version:
+          type: string
+        status:
+          $ref: "#/components/schemas/SubcontractSampleApprovalStatus"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractSampleEvidence"
+        submitted_by:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+        decision_by:
+          type: string
+        decision_at:
+          type: string
+          format: date-time
+        decision_reason:
+          type: string
+        storage_status:
+          type: string
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 0
+    SubcontractEvidence:
+      type: object
+      required:
+        - id
+        - evidence_type
+      properties:
+        id:
+          type: string
+        evidence_type:
+          type: string
+        file_name:
+          type: string
+        object_key:
+          type: string
+        external_url:
+          type: string
+          format: uri
+        note:
+          type: string
+    SubcontractSampleEvidence:
+      allOf:
+        - $ref: "#/components/schemas/SubcontractEvidence"
+        - type: object
+          properties:
+            created_at:
+              type: string
+              format: date-time
+            created_by:
+              type: string
+    SubcontractStockMovement:
+      type: object
+      required:
+        - movement_no
+        - movement_type
+        - item_id
+        - warehouse_id
+        - quantity
+        - base_uom_code
+        - source_quantity
+        - source_uom_code
+        - conversion_factor
+        - stock_status
+        - source_doc_type
+        - source_doc_id
+        - source_doc_line_id
+        - reason
+      properties:
+        movement_no:
+          type: string
+        movement_type:
+          type: string
+        item_id:
+          type: string
+        batch_id:
+          type: string
+        warehouse_id:
+          type: string
+        bin_id:
+          type: string
+        quantity:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        source_quantity:
+          $ref: "#/components/schemas/Quantity"
+        source_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        conversion_factor:
+          $ref: "#/components/schemas/Quantity"
+        stock_status:
+          type: string
+        source_doc_type:
+          type: string
+        source_doc_id:
+          type: string
+        source_doc_line_id:
+          type: string
+        reason:
+          type: string
     GoodsReceiptStatus:
       type: string
       enum:
@@ -5566,6 +7476,15 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/WarehouseInboundMetrics"
+    WarehouseSubcontractMetricsSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/WarehouseSubcontractMetrics"
     CloseEndOfDayReconciliationRequest:
       type: object
       properties:
@@ -5687,6 +7606,49 @@ components:
           type: integer
           minimum: 0
         supplier_rejection_cancelled:
+          type: integer
+          minimum: 0
+        generated_at:
+          type: string
+          format: date-time
+    WarehouseSubcontractMetrics:
+      type: object
+      required:
+        - open_orders
+        - material_issued_orders
+        - material_transfer_count
+        - sample_pending
+        - factory_claims
+        - factory_claims_overdue
+        - final_payment_ready_orders
+        - generated_at
+      properties:
+        warehouse_id:
+          type: string
+        date:
+          type: string
+          format: date
+        shift_code:
+          type: string
+        open_orders:
+          type: integer
+          minimum: 0
+        material_issued_orders:
+          type: integer
+          minimum: 0
+        material_transfer_count:
+          type: integer
+          minimum: 0
+        sample_pending:
+          type: integer
+          minimum: 0
+        factory_claims:
+          type: integer
+          minimum: 0
+        factory_claims_overdue:
+          type: integer
+          minimum: 0
+        final_payment_ready_orders:
           type: integer
           minimum: 0
         generated_at:
