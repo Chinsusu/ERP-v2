@@ -3,6 +3,7 @@ import { AuditLogPrototype } from "@/modules/audit/components/AuditLogPrototype"
 import { AvailableStockPrototype } from "@/modules/inventory/components/AvailableStockPrototype";
 import { MasterDataPrototype } from "@/modules/masterdata/components/MasterDataPrototype";
 import { PurchaseOrderPrototype } from "@/modules/purchase/components/PurchaseOrderPrototype";
+import { InboundQCPrototype } from "@/modules/qc/components/InboundQCPrototype";
 import { WarehouseReceivingPrototype } from "@/modules/receiving/components/WarehouseReceivingPrototype";
 import { ReturnReceivingPrototype } from "@/modules/returns/components/ReturnReceivingPrototype";
 import { SalesOrderPrototype } from "@/modules/sales/components/SalesOrderPrototype";
@@ -48,6 +49,10 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
 
   if (module === "purchase") {
     return <PurchaseOrderPrototype />;
+  }
+
+  if (module === "qc") {
+    return <InboundQCPrototype />;
   }
 
   if (module === "shipping") {
