@@ -715,6 +715,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/subcontract-orders/{subcontract_order_id}/partial-accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Partially accept subcontract finished goods and open a factory claim */
+        post: operations["partialAcceptSubcontractFinishedGoods"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/subcontract-orders/{subcontract_order_id}/mark-final-payment-ready": {
         parameters: {
             query?: never;
@@ -2361,6 +2378,9 @@ export interface components {
         AcceptSubcontractFinishedGoodsSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["AcceptSubcontractFinishedGoodsResult"];
         };
+        PartialAcceptSubcontractFinishedGoodsSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["PartialAcceptSubcontractFinishedGoodsResult"];
+        };
         SubcontractSampleApprovalResultSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["SubcontractSampleApprovalResult"];
         };
@@ -2506,6 +2526,31 @@ export interface components {
             accepted_by?: string;
             /** Format: date-time */
             accepted_at?: string;
+            note?: string;
+        };
+        PartialAcceptSubcontractFinishedGoodsRequest: {
+            expected_version: number;
+            accepted_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            base_accepted_qty?: components["schemas"]["Quantity"];
+            base_uom_code?: components["schemas"]["UOMCode"];
+            rejected_qty: components["schemas"]["Quantity"];
+            base_rejected_qty?: components["schemas"]["Quantity"];
+            claim_id?: string;
+            claim_no?: string;
+            receipt_id: string;
+            receipt_no?: string;
+            reason_code?: string;
+            reason: string;
+            severity?: string;
+            evidence: components["schemas"]["SubcontractEvidenceRequest"][];
+            owner_id?: string;
+            accepted_by?: string;
+            /** Format: date-time */
+            accepted_at?: string;
+            opened_by?: string;
+            /** Format: date-time */
+            opened_at?: string;
             note?: string;
         };
         ReportSubcontractFactoryDefectRequest: {
@@ -2781,6 +2826,15 @@ export interface components {
             previous_status: components["schemas"]["SubcontractOrderStatus"];
             current_status: components["schemas"]["SubcontractOrderStatus"];
             audit_log_id?: string;
+        };
+        PartialAcceptSubcontractFinishedGoodsResult: {
+            subcontract_order: components["schemas"]["SubcontractOrder"];
+            claim: components["schemas"]["SubcontractFactoryClaim"];
+            stock_movements: components["schemas"]["SubcontractStockMovement"][];
+            previous_status: components["schemas"]["SubcontractOrderStatus"];
+            current_status: components["schemas"]["SubcontractOrderStatus"];
+            accept_audit_log_id?: string;
+            claim_audit_log_id?: string;
         };
         ReportSubcontractFactoryDefectResult: {
             subcontract_order: components["schemas"]["SubcontractOrder"];
@@ -5472,6 +5526,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AcceptSubcontractFinishedGoodsSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    partialAcceptSubcontractFinishedGoods: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartialAcceptSubcontractFinishedGoodsRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract finished goods partially accepted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartialAcceptSubcontractFinishedGoodsSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];

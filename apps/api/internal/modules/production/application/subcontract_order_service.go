@@ -316,6 +316,33 @@ type AcceptSubcontractFinishedGoodsInput struct {
 	RequestID       string
 }
 
+type PartialAcceptSubcontractFinishedGoodsInput struct {
+	ID              string
+	ExpectedVersion int
+	AcceptedQty     string
+	UOMCode         string
+	BaseAcceptedQty string
+	BaseUOMCode     string
+	RejectedQty     string
+	BaseRejectedQty string
+	ClaimID         string
+	ClaimNo         string
+	ReceiptID       string
+	ReceiptNo       string
+	ReasonCode      string
+	Reason          string
+	Severity        string
+	Evidence        []CreateSubcontractFactoryClaimEvidenceInput
+	OwnerID         string
+	AcceptedBy      string
+	AcceptedAt      time.Time
+	OpenedBy        string
+	OpenedAt        time.Time
+	Note            string
+	ActorID         string
+	RequestID       string
+}
+
 type CreateSubcontractFactoryClaimInput struct {
 	ID              string
 	ExpectedVersion int
@@ -414,6 +441,16 @@ type AcceptSubcontractFinishedGoodsResult struct {
 	PreviousStatus   productiondomain.SubcontractOrderStatus
 	CurrentStatus    productiondomain.SubcontractOrderStatus
 	AuditLogID       string
+}
+
+type PartialAcceptSubcontractFinishedGoodsResult struct {
+	SubcontractOrder productiondomain.SubcontractOrder
+	Claim            productiondomain.SubcontractFactoryClaim
+	StockMovements   []inventorydomain.StockMovement
+	PreviousStatus   productiondomain.SubcontractOrderStatus
+	CurrentStatus    productiondomain.SubcontractOrderStatus
+	AcceptAuditLogID string
+	ClaimAuditLogID  string
 }
 
 type CreateSubcontractFactoryClaimResult struct {
@@ -1185,6 +1222,185 @@ func (s SubcontractOrderService) AcceptSubcontractFinishedGoods(
 	})
 	if err != nil {
 		return AcceptSubcontractFinishedGoodsResult{}, err
+	}
+
+	return result, nil
+}
+
+func (s SubcontractOrderService) PartialAcceptSubcontractFinishedGoods(
+	ctx context.Context,
+	input PartialAcceptSubcontractFinishedGoodsInput,
+) (PartialAcceptSubcontractFinishedGoodsResult, error) {
+	if err := s.ensureReadyForFinishedGoodsReceipt(); err != nil {
+		return PartialAcceptSubcontractFinishedGoodsResult{}, err
+	}
+	if err := s.ensureReadyForFactoryClaim(); err != nil {
+		return PartialAcceptSubcontractFinishedGoodsResult{}, err
+	}
+	if err := requireSubcontractOrderActor(input.ActorID); err != nil {
+		return PartialAcceptSubcontractFinishedGoodsResult{}, err
+	}
+
+	var result PartialAcceptSubcontractFinishedGoodsResult
+	err := s.store.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		current, err := tx.GetForUpdate(txCtx, input.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": strings.TrimSpace(input.ID)})
+		}
+		if err := ensureSubcontractOrderExpectedVersion(current, input.ExpectedVersion); err != nil {
+			return err
+		}
+		receipts, err := s.finishedGoodsStore.ListBySubcontractOrder(txCtx, current.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": current.ID})
+		}
+		if len(receipts) == 0 {
+			return MapSubcontractOrderError(productiondomain.ErrSubcontractFinishedGoodsReceiptRequiredField, map[string]any{
+				"subcontract_order_id": current.ID,
+			})
+		}
+
+		acceptedAt := input.AcceptedAt
+		if acceptedAt.IsZero() {
+			acceptedAt = s.now()
+		}
+		acceptedQty, err := decimal.ParseQuantity(input.AcceptedQty)
+		if err != nil {
+			return MapSubcontractOrderError(productiondomain.ErrSubcontractOrderInvalidQuantity, map[string]any{"field": "accepted_qty"})
+		}
+		baseAcceptedQty := decimal.Decimal(strings.TrimSpace(input.BaseAcceptedQty))
+		baseRejectedQty := decimal.Decimal(strings.TrimSpace(input.BaseRejectedQty))
+		rejectedQty, err := decimal.ParseQuantity(input.RejectedQty)
+		if err != nil {
+			return MapSubcontractOrderError(productiondomain.ErrSubcontractOrderInvalidQuantity, map[string]any{"field": "rejected_qty"})
+		}
+		acceptedOrder, err := current.PartialAcceptFinishedGoods(productiondomain.PartialAcceptSubcontractFinishedGoodsInput{
+			AcceptedQty:     acceptedQty,
+			UOMCode:         input.UOMCode,
+			BaseAcceptedQty: baseAcceptedQty,
+			BaseUOMCode:     input.BaseUOMCode,
+			RejectedQty:     rejectedQty,
+			BaseRejectedQty: baseRejectedQty,
+			ActorID:         input.ActorID,
+			ChangedAt:       acceptedAt,
+		})
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"status":               string(current.Status),
+			})
+		}
+		openedAt := input.OpenedAt
+		if openedAt.IsZero() {
+			openedAt = acceptedAt
+		}
+		claim, err := s.factoryClaimBuild.BuildClaimOnly(txCtx, BuildSubcontractFactoryClaimInput{
+			ID:              input.ClaimID,
+			ClaimNo:         input.ClaimNo,
+			Order:           acceptedOrder,
+			ReceiptID:       input.ReceiptID,
+			ReceiptNo:       input.ReceiptNo,
+			ReasonCode:      input.ReasonCode,
+			Reason:          input.Reason,
+			Severity:        input.Severity,
+			AffectedQty:     input.RejectedQty,
+			UOMCode:         input.UOMCode,
+			BaseAffectedQty: input.BaseRejectedQty,
+			BaseUOMCode:     input.BaseUOMCode,
+			Evidence:        createSubcontractFactoryClaimBuildEvidenceInputs(input.Evidence),
+			OwnerID:         input.OwnerID,
+			OpenedBy:        input.OpenedBy,
+			OpenedAt:        openedAt,
+			ActorID:         input.ActorID,
+		})
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"status":               string(current.Status),
+			})
+		}
+		movements, err := buildSubcontractFinishedGoodsAcceptanceMovementsForQuantity(
+			receipts,
+			acceptedOrder.AcceptedQty,
+			acceptedOrder.BaseAcceptedQty,
+			input.ActorID,
+			acceptedAt,
+		)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": current.ID})
+		}
+		for _, movement := range movements {
+			if err := s.finishedGoodsRecorder.Record(txCtx, movement); err != nil {
+				return err
+			}
+		}
+		if err := s.factoryClaimStore.Save(txCtx, claim); err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"factory_claim_id":     claim.ID,
+			})
+		}
+		if err := tx.Save(txCtx, acceptedOrder); err != nil {
+			return err
+		}
+
+		acceptedBy := firstNonBlankSubcontractOrder(input.AcceptedBy, input.ActorID)
+		acceptAfterData := subcontractOrderAuditData(acceptedOrder)
+		acceptAfterData["accepted_by"] = acceptedBy
+		acceptAfterData["accepted_at"] = acceptedAt.Format(time.RFC3339)
+		acceptAfterData["accepted_movement_count"] = len(movements)
+		if strings.TrimSpace(input.Note) != "" {
+			acceptAfterData["note"] = strings.TrimSpace(input.Note)
+		}
+		acceptLog, err := newSubcontractOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			subcontractFinishedGoodsAcceptedAction,
+			acceptedOrder,
+			subcontractOrderAuditData(current),
+			acceptAfterData,
+			acceptedAt,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, acceptLog); err != nil {
+			return err
+		}
+
+		claimAfterData := subcontractOrderAuditData(acceptedOrder)
+		for key, value := range subcontractFactoryClaimAuditData(claim) {
+			claimAfterData[key] = value
+		}
+		claimLog, err := newSubcontractOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			subcontractFactoryClaimAction,
+			acceptedOrder,
+			subcontractOrderAuditData(current),
+			claimAfterData,
+			claim.OpenedAt,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, claimLog); err != nil {
+			return err
+		}
+		result = PartialAcceptSubcontractFinishedGoodsResult{
+			SubcontractOrder: acceptedOrder,
+			Claim:            claim,
+			StockMovements:   movements,
+			PreviousStatus:   current.Status,
+			CurrentStatus:    acceptedOrder.Status,
+			AcceptAuditLogID: acceptLog.ID,
+			ClaimAuditLogID:  claimLog.ID,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return PartialAcceptSubcontractFinishedGoodsResult{}, err
 	}
 
 	return result, nil

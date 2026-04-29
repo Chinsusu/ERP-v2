@@ -186,6 +186,11 @@ const sprint5Routes = [
     operationIds: ["acceptSubcontractFinishedGoods"]
   },
   {
+    path: "/subcontract-orders/{subcontract_order_id}/partial-accept",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/partial-accept",
+    operationIds: ["partialAcceptSubcontractFinishedGoods"]
+  },
+  {
     path: "/subcontract-orders/{subcontract_order_id}/mark-final-payment-ready",
     apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/mark-final-payment-ready",
     operationIds: ["markSubcontractFinalPaymentReady"]
@@ -243,6 +248,7 @@ const requiredSuccessSchemas = [
   "ReceiveSubcontractFinishedGoodsSuccessResponse",
   "ReportSubcontractFactoryDefectSuccessResponse",
   "AcceptSubcontractFinishedGoodsSuccessResponse",
+  "PartialAcceptSubcontractFinishedGoodsSuccessResponse",
   "SubcontractSampleApprovalResultSuccessResponse",
   "WarehouseSubcontractMetricsSuccessResponse"
 ];

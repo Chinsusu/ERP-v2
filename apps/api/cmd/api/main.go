@@ -1515,6 +1515,14 @@ func main() {
 		),
 	)
 	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}/partial-accept",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(subcontractOrderPartialAcceptFinishedGoodsHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
 		"/api/v1/subcontract-orders/{subcontract_order_id}/mark-final-payment-ready",
 		auth.RequireSessionPermission(
 			authSessions,

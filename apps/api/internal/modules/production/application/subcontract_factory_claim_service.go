@@ -77,10 +77,32 @@ func (s SubcontractFactoryClaimService) BuildClaim(
 	ctx context.Context,
 	input BuildSubcontractFactoryClaimInput,
 ) (SubcontractFactoryClaimBuildResult, error) {
+	claim, err := s.BuildClaimOnly(ctx, input)
+	if err != nil {
+		return SubcontractFactoryClaimBuildResult{}, err
+	}
+	actorID := strings.TrimSpace(input.ActorID)
+	updatedOrder, err := input.Order.RejectFinishedGoodsWithFactoryIssue(actorID, claim.Reason, claim.OpenedAt)
+	if err != nil {
+		return SubcontractFactoryClaimBuildResult{}, err
+	}
+
+	return SubcontractFactoryClaimBuildResult{
+		Claim:          claim,
+		UpdatedOrder:   updatedOrder,
+		PreviousStatus: input.Order.Status,
+		CurrentStatus:  updatedOrder.Status,
+	}, nil
+}
+
+func (s SubcontractFactoryClaimService) BuildClaimOnly(
+	ctx context.Context,
+	input BuildSubcontractFactoryClaimInput,
+) (productiondomain.SubcontractFactoryClaim, error) {
 	_ = ctx
 	actorID := strings.TrimSpace(input.ActorID)
 	if actorID == "" {
-		return SubcontractFactoryClaimBuildResult{}, productiondomain.ErrSubcontractOrderTransitionActorRequired
+		return productiondomain.SubcontractFactoryClaim{}, productiondomain.ErrSubcontractOrderTransitionActorRequired
 	}
 
 	now := s.now()
@@ -101,14 +123,14 @@ func (s SubcontractFactoryClaimService) BuildClaim(
 		claimWindowDays = 7
 	}
 	if claimWindowDays < 3 || claimWindowDays > 7 {
-		return SubcontractFactoryClaimBuildResult{}, productiondomain.ErrSubcontractFactoryClaimInvalidSLA
+		return productiondomain.SubcontractFactoryClaim{}, productiondomain.ErrSubcontractFactoryClaimInvalidSLA
 	}
 
 	affectedQty, baseAffectedQty, err := parseSubcontractFactoryClaimQuantities(input)
 	if err != nil {
-		return SubcontractFactoryClaimBuildResult{}, err
+		return productiondomain.SubcontractFactoryClaim{}, err
 	}
-	claim, err := productiondomain.NewSubcontractFactoryClaim(productiondomain.NewSubcontractFactoryClaimInput{
+	return productiondomain.NewSubcontractFactoryClaim(productiondomain.NewSubcontractFactoryClaimInput{
 		ID:                 id,
 		OrgID:              input.Order.OrgID,
 		ClaimNo:            claimNo,
@@ -136,20 +158,6 @@ func (s SubcontractFactoryClaimService) BuildClaim(
 		UpdatedAt:          now,
 		UpdatedBy:          actorID,
 	})
-	if err != nil {
-		return SubcontractFactoryClaimBuildResult{}, err
-	}
-	updatedOrder, err := input.Order.RejectFinishedGoodsWithFactoryIssue(actorID, claim.Reason, openedAt)
-	if err != nil {
-		return SubcontractFactoryClaimBuildResult{}, err
-	}
-
-	return SubcontractFactoryClaimBuildResult{
-		Claim:          claim,
-		UpdatedOrder:   updatedOrder,
-		PreviousStatus: input.Order.Status,
-		CurrentStatus:  updatedOrder.Status,
-	}, nil
 }
 
 func (s SubcontractFactoryClaimService) now() time.Time {
