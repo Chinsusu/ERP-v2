@@ -970,6 +970,286 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /purchase-orders:
+    get:
+      summary: List purchase orders
+      operationId: listPurchaseOrders
+      tags:
+        - purchase
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated purchase order statuses.
+        - name: supplier_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: expected_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: expected_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Purchase order rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    post:
+      summary: Create a purchase order draft
+      operationId: createPurchaseOrder
+      tags:
+        - purchase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePurchaseOrderRequest"
+      responses:
+        "201":
+          description: Purchase order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /purchase-orders/{purchase_order_id}:
+    get:
+      summary: Get purchase order detail
+      operationId: getPurchaseOrder
+      tags:
+        - purchase
+      parameters:
+        - name: purchase_order_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Purchase order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update purchase order draft
+      operationId: updatePurchaseOrder
+      tags:
+        - purchase
+      parameters:
+        - name: purchase_order_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePurchaseOrderRequest"
+      responses:
+        "200":
+          description: Purchase order updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /purchase-orders/{purchase_order_id}/submit:
+    post:
+      summary: Submit a purchase order
+      operationId: submitPurchaseOrder
+      tags:
+        - purchase
+      parameters:
+        - name: purchase_order_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOrderActionRequest"
+      responses:
+        "200":
+          description: Purchase order submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /purchase-orders/{purchase_order_id}/approve:
+    post:
+      summary: Approve a purchase order
+      operationId: approvePurchaseOrder
+      tags:
+        - purchase
+      parameters:
+        - name: purchase_order_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOrderActionRequest"
+      responses:
+        "200":
+          description: Purchase order approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /purchase-orders/{purchase_order_id}/cancel:
+    post:
+      summary: Cancel a purchase order
+      operationId: cancelPurchaseOrder
+      tags:
+        - purchase
+      parameters:
+        - name: purchase_order_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOrderActionRequest"
+      responses:
+        "200":
+          description: Purchase order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /purchase-orders/{purchase_order_id}/close:
+    post:
+      summary: Close a purchase order
+      operationId: closePurchaseOrder
+      tags:
+        - purchase
+      parameters:
+        - name: purchase_order_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOrderActionRequest"
+      responses:
+        "200":
+          description: Purchase order closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /inventory/stock-movements:
     post:
       summary: Record stock movement
@@ -1580,6 +1860,146 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /supplier-rejections:
+    get:
+      summary: List supplier rejection records
+      operationId: listSupplierRejections
+      tags:
+        - warehouse
+      parameters:
+        - name: supplier_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SupplierRejectionStatus"
+      responses:
+        "200":
+          description: Supplier rejection records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierRejectionListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    post:
+      summary: Create a supplier rejection record for failed inbound QC
+      operationId: createSupplierRejection
+      tags:
+        - warehouse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierRejectionRequest"
+      responses:
+        "201":
+          description: Supplier rejection created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierRejectionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /supplier-rejections/{supplier_rejection_id}:
+    get:
+      summary: Get supplier rejection detail
+      operationId: getSupplierRejection
+      tags:
+        - warehouse
+      parameters:
+        - name: supplier_rejection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier rejection detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierRejectionSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /supplier-rejections/{supplier_rejection_id}/submit:
+    post:
+      summary: Submit a supplier rejection record
+      operationId: submitSupplierRejection
+      tags:
+        - warehouse
+      parameters:
+        - name: supplier_rejection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier rejection submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierRejectionActionResultSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /supplier-rejections/{supplier_rejection_id}/confirm:
+    post:
+      summary: Confirm a supplier rejection record
+      operationId: confirmSupplierRejection
+      tags:
+        - warehouse
+      parameters:
+        - name: supplier_rejection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier rejection confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierRejectionActionResultSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /warehouse/end-of-day-reconciliations:
     get:
       summary: List warehouse end-of-day reconciliation sessions
@@ -1691,6 +2111,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WarehouseFulfillmentMetricsSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /warehouse/daily-board/inbound-metrics:
+    get:
+      summary: Get warehouse daily board inbound metrics
+      operationId: getWarehouseDailyBoardInboundMetrics
+      tags:
+        - warehouse
+      parameters:
+        - name: warehouse_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: shift_code
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Warehouse daily board inbound metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseInboundMetricsSuccessResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3897,6 +4353,342 @@ components:
         updated_at:
           type: string
           format: date-time
+    PurchaseOrderStatus:
+      type: string
+      enum:
+        - draft
+        - submitted
+        - approved
+        - partially_received
+        - received
+        - closed
+        - cancelled
+        - rejected
+    PurchaseOrderListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/PurchaseOrderListItem"
+    PurchaseOrderSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/PurchaseOrder"
+    PurchaseOrderActionResultSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/PurchaseOrderActionResult"
+    CreatePurchaseOrderRequest:
+      type: object
+      required:
+        - supplier_id
+        - warehouse_id
+        - expected_date
+        - lines
+      properties:
+        id:
+          type: string
+        po_no:
+          type: string
+        supplier_id:
+          type: string
+        warehouse_id:
+          type: string
+        expected_date:
+          type: string
+          format: date
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        note:
+          type: string
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/PurchaseOrderLineRequest"
+    UpdatePurchaseOrderRequest:
+      type: object
+      required:
+        - supplier_id
+        - warehouse_id
+        - expected_date
+        - lines
+        - expected_version
+      properties:
+        supplier_id:
+          type: string
+        warehouse_id:
+          type: string
+        expected_date:
+          type: string
+          format: date
+        note:
+          type: string
+        expected_version:
+          type: integer
+          minimum: 0
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/PurchaseOrderLineRequest"
+    PurchaseOrderLineRequest:
+      type: object
+      required:
+        - item_id
+        - ordered_qty
+        - uom_code
+        - unit_price
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+          minimum: 1
+        item_id:
+          type: string
+        ordered_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        unit_price:
+          $ref: "#/components/schemas/UnitPriceAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        expected_date:
+          type: string
+          format: date
+        note:
+          type: string
+    PurchaseOrderActionRequest:
+      type: object
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+        note:
+          type: string
+    PurchaseOrderListItem:
+      type: object
+      required:
+        - id
+        - po_no
+        - supplier_id
+        - supplier_name
+        - warehouse_id
+        - expected_date
+        - status
+        - currency_code
+        - total_amount
+        - line_count
+        - received_line_count
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        po_no:
+          type: string
+        supplier_id:
+          type: string
+        supplier_code:
+          type: string
+        supplier_name:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        expected_date:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/PurchaseOrderStatus"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        total_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        line_count:
+          type: integer
+          minimum: 0
+        received_line_count:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 0
+    PurchaseOrder:
+      type: object
+      required:
+        - id
+        - po_no
+        - supplier_id
+        - supplier_name
+        - warehouse_id
+        - expected_date
+        - status
+        - currency_code
+        - subtotal_amount
+        - total_amount
+        - lines
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        po_no:
+          type: string
+        supplier_id:
+          type: string
+        supplier_code:
+          type: string
+        supplier_name:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        expected_date:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/PurchaseOrderStatus"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        subtotal_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        total_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        note:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderLine"
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        submitted_at:
+          type: string
+          format: date-time
+        approved_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: string
+          format: date-time
+        cancelled_at:
+          type: string
+          format: date-time
+        rejected_at:
+          type: string
+          format: date-time
+        cancel_reason:
+          type: string
+        reject_reason:
+          type: string
+        version:
+          type: integer
+          minimum: 0
+    PurchaseOrderLine:
+      type: object
+      required:
+        - id
+        - line_no
+        - item_id
+        - sku_code
+        - item_name
+        - ordered_qty
+        - received_qty
+        - uom_code
+        - base_ordered_qty
+        - base_received_qty
+        - base_uom_code
+        - conversion_factor
+        - unit_price
+        - currency_code
+        - line_amount
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+          minimum: 1
+        item_id:
+          type: string
+        sku_code:
+          type: string
+        item_name:
+          type: string
+        ordered_qty:
+          $ref: "#/components/schemas/Quantity"
+        received_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_ordered_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_received_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        conversion_factor:
+          $ref: "#/components/schemas/Quantity"
+        unit_price:
+          $ref: "#/components/schemas/UnitPriceAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        line_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        expected_date:
+          type: string
+          format: date
+        note:
+          type: string
+    PurchaseOrderActionResult:
+      type: object
+      required:
+        - purchase_order
+        - current_status
+      properties:
+        purchase_order:
+          $ref: "#/components/schemas/PurchaseOrder"
+        previous_status:
+          $ref: "#/components/schemas/PurchaseOrderStatus"
+        current_status:
+          $ref: "#/components/schemas/PurchaseOrderStatus"
+        audit_log_id:
+          type: string
     GoodsReceiptStatus:
       type: string
       enum:
@@ -4357,6 +5149,321 @@ components:
           $ref: "#/components/schemas/InboundQCResult"
         audit_log_id:
           type: string
+    SupplierRejectionStatus:
+      type: string
+      enum:
+        - draft
+        - submitted
+        - confirmed
+        - cancelled
+    SupplierRejectionListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/SupplierRejection"
+    SupplierRejectionSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SupplierRejection"
+    SupplierRejectionActionResultSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SupplierRejectionActionResult"
+    CreateSupplierRejectionRequest:
+      type: object
+      required:
+        - supplier_id
+        - goods_receipt_id
+        - inbound_qc_inspection_id
+        - warehouse_id
+        - reason
+        - lines
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        rejection_no:
+          type: string
+        supplier_id:
+          type: string
+        supplier_code:
+          type: string
+        supplier_name:
+          type: string
+        purchase_order_id:
+          type: string
+        purchase_order_no:
+          type: string
+        goods_receipt_id:
+          type: string
+        goods_receipt_no:
+          type: string
+        inbound_qc_inspection_id:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        reason:
+          type: string
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SupplierRejectionLineRequest"
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupplierRejectionAttachmentRequest"
+    SupplierRejectionLineRequest:
+      type: object
+      required:
+        - goods_receipt_line_id
+        - inbound_qc_inspection_id
+        - item_id
+        - sku
+        - batch_id
+        - batch_no
+        - lot_no
+        - expiry_date
+        - rejected_qty
+        - uom_code
+        - base_uom_code
+        - reason
+      properties:
+        id:
+          type: string
+        purchase_order_line_id:
+          type: string
+        goods_receipt_line_id:
+          type: string
+        inbound_qc_inspection_id:
+          type: string
+        item_id:
+          type: string
+        sku:
+          type: string
+        item_name:
+          type: string
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        lot_no:
+          type: string
+        expiry_date:
+          type: string
+          format: date
+        rejected_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        reason:
+          type: string
+    SupplierRejectionAttachmentRequest:
+      type: object
+      required:
+        - file_name
+        - object_key
+      properties:
+        id:
+          type: string
+        line_id:
+          type: string
+        file_name:
+          type: string
+        object_key:
+          type: string
+        content_type:
+          type: string
+        source:
+          type: string
+    SupplierRejection:
+      type: object
+      required:
+        - id
+        - org_id
+        - rejection_no
+        - supplier_id
+        - goods_receipt_id
+        - inbound_qc_inspection_id
+        - warehouse_id
+        - status
+        - reason
+        - lines
+        - attachments
+        - created_at
+        - created_by
+        - updated_at
+        - updated_by
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        rejection_no:
+          type: string
+        supplier_id:
+          type: string
+        supplier_code:
+          type: string
+        supplier_name:
+          type: string
+        purchase_order_id:
+          type: string
+        purchase_order_no:
+          type: string
+        goods_receipt_id:
+          type: string
+        goods_receipt_no:
+          type: string
+        inbound_qc_inspection_id:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        status:
+          $ref: "#/components/schemas/SupplierRejectionStatus"
+        reason:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupplierRejectionLine"
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupplierRejectionAttachment"
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        updated_by:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+        submitted_by:
+          type: string
+        confirmed_at:
+          type: string
+          format: date-time
+        confirmed_by:
+          type: string
+    SupplierRejectionLine:
+      type: object
+      required:
+        - id
+        - goods_receipt_line_id
+        - inbound_qc_inspection_id
+        - item_id
+        - sku
+        - batch_id
+        - batch_no
+        - lot_no
+        - expiry_date
+        - rejected_qty
+        - uom_code
+        - base_uom_code
+        - reason
+      properties:
+        id:
+          type: string
+        purchase_order_line_id:
+          type: string
+        goods_receipt_line_id:
+          type: string
+        inbound_qc_inspection_id:
+          type: string
+        item_id:
+          type: string
+        sku:
+          type: string
+        item_name:
+          type: string
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        lot_no:
+          type: string
+        expiry_date:
+          type: string
+          format: date
+        rejected_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        reason:
+          type: string
+    SupplierRejectionAttachment:
+      type: object
+      required:
+        - id
+        - file_name
+        - object_key
+        - uploaded_at
+        - uploaded_by
+      properties:
+        id:
+          type: string
+        line_id:
+          type: string
+        file_name:
+          type: string
+        object_key:
+          type: string
+        content_type:
+          type: string
+        uploaded_at:
+          type: string
+          format: date-time
+        uploaded_by:
+          type: string
+        source:
+          type: string
+    SupplierRejectionActionResult:
+      type: object
+      required:
+        - rejection
+        - current_status
+      properties:
+        rejection:
+          $ref: "#/components/schemas/SupplierRejection"
+        previous_status:
+          $ref: "#/components/schemas/SupplierRejectionStatus"
+        current_status:
+          $ref: "#/components/schemas/SupplierRejectionStatus"
+        audit_log_id:
+          type: string
     EndOfDayReconciliationStatus:
       type: string
       enum:
@@ -4392,6 +5499,15 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/WarehouseFulfillmentMetrics"
+    WarehouseInboundMetricsSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/WarehouseInboundMetrics"
     CloseEndOfDayReconciliationRequest:
       type: object
       properties:
@@ -4442,6 +5558,77 @@ components:
           type: integer
           minimum: 0
         handover_orders:
+          type: integer
+          minimum: 0
+        generated_at:
+          type: string
+          format: date-time
+    WarehouseInboundMetrics:
+      type: object
+      required:
+        - purchase_orders_incoming
+        - receiving_pending
+        - receiving_draft
+        - receiving_submitted
+        - receiving_inspect_ready
+        - qc_hold
+        - qc_fail
+        - qc_pass
+        - qc_partial
+        - supplier_rejections
+        - supplier_rejection_draft
+        - supplier_rejection_submitted
+        - supplier_rejection_confirmed
+        - supplier_rejection_cancelled
+        - generated_at
+      properties:
+        warehouse_id:
+          type: string
+        date:
+          type: string
+          format: date
+        shift_code:
+          type: string
+        purchase_orders_incoming:
+          type: integer
+          minimum: 0
+        receiving_pending:
+          type: integer
+          minimum: 0
+        receiving_draft:
+          type: integer
+          minimum: 0
+        receiving_submitted:
+          type: integer
+          minimum: 0
+        receiving_inspect_ready:
+          type: integer
+          minimum: 0
+        qc_hold:
+          type: integer
+          minimum: 0
+        qc_fail:
+          type: integer
+          minimum: 0
+        qc_pass:
+          type: integer
+          minimum: 0
+        qc_partial:
+          type: integer
+          minimum: 0
+        supplier_rejections:
+          type: integer
+          minimum: 0
+        supplier_rejection_draft:
+          type: integer
+          minimum: 0
+        supplier_rejection_submitted:
+          type: integer
+          minimum: 0
+        supplier_rejection_confirmed:
+          type: integer
+          minimum: 0
+        supplier_rejection_cancelled:
           type: integer
           minimum: 0
         generated_at:
