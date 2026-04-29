@@ -11,8 +11,10 @@ import {
   formatSubcontractOrderStatus,
   getSubcontractOrders,
   issueSubcontractMaterials,
+  markSubcontractFinalPaymentReady,
   prototypeSubcontractOrders,
   receiveSubcontractFinishedGoods,
+  recordSubcontractDeposit,
   rejectSubcontractSample,
   resetPrototypeSubcontractOrdersForTest,
   startMassProductionSubcontractOrder,
@@ -573,6 +575,94 @@ describe("subcontractOrderService", () => {
     expect(subcontractFactoryClaimSlaLabel(claimResult.claim, "2026-05-03T00:00:00Z")).toBe("4 days left");
     expect(updatedClaim.evidence).toHaveLength(2);
     expect(claimResult.auditLog.action).toBe("subcontract.factory_claim_opened");
+  });
+
+  it("records deposit and marks final payment ready through the prototype fallback", async () => {
+    const draft = await createSubcontractOrder({
+      factoryId: "sup-out-lotus",
+      productId: "item-serum-30ml",
+      quantity: 1200,
+      specVersion: "SPEC-SERUM-2026.04",
+      sampleRequired: false,
+      expectedDeliveryDate: "2026-05-20",
+      depositStatus: "pending",
+      materialItemId: "item-cream-50g",
+      materialQty: "20",
+      materialUnitCost: "58000"
+    });
+    const submitted = await submitSubcontractOrder(draft.id, draft.version);
+    const approved = await approveSubcontractOrder(submitted.order.id, submitted.order.version);
+    const confirmed = await confirmFactorySubcontractOrder(approved.order.id, approved.order.version);
+
+    const deposit = await recordSubcontractDeposit({
+      order: confirmed.order,
+      amount: "250000",
+      recordedBy: "finance-user",
+      recordedAt: "2026-04-29T10:00:00Z"
+    });
+    const issued = await issueSubcontractMaterials({
+      order: deposit.order,
+      sourceWarehouseId: "wh-hcm",
+      sourceWarehouseCode: "HCM",
+      handoverBy: "warehouse-user",
+      receivedBy: "factory-receiver",
+      lines: [
+        {
+          orderMaterialLineId: deposit.order.materialLines[0].id,
+          issueQty: "20",
+          uomCode: "EA",
+          batchNo: "CREAM-LOT-001"
+        }
+      ]
+    });
+    const massStarted = await startMassProductionSubcontractOrder(issued.order.id, issued.order.version);
+    const received = await receiveSubcontractFinishedGoods({
+      order: massStarted.order,
+      warehouseId: "wh-hcm",
+      warehouseCode: "HCM",
+      locationId: "loc-hcm-fg-qc",
+      locationCode: "FG-QC-01",
+      deliveryNoteNo: "DN-FACTORY-PAYMENT",
+      receivedBy: "warehouse-user",
+      lines: [
+        {
+          receiveQty: "80",
+          uomCode: "EA",
+          batchNo: "FG-LOT-PAYMENT",
+          lotNo: "FG-LOT-PAYMENT",
+          expiryDate: "2028-04-29",
+          packagingStatus: "intact"
+        }
+      ]
+    });
+    const accepted = changeSubcontractOrderStatus({
+      order: received.order,
+      nextStatus: "accepted",
+      actorName: "QA lead"
+    });
+    const finalPayment = await markSubcontractFinalPaymentReady({
+      order: accepted.order,
+      readyBy: "finance-user",
+      readyAt: "2026-04-29T18:00:00Z"
+    });
+
+    expect(deposit.order).toMatchObject({
+      status: "deposit_recorded",
+      depositStatus: "paid",
+      depositAmount: 250000
+    });
+    expect(deposit.milestone).toMatchObject({
+      kind: "deposit",
+      status: "recorded",
+      amount: "250000.00"
+    });
+    expect(finalPayment.order.status).toBe("final_payment_ready");
+    expect(finalPayment.milestone).toMatchObject({
+      kind: "final_payment",
+      status: "ready",
+      amount: "1160000.00"
+    });
+    expect(finalPayment.auditLog.action).toBe("subcontract.final_payment_ready");
   });
 
   it("maps subcontract status and deposit status to UI labels and tones", () => {

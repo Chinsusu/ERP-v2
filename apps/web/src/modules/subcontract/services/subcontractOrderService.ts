@@ -8,6 +8,8 @@ import type {
   DecideSubcontractSampleInput,
   IssueSubcontractMaterialsInput,
   IssueSubcontractMaterialsResult,
+  MarkSubcontractFinalPaymentReadyInput,
+  RecordSubcontractDepositInput,
   ReceiveSubcontractFinishedGoodsInput,
   ReceiveSubcontractFinishedGoodsResult,
   SubcontractDepositStatus,
@@ -22,6 +24,10 @@ import type {
   SubcontractOrder,
   SubcontractOrderMaterialLine,
   SubcontractOrderQuery,
+  SubcontractPaymentMilestone,
+  SubcontractPaymentMilestoneKind,
+  SubcontractPaymentMilestoneResult,
+  SubcontractPaymentMilestoneStatus,
   SubcontractSampleApproval,
   SubcontractSampleApprovalResult,
   SubcontractSampleApprovalStatus,
@@ -132,6 +138,61 @@ type SubcontractOrderActionApiRequest = {
 
 type SubcontractOrderActionApiResult = {
   subcontract_order: SubcontractOrderApi;
+  previous_status: SubcontractOrderStatus;
+  current_status: SubcontractOrderStatus;
+  audit_log_id?: string;
+};
+
+type RecordSubcontractDepositApiRequest = {
+  expected_version: number;
+  milestone_id?: string;
+  milestone_no?: string;
+  amount: string;
+  recorded_by: string;
+  recorded_at?: string;
+  note?: string;
+};
+
+type MarkSubcontractFinalPaymentReadyApiRequest = {
+  expected_version: number;
+  milestone_id?: string;
+  milestone_no?: string;
+  amount?: string;
+  ready_by: string;
+  ready_at?: string;
+  approved_exception_id?: string;
+  note?: string;
+};
+
+type SubcontractPaymentMilestoneApi = {
+  id: string;
+  milestone_no: string;
+  subcontract_order_id: string;
+  subcontract_order_no: string;
+  factory_id: string;
+  factory_code?: string;
+  factory_name: string;
+  kind: SubcontractPaymentMilestoneKind;
+  status: SubcontractPaymentMilestoneStatus;
+  amount: string;
+  currency_code: string;
+  note?: string;
+  approved_exception_id?: string;
+  recorded_by?: string;
+  recorded_at?: string;
+  ready_by?: string;
+  ready_at?: string;
+  blocked_by?: string;
+  blocked_at?: string;
+  block_reason?: string;
+  created_at: string;
+  updated_at: string;
+  version: number;
+};
+
+type SubcontractPaymentMilestoneApiResult = {
+  subcontract_order: SubcontractOrderApi;
+  milestone: SubcontractPaymentMilestoneApi;
   previous_status: SubcontractOrderStatus;
   current_status: SubcontractOrderStatus;
   audit_log_id?: string;
@@ -426,6 +487,8 @@ let prototypeSampleApprovalStore: SubcontractSampleApproval[] = [];
 let prototypeFinishedGoodsReceiptSequence = 1;
 let prototypeFactoryClaimSequence = 1;
 let prototypeFactoryClaimStore: SubcontractFactoryClaim[] = [];
+let prototypePaymentMilestoneSequence = 1;
+let prototypePaymentMilestoneStore: SubcontractPaymentMilestone[] = [];
 
 export const subcontractFactoryOptions: SubcontractFactory[] = [
   { id: "sup-out-lotus", code: "SUP-OUT-LOTUS", name: "Lotus Filling Partner" },
@@ -630,6 +693,46 @@ export async function cancelSubcontractOrder(
 
 export async function closeSubcontractOrder(id: string, expectedVersion?: number): Promise<SubcontractStatusChangeResult> {
   return runSubcontractOrderAction(id, "close", expectedVersion);
+}
+
+export async function recordSubcontractDeposit(
+  input: RecordSubcontractDepositInput
+): Promise<SubcontractPaymentMilestoneResult> {
+  try {
+    const result = await apiPost<SubcontractPaymentMilestoneApiResult, RecordSubcontractDepositApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/record-deposit`,
+      toApiRecordDepositInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiPaymentMilestoneResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return recordPrototypeSubcontractDeposit(input);
+  }
+}
+
+export async function markSubcontractFinalPaymentReady(
+  input: MarkSubcontractFinalPaymentReadyInput
+): Promise<SubcontractPaymentMilestoneResult> {
+  try {
+    const result = await apiPost<SubcontractPaymentMilestoneApiResult, MarkSubcontractFinalPaymentReadyApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/mark-final-payment-ready`,
+      toApiMarkFinalPaymentReadyInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiPaymentMilestoneResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return markPrototypeSubcontractFinalPaymentReady(input);
+  }
 }
 
 export async function issueSubcontractMaterials(
@@ -913,6 +1016,8 @@ export function resetPrototypeSubcontractOrdersForTest() {
   prototypeFinishedGoodsReceiptSequence = 1;
   prototypeFactoryClaimSequence = 1;
   prototypeFactoryClaimStore = [];
+  prototypePaymentMilestoneSequence = 1;
+  prototypePaymentMilestoneStore = [];
   prototypeStore = prototypeSubcontractOrders.map(cloneSubcontractOrder);
 }
 
@@ -1019,6 +1124,49 @@ function fromApiActionResult(result: SubcontractOrderActionApiResult): Subcontra
       id: result.audit_log_id ?? auditLog.id
     },
     auditLogId: result.audit_log_id
+  };
+}
+
+function fromApiPaymentMilestoneResult(
+  result: SubcontractPaymentMilestoneApiResult
+): SubcontractPaymentMilestoneResult {
+  const order = fromApiSubcontractOrder(result.subcontract_order);
+  const milestone = fromApiPaymentMilestone(result.milestone);
+  const auditLog = createPaymentMilestoneAuditLog(order, milestone, result.previous_status, result.current_status, result.audit_log_id);
+
+  return {
+    order,
+    milestone,
+    auditLog,
+    auditLogId: result.audit_log_id
+  };
+}
+
+function fromApiPaymentMilestone(milestone: SubcontractPaymentMilestoneApi): SubcontractPaymentMilestone {
+  return {
+    id: milestone.id,
+    milestoneNo: milestone.milestone_no,
+    orderId: milestone.subcontract_order_id,
+    orderNo: milestone.subcontract_order_no,
+    factoryId: milestone.factory_id,
+    factoryCode: milestone.factory_code,
+    factoryName: milestone.factory_name,
+    kind: milestone.kind,
+    status: milestone.status,
+    amount: milestone.amount,
+    currencyCode: milestone.currency_code,
+    note: milestone.note,
+    approvedExceptionId: milestone.approved_exception_id,
+    recordedBy: milestone.recorded_by,
+    recordedAt: milestone.recorded_at,
+    readyBy: milestone.ready_by,
+    readyAt: milestone.ready_at,
+    blockedBy: milestone.blocked_by,
+    blockedAt: milestone.blocked_at,
+    blockReason: milestone.block_reason,
+    createdAt: milestone.created_at,
+    updatedAt: milestone.updated_at,
+    version: milestone.version
   };
 }
 
@@ -1233,6 +1381,33 @@ function toApiCreateInput(input: CreateSubcontractOrderInput): CreateSubcontract
     claim_window_days: 7,
     expected_receipt_date: input.expectedDeliveryDate,
     material_lines: [toApiMaterialLineInput(input)]
+  };
+}
+
+function toApiRecordDepositInput(input: RecordSubcontractDepositInput): RecordSubcontractDepositApiRequest {
+  return {
+    expected_version: input.order.version,
+    milestone_id: input.milestoneId,
+    milestone_no: input.milestoneNo,
+    amount: normalizeDecimalInput(input.amount, decimalScales.money),
+    recorded_by: input.recordedBy,
+    recorded_at: input.recordedAt,
+    note: input.note
+  };
+}
+
+function toApiMarkFinalPaymentReadyInput(
+  input: MarkSubcontractFinalPaymentReadyInput
+): MarkSubcontractFinalPaymentReadyApiRequest {
+  return {
+    expected_version: input.order.version,
+    milestone_id: input.milestoneId,
+    milestone_no: input.milestoneNo,
+    amount: input.amount ? normalizeDecimalInput(input.amount, decimalScales.money) : undefined,
+    ready_by: input.readyBy,
+    ready_at: input.readyAt,
+    approved_exception_id: input.approvedExceptionId,
+    note: input.note
   };
 }
 
@@ -1965,6 +2140,159 @@ function addPrototypeSubcontractFactoryClaimEvidence(
   return updated;
 }
 
+function recordPrototypeSubcontractDeposit(
+  input: RecordSubcontractDepositInput
+): SubcontractPaymentMilestoneResult {
+  const stored = getPrototypeSubcontractOrder(input.order.id);
+  const current = input.order.version >= stored.version ? input.order : stored;
+  if (input.order.version && input.order.version !== current.version) {
+    throw new Error("Subcontract order version changed");
+  }
+  if (current.status !== "factory_confirmed") {
+    throw new Error(`Cannot record deposit from ${formatSubcontractOrderStatus(current.status)}`);
+  }
+  const amount = normalizeDecimalInput(input.amount, decimalScales.money);
+  if (toScaledBigInt(amount, decimalScales.money) <= BigInt(0)) {
+    throw new Error("Deposit amount must be greater than zero");
+  }
+
+  const recordedAt = input.recordedAt || new Date().toISOString();
+  const milestone = createPaymentMilestoneRecord({
+    id: input.milestoneId,
+    milestoneNo: input.milestoneNo,
+    order: current,
+    kind: "deposit",
+    status: "recorded",
+    amount,
+    actorId: input.recordedBy || "finance-user",
+    changedAt: recordedAt,
+    note: input.note
+  });
+  const order = createSubcontractOrderRecord({
+    ...current,
+    status: "deposit_recorded",
+    depositStatus: "paid",
+    depositAmount: Number(amount),
+    finalPaymentStatus: "pending",
+    updatedAt: recordedAt,
+    version: current.version + 1
+  });
+  const auditLog = createPaymentMilestoneAuditLog(order, milestone, current.status, order.status);
+  order.auditLogIds = [...order.auditLogIds, auditLog.id];
+  prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== order.id)];
+  prototypePaymentMilestoneStore = [
+    milestone,
+    ...prototypePaymentMilestoneStore.filter((candidate) => candidate.id !== milestone.id)
+  ];
+
+  return {
+    order,
+    milestone,
+    auditLog,
+    auditLogId: auditLog.id
+  };
+}
+
+function markPrototypeSubcontractFinalPaymentReady(
+  input: MarkSubcontractFinalPaymentReadyInput
+): SubcontractPaymentMilestoneResult {
+  const stored = getPrototypeSubcontractOrder(input.order.id);
+  const current = input.order.version >= stored.version ? input.order : stored;
+  if (input.order.version && input.order.version !== current.version) {
+    throw new Error("Subcontract order version changed");
+  }
+  if (current.status !== "accepted") {
+    throw new Error(`Cannot mark final payment ready from ${formatSubcontractOrderStatus(current.status)}`);
+  }
+  const blockingClaims = prototypeFactoryClaimStore.filter(
+    (claim) => claim.orderId === current.id && claim.blocksFinalPayment && ["open", "acknowledged"].includes(claim.status)
+  );
+  if (blockingClaims.length > 0 && !input.approvedExceptionId?.trim()) {
+    throw new Error("Final payment is blocked by open factory claim");
+  }
+
+  const amount = normalizeDecimalInput(input.amount || current.estimatedCostAmount, decimalScales.money);
+  if (toScaledBigInt(amount, decimalScales.money) <= BigInt(0)) {
+    throw new Error("Final payment amount must be greater than zero");
+  }
+  const readyAt = input.readyAt || new Date().toISOString();
+  const milestone = createPaymentMilestoneRecord({
+    id: input.milestoneId,
+    milestoneNo: input.milestoneNo,
+    order: current,
+    kind: "final_payment",
+    status: "ready",
+    amount,
+    actorId: input.readyBy || "finance-user",
+    changedAt: readyAt,
+    note: input.note,
+    approvedExceptionId: input.approvedExceptionId
+  });
+  const order = createSubcontractOrderRecord({
+    ...current,
+    status: "final_payment_ready",
+    finalPaymentStatus: "pending",
+    updatedAt: readyAt,
+    version: current.version + 1
+  });
+  const auditLog = createPaymentMilestoneAuditLog(order, milestone, current.status, order.status);
+  order.auditLogIds = [...order.auditLogIds, auditLog.id];
+  prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== order.id)];
+  prototypePaymentMilestoneStore = [
+    milestone,
+    ...prototypePaymentMilestoneStore.filter((candidate) => candidate.id !== milestone.id)
+  ];
+
+  return {
+    order,
+    milestone,
+    auditLog,
+    auditLogId: auditLog.id
+  };
+}
+
+function createPaymentMilestoneRecord(input: {
+  id?: string;
+  milestoneNo?: string;
+  order: SubcontractOrder;
+  kind: SubcontractPaymentMilestoneKind;
+  status: SubcontractPaymentMilestoneStatus;
+  amount: string;
+  actorId: string;
+  changedAt: string;
+  note?: string;
+  approvedExceptionId?: string;
+}): SubcontractPaymentMilestone {
+  const sequence = prototypePaymentMilestoneSequence++;
+  const id = input.id || `spm-${input.order.id}-${String(sequence).padStart(4, "0")}`;
+  const milestoneNo =
+    input.milestoneNo ||
+    `SPM-${input.kind === "deposit" ? "DEP" : "FINAL"}-260429-${String(sequence).padStart(4, "0")}`;
+
+  return {
+    id,
+    milestoneNo,
+    orderId: input.order.id,
+    orderNo: input.order.orderNo,
+    factoryId: input.order.factoryId,
+    factoryCode: input.order.factoryCode,
+    factoryName: input.order.factoryName,
+    kind: input.kind,
+    status: input.status,
+    amount: input.amount,
+    currencyCode: "VND",
+    note: input.note,
+    approvedExceptionId: input.approvedExceptionId,
+    recordedBy: input.kind === "deposit" ? input.actorId : undefined,
+    recordedAt: input.kind === "deposit" ? input.changedAt : undefined,
+    readyBy: input.kind === "final_payment" ? input.actorId : undefined,
+    readyAt: input.kind === "final_payment" ? input.changedAt : undefined,
+    createdAt: input.changedAt,
+    updatedAt: input.changedAt,
+    version: 1
+  };
+}
+
 function latestPrototypeSampleApproval(orderId: string, sampleApprovalId?: string) {
   const samples = prototypeSampleApprovalStore.filter((sample) =>
     sampleApprovalId ? sample.id === sampleApprovalId : sample.orderId === orderId
@@ -2190,6 +2518,43 @@ function createFactoryClaimAuditLog(
       evidence_count: claim.evidence.length
     },
     createdAt: claim.openedAt || prototypeNow
+  };
+}
+
+function createPaymentMilestoneAuditLog(
+  order: SubcontractOrder,
+  milestone: SubcontractPaymentMilestone,
+  beforeStatus: SubcontractOrderStatus,
+  afterStatus: SubcontractOrderStatus,
+  auditLogId?: string
+): AuditLogItem {
+  const id = auditLogId ?? `audit-subcontract-payment-${String(subcontractAuditSequence++).padStart(4, "0")}`;
+
+  return {
+    id,
+    actorId: milestone.recordedBy || milestone.readyBy || "finance-user",
+    action: milestone.kind === "deposit" ? "subcontract.deposit_recorded" : "subcontract.final_payment_ready",
+    entityType: "subcontract_order",
+    entityId: order.id,
+    requestId: `req_${id}`,
+    beforeData: {
+      status: beforeStatus
+    },
+    afterData: {
+      status: afterStatus,
+      payment_milestone_no: milestone.milestoneNo,
+      payment_milestone_kind: milestone.kind,
+      payment_milestone_status: milestone.status,
+      amount: milestone.amount,
+      currency_code: milestone.currencyCode,
+      approved_exception_id: milestone.approvedExceptionId ?? ""
+    },
+    metadata: {
+      order_no: order.orderNo,
+      factory: order.factoryName,
+      note: milestone.note ?? ""
+    },
+    createdAt: milestone.recordedAt || milestone.readyAt || milestone.updatedAt || prototypeNow
   };
 }
 

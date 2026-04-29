@@ -28,8 +28,10 @@ import {
   getSubcontractOrder,
   getSubcontractOrders,
   issueSubcontractMaterials,
+  markSubcontractFinalPaymentReady,
   prototypeSubcontractOrders,
   receiveSubcontractFinishedGoods,
+  recordSubcontractDeposit,
   rejectSubcontractSample,
   startMassProductionSubcontractOrder,
   subcontractFactoryClaimSlaLabel,
@@ -56,6 +58,7 @@ import type {
   SubcontractMaterialTransfer,
   SubcontractOrder,
   SubcontractOrderStatus,
+  SubcontractPaymentMilestone,
   SubcontractSampleApproval,
   SubcontractStockMovement
 } from "../types";
@@ -224,6 +227,13 @@ export function SubcontractOrderPrototype() {
   const [claimFeedback, setClaimFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
   const [isSavingClaim, setIsSavingClaim] = useState(false);
   const [isAddingClaimEvidence, setIsAddingClaimEvidence] = useState(false);
+  const [paymentMilestones, setPaymentMilestones] = useState<SubcontractPaymentMilestone[]>([]);
+  const [paymentDepositAmount, setPaymentDepositAmount] = useState("5000000");
+  const [finalPaymentAmount, setFinalPaymentAmount] = useState("");
+  const [paymentApprovedExceptionId, setPaymentApprovedExceptionId] = useState("");
+  const [paymentFeedback, setPaymentFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
+  const [isRecordingDeposit, setIsRecordingDeposit] = useState(false);
+  const [isMarkingFinalPayment, setIsMarkingFinalPayment] = useState(false);
   const summary = useMemo(() => summarizeSubcontractOrders(orders), [orders]);
   const transferSummary = useMemo(() => summarizeSubcontractMaterialTransfers(transfers), [transfers]);
   const orderColumns = useMemo(() => subcontractOrderColumns(handleOpenOrder), []);
@@ -269,10 +279,19 @@ export function SubcontractOrderPrototype() {
     ? factoryClaims.filter((claim) => claim.orderId === selectedOrder.id)
     : [];
   const latestFactoryClaim = selectedFactoryClaims[0] ?? null;
+  const selectedPaymentMilestones = selectedOrder
+    ? paymentMilestones.filter((milestone) => milestone.orderId === selectedOrder.id)
+    : [];
+  const latestPaymentMilestone = selectedPaymentMilestones[0] ?? null;
+  const hasBlockingPaymentClaim = selectedFactoryClaims.some(
+    (claim) => claim.blocksFinalPayment && ["open", "acknowledged"].includes(claim.status)
+  );
   const canCreateFactoryClaim =
     !!selectedOrder &&
     !!latestFinishedGoodsReceipt &&
     ["finished_goods_received", "qc_in_progress"].includes(selectedOrder.status);
+  const canRecordDeposit = selectedOrder?.status === "factory_confirmed";
+  const canMarkFinalPaymentReady = selectedOrder?.status === "accepted";
   const canIssueSelectedOrder =
     selectedOrder?.status === "factory_confirmed" || selectedOrder?.status === "deposit_recorded";
   const canSubmitSample =
@@ -295,6 +314,9 @@ export function SubcontractOrderPrototype() {
     setExpectedDeliveryDate(selectedOrder.expectedDeliveryDate);
     setDepositStatus(selectedOrder.depositStatus);
     setDepositAmount(selectedOrder.depositAmount ? String(selectedOrder.depositAmount) : "");
+    setPaymentDepositAmount(selectedOrder.depositAmount ? String(selectedOrder.depositAmount) : "5000000");
+    setFinalPaymentAmount(selectedOrder.estimatedCostAmount || "");
+    setPaymentApprovedExceptionId("");
     if (firstLine) {
       setMaterialItemId(firstLine.itemId);
       setMaterialQty(firstLine.plannedQty);
@@ -853,6 +875,79 @@ export function SubcontractOrderPrototype() {
       });
     } finally {
       setIsAddingClaimEvidence(false);
+    }
+  }
+
+  async function handleRecordDeposit() {
+    if (!selectedOrder) {
+      return;
+    }
+
+    try {
+      setIsRecordingDeposit(true);
+      const result = await recordSubcontractDeposit({
+        order: selectedOrder,
+        amount: paymentDepositAmount,
+        recordedBy: "finance-user",
+        recordedAt: new Date().toISOString(),
+        note: "Deposit transfer confirmed"
+      });
+
+      setOrders((current) => [result.order, ...current.filter((order) => order.id !== result.order.id)]);
+      setSelectedOrderId(result.order.id);
+      setPaymentMilestones((current) => [
+        result.milestone,
+        ...current.filter((milestone) => milestone.id !== result.milestone.id)
+      ]);
+      setLastAudit(result.auditLog);
+      setPaymentFeedback({
+        tone: "success",
+        message: `${result.milestone.milestoneNo} recorded`
+      });
+    } catch (error) {
+      setPaymentFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "Deposit could not be recorded"
+      });
+    } finally {
+      setIsRecordingDeposit(false);
+    }
+  }
+
+  async function handleMarkFinalPaymentReady() {
+    if (!selectedOrder) {
+      return;
+    }
+
+    try {
+      setIsMarkingFinalPayment(true);
+      const result = await markSubcontractFinalPaymentReady({
+        order: selectedOrder,
+        amount: finalPaymentAmount,
+        readyBy: "finance-user",
+        readyAt: new Date().toISOString(),
+        approvedExceptionId: paymentApprovedExceptionId,
+        note: "Accepted goods cleared for final payment"
+      });
+
+      setOrders((current) => [result.order, ...current.filter((order) => order.id !== result.order.id)]);
+      setSelectedOrderId(result.order.id);
+      setPaymentMilestones((current) => [
+        result.milestone,
+        ...current.filter((milestone) => milestone.id !== result.milestone.id)
+      ]);
+      setLastAudit(result.auditLog);
+      setPaymentFeedback({
+        tone: "success",
+        message: `${result.milestone.milestoneNo} ready`
+      });
+    } catch (error) {
+      setPaymentFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "Final payment could not be marked ready"
+      });
+    } finally {
+      setIsMarkingFinalPayment(false);
     }
   }
 
@@ -1796,6 +1891,118 @@ export function SubcontractOrderPrototype() {
         </div>
       </section>
 
+      <section className="erp-subcontract-quality-grid" id="subcontract-payment">
+        <div className="erp-card erp-card--padded erp-subcontract-card">
+          <div className="erp-section-header">
+            <h2 className="erp-section-title">Payment milestone</h2>
+            <StatusChip tone={latestPaymentMilestone ? paymentMilestoneTone(latestPaymentMilestone.status) : "normal"}>
+              {latestPaymentMilestone ? formatPaymentMilestoneStatus(latestPaymentMilestone.status) : "No milestone"}
+            </StatusChip>
+          </div>
+
+          <div className="erp-subcontract-fact-grid">
+            <SubcontractFact
+              label="Deposit"
+              value={selectedOrder ? formatSubcontractDepositStatus(selectedOrder.depositStatus) : "-"}
+            />
+            <SubcontractFact
+              label="Deposit amount"
+              value={selectedOrder?.depositAmount ? formatMoney(selectedOrder.depositAmount) : "-"}
+            />
+            <SubcontractFact
+              label="Final payment"
+              value={selectedOrder ? formatFinalPaymentStatus(selectedOrder.finalPaymentStatus) : "-"}
+            />
+            <SubcontractFact label="Factory claim" value={hasBlockingPaymentClaim ? "Payment hold" : "Clear"} />
+          </div>
+
+          <div className="erp-subcontract-claim-controls">
+            <label className="erp-field">
+              <span>Deposit amount</span>
+              <input
+                className="erp-input"
+                inputMode="decimal"
+                type="text"
+                value={paymentDepositAmount}
+                onChange={(event) => setPaymentDepositAmount(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Final amount</span>
+              <input
+                className="erp-input"
+                inputMode="decimal"
+                type="text"
+                value={finalPaymentAmount}
+                onChange={(event) => setFinalPaymentAmount(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Approved exception</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={paymentApprovedExceptionId}
+                onChange={(event) => setPaymentApprovedExceptionId(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="erp-subcontract-actions">
+            <button
+              className="erp-button erp-button--primary"
+              type="button"
+              disabled={!selectedOrder || !canRecordDeposit || isRecordingDeposit || paymentDepositAmount.trim() === ""}
+              onClick={handleRecordDeposit}
+            >
+              Record deposit
+            </button>
+            <button
+              className="erp-button erp-button--secondary"
+              type="button"
+              disabled={
+                !selectedOrder ||
+                !canMarkFinalPaymentReady ||
+                isMarkingFinalPayment ||
+                finalPaymentAmount.trim() === "" ||
+                (hasBlockingPaymentClaim && paymentApprovedExceptionId.trim() === "")
+              }
+              onClick={handleMarkFinalPaymentReady}
+            >
+              Mark final ready
+            </button>
+            {paymentFeedback ? <StatusChip tone={paymentFeedback.tone}>{paymentFeedback.message}</StatusChip> : null}
+          </div>
+        </div>
+
+        <div className="erp-card erp-card--padded erp-subcontract-card">
+          <div className="erp-section-header">
+            <h2 className="erp-section-title">Payment result</h2>
+            <StatusChip tone={selectedPaymentMilestones.length > 0 ? "info" : "normal"}>
+              {selectedPaymentMilestones.length} milestones
+            </StatusChip>
+          </div>
+
+          {selectedPaymentMilestones.length > 0 ? (
+            <div className="erp-subcontract-claim-list">
+              {selectedPaymentMilestones.map((milestone) => (
+                <div className="erp-subcontract-claim-item" key={milestone.id}>
+                  <strong>{milestone.milestoneNo}</strong>
+                  <span>{milestone.kind === "deposit" ? "Deposit" : "Final payment"}</span>
+                  <span>{formatMoney(milestone.amount)}</span>
+                  <span>{(milestone.recordedAt || milestone.readyAt || milestone.updatedAt).slice(0, 10)}</span>
+                  <StatusChip tone={paymentMilestoneTone(milestone.status)}>
+                    {formatPaymentMilestoneStatus(milestone.status)}
+                  </StatusChip>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="erp-subcontract-empty-state">No payment milestone recorded</div>
+          )}
+        </div>
+      </section>
+
       <section className="erp-card erp-card--padded erp-subcontract-audit-card">
         <div className="erp-section-header">
           <h2 className="erp-section-title">Status audit</h2>
@@ -1884,8 +2091,8 @@ function fromScaledBigInt(value: bigint, scale: number) {
   return `${integer}${fraction}`;
 }
 
-function formatMoney(value: number) {
-  return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value)} VND`;
+function formatMoney(value: number | string) {
+  return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Number(value))} VND`;
 }
 
 function subcontractQcLabel(order: SubcontractOrder) {
@@ -1928,6 +2135,37 @@ function formatFinalPaymentStatus(status: SubcontractFinalPaymentStatus) {
     case "pending":
     default:
       return "Pending";
+  }
+}
+
+function formatPaymentMilestoneStatus(status: SubcontractPaymentMilestone["status"]) {
+  switch (status) {
+    case "recorded":
+      return "Recorded";
+    case "ready":
+      return "Ready";
+    case "blocked":
+      return "Blocked";
+    case "cancelled":
+      return "Cancelled";
+    case "pending":
+    default:
+      return "Pending";
+  }
+}
+
+function paymentMilestoneTone(status: SubcontractPaymentMilestone["status"]): StatusTone {
+  switch (status) {
+    case "recorded":
+    case "ready":
+      return "success";
+    case "blocked":
+      return "danger";
+    case "cancelled":
+      return "normal";
+    case "pending":
+    default:
+      return "warning";
   }
 }
 
