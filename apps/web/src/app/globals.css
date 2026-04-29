@@ -1896,6 +1896,193 @@ textarea {
   background: var(--erp-danger-bg);
 }
 
+.erp-purchase-page {
+  display: grid;
+  gap: 16px;
+}
+
+.erp-purchase-page > * {
+  min-width: 0;
+}
+
+.erp-purchase-page .erp-page-header {
+  margin-bottom: 0;
+}
+
+.erp-purchase-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(160px, 220px) minmax(200px, 260px) minmax(200px, 260px);
+  gap: 12px;
+  align-items: end;
+  min-width: 0;
+  padding: 12px;
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-purchase-kpis {
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+}
+
+.erp-purchase-workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.9fr) minmax(460px, 1.1fr);
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+.erp-purchase-create,
+.erp-purchase-detail {
+  min-width: 0;
+}
+
+.erp-purchase-form-grid,
+.erp-purchase-line-editor {
+  display: grid;
+  gap: 12px;
+  align-items: end;
+}
+
+.erp-purchase-form-grid {
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+}
+
+.erp-purchase-line-editor {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.erp-purchase-line-editor .erp-field:first-child,
+.erp-purchase-line-editor .erp-button {
+  grid-column: 1 / -1;
+}
+
+.erp-purchase-line-editor .erp-button {
+  justify-self: end;
+}
+
+.erp-purchase-note-field {
+  grid-column: span 2;
+}
+
+.erp-purchase-draft-lines {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.erp-purchase-draft-lines li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-purchase-draft-lines span,
+.erp-purchase-draft-lines strong,
+.erp-purchase-draft-lines small,
+.erp-purchase-order-cell strong,
+.erp-purchase-order-cell small {
+  overflow-wrap: anywhere;
+}
+
+.erp-purchase-draft-lines span,
+.erp-purchase-order-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.erp-purchase-draft-lines small,
+.erp-purchase-order-cell small,
+.erp-purchase-empty-line,
+.erp-purchase-feedback {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-purchase-empty-line {
+  margin: 14px 0 0;
+}
+
+.erp-purchase-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.erp-purchase-fact {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-purchase-fact span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+}
+
+.erp-purchase-fact strong {
+  overflow-wrap: anywhere;
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-body);
+}
+
+.erp-purchase-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.erp-purchase-subsection {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.erp-purchase-subsection .erp-section-title {
+  font-size: var(--erp-font-size-body);
+}
+
+.erp-purchase-feedback {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-purchase-feedback--success {
+  color: var(--erp-success);
+  background: var(--erp-success-bg);
+}
+
+.erp-purchase-feedback--warning {
+  color: var(--erp-warning);
+  background: var(--erp-warning-bg);
+}
+
+.erp-purchase-feedback--danger {
+  color: var(--erp-danger);
+  background: var(--erp-danger-bg);
+}
+
 .erp-receiving-page {
   display: grid;
   gap: 16px;
@@ -3645,6 +3832,13 @@ textarea {
   .erp-sales-line-editor,
   .erp-sales-draft-lines li,
   .erp-sales-detail-grid,
+  .erp-purchase-toolbar,
+  .erp-purchase-kpis,
+  .erp-purchase-workspace,
+  .erp-purchase-form-grid,
+  .erp-purchase-line-editor,
+  .erp-purchase-draft-lines li,
+  .erp-purchase-detail-grid,
   .erp-receiving-toolbar,
   .erp-receiving-kpis,
   .erp-receiving-workspace,
@@ -3678,7 +3872,8 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .erp-sales-note-field {
+  .erp-sales-note-field,
+  .erp-purchase-note-field {
     grid-column: auto;
   }
 
@@ -3687,6 +3882,7 @@ textarea {
   .erp-picking-exception-actions,
   .erp-packing-exception-actions,
   .erp-sales-actions,
+  .erp-purchase-actions,
   .erp-receiving-actions,
   .erp-returns-actions,
   .erp-subcontract-actions {
@@ -3698,6 +3894,7 @@ textarea {
   .erp-picking-exception-actions .erp-button,
   .erp-packing-exception-actions .erp-button,
   .erp-sales-actions .erp-button,
+  .erp-purchase-actions .erp-button,
   .erp-receiving-actions .erp-button,
   .erp-returns-actions .erp-button,
   .erp-subcontract-actions .erp-button {

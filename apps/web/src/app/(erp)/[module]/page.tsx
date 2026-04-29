@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { AuditLogPrototype } from "@/modules/audit/components/AuditLogPrototype";
 import { AvailableStockPrototype } from "@/modules/inventory/components/AvailableStockPrototype";
 import { MasterDataPrototype } from "@/modules/masterdata/components/MasterDataPrototype";
+import { PurchaseOrderPrototype } from "@/modules/purchase/components/PurchaseOrderPrototype";
 import { WarehouseReceivingPrototype } from "@/modules/receiving/components/WarehouseReceivingPrototype";
 import { ReturnReceivingPrototype } from "@/modules/returns/components/ReturnReceivingPrototype";
 import { SalesOrderPrototype } from "@/modules/sales/components/SalesOrderPrototype";
@@ -43,6 +44,10 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
 
   if (module === "receiving") {
     return <WarehouseReceivingPrototype />;
+  }
+
+  if (module === "purchase") {
+    return <PurchaseOrderPrototype />;
   }
 
   if (module === "shipping") {
