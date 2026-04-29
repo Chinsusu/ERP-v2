@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { StatusChip, type StatusTone } from "@/shared/design-system/components";
+import { AttachmentPanel, type AttachmentPanelItem } from "@/shared/design-system/pageTemplates";
 import {
   applyDispositionToReceipt,
   applyInspectionToReceipt,
@@ -48,6 +49,30 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
   const selectedReceipt = useMemo(
     () => receipts.find((receipt) => receipt.id === selectedReceiptId) ?? receipts[0] ?? null,
     [receipts, selectedReceiptId]
+  );
+  const attachmentItems = useMemo<AttachmentPanelItem[]>(
+    () =>
+      attachmentResult
+        ? [
+            {
+              id: attachmentResult.id,
+              name: attachmentResult.fileName,
+              kind: attachmentResult.mimeType,
+              uploadedBy: attachmentResult.uploadedBy,
+              uploadedAt: attachmentResult.uploadedAt,
+              detail: `${attachmentResult.fileSizeBytes} bytes`,
+              storageKey: attachmentResult.storageKey,
+              status: <StatusChip tone="success">{attachmentResult.status}</StatusChip>,
+              canDownload: true,
+              onDownload: () =>
+                setLookupFeedback({
+                  tone: "info",
+                  message: attachmentResult.storageKey
+                })
+            }
+          ]
+        : [],
+    [attachmentResult]
   );
 
   useEffect(() => {
@@ -376,14 +401,11 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
             <ReturnInspectionFact label="Action" value={dispositionAction.actionCode} />
           </div>
         ) : null}
-        {attachmentResult ? (
-          <div className="erp-returns-result-grid erp-returns-disposition-result">
-            <ReturnInspectionFact label="Attachment" value={attachmentResult.fileName} />
-            <ReturnInspectionFact label="Type" value={attachmentResult.mimeType} />
-            <ReturnInspectionFact label="Size" value={`${attachmentResult.fileSizeBytes} bytes`} />
-            <ReturnInspectionFact label="Audit" value={attachmentResult.auditLogId ?? "-"} />
-          </div>
-        ) : null}
+        <AttachmentPanel
+          title="Inspection attachments"
+          items={attachmentItems}
+          emptyMessage="Attach inspection evidence after recording the result."
+        />
       </div>
     </section>
   );

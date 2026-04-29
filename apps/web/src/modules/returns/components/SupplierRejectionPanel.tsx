@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { DataTable, EmptyState, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
+import { AttachmentPanel, type AttachmentPanelItem } from "@/shared/design-system/pageTemplates";
 import { getAuditLogs, auditActionTone, compactAuditPayload } from "@/modules/audit/services/auditLogService";
 import type { AuditLogItem } from "@/modules/audit/types";
 import { useSupplierRejections } from "../hooks/useSupplierRejections";
@@ -141,6 +142,24 @@ export function SupplierRejectionPanel() {
   const selectedRejection =
     visibleRejections.find((rejection) => rejection.id === selectedRejectionId) ?? visibleRejections[0] ?? null;
   const totals = summarizeSupplierRejections(visibleRejections);
+  const selectedAttachmentItems = useMemo<AttachmentPanelItem[]>(
+    () =>
+      selectedRejection?.attachments.map((attachment) => ({
+        id: attachment.id,
+        name: attachment.fileName,
+        kind: attachment.contentType ?? "Evidence",
+        uploadedBy: attachment.uploadedBy ?? selectedRejection.updatedBy,
+        uploadedAt: attachment.uploadedAt ?? selectedRejection.updatedAt,
+        storageKey: attachment.objectKey,
+        status: <StatusChip tone="info">{attachment.source ?? "rejection"}</StatusChip>,
+        canDownload: true,
+        canDelete: selectedRejection.status === "draft",
+        deleteLabel: "Remove",
+        onDownload: () => setFeedback({ tone: "info", message: attachment.objectKey }),
+        onDelete: () => removeSelectedAttachment(attachment.id)
+      })) ?? [],
+    [selectedRejection]
+  );
 
   useEffect(() => {
     setRejectedQuantity(selectedSample.rejectedQuantity);
@@ -270,6 +289,19 @@ export function SupplierRejectionPanel() {
     }
   }
 
+  function removeSelectedAttachment(attachmentId: string) {
+    if (!selectedRejection || selectedRejection.status !== "draft") {
+      return;
+    }
+
+    const updated = {
+      ...selectedRejection,
+      attachments: selectedRejection.attachments.filter((attachment) => attachment.id !== attachmentId)
+    };
+    setLocalRejections((current) => upsertSupplierRejection(current, updated));
+    setFeedback({ tone: "warning", message: "Attachment removed from draft view" });
+  }
+
   return (
     <section className="erp-supplier-rejection-panel" id="supplier-rejections">
       <div className="erp-card erp-card--padded erp-supplier-rejection-form-card">
@@ -378,22 +410,21 @@ export function SupplierRejectionPanel() {
                 value={formatSupplierRejectionQuantity(totalRejectedQuantity(selectedRejection), selectedRejection.lines[0]?.baseUOMCode)}
               />
             </div>
-            <div className="erp-supplier-rejection-evidence">
-              <strong>Evidence</strong>
-              {selectedRejection.attachments.length > 0 ? (
-                selectedRejection.attachments.map((attachment) => (
-                  <span key={attachment.id}>
-                    {attachment.fileName}
-                    <small>{attachment.objectKey}</small>
-                  </span>
-                ))
-              ) : (
-                <small>No attachment metadata</small>
-              )}
-            </div>
+            <AttachmentPanel
+              title="Supplier rejection attachments"
+              items={selectedAttachmentItems}
+              emptyMessage="No supplier rejection evidence attached."
+            />
           </>
         ) : (
-          <EmptyState title="No supplier rejection selected" />
+          <>
+            <EmptyState title="No supplier rejection selected" />
+            <AttachmentPanel
+              title="Supplier rejection attachments"
+              items={[]}
+              emptyMessage="No supplier rejection evidence attached."
+            />
+          </>
         )}
       </div>
 

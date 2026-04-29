@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { DataTable, EmptyState, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
+import { AttachmentPanel, type AttachmentPanelItem } from "@/shared/design-system/pageTemplates";
 import { useGoodsReceipts } from "../../receiving/hooks/useGoodsReceipts";
 import {
   formatReceivingDateTime,
@@ -93,6 +94,24 @@ export function InboundQCPrototype() {
     visibleInspections[0] ??
     null;
   const totals = summarizeInspections(visibleInspections);
+  const qcAttachmentItems = useMemo<AttachmentPanelItem[]>(
+    () =>
+      splitEvidenceRefs(evidenceRefs).map((ref, index) => ({
+        id: `qc-evidence-${index}-${ref}`,
+        name: ref,
+        kind: ref.toLowerCase().endsWith(".pdf") ? "Document" : "QC evidence",
+        uploadedBy: inspectorId,
+        uploadedAt: selectedInspection?.updatedAt ?? new Date().toISOString(),
+        storageKey: selectedInspection ? `inbound-qc/${selectedInspection.id}/${ref}` : ref,
+        status: <StatusChip tone="info">reference</StatusChip>,
+        canDownload: true,
+        canDelete: selectedInspection?.status !== "completed",
+        deleteLabel: "Remove",
+        onDownload: () => setFeedback({ tone: "info", message: ref }),
+        onDelete: () => removeEvidenceRef(ref)
+      })),
+    [evidenceRefs, inspectorId, selectedInspection?.id, selectedInspection?.status, selectedInspection?.updatedAt]
+  );
   const selectedLineColumns = useMemo<DataTableColumn<InspectableReceivingLine>[]>(
     () => [
       {
@@ -362,6 +381,10 @@ export function InboundQCPrototype() {
     setChecklistDraft((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
+  function removeEvidenceRef(ref: string) {
+    setEvidenceRefs((current) => splitEvidenceRefs(current).filter((candidate) => candidate !== ref).join(", "));
+  }
+
   function upsertInspection(inspection: InboundQCInspection) {
     setLocalInspections((current) => [inspection, ...current.filter((candidate) => candidate.id !== inspection.id)]);
     setSelectedInspectionId(inspection.id);
@@ -590,6 +613,12 @@ export function InboundQCPrototype() {
                 </label>
               </div>
 
+              <AttachmentPanel
+                title="QC attachments"
+                items={qcAttachmentItems}
+                emptyMessage="No COA, MSDS, or QC evidence refs attached."
+              />
+
               <div className="erp-qc-actions">
                 <button
                   className="erp-button erp-button--secondary"
@@ -634,7 +663,14 @@ export function InboundQCPrototype() {
               </div>
             </>
           ) : (
-            <EmptyState title="No inbound QC inspection selected" description="Create one from an inspection-ready receiving line." />
+            <>
+              <EmptyState title="No inbound QC inspection selected" description="Create one from an inspection-ready receiving line." />
+              <AttachmentPanel
+                title="QC attachments"
+                items={qcAttachmentItems}
+                emptyMessage="No COA, MSDS, or QC evidence refs attached."
+              />
+            </>
           )}
         </div>
       </section>
@@ -734,6 +770,13 @@ function createInspectionNote(row: InspectableReceivingLine, evidenceRefs: strin
 
 function decisionNoteWithEvidence(note: string, evidenceRefs: string) {
   return [note.trim(), evidenceRefs.trim() ? `Evidence refs: ${evidenceRefs.trim()}` : ""].filter(Boolean).join("\n");
+}
+
+function splitEvidenceRefs(value: string) {
+  return value
+    .split(/[\n,]+/)
+    .map((ref) => ref.trim())
+    .filter(Boolean);
 }
 
 function cloneChecklist(items: InboundQCChecklistItem[]) {
