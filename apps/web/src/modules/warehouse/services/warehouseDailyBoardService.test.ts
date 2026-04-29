@@ -15,12 +15,14 @@ import {
 import { resetPrototypeStockAdjustmentsForTest } from "../../inventory/services/stockAdjustmentService";
 import {
   buildWarehouseFulfillmentDrillDownHref,
+  buildWarehouseInboundDrillDownHref,
   buildWarehouseQueueDrillDownHref,
   buildWarehouseShiftClosingDrillDownHref,
   closeEndOfDayReconciliation,
   composeWarehouseDailyBoard,
   getEndOfDayReconciliations,
   getWarehouseFulfillmentMetrics,
+  getWarehouseInboundMetrics,
   getWarehouseDailyBoard,
   prototypeEndOfDayReconciliations,
   prototypeWarehouseDailyTasks,
@@ -297,6 +299,119 @@ describe("warehouseDailyBoardService", () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("carrier_code=GHN"))).toBe(true);
   });
 
+  it("loads inbound metrics from the daily board API using the stock warehouse scope", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/warehouse/daily-board/inbound-metrics")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              success: true,
+              request_id: "req-inbound-metrics",
+              data: {
+                warehouse_id: "wh-hcm-fg",
+                date: "2026-04-29",
+                shift_code: "day",
+                purchase_orders_incoming: 4,
+                receiving_pending: 3,
+                receiving_draft: 1,
+                receiving_submitted: 1,
+                receiving_inspect_ready: 1,
+                qc_hold: 1,
+                qc_fail: 1,
+                qc_pass: 2,
+                qc_partial: 1,
+                supplier_rejections: 1,
+                supplier_rejection_draft: 0,
+                supplier_rejection_submitted: 1,
+                supplier_rejection_confirmed: 0,
+                supplier_rejection_cancelled: 0,
+                generated_at: "2026-04-29T10:00:00Z"
+              }
+            }),
+            { status: 200 }
+          )
+        );
+      }
+
+      return Promise.reject(new Error("offline"));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      getWarehouseInboundMetrics({
+        warehouseId: "wh-hcm",
+        date: "2026-04-29",
+        shiftCode: "day"
+      })
+    ).resolves.toMatchObject({
+      warehouseId: "wh-hcm-fg",
+      purchaseOrdersIncoming: 4,
+      receivingPending: 3,
+      qcFail: 1,
+      supplierRejections: 1
+    });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("warehouse_id=wh-hcm-fg"))).toBe(true);
+  });
+
+  it("composes daily board inbound metrics returned by the API", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/warehouse/daily-board/inbound-metrics")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                success: true,
+                request_id: "req-board-inbound",
+                data: {
+                  warehouse_id: "wh-hcm-fg",
+                  date: "2026-04-29",
+                  shift_code: "day",
+                  purchase_orders_incoming: 2,
+                  receiving_pending: 1,
+                  receiving_draft: 0,
+                  receiving_submitted: 1,
+                  receiving_inspect_ready: 0,
+                  qc_hold: 0,
+                  qc_fail: 1,
+                  qc_pass: 3,
+                  qc_partial: 0,
+                  supplier_rejections: 1,
+                  supplier_rejection_draft: 1,
+                  supplier_rejection_submitted: 0,
+                  supplier_rejection_confirmed: 0,
+                  supplier_rejection_cancelled: 0,
+                  generated_at: "2026-04-29T10:00:00Z"
+                }
+              }),
+              { status: 200 }
+            )
+          );
+        }
+
+        return Promise.reject(new Error("offline"));
+      })
+    );
+
+    await expect(
+      getWarehouseDailyBoard({
+        warehouseId: "wh-hcm",
+        date: "2026-04-29",
+        shiftCode: "day"
+      })
+    ).resolves.toMatchObject({
+      inbound: {
+        warehouseId: "wh-hcm-fg",
+        purchaseOrdersIncoming: 2,
+        receivingPending: 1,
+        qcFail: 1,
+        supplierRejections: 1
+      }
+    });
+  });
+
   it("keeps the board carrier filter aligned with fulfillment and handover tasks", () => {
     const board = composeWarehouseDailyBoard(
       { warehouseId: "wh-hcm", date: "2026-04-26", shiftCode: "day", carrierCode: "GHN" },
@@ -356,6 +471,25 @@ describe("warehouseDailyBoardService", () => {
     );
     expect(buildWarehouseFulfillmentDrillDownHref("missing", { carrierCode: "VTP" })).toBe(
       "/shipping?carrier_code=VTP&status=exception#carrier-manifest-list"
+    );
+  });
+
+  it("builds drill-down links for inbound metrics", () => {
+    expect(
+      buildWarehouseInboundDrillDownHref("purchase_orders_incoming", {
+        warehouseId: "wh-hcm",
+        date: "2026-04-29",
+        shiftCode: "day"
+      })
+    ).toBe("/purchase?warehouse_id=wh-hcm-fg&date=2026-04-29&status=approved#purchase-list");
+    expect(buildWarehouseInboundDrillDownHref("receiving_pending", { warehouseId: "wh-hcm" })).toBe(
+      "/receiving?warehouse_id=wh-hcm-fg&status=pending#receiving-list"
+    );
+    expect(buildWarehouseInboundDrillDownHref("qc_fail", { warehouseId: "wh-hcm", date: "2026-04-29" })).toBe(
+      "/qc?warehouse_id=wh-hcm-fg&date=2026-04-29&result=fail#qc-inspections"
+    );
+    expect(buildWarehouseInboundDrillDownHref("supplier_rejections", { warehouseId: "wh-hcm" })).toBe(
+      "/returns?warehouse_id=wh-hcm-fg&panel=supplier_rejections#supplier-rejections"
     );
   });
 

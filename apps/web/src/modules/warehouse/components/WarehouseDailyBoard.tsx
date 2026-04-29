@@ -14,6 +14,7 @@ import { useWarehouseDailyBoard } from "../hooks/useWarehouseDailyBoard";
 import { ShiftClosingPanel } from "./ShiftClosingPanel";
 import {
   buildWarehouseFulfillmentDrillDownHref,
+  buildWarehouseInboundDrillDownHref,
   buildWarehouseQueueDrillDownHref,
   buildWarehouseShiftClosingDrillDownHref,
   defaultWarehouseDailyBoardShiftCode,
@@ -22,8 +23,14 @@ import {
   warehouseOptions,
   warehouseTaskTone
 } from "../services/warehouseDailyBoardService";
-import type { WarehouseFulfillmentDrillDownKey } from "../services/warehouseDailyBoardService";
-import type { WarehouseDailyBoardQuery, WarehouseDailyShiftCode, WarehouseDailyTask, WarehouseDailyTaskStatus } from "../types";
+import type { WarehouseFulfillmentDrillDownKey, WarehouseInboundDrillDownKey } from "../services/warehouseDailyBoardService";
+import type {
+  WarehouseDailyBoardQuery,
+  WarehouseDailyShiftCode,
+  WarehouseDailyTask,
+  WarehouseDailyTaskStatus,
+  WarehouseInboundMetrics
+} from "../types";
 
 type QueueFilter = "" | WarehouseDailyTaskStatus | "overdue";
 type QueueCardTarget = "task-board" | "drill-down";
@@ -130,6 +137,7 @@ export default function WarehouseDailyBoard() {
   const selectedCarrierLabel = carrierOptions.find((option) => option.value === carrierCode)?.label ?? "All carriers";
   const activeQueueLabel = queueLabel(queueFilter);
   const fulfillment = board?.fulfillment;
+  const inbound = board?.inbound;
   const fulfillmentCards: {
     key: WarehouseFulfillmentDrillDownKey;
     label: string;
@@ -185,6 +193,71 @@ export default function WarehouseDailyBoard() {
       value: fulfillment?.handoverOrders ?? 0,
       tone: "success",
       href: buildWarehouseFulfillmentDrillDownHref("handover", query)
+    }
+  ];
+  const inboundCards: {
+    key: WarehouseInboundDrillDownKey;
+    label: string;
+    value: number;
+    tone: "normal" | "success" | "warning" | "danger" | "info";
+    href: string;
+    chip: string;
+  }[] = [
+    {
+      key: "purchase_orders_incoming",
+      label: "PO incoming",
+      value: inbound?.purchaseOrdersIncoming ?? 0,
+      tone: "info",
+      href: buildWarehouseInboundDrillDownHref("purchase_orders_incoming", query),
+      chip: "PO"
+    },
+    {
+      key: "receiving_pending",
+      label: "Receiving pending",
+      value: inbound?.receivingPending ?? 0,
+      tone: "warning",
+      href: buildWarehouseInboundDrillDownHref("receiving_pending", query),
+      chip: "GRN"
+    },
+    {
+      key: "qc_hold",
+      label: "QC hold",
+      value: inbound?.qcHold ?? 0,
+      tone: "warning",
+      href: buildWarehouseInboundDrillDownHref("qc_hold", query),
+      chip: "QC"
+    },
+    {
+      key: "qc_fail",
+      label: "QC fail",
+      value: inbound?.qcFail ?? 0,
+      tone: "danger",
+      href: buildWarehouseInboundDrillDownHref("qc_fail", query),
+      chip: "QC"
+    },
+    {
+      key: "qc_pass",
+      label: "QC pass",
+      value: inbound?.qcPass ?? 0,
+      tone: "success",
+      href: buildWarehouseInboundDrillDownHref("qc_pass", query),
+      chip: "QC"
+    },
+    {
+      key: "qc_partial",
+      label: "QC partial",
+      value: inbound?.qcPartial ?? 0,
+      tone: "warning",
+      href: buildWarehouseInboundDrillDownHref("qc_partial", query),
+      chip: "QC"
+    },
+    {
+      key: "supplier_rejections",
+      label: "Supplier reject",
+      value: inbound?.supplierRejections ?? 0,
+      tone: "danger",
+      href: buildWarehouseInboundDrillDownHref("supplier_rejections", query),
+      chip: "RTS"
     }
   ];
   const queueCards: {
@@ -437,6 +510,29 @@ export default function WarehouseDailyBoard() {
             onSelect={(event) => handleQueueCardClick(event, card.key, card.href, card.target)}
           />
         ))}
+      </section>
+
+      <section className="erp-warehouse-fulfillment" aria-label="Inbound status metrics">
+        <div className="erp-section-header">
+          <div>
+            <h2 className="erp-section-title">Inbound control</h2>
+            <p className="erp-section-description">
+              {inbound?.purchaseOrdersIncoming ?? 0} incoming PO / {inbound?.receivingPending ?? 0} receiving pending
+            </p>
+          </div>
+          <StatusChip tone={inboundStatusTone(inbound)}>
+            {formatMetricTimestamp(inbound?.generatedAt)}
+          </StatusChip>
+        </div>
+        <div className="erp-warehouse-fulfillment-grid">
+          {inboundCards.map((card) => (
+            <a className="erp-warehouse-fulfillment-card" href={card.href} key={card.key}>
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              <StatusChip tone={card.tone}>{card.chip}</StatusChip>
+            </a>
+          ))}
+        </div>
       </section>
 
       <section className="erp-warehouse-fulfillment" aria-label="Fulfillment status metrics">
@@ -786,6 +882,20 @@ function formatBoardDate(value: string) {
     month: "2-digit",
     year: "numeric"
   }).format(new Date(`${value}T00:00:00Z`));
+}
+
+function inboundStatusTone(metrics?: WarehouseInboundMetrics) {
+  if (!metrics) {
+    return "info";
+  }
+  if (metrics.qcFail > 0 || metrics.supplierRejections > 0) {
+    return "danger";
+  }
+  if (metrics.qcHold > 0 || metrics.qcPartial > 0 || metrics.receivingPending > 0) {
+    return "warning";
+  }
+
+  return "success";
 }
 
 function formatMetricTimestamp(value?: string) {

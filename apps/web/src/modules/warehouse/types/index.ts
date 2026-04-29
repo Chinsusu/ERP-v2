@@ -80,6 +80,27 @@ export type WarehouseFulfillmentMetrics = {
   generatedAt: string;
 };
 
+export type WarehouseInboundMetrics = {
+  warehouseId?: string;
+  date?: string;
+  shiftCode?: string;
+  purchaseOrdersIncoming: number;
+  receivingPending: number;
+  receivingDraft: number;
+  receivingSubmitted: number;
+  receivingInspectReady: number;
+  qcHold: number;
+  qcFail: number;
+  qcPass: number;
+  qcPartial: number;
+  supplierRejections: number;
+  supplierRejectionDraft: number;
+  supplierRejectionSubmitted: number;
+  supplierRejectionConfirmed: number;
+  supplierRejectionCancelled: number;
+  generatedAt: string;
+};
+
 export type WarehouseDailyBoardCounterSource = {
   counter: keyof WarehouseDailyBoardSummary;
   label: string;
@@ -95,6 +116,7 @@ export type WarehouseDailyBoardData = {
   owner: string;
   summary: WarehouseDailyBoardSummary;
   fulfillment: WarehouseFulfillmentMetrics;
+  inbound: WarehouseInboundMetrics;
   sourceFields: WarehouseDailyBoardCounterSource[];
   tasks: WarehouseDailyTask[];
 };

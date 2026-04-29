@@ -1,4 +1,4 @@
-import { apiGet } from "../../../shared/api/client";
+import { apiGet, apiGetRaw } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import { getStockAdjustments, summarizeStockAdjustmentDelta } from "../../inventory/services/stockAdjustmentService";
 import type { StockAdjustment } from "../../inventory/types";
@@ -19,6 +19,7 @@ import type {
   WarehouseDailyBoardQuery,
   WarehouseDailyBoardSummary,
   WarehouseFulfillmentMetrics,
+  WarehouseInboundMetrics,
   WarehouseDailyShiftCode,
   WarehouseDailyTask,
   WarehouseDailyTaskPriority,
@@ -27,6 +28,31 @@ import type {
 
 type WarehouseFulfillmentMetricsApi = components["schemas"]["WarehouseFulfillmentMetrics"];
 type WarehouseFulfillmentMetricsApiQuery = operations["getWarehouseDailyBoardFulfillmentMetrics"]["parameters"]["query"];
+type WarehouseInboundMetricsApi = {
+  warehouse_id?: string;
+  date?: string;
+  shift_code?: string;
+  purchase_orders_incoming: number;
+  receiving_pending: number;
+  receiving_draft: number;
+  receiving_submitted: number;
+  receiving_inspect_ready: number;
+  qc_hold: number;
+  qc_fail: number;
+  qc_pass: number;
+  qc_partial: number;
+  supplier_rejections: number;
+  supplier_rejection_draft: number;
+  supplier_rejection_submitted: number;
+  supplier_rejection_confirmed: number;
+  supplier_rejection_cancelled: number;
+  generated_at: string;
+};
+type WarehouseInboundMetricsApiQuery = {
+  warehouse_id?: string;
+  date?: string;
+  shift_code?: string;
+};
 
 const defaultAccessToken = "local-dev-access-token";
 export const defaultWarehouseDailyBoardDate = "2026-04-26";
@@ -63,6 +89,14 @@ export type WarehouseFulfillmentDrillDownKey =
   | "waiting_handover"
   | "missing"
   | "handover";
+export type WarehouseInboundDrillDownKey =
+  | "purchase_orders_incoming"
+  | "receiving_pending"
+  | "qc_hold"
+  | "qc_fail"
+  | "qc_pass"
+  | "qc_partial"
+  | "supplier_rejections";
 export type WarehouseDailyBoardDrillDownQueue = WarehouseDailyTaskStatus | "overdue";
 
 export const warehouseDailyBoardCounterSources: WarehouseDailyBoardCounterSource[] = [
@@ -341,6 +375,7 @@ export type WarehouseDailyBoardSources = {
   stockAdjustments?: StockAdjustment[];
   reconciliations?: EndOfDayReconciliation[];
   fulfillmentMetrics?: WarehouseFulfillmentMetrics;
+  inboundMetrics?: WarehouseInboundMetrics;
 };
 
 export async function getWarehouseDailyBoard(query: WarehouseDailyBoardQuery = {}): Promise<WarehouseDailyBoardData> {
@@ -348,18 +383,25 @@ export async function getWarehouseDailyBoard(query: WarehouseDailyBoardQuery = {
   const warehouseId = query.warehouseId ?? "";
   const shiftCode = query.shiftCode ?? defaultWarehouseDailyBoardShiftCode;
   const carrierCode = normalizeCarrierCode(query.carrierCode);
-  const [goodsReceipts, carrierManifests, returnReceipts, stockAdjustments, fulfillmentMetrics] = await Promise.all([
-    getGoodsReceipts(),
-    getCarrierManifests({ warehouseId: warehouseId || undefined, date, carrierCode: carrierCode || undefined }),
-    getReturnReceipts({ warehouseId: warehouseId || undefined }),
-    getStockAdjustments(),
-    getWarehouseFulfillmentMetrics({
-      ...query,
-      date,
-      shiftCode,
-      carrierCode: carrierCode || undefined
-    })
-  ]);
+  const [goodsReceipts, carrierManifests, returnReceipts, stockAdjustments, fulfillmentMetrics, inboundMetrics] =
+    await Promise.all([
+      getGoodsReceipts(),
+      getCarrierManifests({ warehouseId: warehouseId || undefined, date, carrierCode: carrierCode || undefined }),
+      getReturnReceipts({ warehouseId: warehouseId || undefined }),
+      getStockAdjustments(),
+      getWarehouseFulfillmentMetrics({
+        ...query,
+        date,
+        shiftCode,
+        carrierCode: carrierCode || undefined
+      }),
+      getWarehouseInboundMetrics({
+        ...query,
+        warehouseId: inboundWarehouseIdForMetrics(warehouseId),
+        date,
+        shiftCode
+      })
+    ]);
 
   return composeWarehouseDailyBoard(
     {
@@ -375,7 +417,8 @@ export async function getWarehouseDailyBoard(query: WarehouseDailyBoardQuery = {
       returnReceipts,
       stockAdjustments,
       reconciliations: prototypeEndOfDayReconciliations,
-      fulfillmentMetrics
+      fulfillmentMetrics,
+      inboundMetrics
     }
   );
 }
@@ -390,6 +433,21 @@ export async function getWarehouseFulfillmentMetrics(
     });
 
     return fromFulfillmentMetricsApi(metrics);
+  } catch {
+    return undefined;
+  }
+}
+
+export async function getWarehouseInboundMetrics(
+  query: WarehouseDailyBoardQuery = {}
+): Promise<WarehouseInboundMetrics | undefined> {
+  try {
+    const metrics = await apiGetRaw<WarehouseInboundMetricsApi>(
+      `/warehouse/daily-board/inbound-metrics${queryString(toInboundMetricsApiQuery(query))}`,
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromInboundMetricsApi(metrics);
   } catch {
     return undefined;
   }
@@ -415,6 +473,29 @@ export function buildWarehouseFulfillmentDrillDownHref(
     case "new":
     default:
       return warehouseTaskDrillDownHref(query, "waiting");
+  }
+}
+
+export function buildWarehouseInboundDrillDownHref(
+  key: WarehouseInboundDrillDownKey,
+  query: WarehouseDailyBoardQuery = {}
+) {
+  switch (key) {
+    case "purchase_orders_incoming":
+      return purchaseOrderDrillDownHref(query, "approved");
+    case "receiving_pending":
+      return receivingDrillDownHref(query, "pending");
+    case "qc_hold":
+      return inboundQCDrillDownHref(query, "hold");
+    case "qc_fail":
+      return inboundQCDrillDownHref(query, "fail");
+    case "qc_pass":
+      return inboundQCDrillDownHref(query, "pass");
+    case "qc_partial":
+      return inboundQCDrillDownHref(query, "partial");
+    case "supplier_rejections":
+    default:
+      return supplierRejectionDrillDownHref(query);
   }
 }
 
@@ -512,6 +593,7 @@ export function composeWarehouseDailyBoard(
         },
         baseTasks
       ),
+    inbound: sources.inboundMetrics ?? emptyWarehouseInboundMetrics({ warehouseId, date, shiftCode }),
     sourceFields: warehouseDailyBoardCounterSources,
     tasks
   };
@@ -837,6 +919,14 @@ function toFulfillmentMetricsApiQuery(query: WarehouseDailyBoardQuery): Warehous
   };
 }
 
+function toInboundMetricsApiQuery(query: WarehouseDailyBoardQuery): WarehouseInboundMetricsApiQuery {
+  return {
+    warehouse_id: inboundWarehouseIdForMetrics(query.warehouseId),
+    date: query.date,
+    shift_code: query.shiftCode
+  };
+}
+
 function fromFulfillmentMetricsApi(metrics: WarehouseFulfillmentMetricsApi): WarehouseFulfillmentMetrics {
   return {
     warehouseId: metrics.warehouse_id,
@@ -851,6 +941,29 @@ function fromFulfillmentMetricsApi(metrics: WarehouseFulfillmentMetricsApi): War
     waitingHandoverOrders: metrics.waiting_handover_orders,
     missingOrders: metrics.missing_orders,
     handoverOrders: metrics.handover_orders,
+    generatedAt: metrics.generated_at
+  };
+}
+
+function fromInboundMetricsApi(metrics: WarehouseInboundMetricsApi): WarehouseInboundMetrics {
+  return {
+    warehouseId: metrics.warehouse_id,
+    date: metrics.date,
+    shiftCode: metrics.shift_code,
+    purchaseOrdersIncoming: metrics.purchase_orders_incoming,
+    receivingPending: metrics.receiving_pending,
+    receivingDraft: metrics.receiving_draft,
+    receivingSubmitted: metrics.receiving_submitted,
+    receivingInspectReady: metrics.receiving_inspect_ready,
+    qcHold: metrics.qc_hold,
+    qcFail: metrics.qc_fail,
+    qcPass: metrics.qc_pass,
+    qcPartial: metrics.qc_partial,
+    supplierRejections: metrics.supplier_rejections,
+    supplierRejectionDraft: metrics.supplier_rejection_draft,
+    supplierRejectionSubmitted: metrics.supplier_rejection_submitted,
+    supplierRejectionConfirmed: metrics.supplier_rejection_confirmed,
+    supplierRejectionCancelled: metrics.supplier_rejection_cancelled,
     generatedAt: metrics.generated_at
   };
 }
@@ -881,6 +994,31 @@ export function summarizeWarehouseFulfillmentMetrics(
     waitingHandoverOrders,
     missingOrders,
     handoverOrders: 0,
+    generatedAt: `${date}T00:00:00Z`
+  };
+}
+
+function emptyWarehouseInboundMetrics(query: Pick<WarehouseDailyBoardQuery, "warehouseId" | "date" | "shiftCode">): WarehouseInboundMetrics {
+  const date = query.date ?? defaultWarehouseDailyBoardDate;
+
+  return {
+    warehouseId: inboundWarehouseIdForMetrics(query.warehouseId),
+    date,
+    shiftCode: query.shiftCode ?? defaultWarehouseDailyBoardShiftCode,
+    purchaseOrdersIncoming: 0,
+    receivingPending: 0,
+    receivingDraft: 0,
+    receivingSubmitted: 0,
+    receivingInspectReady: 0,
+    qcHold: 0,
+    qcFail: 0,
+    qcPass: 0,
+    qcPartial: 0,
+    supplierRejections: 0,
+    supplierRejectionDraft: 0,
+    supplierRejectionSubmitted: 0,
+    supplierRejectionConfirmed: 0,
+    supplierRejectionCancelled: 0,
     generatedAt: `${date}T00:00:00Z`
   };
 }
@@ -1013,6 +1151,54 @@ function returnReceiptDrillDownHref(query: WarehouseDailyBoardQuery, queue: "ret
   );
 }
 
+function purchaseOrderDrillDownHref(query: WarehouseDailyBoardQuery, status: string) {
+  return drillDownHref(
+    "/purchase",
+    {
+      warehouse_id: inboundWarehouseIdForMetrics(query.warehouseId),
+      date: query.date,
+      status
+    },
+    "purchase-list"
+  );
+}
+
+function receivingDrillDownHref(query: WarehouseDailyBoardQuery, status: string) {
+  return drillDownHref(
+    "/receiving",
+    {
+      warehouse_id: inboundWarehouseIdForMetrics(query.warehouseId),
+      date: query.date,
+      status
+    },
+    "receiving-list"
+  );
+}
+
+function inboundQCDrillDownHref(query: WarehouseDailyBoardQuery, result: string) {
+  return drillDownHref(
+    "/qc",
+    {
+      warehouse_id: inboundWarehouseIdForMetrics(query.warehouseId),
+      date: query.date,
+      result
+    },
+    "qc-inspections"
+  );
+}
+
+function supplierRejectionDrillDownHref(query: WarehouseDailyBoardQuery) {
+  return drillDownHref(
+    "/returns",
+    {
+      warehouse_id: inboundWarehouseIdForMetrics(query.warehouseId),
+      date: query.date,
+      panel: "supplier_rejections"
+    },
+    "supplier-rejections"
+  );
+}
+
 function inventoryDrillDownHref(query: WarehouseDailyBoardQuery, queue: WarehouseDailyTaskStatus, hash: string) {
   return drillDownHref(
     "/inventory",
@@ -1062,7 +1248,27 @@ function drillDownHref(path: string, query: Record<string, string | undefined>, 
   return `${path}${queryString ? `?${queryString}` : ""}#${hash}`;
 }
 
+function queryString(query: Record<string, string | undefined>) {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+  const value = params.toString();
+
+  return value ? `?${value}` : "";
+}
+
 function salesWarehouseIdForDrillDown(warehouseId?: string) {
+  if (warehouseId === "wh-hcm") {
+    return "wh-hcm-fg";
+  }
+
+  return warehouseId;
+}
+
+function inboundWarehouseIdForMetrics(warehouseId?: string) {
   if (warehouseId === "wh-hcm") {
     return "wh-hcm-fg";
   }
