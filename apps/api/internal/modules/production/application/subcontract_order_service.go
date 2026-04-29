@@ -28,16 +28,17 @@ const (
 	ErrorCodeSubcontractOrderInvalidState    response.ErrorCode = "SUBCONTRACT_ORDER_INVALID_STATE"
 	ErrorCodeSubcontractOrderVersionConflict response.ErrorCode = "SUBCONTRACT_ORDER_VERSION_CONFLICT"
 
-	defaultSubcontractOrderOrgID     = "org-my-pham"
-	subcontractOrderEntityType       = "production.subcontract_order"
-	subcontractMaterialsIssuedAction = "subcontract.materials_issued"
-	subcontractSampleSubmittedAction = "subcontract.sample_submitted"
-	subcontractSampleApprovedAction  = "subcontract.sample_approved"
-	subcontractSampleRejectedAction  = "subcontract.sample_rejected"
-	subcontractFinishedGoodsAction   = "subcontract.finished_goods_received"
-	subcontractFactoryClaimAction    = "subcontract.factory_claim_opened"
-	subcontractDepositRecordedAction = "subcontract.deposit_recorded"
-	subcontractFinalPaymentAction    = "subcontract.final_payment_ready"
+	defaultSubcontractOrderOrgID           = "org-my-pham"
+	subcontractOrderEntityType             = "production.subcontract_order"
+	subcontractMaterialsIssuedAction       = "subcontract.materials_issued"
+	subcontractSampleSubmittedAction       = "subcontract.sample_submitted"
+	subcontractSampleApprovedAction        = "subcontract.sample_approved"
+	subcontractSampleRejectedAction        = "subcontract.sample_rejected"
+	subcontractFinishedGoodsAction         = "subcontract.finished_goods_received"
+	subcontractFinishedGoodsAcceptedAction = "subcontract.finished_goods_accepted"
+	subcontractFactoryClaimAction          = "subcontract.factory_claim_opened"
+	subcontractDepositRecordedAction       = "subcontract.deposit_recorded"
+	subcontractFinalPaymentAction          = "subcontract.final_payment_ready"
 )
 
 type SubcontractOrderStore interface {
@@ -305,6 +306,16 @@ type ReceiveSubcontractFinishedGoodsEvidenceInput struct {
 	Note         string
 }
 
+type AcceptSubcontractFinishedGoodsInput struct {
+	ID              string
+	ExpectedVersion int
+	AcceptedBy      string
+	AcceptedAt      time.Time
+	Note            string
+	ActorID         string
+	RequestID       string
+}
+
 type CreateSubcontractFactoryClaimInput struct {
 	ID              string
 	ExpectedVersion int
@@ -394,6 +405,14 @@ type ReceiveSubcontractFinishedGoodsResult struct {
 	SubcontractOrder productiondomain.SubcontractOrder
 	Receipt          productiondomain.SubcontractFinishedGoodsReceipt
 	StockMovements   []inventorydomain.StockMovement
+	AuditLogID       string
+}
+
+type AcceptSubcontractFinishedGoodsResult struct {
+	SubcontractOrder productiondomain.SubcontractOrder
+	StockMovements   []inventorydomain.StockMovement
+	PreviousStatus   productiondomain.SubcontractOrderStatus
+	CurrentStatus    productiondomain.SubcontractOrderStatus
 	AuditLogID       string
 }
 
@@ -1073,6 +1092,99 @@ func (s SubcontractOrderService) ReceiveSubcontractFinishedGoods(
 	})
 	if err != nil {
 		return ReceiveSubcontractFinishedGoodsResult{}, err
+	}
+
+	return result, nil
+}
+
+func (s SubcontractOrderService) AcceptSubcontractFinishedGoods(
+	ctx context.Context,
+	input AcceptSubcontractFinishedGoodsInput,
+) (AcceptSubcontractFinishedGoodsResult, error) {
+	if err := s.ensureReadyForFinishedGoodsReceipt(); err != nil {
+		return AcceptSubcontractFinishedGoodsResult{}, err
+	}
+	if err := requireSubcontractOrderActor(input.ActorID); err != nil {
+		return AcceptSubcontractFinishedGoodsResult{}, err
+	}
+
+	var result AcceptSubcontractFinishedGoodsResult
+	err := s.store.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		current, err := tx.GetForUpdate(txCtx, input.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": strings.TrimSpace(input.ID)})
+		}
+		if err := ensureSubcontractOrderExpectedVersion(current, input.ExpectedVersion); err != nil {
+			return err
+		}
+		receipts, err := s.finishedGoodsStore.ListBySubcontractOrder(txCtx, current.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": current.ID})
+		}
+		if len(receipts) == 0 {
+			return MapSubcontractOrderError(productiondomain.ErrSubcontractFinishedGoodsReceiptRequiredField, map[string]any{
+				"subcontract_order_id": current.ID,
+			})
+		}
+
+		acceptedAt := input.AcceptedAt
+		if acceptedAt.IsZero() {
+			acceptedAt = s.now()
+		}
+		acceptedBy := firstNonBlankSubcontractOrder(input.AcceptedBy, input.ActorID)
+		acceptedOrder, err := current.AcceptFinishedGoods(input.ActorID, acceptedAt)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"status":               string(current.Status),
+			})
+		}
+		movements, err := buildSubcontractFinishedGoodsAcceptanceMovements(receipts, input.ActorID, acceptedAt)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": current.ID})
+		}
+		for _, movement := range movements {
+			if err := s.finishedGoodsRecorder.Record(txCtx, movement); err != nil {
+				return err
+			}
+		}
+		if err := tx.Save(txCtx, acceptedOrder); err != nil {
+			return err
+		}
+		afterData := subcontractOrderAuditData(acceptedOrder)
+		afterData["accepted_by"] = acceptedBy
+		afterData["accepted_at"] = acceptedAt.Format(time.RFC3339)
+		afterData["accepted_movement_count"] = len(movements)
+		if strings.TrimSpace(input.Note) != "" {
+			afterData["note"] = strings.TrimSpace(input.Note)
+		}
+		log, err := newSubcontractOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			subcontractFinishedGoodsAcceptedAction,
+			acceptedOrder,
+			subcontractOrderAuditData(current),
+			afterData,
+			acceptedAt,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, log); err != nil {
+			return err
+		}
+		result = AcceptSubcontractFinishedGoodsResult{
+			SubcontractOrder: acceptedOrder,
+			StockMovements:   movements,
+			PreviousStatus:   current.Status,
+			CurrentStatus:    acceptedOrder.Status,
+			AuditLogID:       log.ID,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return AcceptSubcontractFinishedGoodsResult{}, err
 	}
 
 	return result, nil

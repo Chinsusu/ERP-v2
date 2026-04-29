@@ -831,6 +831,32 @@ func (o SubcontractOrder) Accept(actorID string, changedAt time.Time) (Subcontra
 	return o.TransitionTo(SubcontractOrderStatusAccepted, actorID, changedAt)
 }
 
+func (o SubcontractOrder) AcceptFinishedGoods(actorID string, changedAt time.Time) (SubcontractOrder, error) {
+	current := o
+	status := NormalizeSubcontractOrderStatus(current.Status)
+	if status == SubcontractOrderStatusFinishedGoodsReceived {
+		next, err := current.StartQC(actorID, changedAt)
+		if err != nil {
+			return SubcontractOrder{}, err
+		}
+		current = next
+	}
+
+	accepted, err := current.Accept(actorID, changedAt)
+	if err != nil {
+		return SubcontractOrder{}, err
+	}
+	accepted.AcceptedQty = accepted.ReceivedQty
+	accepted.BaseAcceptedQty = accepted.BaseReceivedQty
+	accepted.RejectedQty = decimal.MustQuantity("0")
+	accepted.BaseRejectedQty = decimal.MustQuantity("0")
+	if err := accepted.Validate(); err != nil {
+		return SubcontractOrder{}, err
+	}
+
+	return accepted, nil
+}
+
 func (o SubcontractOrder) RejectWithFactoryIssue(actorID string, reason string, changedAt time.Time) (SubcontractOrder, error) {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {

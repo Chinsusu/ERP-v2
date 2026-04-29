@@ -681,6 +681,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/subcontract-orders/{subcontract_order_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept subcontract finished goods into available stock */
+        post: operations["acceptSubcontractFinishedGoods"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/subcontract-orders/{subcontract_order_id}/mark-final-payment-ready": {
         parameters: {
             query?: never;
@@ -2319,6 +2336,9 @@ export interface components {
         ReceiveSubcontractFinishedGoodsSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["ReceiveSubcontractFinishedGoodsResult"];
         };
+        AcceptSubcontractFinishedGoodsSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["AcceptSubcontractFinishedGoodsResult"];
+        };
         SubcontractSampleApprovalResultSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["SubcontractSampleApprovalResult"];
         };
@@ -2457,6 +2477,13 @@ export interface components {
             base_uom_code: components["schemas"]["UOMCode"];
             conversion_factor: components["schemas"]["Quantity"];
             packaging_status?: string;
+            note?: string;
+        };
+        AcceptSubcontractFinishedGoodsRequest: {
+            expected_version: number;
+            accepted_by?: string;
+            /** Format: date-time */
+            accepted_at?: string;
             note?: string;
         };
         SubmitSubcontractSampleRequest: {
@@ -2705,6 +2732,13 @@ export interface components {
             subcontract_order: components["schemas"]["SubcontractOrder"];
             receipt: components["schemas"]["SubcontractFinishedGoodsReceipt"];
             stock_movements: components["schemas"]["SubcontractStockMovement"][];
+            audit_log_id?: string;
+        };
+        AcceptSubcontractFinishedGoodsResult: {
+            subcontract_order: components["schemas"]["SubcontractOrder"];
+            stock_movements: components["schemas"]["SubcontractStockMovement"][];
+            previous_status: components["schemas"]["SubcontractOrderStatus"];
+            current_status: components["schemas"]["SubcontractOrderStatus"];
             audit_log_id?: string;
         };
         SubcontractFinishedGoodsReceipt: {
@@ -5295,6 +5329,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReceiveSubcontractFinishedGoodsSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    acceptSubcontractFinishedGoods: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcontract_order_id: components["parameters"]["SubcontractOrderIDParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptSubcontractFinishedGoodsRequest"];
+            };
+        };
+        responses: {
+            /** @description Subcontract finished goods accepted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptSubcontractFinishedGoodsSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];
