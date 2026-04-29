@@ -36,13 +36,31 @@ describe("warehouseReceivingService", () => {
       locationId: "loc-hcm-fg-recv-01",
       referenceDocType: "purchase_order",
       referenceDocId: "PO-260427-UI-TEST",
-      lines: [{ batchId: "batch-cream-2603b", quantity: "6", baseUomCode: "EA" }]
+      supplierId: "sup-rm-bioactive",
+      deliveryNoteNo: "dn-260427-ui-test",
+      lines: [
+        {
+          purchaseOrderLineId: "po-line-ui-test-001",
+          batchId: "batch-cream-2603b",
+          lotNo: "lot-2603b",
+          expiryDate: "2028-03-01",
+          quantity: "6",
+          uomCode: "EA",
+          baseUomCode: "EA",
+          packagingStatus: "intact"
+        }
+      ]
     });
 
+    expect(receipt.deliveryNoteNo).toBe("DN-260427-UI-TEST");
     expect(receipt.status).toBe("draft");
     expect(receipt.lines[0]).toMatchObject({
+      purchaseOrderLineId: "po-line-ui-test-001",
       sku: "CREAM-50G",
       batchNo: "LOT-2603B",
+      lotNo: "LOT-2603B",
+      expiryDate: "2028-03-01",
+      packagingStatus: "intact",
       qcStatus: "pass",
       quantity: "6.000000"
     });
@@ -72,7 +90,22 @@ describe("warehouseReceivingService", () => {
       locationId: "loc-hcm-fg-recv-01",
       referenceDocType: "purchase_order",
       referenceDocId: "PO-260427-UI-MISS",
-      lines: [{ itemId: "item-cream-50g", sku: "CREAM-50G", quantity: "6", baseUomCode: "EA" }]
+      supplierId: "sup-rm-bioactive",
+      deliveryNoteNo: "DN-260427-UI-MISS",
+      lines: [
+        {
+          purchaseOrderLineId: "po-line-ui-miss-001",
+          itemId: "item-cream-50g",
+          sku: "CREAM-50G",
+          batchNo: "LOT-2603B",
+          lotNo: "LOT-2603B",
+          expiryDate: "2028-03-01",
+          quantity: "6",
+          uomCode: "EA",
+          baseUomCode: "EA",
+          packagingStatus: "intact"
+        }
+      ]
     });
     await submitGoodsReceipt(receipt.id);
     await markGoodsReceiptInspectReady(receipt.id);
@@ -84,5 +117,49 @@ describe("warehouseReceivingService", () => {
     await postGoodsReceipt("grn-hcm-260427-inspect");
 
     await expect(postGoodsReceipt("grn-hcm-260427-inspect")).rejects.toThrow("already posted");
+  });
+
+  it("does not use prototype fallback when the API returns a validation error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              success: false,
+              error: {
+                code: "VALIDATION_ERROR",
+                message: "delivery note is required",
+                request_id: "req-receiving-validation"
+              }
+            }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          )
+        )
+      )
+    );
+
+    await expect(
+      createGoodsReceipt({
+        warehouseId: "wh-hcm-fg",
+        locationId: "loc-hcm-fg-recv-01",
+        referenceDocType: "purchase_order",
+        referenceDocId: "PO-260427-UI-TEST",
+        supplierId: "sup-rm-bioactive",
+        deliveryNoteNo: "",
+        lines: [
+          {
+            purchaseOrderLineId: "po-line-ui-test-001",
+            batchId: "batch-cream-2603b",
+            lotNo: "LOT-2603B",
+            expiryDate: "2028-03-01",
+            quantity: "6",
+            uomCode: "EA",
+            baseUomCode: "EA",
+            packagingStatus: "intact"
+          }
+        ]
+      })
+    ).rejects.toThrow("delivery note is required");
   });
 });

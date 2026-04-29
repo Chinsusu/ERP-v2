@@ -207,12 +207,19 @@ describe("warehouseDailyBoardService", () => {
       locationId: "loc-hcm-fg-recv-01",
       referenceDocType: "purchase_order",
       referenceDocId: "PO-S30603-QCHOLD",
+      supplierId: "sup-rm-bioactive",
+      deliveryNoteNo: "DN-S30603-QCHOLD",
       lines: [
         {
           id: "line-s3-06-03-qc-hold",
+          purchaseOrderLineId: "po-line-s3-06-03-qc-hold",
           batchId: "batch-serum-2604a",
+          lotNo: "LOT-2604A",
+          expiryDate: "2027-04-01",
           quantity: "3.000000",
-          baseUomCode: "EA"
+          uomCode: "EA",
+          baseUomCode: "EA",
+          packagingStatus: "intact"
         }
       ]
     });
@@ -570,12 +577,19 @@ function createDraftReceipt(): GoodsReceipt {
     lines: [
       {
         id: "line-test-draft",
+        purchaseOrderLineId: "po-line-test-draft",
         itemId: "item-serum-30ml",
         sku: "SERUM-30ML",
+        batchId: "batch-serum-2604a",
+        batchNo: "LOT-2604A",
+        lotNo: "LOT-2604A",
+        expiryDate: "2027-04-01",
         warehouseId: "wh-hcm-fg",
         locationId: "loc-hcm-fg-recv-01",
         quantity: "6.000000",
-        baseUomCode: "EA"
+        uomCode: "EA",
+        baseUomCode: "EA",
+        packagingStatus: "intact"
       }
     ],
     createdBy: "user-warehouse-lead",
