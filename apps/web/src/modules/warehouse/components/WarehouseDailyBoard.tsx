@@ -32,7 +32,10 @@ const queueOptions: { label: string; value: QueueFilter }[] = [
   { label: "Packed", value: "packed" },
   { label: "Handover", value: "handover" },
   { label: "Returns", value: "returns" },
+  { label: "QA hold", value: "qa_hold" },
+  { label: "Adjustment", value: "adjustment" },
   { label: "Stock variance", value: "mismatch" },
+  { label: "Closing", value: "closing" },
   { label: "P0 exceptions", value: "overdue" }
 ];
 
@@ -192,13 +195,28 @@ export default function WarehouseDailyBoard() {
     { key: "picking", label: "Picking", value: board?.summary.picking ?? 0, tone: "warning", helper: "Pick" },
     { key: "packed", label: "Packed", value: board?.summary.packed ?? 0, tone: "success", helper: "Pack" },
     { key: "handover", label: "Handover", value: board?.summary.handover ?? 0, tone: "info", helper: "Scan" },
-    { key: "returns", label: "Returns", value: board?.summary.returns ?? 0, tone: "warning", helper: "Inspect" },
+    { key: "returns", label: "Return pending", value: board?.summary.returnPending ?? 0, tone: "warning", helper: "Inspect" },
+    { key: "qa_hold", label: "QA hold", value: board?.summary.qaHold ?? 0, tone: "danger", helper: "Release" },
+    {
+      key: "adjustment",
+      label: "Adjustment pending",
+      value: board?.summary.adjustmentPending ?? 0,
+      tone: "danger",
+      helper: "Approve"
+    },
     {
       key: "mismatch",
-      label: "Stock variance",
-      value: board?.summary.reconciliationMismatch ?? 0,
+      label: "Stock count variance",
+      value: board?.summary.stockCountVariance ?? 0,
       tone: "danger",
       helper: "Reconcile"
+    },
+    {
+      key: "closing",
+      label: "Closing blocked",
+      value: board?.summary.closingBlocked ?? 0,
+      tone: (board?.summary.closingBlocked ?? 0) > 0 ? "danger" : "success",
+      helper: "Close"
     },
     { key: "overdue", label: "P0 exceptions", value: board?.summary.overdue ?? 0, tone: "danger", helper: "Resolve" }
   ];
@@ -524,6 +542,10 @@ function sourceLabel(source: WarehouseDailyTask["source"]) {
       return "Shipping";
     case "returns":
       return "Returns";
+    case "adjustment":
+      return "Adjustment";
+    case "closing":
+      return "Closing";
     case "stock_movement":
       return "Stock movement";
     case "reconciliation":
@@ -550,6 +572,12 @@ function taskTypeLabel(status: WarehouseDailyTaskStatus) {
       return "Packed";
     case "returns":
       return "Return";
+    case "qa_hold":
+      return "QA hold";
+    case "adjustment":
+      return "Adjustment";
+    case "closing":
+      return "Closing";
     case "waiting":
     default:
       return "New order";
@@ -568,6 +596,12 @@ function statusLabel(status: WarehouseDailyTaskStatus | "open" | "closing" | "cl
       return "Packed";
     case "returns":
       return "Returns";
+    case "qa_hold":
+      return "QA hold";
+    case "adjustment":
+      return "Adjustment";
+    case "closing":
+      return "Closing";
     case "closing":
       return "Closing";
     case "closed":
@@ -603,6 +637,12 @@ function taskActionLabel(status: WarehouseDailyTaskStatus) {
       return "Review";
     case "returns":
       return "Inspect";
+    case "qa_hold":
+      return "Review";
+    case "adjustment":
+      return "Approve";
+    case "closing":
+      return "Close";
     case "waiting":
     default:
       return "Start";

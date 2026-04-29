@@ -1,5 +1,7 @@
 import { apiGet } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
+import { getStockAdjustments, summarizeStockAdjustmentDelta } from "../../inventory/services/stockAdjustmentService";
+import type { StockAdjustment } from "../../inventory/types";
 import { getGoodsReceipts } from "../../receiving/services/warehouseReceivingService";
 import type { GoodsReceipt, GoodsReceiptStockMovement } from "../../receiving/types";
 import { getReturnReceipts } from "../../returns/services/returnReceivingService";
@@ -48,6 +50,8 @@ export const statusOptions: { label: string; value: "" | WarehouseDailyTaskStatu
   { label: "Packed", value: "packed" },
   { label: "Handover", value: "handover" },
   { label: "Returns", value: "returns" },
+  { label: "QA hold", value: "qa_hold" },
+  { label: "Adjustment", value: "adjustment" },
   { label: "Mismatch", value: "mismatch" }
 ];
 
@@ -82,14 +86,29 @@ export const warehouseDailyBoardCounterSources: WarehouseDailyBoardCounterSource
     fields: ["carrier_manifests.status=ready|scanning|exception", "carrier_manifest_lines.scanned"]
   },
   {
-    counter: "returns",
-    label: "Returns",
+    counter: "returnPending",
+    label: "Return pending",
     fields: ["return_receipts.status=pending_inspection", "return_receipts.disposition"]
+  },
+  {
+    counter: "qaHold",
+    label: "QA hold",
+    fields: ["return_receipts.status=inspected", "return_receipts.disposition=needs_inspection"]
+  },
+  {
+    counter: "adjustmentPending",
+    label: "Adjustment pending",
+    fields: ["stock_adjustments.status=submitted|approved"]
   },
   {
     counter: "reconciliationMismatch",
     label: "Stock variance",
     fields: ["reconciliation_lines.variance_quantity", "stock_movements.stock_status=qc_hold"]
+  },
+  {
+    counter: "closingBlocked",
+    label: "Closing status",
+    fields: ["end_of_day_reconciliations.status", "reconciliation_checklist.blocking"]
   },
   {
     counter: "overdue",
@@ -318,6 +337,7 @@ export type WarehouseDailyBoardSources = {
   goodsReceipts?: GoodsReceipt[];
   carrierManifests?: CarrierManifest[];
   returnReceipts?: ReturnReceipt[];
+  stockAdjustments?: StockAdjustment[];
   reconciliations?: EndOfDayReconciliation[];
   fulfillmentMetrics?: WarehouseFulfillmentMetrics;
 };
@@ -327,10 +347,11 @@ export async function getWarehouseDailyBoard(query: WarehouseDailyBoardQuery = {
   const warehouseId = query.warehouseId ?? "";
   const shiftCode = query.shiftCode ?? defaultWarehouseDailyBoardShiftCode;
   const carrierCode = normalizeCarrierCode(query.carrierCode);
-  const [goodsReceipts, carrierManifests, returnReceipts, fulfillmentMetrics] = await Promise.all([
+  const [goodsReceipts, carrierManifests, returnReceipts, stockAdjustments, fulfillmentMetrics] = await Promise.all([
     getGoodsReceipts(),
     getCarrierManifests({ warehouseId: warehouseId || undefined, date, carrierCode: carrierCode || undefined }),
     getReturnReceipts({ warehouseId: warehouseId || undefined }),
+    getStockAdjustments(),
     getWarehouseFulfillmentMetrics({
       ...query,
       date,
@@ -351,6 +372,7 @@ export async function getWarehouseDailyBoard(query: WarehouseDailyBoardQuery = {
       goodsReceipts,
       carrierManifests,
       returnReceipts,
+      stockAdjustments,
       reconciliations: prototypeEndOfDayReconciliations,
       fulfillmentMetrics
     }
@@ -409,7 +431,9 @@ export function composeWarehouseDailyBoard(
     ...stockMovementTasks(sources.goodsReceipts ?? []),
     ...shippingTasks(sources.carrierManifests ?? []),
     ...returnTasks(sources.returnReceipts ?? []),
-    ...reconciliationTasks(sources.reconciliations ?? [])
+    ...adjustmentTasks(sources.stockAdjustments ?? []),
+    ...reconciliationTasks(sources.reconciliations ?? []),
+    ...closingTasks(sources.reconciliations ?? [])
   ];
   const baseTasks = sourceTasks.filter((task) => {
     if (task.dueAt.slice(0, 10) !== date) {
@@ -576,23 +600,72 @@ function shippingTasks(manifests: CarrierManifest[]): WarehouseDailyTask[] {
 }
 
 function returnTasks(receipts: ReturnReceipt[]): WarehouseDailyTask[] {
-  return receipts
-    .filter((receipt) => receipt.status === "pending_inspection")
-    .map((receipt) => ({
-      id: `task-return-${receipt.id}`,
-      reference: receipt.returnCode ?? receipt.receiptNo,
-      title: returnTaskTitle(receipt),
-      warehouseId: receipt.warehouseId,
-      warehouseCode: receipt.warehouseCode,
-      shiftCode: defaultWarehouseDailyBoardShiftCode,
-      status: "returns",
-      priority: receipt.unknownCase ? "P0" : "P1",
-      owner: "Returns",
-      dueAt: receipt.receivedAt,
-      href: "/returns",
-      source: "returns",
-      sourceField: "return_receipts.status,return_receipts.disposition"
-    }));
+  return receipts.flatMap<WarehouseDailyTask>((receipt) => {
+    if (receipt.status === "pending_inspection") {
+      return [
+        {
+          id: `task-return-${receipt.id}`,
+          reference: receipt.returnCode ?? receipt.receiptNo,
+          title: returnTaskTitle(receipt),
+          warehouseId: receipt.warehouseId,
+          warehouseCode: receipt.warehouseCode,
+          shiftCode: defaultWarehouseDailyBoardShiftCode,
+          status: "returns",
+          priority: receipt.unknownCase ? "P0" : "P1",
+          owner: "Returns",
+          dueAt: receipt.receivedAt,
+          href: "/returns",
+          source: "returns",
+          sourceField: "return_receipts.status,return_receipts.disposition"
+        }
+      ];
+    }
+    if (receipt.status === "inspected" && receipt.disposition === "needs_inspection") {
+      return [
+        {
+          id: `task-return-qa-${receipt.id}`,
+          reference: receipt.returnCode ?? receipt.receiptNo,
+          title: `QA hold return ${receipt.originalOrderNo ?? receipt.receiptNo}`,
+          warehouseId: receipt.warehouseId,
+          warehouseCode: receipt.warehouseCode,
+          shiftCode: defaultWarehouseDailyBoardShiftCode,
+          status: "qa_hold" as const,
+          priority: "P0" as const,
+          owner: "QA",
+          dueAt: receipt.receivedAt,
+          href: "/returns",
+          source: "returns" as const,
+          sourceField: "return_receipts.status,return_receipts.disposition"
+        }
+      ];
+    }
+
+    return [];
+  });
+}
+
+function adjustmentTasks(adjustments: StockAdjustment[]): WarehouseDailyTask[] {
+  return adjustments
+    .filter((adjustment) => adjustment.status === "submitted" || adjustment.status === "approved")
+    .map((adjustment) => {
+      const delta = summarizeStockAdjustmentDelta(adjustment);
+
+      return {
+        id: `task-adjustment-${adjustment.id}`,
+        reference: adjustment.adjustmentNo,
+        title: `Post adjustment ${delta.deltaQty} ${delta.baseUomCode ?? ""}`.trim(),
+        warehouseId: adjustment.warehouseId,
+        warehouseCode: adjustment.warehouseCode ?? adjustment.warehouseId,
+        shiftCode: defaultWarehouseDailyBoardShiftCode,
+        status: "adjustment" as const,
+        priority: adjustment.status === "submitted" ? "P0" as const : "P1" as const,
+        owner: adjustment.status === "submitted" ? "Approver" : "Inventory",
+        dueAt: adjustment.submittedAt ?? adjustment.updatedAt,
+        href: "/inventory",
+        source: "adjustment" as const,
+        sourceField: "stock_adjustments.status"
+      };
+    });
 }
 
 function reconciliationTasks(reconciliations: EndOfDayReconciliation[]): WarehouseDailyTask[] {
@@ -615,6 +688,26 @@ function reconciliationTasks(reconciliations: EndOfDayReconciliation[]): Warehou
         sourceField: "reconciliation_lines.variance_quantity"
       }))
   );
+}
+
+function closingTasks(reconciliations: EndOfDayReconciliation[]): WarehouseDailyTask[] {
+  return reconciliations
+    .filter((reconciliation) => reconciliation.status !== "closed")
+    .map((reconciliation) => ({
+      id: `task-closing-${reconciliation.id}`,
+      reference: `${reconciliation.warehouseCode}-${reconciliation.date}-${reconciliation.shiftCode}`,
+      title: reconciliation.summary.readyToClose ? "Shift closing ready" : "Shift closing blocked",
+      warehouseId: reconciliation.warehouseId,
+      warehouseCode: reconciliation.warehouseCode,
+      shiftCode: reconciliation.shiftCode as WarehouseDailyShiftCode,
+      status: "closing" as const,
+      priority: reconciliation.summary.readyToClose ? "P1" as const : "P0" as const,
+      owner: reconciliation.owner,
+      dueAt: `${reconciliation.date}T17:00:00Z`,
+      href: "/warehouse#shift-closing",
+      source: "closing" as const,
+      sourceField: "end_of_day_reconciliations.status,reconciliation_checklist.blocking"
+    }));
 }
 
 function receivingTaskTitle(receipt: GoodsReceipt) {
@@ -721,13 +814,21 @@ export function summarizeWarehouseFulfillmentMetrics(
 }
 
 export function summarizeWarehouseDailyBoard(tasks: WarehouseDailyTask[]): WarehouseDailyBoardSummary {
+  const returnPending = countByStatus(tasks, "returns");
+  const stockCountVariance = countByStatus(tasks, "mismatch");
   return {
     waiting: countByStatus(tasks, "waiting"),
     picking: countByStatus(tasks, "picking"),
     packed: countByStatus(tasks, "packed"),
     handover: countByStatus(tasks, "handover"),
-    returns: countByStatus(tasks, "returns"),
-    reconciliationMismatch: countByStatus(tasks, "mismatch"),
+    returns: returnPending,
+    returnPending,
+    qaHold: countByStatus(tasks, "qa_hold"),
+    adjustmentPending: countByStatus(tasks, "adjustment"),
+    reconciliationMismatch: stockCountVariance,
+    stockCountVariance,
+    closingBlocked: tasks.filter((task) => task.status === "closing" && task.priority === "P0").length,
+    closingReady: tasks.filter((task) => task.status === "closing" && task.priority !== "P0").length,
     overdue: tasks.filter((task) => task.priority === "P0").length
   };
 }
@@ -766,9 +867,12 @@ export function warehouseTaskTone(status: WarehouseDailyTaskStatus): "normal" | 
       return "success";
     case "handover":
       return "info";
+    case "qa_hold":
+    case "adjustment":
     case "returns":
     case "picking":
       return "warning";
+    case "closing":
     case "mismatch":
       return "danger";
     case "waiting":

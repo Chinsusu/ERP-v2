@@ -47,13 +47,13 @@ const zeroQuantity = "0.000000";
 
 const initialPrototypeStockAdjustments: StockAdjustment[] = [
   {
-    id: "adj-hcm-260427-0001",
-    adjustmentNo: "ADJ-260427-0001",
+    id: "adj-hcm-260426-0001",
+    adjustmentNo: "ADJ-260426-0001",
     orgId: "org-my-pham",
     warehouseId: "wh-hcm",
     warehouseCode: "HCM",
     sourceType: "stock_count",
-    sourceId: "count-hcm-260427-0001",
+    sourceId: "count-hcm-260426-0001",
     reason: "Cycle count variance approval",
     status: "submitted",
     requestedBy: "user-warehouse",
@@ -74,9 +74,9 @@ const initialPrototypeStockAdjustments: StockAdjustment[] = [
       }
     ],
     auditLogId: "audit-stock-adjustment-260427-0001",
-    createdAt: "2026-04-27T09:00:00Z",
-    updatedAt: "2026-04-27T09:05:00Z",
-    submittedAt: "2026-04-27T09:05:00Z"
+    createdAt: "2026-04-26T09:00:00Z",
+    updatedAt: "2026-04-26T09:05:00Z",
+    submittedAt: "2026-04-26T09:05:00Z"
   }
 ];
 
