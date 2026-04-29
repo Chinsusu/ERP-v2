@@ -129,12 +129,23 @@ func TestSubcontractOrderBlocksMassProductionUntilSampleApproved(t *testing.T) {
 	if err != nil {
 		t.Fatalf("submit sample: %v", err)
 	}
+	_, err = submitted.RejectSample("qa-lead", " ", changedAt.Add(time.Minute))
+	if !errors.Is(err, ErrSubcontractOrderRequiredField) {
+		t.Fatalf("blank reject reason error = %v, want required field", err)
+	}
 	rejected, err := submitted.RejectSample("qa-lead", "wrong shade", changedAt.Add(time.Minute))
 	if err != nil {
 		t.Fatalf("reject sample: %v", err)
 	}
 	if rejected.SampleRejectReason != "wrong shade" {
 		t.Fatalf("sample reject reason = %q, want trimmed reason", rejected.SampleRejectReason)
+	}
+	resubmitted, err := rejected.SubmitSample("qa-user", changedAt.Add(2*time.Minute))
+	if err != nil {
+		t.Fatalf("resubmit sample: %v", err)
+	}
+	if resubmitted.SampleRejectReason != "" {
+		t.Fatalf("sample reject reason = %q, want cleared after resubmit", resubmitted.SampleRejectReason)
 	}
 	_, err = rejected.StartMassProduction("operations-lead", changedAt.Add(2*time.Minute))
 	if !errors.Is(err, ErrSubcontractOrderInvalidTransition) {

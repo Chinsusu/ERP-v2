@@ -1145,7 +1145,9 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 	}
 	if errors.Is(err, productiondomain.ErrSubcontractOrderInvalidTransition) ||
 		errors.Is(err, productiondomain.ErrSubcontractOrderInvalidStatus) ||
-		errors.Is(err, productiondomain.ErrSubcontractOrderSampleApprovalRequired) {
+		errors.Is(err, productiondomain.ErrSubcontractOrderSampleApprovalRequired) ||
+		errors.Is(err, productiondomain.ErrSubcontractSampleApprovalInvalidStatus) ||
+		errors.Is(err, productiondomain.ErrSubcontractSampleApprovalInvalidTransition) {
 		return apperrors.Conflict(ErrorCodeSubcontractOrderInvalidState, "Subcontract order state is invalid", err, details)
 	}
 	if errors.Is(err, productiondomain.ErrSubcontractMaterialTransferInvalidStatus) {
@@ -1158,6 +1160,7 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 		errors.Is(err, productiondomain.ErrSubcontractOrderInvalidAmount) ||
 		errors.Is(err, productiondomain.ErrSubcontractOrderMaterialLineNotFound) ||
 		errors.Is(err, productiondomain.ErrSubcontractOrderDuplicateMaterialLine) ||
+		errors.Is(err, productiondomain.ErrSubcontractSampleApprovalRequiredField) ||
 		errors.Is(err, productiondomain.ErrSubcontractMaterialTransferRequiredField) ||
 		errors.Is(err, productiondomain.ErrSubcontractMaterialTransferInvalidQuantity) ||
 		errors.Is(err, productiondomain.ErrSubcontractMaterialTransferBatchRequired) {

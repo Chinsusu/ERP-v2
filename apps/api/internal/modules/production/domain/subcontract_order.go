@@ -702,7 +702,13 @@ func (o SubcontractOrder) IssueMaterials(input IssueSubcontractMaterialsInput) (
 }
 
 func (o SubcontractOrder) SubmitSample(actorID string, changedAt time.Time) (SubcontractOrder, error) {
-	return o.TransitionTo(SubcontractOrderStatusSampleSubmitted, actorID, changedAt)
+	submitted, err := o.TransitionTo(SubcontractOrderStatusSampleSubmitted, actorID, changedAt)
+	if err != nil {
+		return SubcontractOrder{}, err
+	}
+	submitted.SampleRejectReason = ""
+
+	return submitted, nil
 }
 
 func (o SubcontractOrder) ApproveSample(actorID string, changedAt time.Time) (SubcontractOrder, error) {
@@ -710,6 +716,9 @@ func (o SubcontractOrder) ApproveSample(actorID string, changedAt time.Time) (Su
 }
 
 func (o SubcontractOrder) RejectSample(actorID string, reason string, changedAt time.Time) (SubcontractOrder, error) {
+	if strings.TrimSpace(reason) == "" {
+		return SubcontractOrder{}, ErrSubcontractOrderRequiredField
+	}
 	rejected, err := o.TransitionTo(SubcontractOrderStatusSampleRejected, actorID, changedAt)
 	if err != nil {
 		return SubcontractOrder{}, err
