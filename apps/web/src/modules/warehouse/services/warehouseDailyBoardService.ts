@@ -1,4 +1,4 @@
-import { apiGet, apiGetRaw } from "../../../shared/api/client";
+import { apiGet } from "../../../shared/api/client";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import { getStockAdjustments, summarizeStockAdjustmentDelta } from "../../inventory/services/stockAdjustmentService";
 import type { StockAdjustment } from "../../inventory/types";
@@ -31,20 +31,8 @@ type WarehouseFulfillmentMetricsApi = components["schemas"]["WarehouseFulfillmen
 type WarehouseFulfillmentMetricsApiQuery = operations["getWarehouseDailyBoardFulfillmentMetrics"]["parameters"]["query"];
 type WarehouseInboundMetricsApi = components["schemas"]["WarehouseInboundMetrics"];
 type WarehouseInboundMetricsApiQuery = operations["getWarehouseDailyBoardInboundMetrics"]["parameters"]["query"];
-
-type WarehouseSubcontractMetricsApi = {
-  warehouse_id?: string;
-  date?: string;
-  shift_code?: string;
-  open_orders: number;
-  material_issued_orders: number;
-  material_transfer_count: number;
-  sample_pending: number;
-  factory_claims: number;
-  factory_claims_overdue: number;
-  final_payment_ready_orders: number;
-  generated_at: string;
-};
+type WarehouseSubcontractMetricsApi = components["schemas"]["WarehouseSubcontractMetrics"];
+type WarehouseSubcontractMetricsApiQuery = operations["getWarehouseDailyBoardSubcontractMetrics"]["parameters"]["query"];
 
 const defaultAccessToken = "local-dev-access-token";
 export const defaultWarehouseDailyBoardDate = "2026-04-26";
@@ -470,8 +458,9 @@ export async function getWarehouseSubcontractMetrics(
   query: WarehouseDailyBoardQuery = {}
 ): Promise<WarehouseSubcontractMetrics | undefined> {
   try {
-    const metrics = await apiGetRaw<WarehouseSubcontractMetricsApi>(warehouseSubcontractMetricsApiPath(query), {
-      accessToken: defaultAccessToken
+    const metrics = await apiGet("/warehouse/daily-board/subcontract-metrics", {
+      accessToken: defaultAccessToken,
+      query: toSubcontractMetricsApiQuery(query)
     });
 
     return fromSubcontractMetricsApi(metrics);
@@ -974,21 +963,12 @@ function toInboundMetricsApiQuery(query: WarehouseDailyBoardQuery): WarehouseInb
   };
 }
 
-function warehouseSubcontractMetricsApiPath(query: WarehouseDailyBoardQuery) {
-  const params = new URLSearchParams();
-  const warehouseId = query.warehouseId?.trim();
-  if (warehouseId) {
-    params.set("warehouse_id", warehouseId);
-  }
-  if (query.date) {
-    params.set("date", query.date);
-  }
-  if (query.shiftCode) {
-    params.set("shift_code", query.shiftCode);
-  }
-  const queryString = params.toString();
-
-  return `/warehouse/daily-board/subcontract-metrics${queryString ? `?${queryString}` : ""}`;
+function toSubcontractMetricsApiQuery(query: WarehouseDailyBoardQuery): WarehouseSubcontractMetricsApiQuery {
+  return {
+    warehouse_id: query.warehouseId?.trim() || undefined,
+    date: query.date,
+    shift_code: query.shiftCode
+  };
 }
 
 function fromFulfillmentMetricsApi(metrics: WarehouseFulfillmentMetricsApi): WarehouseFulfillmentMetrics {
