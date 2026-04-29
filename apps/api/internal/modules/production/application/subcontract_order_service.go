@@ -35,6 +35,7 @@ const (
 	subcontractSampleApprovedAction  = "subcontract.sample_approved"
 	subcontractSampleRejectedAction  = "subcontract.sample_rejected"
 	subcontractFinishedGoodsAction   = "subcontract.finished_goods_received"
+	subcontractFactoryClaimAction    = "subcontract.factory_claim_opened"
 )
 
 type SubcontractOrderStore interface {
@@ -104,6 +105,8 @@ type SubcontractOrderService struct {
 	finishedGoodsStore    SubcontractFinishedGoodsReceiptStore
 	finishedGoodsRecorder SubcontractFinishedGoodsReceiptMovementRecorder
 	finishedGoodsBuild    SubcontractFinishedGoodsReceiptService
+	factoryClaimStore     SubcontractFactoryClaimStore
+	factoryClaimBuild     SubcontractFactoryClaimService
 	clock                 func() time.Time
 }
 
@@ -298,6 +301,37 @@ type ReceiveSubcontractFinishedGoodsEvidenceInput struct {
 	Note         string
 }
 
+type CreateSubcontractFactoryClaimInput struct {
+	ID              string
+	ExpectedVersion int
+	ClaimID         string
+	ClaimNo         string
+	ReceiptID       string
+	ReceiptNo       string
+	ReasonCode      string
+	Reason          string
+	Severity        string
+	AffectedQty     string
+	UOMCode         string
+	BaseAffectedQty string
+	BaseUOMCode     string
+	Evidence        []CreateSubcontractFactoryClaimEvidenceInput
+	OwnerID         string
+	OpenedBy        string
+	OpenedAt        time.Time
+	ActorID         string
+	RequestID       string
+}
+
+type CreateSubcontractFactoryClaimEvidenceInput struct {
+	ID           string
+	EvidenceType string
+	FileName     string
+	ObjectKey    string
+	ExternalURL  string
+	Note         string
+}
+
 type SubcontractOrderResult struct {
 	SubcontractOrder productiondomain.SubcontractOrder
 	AuditLogID       string
@@ -332,6 +366,14 @@ type ReceiveSubcontractFinishedGoodsResult struct {
 	AuditLogID       string
 }
 
+type CreateSubcontractFactoryClaimResult struct {
+	SubcontractOrder productiondomain.SubcontractOrder
+	Claim            productiondomain.SubcontractFactoryClaim
+	PreviousStatus   productiondomain.SubcontractOrderStatus
+	CurrentStatus    productiondomain.SubcontractOrderStatus
+	AuditLogID       string
+}
+
 type PrototypeSubcontractOrderStore struct {
 	mu       sync.RWMutex
 	records  map[string]productiondomain.SubcontractOrder
@@ -363,6 +405,7 @@ func NewSubcontractOrderService(
 		materialTransferBuild: NewSubcontractMaterialTransferService(),
 		sampleApprovalBuild:   NewSubcontractSampleApprovalService(),
 		finishedGoodsBuild:    NewSubcontractFinishedGoodsReceiptService(),
+		factoryClaimBuild:     NewSubcontractFactoryClaimService(),
 		clock:                 func() time.Time { return time.Now().UTC() },
 	}
 }
@@ -391,6 +434,14 @@ func (s SubcontractOrderService) WithFinishedGoodsReceiptStores(
 ) SubcontractOrderService {
 	s.finishedGoodsStore = receiptStore
 	s.finishedGoodsRecorder = movementRecorder
+
+	return s
+}
+
+func (s SubcontractOrderService) WithFactoryClaimStore(
+	claimStore SubcontractFactoryClaimStore,
+) SubcontractOrderService {
+	s.factoryClaimStore = claimStore
 
 	return s
 }
@@ -979,6 +1030,97 @@ func (s SubcontractOrderService) ReceiveSubcontractFinishedGoods(
 	return result, nil
 }
 
+func (s SubcontractOrderService) CreateSubcontractFactoryClaim(
+	ctx context.Context,
+	input CreateSubcontractFactoryClaimInput,
+) (CreateSubcontractFactoryClaimResult, error) {
+	if err := s.ensureReadyForFactoryClaim(); err != nil {
+		return CreateSubcontractFactoryClaimResult{}, err
+	}
+	if err := requireSubcontractOrderActor(input.ActorID); err != nil {
+		return CreateSubcontractFactoryClaimResult{}, err
+	}
+
+	var result CreateSubcontractFactoryClaimResult
+	err := s.store.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		current, err := tx.GetForUpdate(txCtx, input.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": strings.TrimSpace(input.ID)})
+		}
+		if err := ensureSubcontractOrderExpectedVersion(current, input.ExpectedVersion); err != nil {
+			return err
+		}
+
+		buildResult, err := s.factoryClaimBuild.BuildClaim(txCtx, BuildSubcontractFactoryClaimInput{
+			ID:              input.ClaimID,
+			ClaimNo:         input.ClaimNo,
+			Order:           current,
+			ReceiptID:       input.ReceiptID,
+			ReceiptNo:       input.ReceiptNo,
+			ReasonCode:      input.ReasonCode,
+			Reason:          input.Reason,
+			Severity:        input.Severity,
+			AffectedQty:     input.AffectedQty,
+			UOMCode:         input.UOMCode,
+			BaseAffectedQty: input.BaseAffectedQty,
+			BaseUOMCode:     input.BaseUOMCode,
+			Evidence:        createSubcontractFactoryClaimBuildEvidenceInputs(input.Evidence),
+			OwnerID:         input.OwnerID,
+			OpenedBy:        input.OpenedBy,
+			OpenedAt:        input.OpenedAt,
+			ActorID:         input.ActorID,
+		})
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"status":               string(current.Status),
+			})
+		}
+		if err := s.factoryClaimStore.Save(txCtx, buildResult.Claim); err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"factory_claim_id":     buildResult.Claim.ID,
+			})
+		}
+		if err := tx.Save(txCtx, buildResult.UpdatedOrder); err != nil {
+			return err
+		}
+		afterData := subcontractOrderAuditData(buildResult.UpdatedOrder)
+		for key, value := range subcontractFactoryClaimAuditData(buildResult.Claim) {
+			afterData[key] = value
+		}
+		log, err := newSubcontractOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			subcontractFactoryClaimAction,
+			buildResult.UpdatedOrder,
+			subcontractOrderAuditData(current),
+			afterData,
+			buildResult.Claim.OpenedAt,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, log); err != nil {
+			return err
+		}
+		result = CreateSubcontractFactoryClaimResult{
+			SubcontractOrder: buildResult.UpdatedOrder,
+			Claim:            buildResult.Claim,
+			PreviousStatus:   buildResult.PreviousStatus,
+			CurrentStatus:    buildResult.CurrentStatus,
+			AuditLogID:       log.ID,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return CreateSubcontractFactoryClaimResult{}, err
+	}
+
+	return result, nil
+}
+
 func (s SubcontractOrderService) decideSubcontractSample(
 	ctx context.Context,
 	input DecideSubcontractSampleInput,
@@ -1412,6 +1554,20 @@ func (s SubcontractOrderService) ensureReadyForFinishedGoodsReceipt() error {
 	return nil
 }
 
+func (s SubcontractOrderService) ensureReadyForFactoryClaim() error {
+	if s.store == nil {
+		return errors.New("subcontract order store is required")
+	}
+	if s.factoryClaimStore == nil {
+		return errors.New("subcontract factory claim store is required")
+	}
+	if s.factoryClaimBuild.clock == nil {
+		s.factoryClaimBuild = NewSubcontractFactoryClaimService()
+	}
+
+	return nil
+}
+
 func (s SubcontractOrderService) now() time.Time {
 	if s.clock == nil {
 		return time.Now().UTC()
@@ -1760,6 +1916,24 @@ func receiveSubcontractFinishedGoodsBuildEvidenceInputs(
 	return evidence
 }
 
+func createSubcontractFactoryClaimBuildEvidenceInputs(
+	inputs []CreateSubcontractFactoryClaimEvidenceInput,
+) []BuildSubcontractFactoryClaimEvidenceInput {
+	evidence := make([]BuildSubcontractFactoryClaimEvidenceInput, 0, len(inputs))
+	for _, input := range inputs {
+		evidence = append(evidence, BuildSubcontractFactoryClaimEvidenceInput{
+			ID:           input.ID,
+			EvidenceType: input.EvidenceType,
+			FileName:     input.FileName,
+			ObjectKey:    input.ObjectKey,
+			ExternalURL:  input.ExternalURL,
+			Note:         input.Note,
+		})
+	}
+
+	return evidence
+}
+
 func subcontractOrderValidationError(cause error, details map[string]any) error {
 	return apperrors.BadRequest(ErrorCodeSubcontractOrderValidation, "Subcontract order request is invalid", cause, details)
 }
@@ -1777,11 +1951,15 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 	if errors.Is(err, ErrSubcontractSampleApprovalNotFound) {
 		return apperrors.NotFound(ErrorCodeSubcontractOrderNotFound, "Subcontract sample approval not found", err, details)
 	}
+	if errors.Is(err, ErrSubcontractFactoryClaimNotFound) {
+		return apperrors.NotFound(ErrorCodeSubcontractOrderNotFound, "Subcontract factory claim not found", err, details)
+	}
 	if errors.Is(err, productiondomain.ErrSubcontractOrderInvalidTransition) ||
 		errors.Is(err, productiondomain.ErrSubcontractOrderInvalidStatus) ||
 		errors.Is(err, productiondomain.ErrSubcontractOrderSampleApprovalRequired) ||
 		errors.Is(err, productiondomain.ErrSubcontractSampleApprovalInvalidStatus) ||
-		errors.Is(err, productiondomain.ErrSubcontractSampleApprovalInvalidTransition) {
+		errors.Is(err, productiondomain.ErrSubcontractSampleApprovalInvalidTransition) ||
+		errors.Is(err, productiondomain.ErrSubcontractFactoryClaimInvalidStatus) {
 		return apperrors.Conflict(ErrorCodeSubcontractOrderInvalidState, "Subcontract order state is invalid", err, details)
 	}
 	if errors.Is(err, productiondomain.ErrSubcontractMaterialTransferInvalidStatus) {
@@ -1800,7 +1978,10 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 		errors.Is(err, productiondomain.ErrSubcontractMaterialTransferBatchRequired) ||
 		errors.Is(err, productiondomain.ErrSubcontractFinishedGoodsReceiptRequiredField) ||
 		errors.Is(err, productiondomain.ErrSubcontractFinishedGoodsReceiptInvalidQuantity) ||
-		errors.Is(err, productiondomain.ErrSubcontractFinishedGoodsReceiptInvalidStatus) {
+		errors.Is(err, productiondomain.ErrSubcontractFinishedGoodsReceiptInvalidStatus) ||
+		errors.Is(err, productiondomain.ErrSubcontractFactoryClaimRequiredField) ||
+		errors.Is(err, productiondomain.ErrSubcontractFactoryClaimInvalidQuantity) ||
+		errors.Is(err, productiondomain.ErrSubcontractFactoryClaimInvalidSLA) {
 		return subcontractOrderValidationError(err, details)
 	}
 
@@ -1900,6 +2081,29 @@ func subcontractFinishedGoodsReceiptAuditData(result SubcontractFinishedGoodsRec
 		"received_at":          result.Receipt.ReceivedAt.Format(time.RFC3339),
 		"receipt_line_count":   len(result.Receipt.Lines),
 		"stock_movement_count": len(result.StockMovements),
+	}
+}
+
+func subcontractFactoryClaimAuditData(claim productiondomain.SubcontractFactoryClaim) map[string]any {
+	return map[string]any{
+		"factory_claim_id":     claim.ID,
+		"factory_claim_no":     claim.ClaimNo,
+		"factory_claim_status": string(claim.Status),
+		"receipt_id":           claim.ReceiptID,
+		"receipt_no":           claim.ReceiptNo,
+		"reason_code":          claim.ReasonCode,
+		"reason":               claim.Reason,
+		"severity":             claim.Severity,
+		"affected_qty":         claim.AffectedQty.String(),
+		"base_affected_qty":    claim.BaseAffectedQty.String(),
+		"uom_code":             claim.UOMCode.String(),
+		"base_uom_code":        claim.BaseUOMCode.String(),
+		"owner_id":             claim.OwnerID,
+		"opened_by":            claim.OpenedBy,
+		"opened_at":            claim.OpenedAt.Format(time.RFC3339),
+		"due_at":               claim.DueAt.Format(time.RFC3339),
+		"evidence_count":       len(claim.Evidence),
+		"blocks_final_payment": claim.BlocksFinalPayment(),
 	}
 }
 

@@ -832,11 +832,15 @@ func (o SubcontractOrder) Accept(actorID string, changedAt time.Time) (Subcontra
 }
 
 func (o SubcontractOrder) RejectWithFactoryIssue(actorID string, reason string, changedAt time.Time) (SubcontractOrder, error) {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return SubcontractOrder{}, ErrSubcontractOrderRequiredField
+	}
 	rejected, err := o.TransitionTo(SubcontractOrderStatusRejectedFactoryIssue, actorID, changedAt)
 	if err != nil {
 		return SubcontractOrder{}, err
 	}
-	rejected.FactoryIssueReason = strings.TrimSpace(reason)
+	rejected.FactoryIssueReason = reason
 
 	return rejected, nil
 }

@@ -165,6 +165,39 @@ func TestSubcontractOrderAllowsMassProductionWithoutSampleRequirement(t *testing
 	}
 }
 
+func TestSubcontractOrderFactoryIssueRequiresReasonAndBlocksFinalPayment(t *testing.T) {
+	changedAt := time.Date(2026, 4, 29, 11, 0, 0, 0, time.UTC)
+	order := subcontractOrderReadyForMaterials(t, false)
+	started, err := order.StartMassProduction("operations-lead", changedAt)
+	if err != nil {
+		t.Fatalf("start mass production: %v", err)
+	}
+	received, err := started.MarkFinishedGoodsReceived("warehouse-user", changedAt.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("mark finished goods received: %v", err)
+	}
+	qc, err := received.StartQC("qa-user", changedAt.Add(2*time.Hour))
+	if err != nil {
+		t.Fatalf("start qc: %v", err)
+	}
+
+	_, err = qc.RejectWithFactoryIssue("qa-user", " ", changedAt.Add(3*time.Hour))
+	if !errors.Is(err, ErrSubcontractOrderRequiredField) {
+		t.Fatalf("blank factory issue reason error = %v, want required field", err)
+	}
+	rejected, err := qc.RejectWithFactoryIssue("qa-user", "wrong carton print", changedAt.Add(3*time.Hour))
+	if err != nil {
+		t.Fatalf("reject with factory issue: %v", err)
+	}
+	if rejected.Status != SubcontractOrderStatusRejectedFactoryIssue || rejected.FactoryIssueReason != "wrong carton print" {
+		t.Fatalf("rejected = %+v, want factory issue status and reason", rejected)
+	}
+	_, err = rejected.MarkFinalPaymentReady("finance-user", changedAt.Add(4*time.Hour))
+	if !errors.Is(err, ErrSubcontractOrderInvalidTransition) {
+		t.Fatalf("final payment error = %v, want invalid transition from factory issue", err)
+	}
+}
+
 func TestSubcontractOrderRejectsInvalidInputs(t *testing.T) {
 	input := validSubcontractOrderInput()
 	input.CurrencyCode = "USD"
