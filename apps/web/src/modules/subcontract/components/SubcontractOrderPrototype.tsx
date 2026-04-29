@@ -3,11 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AuditLogItem } from "@/modules/audit/types";
 import { DataTable, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
+import { decimalScales, normalizeDecimalInput } from "@/shared/format/numberFormat";
 import {
-  createSubcontractMaterialTransfer,
   formatSubcontractAttachmentType,
   formatSubcontractTransferStatus,
-  prototypeTransferLines,
   subcontractTransferStatusTone,
   subcontractTransferWarehouseOptions,
   summarizeSubcontractMaterialTransfers
@@ -24,6 +23,7 @@ import {
   formatSubcontractOrderStatus,
   getSubcontractOrder,
   getSubcontractOrders,
+  issueSubcontractMaterials,
   prototypeSubcontractOrders,
   subcontractDepositStatusOptions,
   subcontractFactoryOptions,
@@ -197,6 +197,11 @@ export function SubcontractOrderPrototype() {
   const [lastAudit, setLastAudit] = useState<AuditLogItem | null>(null);
   const [sourceWarehouseId, setSourceWarehouseId] = useState<string>(subcontractTransferWarehouseOptions[0].value);
   const [signedHandover, setSignedHandover] = useState(false);
+  const [handoverReceiver, setHandoverReceiver] = useState("Factory receiver");
+  const [handoverContact, setHandoverContact] = useState("");
+  const [handoverEvidenceName, setHandoverEvidenceName] = useState("handover.pdf");
+  const [materialIssueDrafts, setMaterialIssueDrafts] = useState<Record<string, { issueQty: string; batchNo: string; sourceBinId: string }>>({});
+  const [isCreatingTransfer, setIsCreatingTransfer] = useState(false);
   const [transfers, setTransfers] = useState<SubcontractMaterialTransfer[]>([]);
   const [transferFeedback, setTransferFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
   const summary = useMemo(() => summarizeSubcontractOrders(orders), [orders]);
@@ -233,6 +238,8 @@ export function SubcontractOrderPrototype() {
   );
   const selectedOrder = orders.find((order) => order.id === selectedOrderId) ?? orders[0] ?? null;
   const latestTransfer = transfers[0] ?? null;
+  const canIssueSelectedOrder =
+    selectedOrder?.status === "factory_confirmed" || selectedOrder?.status === "deposit_recorded";
 
   useEffect(() => {
     if (!selectedOrder) {
@@ -253,6 +260,28 @@ export function SubcontractOrderPrototype() {
       setMaterialUnitCost(firstLine.unitCost);
     }
   }, [selectedOrder]);
+
+  useEffect(() => {
+    if (!selectedOrder) {
+      setMaterialIssueDrafts({});
+      return;
+    }
+
+    setMaterialIssueDrafts(
+      Object.fromEntries(
+        selectedOrder.materialLines.map((line) => [
+          line.id,
+          {
+            issueQty: remainingMaterialQty(line.plannedQty, line.issuedQty),
+            batchNo: line.lotTraceRequired ? `${line.skuCode}-LOT-001` : "",
+            sourceBinId: ""
+          }
+        ])
+      )
+    );
+    setSignedHandover(false);
+    setHandoverReceiver("Factory receiver");
+  }, [selectedOrder?.id, selectedOrder?.version]);
 
   useEffect(() => {
     let active = true;
@@ -428,7 +457,19 @@ export function SubcontractOrderPrototype() {
     });
   }
 
-  function handleCreateTransfer() {
+  function updateMaterialIssueDraft(lineId: string, field: "issueQty" | "batchNo" | "sourceBinId", value: string) {
+    setMaterialIssueDrafts((current) => ({
+      ...current,
+      [lineId]: {
+        issueQty: current[lineId]?.issueQty ?? "",
+        batchNo: current[lineId]?.batchNo ?? "",
+        sourceBinId: current[lineId]?.sourceBinId ?? "",
+        [field]: value
+      }
+    }));
+  }
+
+  async function handleCreateTransfer() {
     if (!selectedOrder) {
       return;
     }
@@ -438,33 +479,53 @@ export function SubcontractOrderPrototype() {
       subcontractTransferWarehouseOptions[0];
 
     try {
-      const transfer = createSubcontractMaterialTransfer({
+      setIsCreatingTransfer(true);
+      const result = await issueSubcontractMaterials({
         order: selectedOrder,
         sourceWarehouseId: warehouse.value,
         sourceWarehouseCode: warehouse.code,
-        signedHandover,
-        lines: prototypeTransferLines
-      });
-      const statusResult = changeSubcontractOrderStatus({
-        order: selectedOrder,
-        nextStatus: "materials_issued_to_factory",
-        actorName: "Subcontract Coordinator",
-        note: `${transfer.transferNo} created with SUBCONTRACT_ISSUE movement`
+        handoverBy: "warehouse-user",
+        handoverAt: new Date().toISOString(),
+        receivedBy: handoverReceiver,
+        receiverContact: handoverContact,
+        lines: selectedOrder.materialLines.map((line) => {
+          const draft = materialIssueDrafts[line.id];
+
+          return {
+            orderMaterialLineId: line.id,
+            issueQty: draft?.issueQty || remainingMaterialQty(line.plannedQty, line.issuedQty),
+            uomCode: line.uomCode,
+            batchNo: draft?.batchNo,
+            sourceBinId: draft?.sourceBinId
+          };
+        }),
+        evidence: handoverEvidenceName.trim()
+          ? [
+              {
+                id: `${selectedOrder.id}-handover`,
+                evidenceType: "handover",
+                fileName: handoverEvidenceName.trim(),
+                objectKey: `subcontract/${selectedOrder.id}/${handoverEvidenceName.trim()}`
+              }
+            ]
+          : undefined
       });
 
-      setTransfers((current) => [transfer, ...current]);
-      setOrders((current) => current.map((order) => (order.id === statusResult.order.id ? statusResult.order : order)));
-      setSelectedOrderId(statusResult.order.id);
-      setLastAudit(statusResult.auditLog);
+      setTransfers((current) => [result.transfer, ...current]);
+      setOrders((current) => [result.order, ...current.filter((order) => order.id !== result.order.id)]);
+      setSelectedOrderId(result.order.id);
+      setLastAudit(result.auditLog);
       setTransferFeedback({
-        tone: subcontractTransferStatusTone(transfer.status),
-        message: `${transfer.transferNo} created with ${transfer.stockMovements.length} SUBCONTRACT_ISSUE movements`
+        tone: subcontractTransferStatusTone(result.transfer.status),
+        message: `${result.transfer.transferNo} created with ${result.stockMovements.length} SUBCONTRACT_ISSUE movements`
       });
     } catch (error) {
       setTransferFeedback({
         tone: "danger",
         message: error instanceof Error ? error.message : "Material transfer could not be created"
       });
+    } finally {
+      setIsCreatingTransfer(false);
     }
   }
 
@@ -805,6 +866,33 @@ export function SubcontractOrderPrototype() {
                 ))}
               </select>
             </label>
+            <label className="erp-field">
+              <span>Factory receiver</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={handoverReceiver}
+                onChange={(event) => setHandoverReceiver(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Receiver contact</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={handoverContact}
+                onChange={(event) => setHandoverContact(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Handover file</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={handoverEvidenceName}
+                onChange={(event) => setHandoverEvidenceName(event.target.value)}
+              />
+            </label>
             <label className="erp-subcontract-sample-toggle">
               <input
                 checked={signedHandover}
@@ -816,23 +904,63 @@ export function SubcontractOrderPrototype() {
           </div>
 
           <div className="erp-subcontract-line-list" aria-label="Material and packaging lines">
-            {prototypeTransferLines.map((line) => (
-              <div className="erp-subcontract-line-item" key={line.id}>
-                <strong>{line.itemName}</strong>
-                <span>
-                  {line.itemCode} / {formatQuantity(line.quantity)} {line.unit}
-                </span>
-                <StatusChip tone={line.lotControlled ? "warning" : "normal"}>
-                  {line.lotControlled ? line.batchNo : "No lot"}
-                </StatusChip>
-                <StatusChip tone={line.qcStatus === "passed" ? "success" : "warning"}>{line.qcStatus}</StatusChip>
-              </div>
-            ))}
+            {(selectedOrder?.materialLines ?? []).map((line) => {
+              const draft = materialIssueDrafts[line.id] ?? {
+                issueQty: remainingMaterialQty(line.plannedQty, line.issuedQty),
+                batchNo: "",
+                sourceBinId: ""
+              };
+
+              return (
+                <div className="erp-subcontract-line-item erp-subcontract-line-item--editable" key={line.id}>
+                  <strong>{line.itemName}</strong>
+                  <span>
+                    {line.skuCode} / remaining {remainingMaterialQty(line.plannedQty, line.issuedQty)} {line.uomCode}
+                  </span>
+                  <label className="erp-field">
+                    <span>Issue qty</span>
+                    <input
+                      className="erp-input"
+                      inputMode="decimal"
+                      type="text"
+                      value={draft.issueQty}
+                      onChange={(event) => updateMaterialIssueDraft(line.id, "issueQty", event.target.value)}
+                    />
+                  </label>
+                  <label className="erp-field">
+                    <span>Batch / lot</span>
+                    <input
+                      className="erp-input"
+                      type="text"
+                      value={draft.batchNo}
+                      onChange={(event) => updateMaterialIssueDraft(line.id, "batchNo", event.target.value)}
+                    />
+                  </label>
+                  <label className="erp-field">
+                    <span>Bin</span>
+                    <input
+                      className="erp-input"
+                      type="text"
+                      value={draft.sourceBinId}
+                      onChange={(event) => updateMaterialIssueDraft(line.id, "sourceBinId", event.target.value)}
+                    />
+                  </label>
+                  <StatusChip tone={line.lotTraceRequired ? "warning" : "normal"}>
+                    {line.lotTraceRequired ? "Lot required" : "No lot"}
+                  </StatusChip>
+                </div>
+              );
+            })}
           </div>
 
           <div className="erp-subcontract-actions">
-            <button className="erp-button erp-button--primary" type="button" onClick={handleCreateTransfer}>
-              Create transfer
+            <button
+              className="erp-button erp-button--primary"
+              type="button"
+              disabled={!selectedOrder || !canIssueSelectedOrder || !signedHandover || handoverReceiver.trim() === "" || isCreatingTransfer}
+              onClick={handleCreateTransfer}
+            >
+              Issue materials
             </button>
             {transferFeedback ? <StatusChip tone={transferFeedback.tone}>{transferFeedback.message}</StatusChip> : null}
           </div>
@@ -983,6 +1111,29 @@ function SubcontractFact({ label, value }: { label: string; value: string }) {
 
 function formatQuantity(value: number) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
+}
+
+function remainingMaterialQty(plannedQty: string, issuedQty: string) {
+  const remaining =
+    toScaledBigInt(plannedQty, decimalScales.quantity) - toScaledBigInt(issuedQty, decimalScales.quantity);
+  if (remaining < BigInt(0)) {
+    return "0.000000";
+  }
+
+  return fromScaledBigInt(remaining, decimalScales.quantity);
+}
+
+function toScaledBigInt(value: string, scale: number) {
+  const normalized = normalizeDecimalInput(value, scale);
+  return BigInt(normalized.replace(".", ""));
+}
+
+function fromScaledBigInt(value: bigint, scale: number) {
+  const digits = value.toString().padStart(scale + 1, "0");
+  const integer = digits.slice(0, -scale);
+  const fraction = scale > 0 ? `.${digits.slice(-scale)}` : "";
+
+  return `${integer}${fraction}`;
 }
 
 function formatMoney(value: number) {

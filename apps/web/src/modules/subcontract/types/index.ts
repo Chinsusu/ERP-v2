@@ -131,6 +131,51 @@ export type SubcontractStatusChangeResult = {
   auditLogId?: string;
 };
 
+export type IssueSubcontractMaterialLineInput = {
+  orderMaterialLineId: string;
+  issueQty: string;
+  uomCode: string;
+  baseIssueQty?: string;
+  baseUOMCode?: string;
+  conversionFactor?: string;
+  batchId?: string;
+  batchNo?: string;
+  lotNo?: string;
+  sourceBinId?: string;
+  note?: string;
+};
+
+export type IssueSubcontractMaterialsEvidenceInput = {
+  id?: string;
+  evidenceType: "handover" | "coa" | "msds" | "label" | "vat_invoice";
+  fileName?: string;
+  objectKey?: string;
+  externalURL?: string;
+  note?: string;
+};
+
+export type IssueSubcontractMaterialsInput = {
+  order: SubcontractOrder;
+  sourceWarehouseId: string;
+  sourceWarehouseCode: string;
+  handoverBy: string;
+  handoverAt?: string;
+  receivedBy: string;
+  receiverContact?: string;
+  vehicleNo?: string;
+  note?: string;
+  lines: IssueSubcontractMaterialLineInput[];
+  evidence?: IssueSubcontractMaterialsEvidenceInput[];
+};
+
+export type IssueSubcontractMaterialsResult = {
+  order: SubcontractOrder;
+  transfer: SubcontractMaterialTransfer;
+  stockMovements: SubcontractStockMovement[];
+  auditLog: AuditLogItem;
+  auditLogId?: string;
+};
+
 export type SubcontractOrderSummary = {
   total: number;
   draft: number;

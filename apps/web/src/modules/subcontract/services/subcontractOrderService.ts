@@ -4,13 +4,17 @@ import type { AuditLogItem } from "@/modules/audit/types";
 import type {
   ChangeSubcontractOrderStatusInput,
   CreateSubcontractOrderInput,
+  IssueSubcontractMaterialsInput,
+  IssueSubcontractMaterialsResult,
   SubcontractDepositStatus,
   SubcontractFactory,
   SubcontractFinalPaymentStatus,
+  SubcontractMaterialTransfer,
   SubcontractOrder,
   SubcontractOrderMaterialLine,
   SubcontractOrderQuery,
   SubcontractOrderStatus,
+  SubcontractStockMovement,
   SubcontractOrderSummary,
   SubcontractProduct,
   SubcontractStatusChangeResult,
@@ -116,6 +120,112 @@ type SubcontractOrderActionApiResult = {
   subcontract_order: SubcontractOrderApi;
   previous_status: SubcontractOrderStatus;
   current_status: SubcontractOrderStatus;
+  audit_log_id?: string;
+};
+
+type IssueSubcontractMaterialsApiLineRequest = {
+  order_material_line_id: string;
+  issue_qty: string;
+  uom_code: string;
+  base_issue_qty?: string;
+  base_uom_code?: string;
+  conversion_factor?: string;
+  batch_id?: string;
+  batch_no?: string;
+  lot_no?: string;
+  source_bin_id?: string;
+  note?: string;
+};
+
+type IssueSubcontractMaterialsApiEvidenceRequest = {
+  id?: string;
+  evidence_type: string;
+  file_name?: string;
+  object_key?: string;
+  external_url?: string;
+  note?: string;
+};
+
+type IssueSubcontractMaterialsApiRequest = {
+  expected_version: number;
+  source_warehouse_id: string;
+  source_warehouse_code: string;
+  handover_by: string;
+  handover_at?: string;
+  received_by: string;
+  receiver_contact?: string;
+  vehicle_no?: string;
+  note?: string;
+  lines: IssueSubcontractMaterialsApiLineRequest[];
+  evidence?: IssueSubcontractMaterialsApiEvidenceRequest[];
+};
+
+type SubcontractMaterialTransferApiLine = {
+  id: string;
+  line_no: number;
+  order_material_line_id: string;
+  item_id: string;
+  sku_code: string;
+  item_name: string;
+  issue_qty: string;
+  uom_code: string;
+  base_issue_qty: string;
+  base_uom_code: string;
+  conversion_factor: string;
+  batch_id?: string;
+  batch_no?: string;
+  lot_no?: string;
+  source_bin_id?: string;
+  lot_trace_required: boolean;
+  note?: string;
+};
+
+type SubcontractMaterialTransferApiEvidence = {
+  id: string;
+  evidence_type: string;
+  file_name?: string;
+  object_key?: string;
+  external_url?: string;
+  note?: string;
+};
+
+type SubcontractMaterialTransferApi = {
+  id: string;
+  transfer_no: string;
+  subcontract_order_id: string;
+  subcontract_order_no: string;
+  source_warehouse_id: string;
+  source_warehouse_code?: string;
+  factory_id: string;
+  factory_name: string;
+  status: "sent_to_factory" | "partially_sent";
+  lines: SubcontractMaterialTransferApiLine[];
+  evidence?: SubcontractMaterialTransferApiEvidence[];
+  handover_by: string;
+  handover_at: string;
+  received_by: string;
+  created_at: string;
+};
+
+type SubcontractMaterialIssueMovementApi = {
+  movement_no: string;
+  movement_type: string;
+  item_id: string;
+  batch_id?: string;
+  warehouse_id: string;
+  bin_id?: string;
+  quantity: string;
+  base_uom_code: string;
+  source_quantity: string;
+  source_uom_code: string;
+  stock_status: string;
+  source_doc_id: string;
+};
+
+type IssueSubcontractMaterialsApiResult = {
+  subcontract_order: SubcontractOrderApi;
+  transfer: SubcontractMaterialTransferApi;
+  stock_movements: SubcontractMaterialIssueMovementApi[];
   audit_log_id?: string;
 };
 
@@ -318,6 +428,26 @@ export async function cancelSubcontractOrder(
 
 export async function closeSubcontractOrder(id: string, expectedVersion?: number): Promise<SubcontractStatusChangeResult> {
   return runSubcontractOrderAction(id, "close", expectedVersion);
+}
+
+export async function issueSubcontractMaterials(
+  input: IssueSubcontractMaterialsInput
+): Promise<IssueSubcontractMaterialsResult> {
+  try {
+    const result = await apiPost<IssueSubcontractMaterialsApiResult, IssueSubcontractMaterialsApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/issue-materials`,
+      toApiIssueMaterialsInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiIssueMaterialsResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return issuePrototypeSubcontractMaterials(input);
+  }
 }
 
 export function changeSubcontractOrderStatus(input: ChangeSubcontractOrderStatusInput): SubcontractStatusChangeResult {
@@ -528,6 +658,70 @@ function fromApiActionResult(result: SubcontractOrderActionApiResult): Subcontra
   };
 }
 
+function fromApiIssueMaterialsResult(result: IssueSubcontractMaterialsApiResult): IssueSubcontractMaterialsResult {
+  const order = fromApiSubcontractOrder(result.subcontract_order);
+  const stockMovements = result.stock_movements.map(fromApiMaterialIssueMovement);
+  const transfer = fromApiSubcontractMaterialTransfer(result.transfer, stockMovements);
+  const auditLog = createMaterialIssueAuditLog(order, transfer, result.audit_log_id);
+
+  return {
+    order,
+    transfer,
+    stockMovements,
+    auditLog,
+    auditLogId: result.audit_log_id
+  };
+}
+
+function fromApiSubcontractMaterialTransfer(
+  transfer: SubcontractMaterialTransferApi,
+  stockMovements: SubcontractStockMovement[]
+): SubcontractMaterialTransfer {
+  const lines = transfer.lines.map((line) => ({
+    id: line.id,
+    itemCode: line.sku_code,
+    itemName: line.item_name,
+    itemType: line.sku_code.startsWith("PK") ? ("packaging" as const) : ("raw_material" as const),
+    quantity: Number(line.issue_qty),
+    unit: line.uom_code,
+    lotControlled: line.lot_trace_required,
+    batchNo: line.batch_no || line.lot_no || line.batch_id,
+    qcStatus: "passed" as const
+  }));
+
+  return {
+    id: transfer.id,
+    transferNo: transfer.transfer_no,
+    orderId: transfer.subcontract_order_id,
+    orderNo: transfer.subcontract_order_no,
+    sourceWarehouseId: transfer.source_warehouse_id,
+    sourceWarehouseCode: transfer.source_warehouse_code ?? transfer.source_warehouse_id,
+    factoryId: transfer.factory_id,
+    factoryName: transfer.factory_name,
+    signedHandover: transfer.status === "sent_to_factory",
+    status: transfer.status === "sent_to_factory" ? "SENT" : "READY_TO_SEND",
+    attachmentPlaceholders: createIssueAttachmentPlaceholders(transfer.evidence ?? []),
+    lines,
+    stockMovements,
+    createdBy: transfer.handover_by,
+    createdAt: transfer.created_at || transfer.handover_at
+  };
+}
+
+function fromApiMaterialIssueMovement(movement: SubcontractMaterialIssueMovementApi): SubcontractStockMovement {
+  return {
+    id: movement.movement_no,
+    movementType: "SUBCONTRACT_ISSUE",
+    itemCode: movement.item_id,
+    quantity: Number(movement.source_quantity || movement.quantity),
+    unit: movement.source_uom_code || movement.base_uom_code,
+    sourceWarehouseId: movement.warehouse_id,
+    targetLocation: `stock_in_subcontractor_hold:${movement.stock_status}`,
+    batchNo: movement.batch_id,
+    sourceDocId: movement.source_doc_id
+  };
+}
+
 function toApiCreateInput(input: CreateSubcontractOrderInput): CreateSubcontractOrderApiRequest {
   return {
     id: input.id,
@@ -542,6 +736,43 @@ function toApiCreateInput(input: CreateSubcontractOrderInput): CreateSubcontract
     claim_window_days: 7,
     expected_receipt_date: input.expectedDeliveryDate,
     material_lines: [toApiMaterialLineInput(input)]
+  };
+}
+
+function toApiIssueMaterialsInput(input: IssueSubcontractMaterialsInput): IssueSubcontractMaterialsApiRequest {
+  return {
+    expected_version: input.order.version,
+    source_warehouse_id: input.sourceWarehouseId,
+    source_warehouse_code: input.sourceWarehouseCode,
+    handover_by: input.handoverBy,
+    handover_at: input.handoverAt,
+    received_by: input.receivedBy,
+    receiver_contact: input.receiverContact,
+    vehicle_no: input.vehicleNo,
+    note: input.note,
+    lines: input.lines.map((line) => ({
+      order_material_line_id: line.orderMaterialLineId,
+      issue_qty: normalizeDecimalInput(line.issueQty, decimalScales.quantity),
+      uom_code: line.uomCode,
+      base_issue_qty: line.baseIssueQty ? normalizeDecimalInput(line.baseIssueQty, decimalScales.quantity) : undefined,
+      base_uom_code: line.baseUOMCode,
+      conversion_factor: line.conversionFactor
+        ? normalizeDecimalInput(line.conversionFactor, decimalScales.quantity)
+        : undefined,
+      batch_id: line.batchId,
+      batch_no: line.batchNo,
+      lot_no: line.lotNo,
+      source_bin_id: line.sourceBinId,
+      note: line.note
+    })),
+    evidence: input.evidence?.map((evidence) => ({
+      id: evidence.id,
+      evidence_type: evidence.evidenceType,
+      file_name: evidence.fileName,
+      object_key: evidence.objectKey,
+      external_url: evidence.externalURL,
+      note: evidence.note
+    }))
   };
 }
 
@@ -721,6 +952,113 @@ function transitionPrototypeSubcontractOrder(
   return result;
 }
 
+function issuePrototypeSubcontractMaterials(input: IssueSubcontractMaterialsInput): IssueSubcontractMaterialsResult {
+  const current = getPrototypeSubcontractOrder(input.order.id);
+  if (input.order.version && input.order.version !== current.version) {
+    throw new Error("Subcontract order version changed");
+  }
+  if (!["factory_confirmed", "deposit_recorded"].includes(current.status)) {
+    throw new Error(`Cannot issue materials from ${formatSubcontractOrderStatus(current.status)}`);
+  }
+  const transferId = `sub-transfer-${current.id}-${String(subcontractAuditSequence).padStart(4, "0")}`;
+  const updatedLines = current.materialLines.map((line) => {
+    const issuedLine = input.lines.find((candidate) => candidate.orderMaterialLineId === line.id);
+    if (!issuedLine) {
+      return line;
+    }
+
+    const issueQty = normalizeDecimalInput(issuedLine.issueQty, decimalScales.quantity);
+    if (toScaledBigInt(issueQty, decimalScales.quantity) <= BigInt(0)) {
+      throw new Error("Issue quantity must be greater than zero");
+    }
+    const nextIssuedQty = addQuantityStrings(line.issuedQty, issueQty);
+    if (toScaledBigInt(nextIssuedQty, decimalScales.quantity) > toScaledBigInt(line.plannedQty, decimalScales.quantity)) {
+      throw new Error(`${line.skuCode} issue quantity exceeds remaining subcontract material quantity`);
+    }
+
+    return {
+      ...line,
+      issuedQty: nextIssuedQty
+    };
+  });
+  const allIssued = updatedLines.every((line) => isQuantityGreaterOrEqual(line.issuedQty, line.plannedQty));
+  const order = createSubcontractOrderRecord({
+    ...current,
+    status: allIssued ? "materials_issued_to_factory" : current.status,
+    updatedAt: prototypeNow,
+    version: current.version + 1,
+    materialLines: updatedLines
+  });
+  const transferLines = input.lines.map((line) => {
+    const orderLine = current.materialLines.find((candidate) => candidate.id === line.orderMaterialLineId);
+    if (!orderLine) {
+      throw new Error("Material line is required");
+    }
+    if (orderLine.lotTraceRequired && !line.batchNo?.trim() && !line.batchId?.trim() && !line.lotNo?.trim()) {
+      throw new Error(`${orderLine.skuCode} requires batch or lot before factory transfer`);
+    }
+
+    return {
+      id: `${transferId}-${orderLine.id}`,
+      itemCode: orderLine.skuCode,
+      itemName: orderLine.itemName,
+      itemType: orderLine.skuCode.startsWith("PK") ? ("packaging" as const) : ("raw_material" as const),
+      quantity: Number(line.issueQty),
+      unit: line.uomCode,
+      lotControlled: orderLine.lotTraceRequired,
+      batchNo: line.batchNo || line.lotNo || line.batchId,
+      qcStatus: "passed" as const
+    };
+  });
+  const stockMovements = transferLines.map((line) => ({
+    id: `mov-${transferId}-${line.id}`,
+    movementType: "SUBCONTRACT_ISSUE" as const,
+    itemCode: line.itemCode,
+    quantity: line.quantity,
+    unit: line.unit,
+    sourceWarehouseId: input.sourceWarehouseId,
+    targetLocation: `stock_in_subcontractor_hold:${current.factoryCode}`,
+    batchNo: line.batchNo,
+    sourceDocId: transferId
+  }));
+  const transfer: SubcontractMaterialTransfer = {
+    id: transferId,
+    transferNo: `SUBTR-260429-${String(subcontractAuditSequence).padStart(4, "0")}`,
+    orderId: current.id,
+    orderNo: current.orderNo,
+    sourceWarehouseId: input.sourceWarehouseId,
+    sourceWarehouseCode: input.sourceWarehouseCode,
+    factoryId: current.factoryId,
+    factoryName: current.factoryName,
+    signedHandover: true,
+    status: allIssued ? "SENT" : "READY_TO_SEND",
+    attachmentPlaceholders: createIssueAttachmentPlaceholders(
+      input.evidence?.map((evidence) => ({
+        id: evidence.id ?? evidence.evidenceType,
+        evidence_type: evidence.evidenceType,
+        file_name: evidence.fileName,
+        object_key: evidence.objectKey,
+        external_url: evidence.externalURL
+      })) ?? []
+    ),
+    lines: transferLines,
+    stockMovements,
+    createdBy: input.handoverBy || "Subcontract Coordinator",
+    createdAt: input.handoverAt || prototypeNow
+  };
+  const auditLog = createMaterialIssueAuditLog(order, transfer, undefined, current.status);
+  order.auditLogIds = [...order.auditLogIds, auditLog.id];
+  prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== current.id)];
+
+  return {
+    order,
+    transfer,
+    stockMovements,
+    auditLog,
+    auditLogId: auditLog.id
+  };
+}
+
 function nextPrototypeStatus(currentStatus: SubcontractOrderStatus, action: SubcontractOrderAction) {
   if (action === "submit" && currentStatus === "draft") {
     return "submitted";
@@ -779,6 +1117,77 @@ function createStatusAuditLog(
     },
     createdAt: prototypeNow
   };
+}
+
+function createMaterialIssueAuditLog(
+  order: SubcontractOrder,
+  transfer: SubcontractMaterialTransfer,
+  auditLogId?: string,
+  beforeStatus: SubcontractOrderStatus = "factory_confirmed"
+): AuditLogItem {
+  const id = auditLogId ?? `audit-subcontract-material-issue-${String(subcontractAuditSequence++).padStart(4, "0")}`;
+
+  return {
+    id,
+    actorId: "user-subcontract-coordinator",
+    action: "subcontract.materials_issued",
+    entityType: "subcontract_order",
+    entityId: order.id,
+    requestId: `req_${id}`,
+    beforeData: {
+      status: beforeStatus
+    },
+    afterData: {
+      status: order.status,
+      transfer_no: transfer.transferNo,
+      stock_movement_count: transfer.stockMovements.length
+    },
+    metadata: {
+      order_no: order.orderNo,
+      factory: order.factoryName,
+      source_warehouse_id: transfer.sourceWarehouseId,
+      actor_name: transfer.createdBy
+    },
+    createdAt: transfer.createdAt || prototypeNow
+  };
+}
+
+function addQuantityStrings(left: string, right: string) {
+  return fromScaledBigInt(
+    toScaledBigInt(left, decimalScales.quantity) + toScaledBigInt(right, decimalScales.quantity),
+    decimalScales.quantity
+  );
+}
+
+function isQuantityGreaterOrEqual(left: string, right: string) {
+  return toScaledBigInt(left, decimalScales.quantity) >= toScaledBigInt(right, decimalScales.quantity);
+}
+
+function toScaledBigInt(value: string, scale: number) {
+  const normalized = normalizeDecimalInput(value, scale);
+  return BigInt(normalized.replace(".", ""));
+}
+
+function fromScaledBigInt(value: bigint, scale: number) {
+  const negative = value < BigInt(0);
+  const digits = (negative ? -value : value).toString().padStart(scale + 1, "0");
+  const integer = digits.slice(0, -scale);
+  const fraction = scale > 0 ? `.${digits.slice(-scale)}` : "";
+
+  return `${negative ? "-" : ""}${integer}${fraction}`;
+}
+
+function createIssueAttachmentPlaceholders(
+  evidence: SubcontractMaterialTransferApiEvidence[]
+): SubcontractMaterialTransfer["attachmentPlaceholders"] {
+  const attachedTypes = new Set(evidence.map((item) => item.evidence_type.toLowerCase()));
+
+  return [
+    { type: "COA", label: "COA", required: false, attached: attachedTypes.has("coa") },
+    { type: "MSDS", label: "MSDS", required: false, attached: attachedTypes.has("msds") },
+    { type: "LABEL", label: "Label", required: false, attached: attachedTypes.has("label") },
+    { type: "VAT_INVOICE", label: "VAT invoice", required: true, attached: attachedTypes.has("vat_invoice") }
+  ];
 }
 
 function resolveFactory(factoryId: string, factoryName?: string): SubcontractFactory {

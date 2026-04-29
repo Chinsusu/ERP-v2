@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   approveSubcontractOrder,
   changeSubcontractOrderStatus,
+  confirmFactorySubcontractOrder,
   createSubcontractOrder,
   formatSubcontractDepositStatus,
   formatSubcontractOrderStatus,
   getSubcontractOrders,
+  issueSubcontractMaterials,
   prototypeSubcontractOrders,
   resetPrototypeSubcontractOrdersForTest,
   subcontractDepositStatusTone,
@@ -153,6 +155,111 @@ describe("subcontractOrderService", () => {
 
     expect(submitted.order.status).toBe("submitted");
     expect(approved.order.status).toBe("approved");
+  });
+
+  it("issues subcontract materials through the prototype fallback", async () => {
+    const draft = await createSubcontractOrder({
+      factoryId: "sup-out-lotus",
+      productId: "item-serum-30ml",
+      quantity: 1200,
+      specVersion: "SPEC-SERUM-2026.04",
+      sampleRequired: true,
+      expectedDeliveryDate: "2026-05-20",
+      depositStatus: "pending",
+      materialItemId: "item-cream-50g",
+      materialQty: "20",
+      materialUnitCost: "58000"
+    });
+    const submitted = await submitSubcontractOrder(draft.id, draft.version);
+    const approved = await approveSubcontractOrder(submitted.order.id, submitted.order.version);
+    const confirmed = await confirmFactorySubcontractOrder(approved.order.id, approved.order.version);
+
+    const result = await issueSubcontractMaterials({
+      order: confirmed.order,
+      sourceWarehouseId: "wh-hcm",
+      sourceWarehouseCode: "HCM",
+      handoverBy: "warehouse-user",
+      receivedBy: "factory-receiver",
+      lines: [
+        {
+          orderMaterialLineId: confirmed.order.materialLines[0].id,
+          issueQty: "20",
+          uomCode: "EA",
+          batchNo: "CREAM-LOT-001"
+        }
+      ],
+      evidence: [
+        {
+          evidenceType: "handover",
+          fileName: "handover.pdf",
+          objectKey: "subcontract/handover.pdf"
+        }
+      ]
+    });
+
+    expect(result.order.status).toBe("materials_issued_to_factory");
+    expect(result.transfer).toMatchObject({
+      orderId: confirmed.order.id,
+      sourceWarehouseId: "wh-hcm",
+      status: "SENT",
+      signedHandover: true
+    });
+    expect(result.stockMovements).toHaveLength(1);
+    expect(result.auditLog.action).toBe("subcontract.materials_issued");
+  });
+
+  it("accumulates partial subcontract material issues in the prototype fallback", async () => {
+    const draft = await createSubcontractOrder({
+      factoryId: "sup-out-lotus",
+      productId: "item-serum-30ml",
+      quantity: 1200,
+      specVersion: "SPEC-SERUM-2026.04",
+      sampleRequired: true,
+      expectedDeliveryDate: "2026-05-20",
+      depositStatus: "pending",
+      materialItemId: "item-cream-50g",
+      materialQty: "20",
+      materialUnitCost: "58000"
+    });
+    const submitted = await submitSubcontractOrder(draft.id, draft.version);
+    const approved = await approveSubcontractOrder(submitted.order.id, submitted.order.version);
+    const confirmed = await confirmFactorySubcontractOrder(approved.order.id, approved.order.version);
+    const firstIssue = await issueSubcontractMaterials({
+      order: confirmed.order,
+      sourceWarehouseId: "wh-hcm",
+      sourceWarehouseCode: "HCM",
+      handoverBy: "warehouse-user",
+      receivedBy: "factory-receiver",
+      lines: [
+        {
+          orderMaterialLineId: confirmed.order.materialLines[0].id,
+          issueQty: "5",
+          uomCode: "EA",
+          batchNo: "CREAM-LOT-001"
+        }
+      ]
+    });
+
+    const finalIssue = await issueSubcontractMaterials({
+      order: firstIssue.order,
+      sourceWarehouseId: "wh-hcm",
+      sourceWarehouseCode: "HCM",
+      handoverBy: "warehouse-user",
+      receivedBy: "factory-receiver",
+      lines: [
+        {
+          orderMaterialLineId: firstIssue.order.materialLines[0].id,
+          issueQty: "15",
+          uomCode: "EA",
+          batchNo: "CREAM-LOT-001"
+        }
+      ]
+    });
+
+    expect(firstIssue.order.status).toBe("factory_confirmed");
+    expect(firstIssue.order.materialLines[0].issuedQty).toBe("5.000000");
+    expect(finalIssue.order.status).toBe("materials_issued_to_factory");
+    expect(finalIssue.order.materialLines[0].issuedQty).toBe("20.000000");
   });
 
   it("maps subcontract status and deposit status to UI labels and tones", () => {
