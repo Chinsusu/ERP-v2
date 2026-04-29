@@ -10,6 +10,7 @@ import (
 	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	qcdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/qc/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
 
 func TestInboundQCInspectionServiceCreateStartPassAuditsFlow(t *testing.T) {
@@ -287,6 +288,64 @@ func TestInboundQCInspectionServiceFailBlocksStockMovementFromAvailable(t *testi
 	}
 }
 
+func TestInboundQCInspectionServicePartialMovementAvailabilityMatchesDecision(t *testing.T) {
+	service, _, movementStore, batchUpdater := newTestInboundQCInspectionService()
+	ctx := context.Background()
+	created, err := service.CreateInboundQCInspection(ctx, CreateInboundQCInspectionInput{
+		ID:                 "iqc-partial-availability",
+		GoodsReceiptID:     "grn-hcm-260427-inspect",
+		GoodsReceiptLineID: "grn-line-draft-001",
+		ActorID:            "user-qa",
+	})
+	if err != nil {
+		t.Fatalf("create inspection: %v", err)
+	}
+	if _, err := service.StartInboundQCInspection(ctx, InboundQCActionInput{ID: created.Inspection.ID, ActorID: "user-qa"}); err != nil {
+		t.Fatalf("start inspection: %v", err)
+	}
+
+	partial, err := service.PartialInboundQCInspection(ctx, InboundQCActionInput{
+		ID:             created.Inspection.ID,
+		PassedQuantity: "8",
+		FailedQuantity: "6",
+		HoldQuantity:   "10",
+		Checklist:      completedChecklistInput("pass"),
+		Reason:         "split availability regression",
+		ActorID:        "user-qa",
+	})
+	if err != nil {
+		t.Fatalf("partial inspection: %v", err)
+	}
+
+	movements := movementStore.Movements()
+	if len(movements) != 3 {
+		t.Fatalf("stock movements = %d, want pass/fail/hold buckets", len(movements))
+	}
+	if len(batchUpdater.inputs) != 1 {
+		t.Fatalf("batch status inputs = %+v, want one partial batch status update", batchUpdater.inputs)
+	}
+	snapshots := inventorydomain.CalculateAvailableStockAt(
+		stockBalanceSnapshotsFromInboundQCMovements(movements, partial.Inspection, batchUpdater.inputs[0].NextStatus),
+		time.Date(2026, 4, 29, 0, 0, 0, 0, time.UTC),
+	)
+	if len(snapshots) != 1 {
+		t.Fatalf("available snapshots = %d, want 1", len(snapshots))
+	}
+	got := snapshots[0]
+	if got.PhysicalQty != partial.Inspection.Quantity ||
+		got.AvailableQty != partial.Inspection.PassedQuantity ||
+		got.DamagedQty != partial.Inspection.FailedQuantity ||
+		got.QCHoldQty != partial.Inspection.HoldQuantity {
+		t.Fatalf("available snapshot = %+v, want physical %s, available %s, damaged %s, hold %s",
+			got,
+			partial.Inspection.Quantity,
+			partial.Inspection.PassedQuantity,
+			partial.Inspection.FailedQuantity,
+			partial.Inspection.HoldQuantity,
+		)
+	}
+}
+
 func newTestInboundQCInspectionService() (
 	InboundQCInspectionService,
 	*audit.InMemoryLogStore,
@@ -328,6 +387,33 @@ func findMovementByStatus(
 	}
 
 	return inventorydomain.StockMovement{}
+}
+
+func stockBalanceSnapshotsFromInboundQCMovements(
+	movements []inventorydomain.StockMovement,
+	inspection qcdomain.InboundQCInspection,
+	batchQCStatus inventorydomain.QCStatus,
+) []inventorydomain.StockBalanceSnapshot {
+	snapshots := make([]inventorydomain.StockBalanceSnapshot, 0, len(movements))
+	for _, movement := range movements {
+		snapshots = append(snapshots, inventorydomain.StockBalanceSnapshot{
+			WarehouseID:   movement.WarehouseID,
+			LocationID:    movement.BinID,
+			ItemID:        movement.ItemID,
+			SKU:           inspection.SKU,
+			BatchID:       movement.BatchID,
+			BatchNo:       inspection.BatchNo,
+			BatchQCStatus: batchQCStatus,
+			BatchStatus:   inventorydomain.BatchStatusActive,
+			BatchExpiry:   inspection.ExpiryDate,
+			BaseUOMCode:   movement.BaseUOMCode,
+			StockStatus:   movement.StockStatus,
+			QtyOnHand:     movement.Quantity,
+			QtyReserved:   decimal.MustQuantity("0"),
+		})
+	}
+
+	return snapshots
 }
 
 type recordingBatchQCStatusUpdater struct {
