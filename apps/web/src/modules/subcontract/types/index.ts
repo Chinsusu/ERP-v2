@@ -35,6 +35,10 @@ export type SubcontractFinishedGoodsReceiptStatus = "qc_hold";
 
 export type SubcontractFinishedGoodsPackagingStatus = "intact" | "damaged" | "mixed";
 
+export type SubcontractFactoryClaimStatus = "open" | "acknowledged" | "resolved" | "closed" | "cancelled";
+
+export type SubcontractFactoryClaimSeverity = "P1" | "P2" | "P3";
+
 export type SubcontractFactory = {
   id: string;
   code: string;
@@ -354,6 +358,82 @@ export type ReceiveSubcontractFinishedGoodsResult = {
   order: SubcontractOrder;
   receipt: SubcontractFinishedGoodsReceipt;
   stockMovements: SubcontractStockMovement[];
+  auditLog: AuditLogItem;
+  auditLogId?: string;
+};
+
+export type SubcontractFactoryClaimEvidenceInput = {
+  id?: string;
+  evidenceType: "qc_photo" | "inspection_note" | "delivery_note" | "coa";
+  fileName?: string;
+  objectKey?: string;
+  externalURL?: string;
+  note?: string;
+};
+
+export type CreateSubcontractFactoryClaimInput = {
+  order: SubcontractOrder;
+  claimId?: string;
+  claimNo?: string;
+  receiptId?: string;
+  receiptNo?: string;
+  reasonCode: string;
+  reason: string;
+  severity: SubcontractFactoryClaimSeverity;
+  affectedQty: string;
+  uomCode: string;
+  baseAffectedQty?: string;
+  baseUOMCode?: string;
+  ownerId: string;
+  openedBy: string;
+  openedAt?: string;
+  evidence: SubcontractFactoryClaimEvidenceInput[];
+};
+
+export type SubcontractFactoryClaimEvidence = {
+  id: string;
+  evidenceType: string;
+  fileName?: string;
+  objectKey?: string;
+  externalURL?: string;
+  note?: string;
+  createdAt: string;
+  createdBy: string;
+};
+
+export type SubcontractFactoryClaim = {
+  id: string;
+  claimNo: string;
+  orderId: string;
+  orderNo: string;
+  factoryId: string;
+  factoryCode: string;
+  factoryName: string;
+  receiptId?: string;
+  receiptNo?: string;
+  reasonCode: string;
+  reason: string;
+  severity: SubcontractFactoryClaimSeverity;
+  status: SubcontractFactoryClaimStatus;
+  affectedQty: string;
+  uomCode: string;
+  baseAffectedQty: string;
+  baseUOMCode: string;
+  evidence: SubcontractFactoryClaimEvidence[];
+  ownerId: string;
+  openedBy: string;
+  openedAt: string;
+  dueAt: string;
+  resolutionNote?: string;
+  blocksFinalPayment: boolean;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
+export type SubcontractFactoryClaimResult = {
+  order: SubcontractOrder;
+  claim: SubcontractFactoryClaim;
   auditLog: AuditLogItem;
   auditLogId?: string;
 };

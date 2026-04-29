@@ -2882,6 +2882,13 @@ textarea {
   align-items: end;
 }
 
+.erp-subcontract-claim-controls {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
 .erp-subcontract-note-field {
   margin-top: 12px;
 }
@@ -3104,6 +3111,11 @@ textarea {
 .erp-subcontract-claim-list {
   display: grid;
   gap: 8px;
+}
+
+.erp-subcontract-claim-facts {
+  margin-top: 12px;
+  margin-bottom: 12px;
 }
 
 .erp-subcontract-sample-item {
@@ -4221,6 +4233,7 @@ textarea {
   .erp-subcontract-transfer-controls,
   .erp-subcontract-sample-controls,
   .erp-subcontract-receipt-controls,
+  .erp-subcontract-claim-controls,
   .erp-subcontract-line-item,
   .erp-subcontract-timeline,
   .erp-subcontract-sample-item,
