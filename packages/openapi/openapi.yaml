@@ -2429,6 +2429,8 @@ components:
         - WAREHOUSE_STAFF
         - WAREHOUSE_LEAD
         - QA
+        - PURCHASE_OPS
+        - FINANCE_OPS
         - SALES_OPS
         - PRODUCTION_OPS
     PermissionKey:
@@ -2438,6 +2440,7 @@ components:
         - warehouse:view
         - inventory:view
         - purchase:view
+        - finance:view
         - qc:view
         - production:view
         - subcontract:view

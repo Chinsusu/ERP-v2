@@ -34,11 +34,17 @@ describe("permission menu", () => {
       "WAREHOUSE_STAFF",
       "WAREHOUSE_LEAD",
       "QA",
+      "PURCHASE_OPS",
+      "FINANCE_OPS",
       "SALES_OPS",
       "PRODUCTION_OPS"
     ]);
     expect(rolePermissions.ERP_ADMIN).toContain("settings:view");
     expect(rolePermissions.QA).toContain("qc:decision");
+    expect(rolePermissions.PURCHASE_OPS).toContain("purchase:view");
+    expect(rolePermissions.PURCHASE_OPS).not.toContain("qc:decision");
+    expect(rolePermissions.FINANCE_OPS).toContain("finance:view");
+    expect(rolePermissions.FINANCE_OPS).not.toContain("record:create");
     expect(rolePermissions.WAREHOUSE_LEAD).not.toContain("qc:decision");
     expect(rolePermissions.WAREHOUSE_STAFF).not.toContain("settings:view");
   });
@@ -74,11 +80,45 @@ describe("permission menu", () => {
     });
   });
 
+  it("defines finance as a control permission", () => {
+    expect(permissionCatalog).toContainEqual({
+      key: "finance:view",
+      label: "Finance",
+      group: "control"
+    });
+  });
+
   it("shows subcontract operations only to users with subcontract access", () => {
     const labels = getVisibleMenuGroups(productionUser).flatMap((group) => group.items.map((item) => item.label));
 
     expect(labels).toContain("Production");
     expect(labels).toContain("Subcontract");
+  });
+
+  it("shows purchase and finance menus to their Sprint 4 roles", () => {
+    const purchaseUser: MockUser = {
+      id: "purchase-user",
+      name: "Purchase User",
+      email: "purchase@example.local",
+      role: "PURCHASE_OPS",
+      permissions: rolePermissions.PURCHASE_OPS
+    };
+    const financeUser: MockUser = {
+      id: "finance-user",
+      name: "Finance User",
+      email: "finance@example.local",
+      role: "FINANCE_OPS",
+      permissions: rolePermissions.FINANCE_OPS
+    };
+
+    const purchaseLabels = getVisibleMenuGroups(purchaseUser).flatMap((group) => group.items.map((item) => item.label));
+    const financeLabels = getVisibleMenuGroups(financeUser).flatMap((group) => group.items.map((item) => item.label));
+
+    expect(purchaseLabels).toContain("Purchase");
+    expect(purchaseLabels).not.toContain("QC");
+    expect(financeLabels).toContain("Finance");
+    expect(financeLabels).toContain("Purchase");
+    expect(financeLabels).not.toContain("QC");
   });
 
   it("checks single menu item access", () => {
