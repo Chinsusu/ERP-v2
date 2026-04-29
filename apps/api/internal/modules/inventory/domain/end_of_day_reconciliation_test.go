@@ -70,3 +70,26 @@ func TestEndOfDayReconciliationCloseRequiresExceptionForBlockingChecklist(t *tes
 		t.Fatalf("closed at = %v, want %v", closed.ClosedAt, closedAt)
 	}
 }
+
+func TestEndOfDayReconciliationCloseBlocksUnresolvedOperationalIssue(t *testing.T) {
+	reconciliation := EndOfDayReconciliation{
+		ID:     "close-returns-pending",
+		Status: ReconciliationStatusInReview,
+		Checklist: []ReconciliationChecklistItem{
+			{Key: "returns", Label: "Returns triaged", Complete: false, Blocking: true},
+			{Key: "adjustments", Label: "Adjustments approved", Complete: true, Blocking: true},
+		},
+	}
+
+	if reconciliation.Summary("lead exception").ReadyToClose {
+		t.Fatal("ready to close with unresolved operational issue = true, want false")
+	}
+
+	_, err := reconciliation.Close("user-warehouse-lead", "lead exception", time.Time{})
+	if !errors.Is(err, ErrReconciliationUnresolvedIssue) {
+		t.Fatalf("close err = %v, want ErrReconciliationUnresolvedIssue", err)
+	}
+	if len(reconciliation.UnresolvedOperationalIssues()) != 1 {
+		t.Fatalf("unresolved issues = %d, want 1", len(reconciliation.UnresolvedOperationalIssues()))
+	}
+}

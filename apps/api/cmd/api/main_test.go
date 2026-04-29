@@ -518,13 +518,13 @@ func TestCloseEndOfDayReconciliationHandlerWritesAudit(t *testing.T) {
 	store := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	auditStore := audit.NewInMemoryLogStore()
 	service := inventoryapp.NewCloseEndOfDayReconciliation(store, auditStore)
-	body := bytes.NewBufferString(`{"exception_note":"variance accepted by lead"}`)
+	body := bytes.NewBufferString(`{"exception_note":""}`)
 	req := httptest.NewRequest(
 		http.MethodPost,
-		"/api/v1/warehouse/end-of-day-reconciliations/rec-hcm-260426-day/close",
+		"/api/v1/warehouse/end-of-day-reconciliations/rec-hn-260426-day/close",
 		body,
 	)
-	req.SetPathValue("reconciliation_id", "rec-hcm-260426-day")
+	req.SetPathValue("reconciliation_id", "rec-hn-260426-day")
 	req.Header.Set(response.HeaderRequestID, "req-close")
 	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
 		Email:       "admin@example.local",
@@ -549,8 +549,8 @@ func TestCloseEndOfDayReconciliationHandlerWritesAudit(t *testing.T) {
 	if payload.Data.AuditLogID == "" {
 		t.Fatal("audit log id is empty")
 	}
-	if payload.Data.Operations.PendingIssueCount != 2 {
-		t.Fatalf("pending issue count = %d, want 2", payload.Data.Operations.PendingIssueCount)
+	if payload.Data.Operations.PendingIssueCount != 0 {
+		t.Fatalf("pending issue count = %d, want 0", payload.Data.Operations.PendingIssueCount)
 	}
 
 	logs, err := auditStore.List(req.Context(), audit.Query{Action: "warehouse.shift.closed"})
@@ -559,6 +559,31 @@ func TestCloseEndOfDayReconciliationHandlerWritesAudit(t *testing.T) {
 	}
 	if len(logs) != 1 {
 		t.Fatalf("audit logs = %d, want 1", len(logs))
+	}
+}
+
+func TestCloseEndOfDayReconciliationHandlerBlocksUnresolvedIssue(t *testing.T) {
+	store := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
+	service := inventoryapp.NewCloseEndOfDayReconciliation(store, audit.NewInMemoryLogStore())
+	body := bytes.NewBufferString(`{"exception_note":"variance accepted by lead"}`)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/warehouse/end-of-day-reconciliations/rec-hcm-260426-day/close",
+		body,
+	)
+	req.SetPathValue("reconciliation_id", "rec-hcm-260426-day")
+	req.Header.Set(response.HeaderRequestID, "req-close-blocked")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, auth.RoleWarehouseLead)))
+	rec := httptest.NewRecorder()
+
+	closeEndOfDayReconciliationHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusConflict, rec.Body.String())
 	}
 }
 
