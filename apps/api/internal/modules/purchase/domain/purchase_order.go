@@ -109,6 +109,19 @@ type NewPurchaseOrderDocumentInput struct {
 	UpdatedAt     time.Time
 }
 
+type UpdatePurchaseOrderDocumentInput struct {
+	SupplierID    string
+	SupplierCode  string
+	SupplierName  string
+	WarehouseID   string
+	WarehouseCode string
+	ExpectedDate  string
+	Note          string
+	Lines         []NewPurchaseOrderLineInput
+	UpdatedAt     time.Time
+	UpdatedBy     string
+}
+
 type NewPurchaseOrderLineInput struct {
 	ID               string
 	LineNo           int
@@ -320,6 +333,61 @@ func NewPurchaseOrderLine(input NewPurchaseOrderLineInput) (PurchaseOrderLine, e
 	}
 
 	return line, nil
+}
+
+func (o PurchaseOrder) ReplaceDraftDetails(input UpdatePurchaseOrderDocumentInput) (PurchaseOrder, error) {
+	if NormalizePurchaseOrderStatus(o.Status) != PurchaseOrderStatusDraft {
+		return PurchaseOrder{}, ErrPurchaseOrderInvalidTransition
+	}
+	if strings.TrimSpace(input.UpdatedBy) == "" {
+		return PurchaseOrder{}, ErrPurchaseOrderTransitionActorRequired
+	}
+
+	updatedAt := input.UpdatedAt
+	if updatedAt.IsZero() {
+		updatedAt = time.Now().UTC()
+	}
+	updated := o.Clone()
+	updated.SupplierID = strings.TrimSpace(input.SupplierID)
+	updated.SupplierCode = strings.ToUpper(strings.TrimSpace(input.SupplierCode))
+	updated.SupplierName = strings.TrimSpace(input.SupplierName)
+	updated.WarehouseID = strings.TrimSpace(input.WarehouseID)
+	updated.WarehouseCode = strings.ToUpper(strings.TrimSpace(input.WarehouseCode))
+	updated.ExpectedDate = strings.TrimSpace(input.ExpectedDate)
+	updated.Note = strings.TrimSpace(input.Note)
+	updated.UpdatedAt = updatedAt.UTC()
+	updated.UpdatedBy = strings.TrimSpace(input.UpdatedBy)
+	if updated.Version > 0 {
+		updated.Version++
+	}
+
+	if input.Lines != nil {
+		updated.Lines = make([]PurchaseOrderLine, 0, len(input.Lines))
+		for index, lineInput := range input.Lines {
+			if lineInput.LineNo == 0 {
+				lineInput.LineNo = index + 1
+			}
+			if lineInput.CurrencyCode == "" {
+				lineInput.CurrencyCode = updated.CurrencyCode.String()
+			}
+			if strings.TrimSpace(lineInput.ExpectedDate) == "" {
+				lineInput.ExpectedDate = updated.ExpectedDate
+			}
+			line, err := NewPurchaseOrderLine(lineInput)
+			if err != nil {
+				return PurchaseOrder{}, err
+			}
+			updated.Lines = append(updated.Lines, line)
+		}
+	}
+	if err := updated.recalculateAmounts(); err != nil {
+		return PurchaseOrder{}, err
+	}
+	if err := updated.Validate(); err != nil {
+		return PurchaseOrder{}, err
+	}
+
+	return updated, nil
 }
 
 func (o PurchaseOrder) Validate() error {
