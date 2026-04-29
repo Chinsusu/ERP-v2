@@ -8,6 +8,7 @@ import {
   type DataTableColumn,
   type StatusTone
 } from "@/shared/design-system/components";
+import { AttachmentPanel, type AttachmentPanelItem } from "@/shared/design-system/pageTemplates";
 import { usePurchaseOrders } from "../hooks/usePurchaseOrders";
 import {
   approvePurchaseOrder,
@@ -166,6 +167,8 @@ export function PurchaseOrderPrototype() {
   const [lineQty, setLineQty] = useState("10");
   const [lineUnitPrice, setLineUnitPrice] = useState("125000");
   const [lineNote, setLineNote] = useState("");
+  const [poAttachmentName, setPoAttachmentName] = useState("supplier-quote.pdf");
+  const [purchaseAttachmentRefs, setPurchaseAttachmentRefs] = useState<Record<string, string[]>>({});
   const [localOrders, setLocalOrders] = useState<PurchaseOrder[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState("po-260429-0001");
   const [feedback, setFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
@@ -185,6 +188,26 @@ export function PurchaseOrderPrototype() {
   const selectedSupplier = purchaseSupplierOptions.find((supplier) => supplier.value === supplierId) ?? purchaseSupplierOptions[0];
   const selectedLineItem = purchaseItemOptions.find((item) => item.value === lineItemId) ?? purchaseItemOptions[0];
   const totals = summarizeOrders(visibleOrders);
+  const purchaseAttachmentItems = useMemo<AttachmentPanelItem[]>(
+    () =>
+      selectedOrder
+        ? (purchaseAttachmentRefs[selectedOrder.id] ?? []).map((name) => ({
+            id: `${selectedOrder.id}:${name}`,
+            name,
+            kind: name.toLowerCase().endsWith(".pdf") ? "Supplier document" : "PO evidence",
+            uploadedBy: selectedOrder.supplierCode ?? selectedOrder.supplierName,
+            uploadedAt: selectedOrder.updatedAt,
+            storageKey: `purchase-orders/${selectedOrder.id}/${name}`,
+            status: <StatusChip tone={selectedOrder.status === "draft" ? "warning" : "info"}>{formatPurchaseOrderStatus(selectedOrder.status)}</StatusChip>,
+            canDownload: true,
+            canDelete: selectedOrder.status === "draft",
+            deleteLabel: "Remove",
+            onDownload: () => setFeedback({ tone: "info", message: `purchase-orders/${selectedOrder.id}/${name}` }),
+            onDelete: () => removePurchaseAttachment(selectedOrder.id, name)
+          }))
+        : [],
+    [purchaseAttachmentRefs, selectedOrder]
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -327,6 +350,28 @@ export function PurchaseOrderPrototype() {
 
   function upsertLocalOrder(order: PurchaseOrder) {
     setLocalOrders((current) => [order, ...current.filter((candidate) => candidate.id !== order.id)]);
+  }
+
+  function handleAddPurchaseAttachment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedOrder || poAttachmentName.trim() === "") {
+      return;
+    }
+
+    const fileName = poAttachmentName.trim();
+    setPurchaseAttachmentRefs((current) => ({
+      ...current,
+      [selectedOrder.id]: Array.from(new Set([...(current[selectedOrder.id] ?? []), fileName]))
+    }));
+    setPoAttachmentName("");
+    setFeedback({ tone: "info", message: `${fileName} linked to ${selectedOrder.poNo}` });
+  }
+
+  function removePurchaseAttachment(orderId: string, fileName: string) {
+    setPurchaseAttachmentRefs((current) => ({
+      ...current,
+      [orderId]: (current[orderId] ?? []).filter((name) => name !== fileName)
+    }));
   }
 
   return (
@@ -541,9 +586,34 @@ export function PurchaseOrderPrototype() {
                 <h3 className="erp-section-title">Line items</h3>
                 <DataTable columns={lineColumns} rows={selectedOrder.lines} getRowKey={(row) => row.id} />
               </div>
+              <AttachmentPanel
+                title="PO attachments"
+                items={purchaseAttachmentItems}
+                emptyMessage="No supplier documents linked."
+                uploadAction={
+                  <form className="erp-purchase-attachment-form" onSubmit={handleAddPurchaseAttachment}>
+                    <input
+                      aria-label="PO attachment file"
+                      className="erp-input"
+                      value={poAttachmentName}
+                      onChange={(event) => setPoAttachmentName(event.currentTarget.value)}
+                    />
+                    <button
+                      className="erp-button erp-button--secondary erp-button--compact"
+                      type="submit"
+                      disabled={!selectedOrder || selectedOrder.status === "cancelled"}
+                    >
+                      Add
+                    </button>
+                  </form>
+                }
+              />
             </>
           ) : (
-            <EmptyState title="No purchase order selected" />
+            <>
+              <EmptyState title="No purchase order selected" />
+              <AttachmentPanel title="PO attachments" items={[]} emptyMessage="No supplier documents linked." />
+            </>
           )}
         </section>
       </section>

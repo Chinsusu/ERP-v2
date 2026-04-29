@@ -2060,6 +2060,14 @@ textarea {
   font-size: var(--erp-font-size-body);
 }
 
+.erp-purchase-attachment-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: min(100%, 320px);
+}
+
 .erp-purchase-feedback {
   margin: 0;
   padding: 10px 12px;
@@ -3941,7 +3949,8 @@ textarea {
 .erp-ds-audit-entry span,
 .erp-ds-audit-entry small,
 .erp-ds-attachment-row span,
-.erp-ds-attachment-row time {
+.erp-ds-attachment-row time,
+.erp-ds-attachment-row small {
   color: var(--erp-text-secondary);
   font-size: var(--erp-font-size-helper);
   line-height: var(--erp-line-height-helper);
@@ -3969,8 +3978,17 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.erp-ds-attachment-toolbar,
+.erp-ds-attachment-action {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 .erp-ds-attachment-row {
-  grid-template-columns: minmax(0, 1fr) minmax(140px, auto) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, auto) minmax(96px, auto) auto;
   align-items: center;
 }
 
@@ -3978,6 +3996,14 @@ textarea {
   display: grid;
   gap: 2px;
   min-width: 0;
+}
+
+.erp-ds-attachment-storage {
+  overflow-wrap: anywhere;
+}
+
+.erp-ds-attachment-status {
+  justify-items: start;
 }
 
 @media (max-width: 1024px) {
@@ -4129,6 +4155,7 @@ textarea {
   .erp-purchase-line-editor,
   .erp-purchase-draft-lines li,
   .erp-purchase-detail-grid,
+  .erp-purchase-attachment-form,
   .erp-receiving-toolbar,
   .erp-receiving-kpis,
   .erp-receiving-workspace,

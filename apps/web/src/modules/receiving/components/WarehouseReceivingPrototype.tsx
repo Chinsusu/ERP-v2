@@ -9,6 +9,7 @@ import {
   type DataTableColumn,
   type StatusTone
 } from "@/shared/design-system/components";
+import { AttachmentPanel, type AttachmentPanelItem } from "@/shared/design-system/pageTemplates";
 import {
   formatPurchaseOrderStatus,
   formatPurchaseQuantity,
@@ -225,6 +226,38 @@ export function WarehouseReceivingPrototype() {
   }, [selectedPurchaseOrderLine]);
   const locationOptions = receivingLocationOptions.filter((location) => location.warehouseId === warehouseId);
   const totals = summarizeReceipts(visibleReceipts);
+  const receivingAttachmentItems = useMemo<AttachmentPanelItem[]>(() => {
+    const items: AttachmentPanelItem[] = [];
+    if (selectedReceipt?.deliveryNoteNo) {
+      items.push({
+        id: `${selectedReceipt.id}:delivery-note`,
+        name: selectedReceipt.deliveryNoteNo,
+        kind: "Delivery note",
+        uploadedBy: selectedReceipt.supplierId ?? "supplier",
+        uploadedAt: selectedReceipt.updatedAt,
+        storageKey: `receiving/${selectedReceipt.id}/${selectedReceipt.deliveryNoteNo}`,
+        status: <StatusChip tone="info">document</StatusChip>,
+        canDownload: true,
+        onDownload: () => setFeedback({ tone: "info", message: selectedReceipt.deliveryNoteNo ?? "" })
+      });
+    }
+    if (attachmentRef.trim()) {
+      items.push({
+        id: "draft-attachment-ref",
+        name: attachmentRef.trim(),
+        kind: "Receiving evidence",
+        uploadedBy: "warehouse",
+        uploadedAt: selectedReceipt?.updatedAt ?? new Date().toISOString(),
+        detail: "Draft reference",
+        status: <StatusChip tone="warning">draft</StatusChip>,
+        canDelete: true,
+        deleteLabel: "Remove",
+        onDelete: () => setAttachmentRef("")
+      });
+    }
+
+    return items;
+  }, [attachmentRef, selectedReceipt]);
 
   useEffect(() => {
     let active = true;
@@ -716,6 +749,12 @@ export function WarehouseReceivingPrototype() {
                   Post
                 </button>
               </div>
+
+              <AttachmentPanel
+                title="Receiving attachments"
+                items={receivingAttachmentItems}
+                emptyMessage="No delivery evidence attached."
+              />
 
               <div className="erp-receiving-subsection">
                 <h3 className="erp-section-title">Lines</h3>

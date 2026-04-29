@@ -289,6 +289,15 @@ export type AttachmentPanelItem = {
   kind: string;
   uploadedBy: string;
   uploadedAt: string;
+  detail?: ReactNode;
+  status?: ReactNode;
+  storageKey?: ReactNode;
+  canDownload?: boolean;
+  canDelete?: boolean;
+  downloadLabel?: string;
+  deleteLabel?: string;
+  onDownload?: () => void;
+  onDelete?: () => void;
   action?: ReactNode;
 };
 
@@ -296,11 +305,30 @@ export type AttachmentPanelProps = {
   items: readonly AttachmentPanelItem[];
   title?: ReactNode;
   action?: ReactNode;
+  uploadAction?: ReactNode;
+  emptyMessage?: ReactNode;
 };
 
-export function AttachmentPanel({ items, title = "Attachments", action }: AttachmentPanelProps) {
+export function AttachmentPanel({
+  items,
+  title = "Attachments",
+  action,
+  uploadAction,
+  emptyMessage = "No attachments uploaded."
+}: AttachmentPanelProps) {
   return (
-    <TemplatePanel title={title} description="Files linked to this record" actions={action}>
+    <TemplatePanel
+      title={title}
+      description="Files linked to this record"
+      actions={
+        action || uploadAction ? (
+          <div className="erp-ds-attachment-toolbar">
+            {action}
+            {uploadAction}
+          </div>
+        ) : null
+      }
+    >
       {items.length > 0 ? (
         <div className="erp-ds-attachment-list">
           {items.map((item) => (
@@ -308,17 +336,34 @@ export function AttachmentPanel({ items, title = "Attachments", action }: Attach
               <div>
                 <strong>{item.name}</strong>
                 <span>{item.kind}</span>
+                {item.storageKey ? <small className="erp-ds-attachment-storage">{item.storageKey}</small> : null}
               </div>
               <div>
                 <span>{item.uploadedBy}</span>
                 <time dateTime={item.uploadedAt}>{item.uploadedAt}</time>
+                {item.detail ? <small>{item.detail}</small> : null}
               </div>
-              {item.action ? <div className="erp-ds-attachment-action">{item.action}</div> : null}
+              {item.status ? <div className="erp-ds-attachment-status">{item.status}</div> : null}
+              {item.action || item.canDownload || item.canDelete ? (
+                <div className="erp-ds-attachment-action">
+                  {item.action}
+                  {item.canDownload ? (
+                    <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={item.onDownload}>
+                      {item.downloadLabel ?? "Download"}
+                    </button>
+                  ) : null}
+                  {item.canDelete ? (
+                    <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={item.onDelete}>
+                      {item.deleteLabel ?? "Delete"}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
             </article>
           ))}
         </div>
       ) : (
-        <p className="erp-ds-panel-empty">No attachments uploaded.</p>
+        <p className="erp-ds-panel-empty">{emptyMessage}</p>
       )}
     </TemplatePanel>
   );
