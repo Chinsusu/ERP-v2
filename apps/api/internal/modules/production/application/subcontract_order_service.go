@@ -34,6 +34,7 @@ const (
 	subcontractSampleSubmittedAction = "subcontract.sample_submitted"
 	subcontractSampleApprovedAction  = "subcontract.sample_approved"
 	subcontractSampleRejectedAction  = "subcontract.sample_rejected"
+	subcontractFinishedGoodsAction   = "subcontract.finished_goods_received"
 )
 
 type SubcontractOrderStore interface {
@@ -61,6 +62,10 @@ type SubcontractOrderUOMConverter interface {
 }
 
 type SubcontractMaterialIssueMovementRecorder interface {
+	Record(ctx context.Context, movement inventorydomain.StockMovement) error
+}
+
+type SubcontractFinishedGoodsReceiptMovementRecorder interface {
 	Record(ctx context.Context, movement inventorydomain.StockMovement) error
 }
 
@@ -96,6 +101,9 @@ type SubcontractOrderService struct {
 	materialTransferBuild SubcontractMaterialTransferService
 	sampleApprovalStore   SubcontractSampleApprovalStore
 	sampleApprovalBuild   SubcontractSampleApprovalService
+	finishedGoodsStore    SubcontractFinishedGoodsReceiptStore
+	finishedGoodsRecorder SubcontractFinishedGoodsReceiptMovementRecorder
+	finishedGoodsBuild    SubcontractFinishedGoodsReceiptService
 	clock                 func() time.Time
 }
 
@@ -243,6 +251,53 @@ type SubcontractSampleEvidenceInput struct {
 	Note         string
 }
 
+type ReceiveSubcontractFinishedGoodsInput struct {
+	ID              string
+	ExpectedVersion int
+	ReceiptID       string
+	ReceiptNo       string
+	WarehouseID     string
+	WarehouseCode   string
+	LocationID      string
+	LocationCode    string
+	DeliveryNoteNo  string
+	Lines           []ReceiveSubcontractFinishedGoodsLineInput
+	Evidence        []ReceiveSubcontractFinishedGoodsEvidenceInput
+	ReceivedBy      string
+	ReceivedAt      time.Time
+	Note            string
+	ActorID         string
+	RequestID       string
+}
+
+type ReceiveSubcontractFinishedGoodsLineInput struct {
+	ID               string
+	LineNo           int
+	ItemID           string
+	SKUCode          string
+	ItemName         string
+	BatchID          string
+	BatchNo          string
+	LotNo            string
+	ExpiryDate       string
+	ReceiveQty       string
+	UOMCode          string
+	BaseReceiveQty   string
+	BaseUOMCode      string
+	ConversionFactor string
+	PackagingStatus  string
+	Note             string
+}
+
+type ReceiveSubcontractFinishedGoodsEvidenceInput struct {
+	ID           string
+	EvidenceType string
+	FileName     string
+	ObjectKey    string
+	ExternalURL  string
+	Note         string
+}
+
 type SubcontractOrderResult struct {
 	SubcontractOrder productiondomain.SubcontractOrder
 	AuditLogID       string
@@ -267,6 +322,13 @@ type SubcontractSampleApprovalResult struct {
 	SampleApproval   productiondomain.SubcontractSampleApproval
 	PreviousStatus   productiondomain.SubcontractOrderStatus
 	CurrentStatus    productiondomain.SubcontractOrderStatus
+	AuditLogID       string
+}
+
+type ReceiveSubcontractFinishedGoodsResult struct {
+	SubcontractOrder productiondomain.SubcontractOrder
+	Receipt          productiondomain.SubcontractFinishedGoodsReceipt
+	StockMovements   []inventorydomain.StockMovement
 	AuditLogID       string
 }
 
@@ -300,6 +362,7 @@ func NewSubcontractOrderService(
 		uomConverter:          uomConverter,
 		materialTransferBuild: NewSubcontractMaterialTransferService(),
 		sampleApprovalBuild:   NewSubcontractSampleApprovalService(),
+		finishedGoodsBuild:    NewSubcontractFinishedGoodsReceiptService(),
 		clock:                 func() time.Time { return time.Now().UTC() },
 	}
 }
@@ -318,6 +381,16 @@ func (s SubcontractOrderService) WithSampleApprovalStore(
 	sampleApprovalStore SubcontractSampleApprovalStore,
 ) SubcontractOrderService {
 	s.sampleApprovalStore = sampleApprovalStore
+
+	return s
+}
+
+func (s SubcontractOrderService) WithFinishedGoodsReceiptStores(
+	receiptStore SubcontractFinishedGoodsReceiptStore,
+	movementRecorder SubcontractFinishedGoodsReceiptMovementRecorder,
+) SubcontractOrderService {
+	s.finishedGoodsStore = receiptStore
+	s.finishedGoodsRecorder = movementRecorder
 
 	return s
 }
@@ -570,6 +643,19 @@ func (s SubcontractOrderService) ConfirmFactorySubcontractOrder(
 	})
 }
 
+func (s SubcontractOrderService) StartMassProductionSubcontractOrder(
+	ctx context.Context,
+	input SubcontractOrderActionInput,
+) (SubcontractOrderActionResult, error) {
+	return s.transition(ctx, input, "subcontract.order.mass_production_started", func(
+		order productiondomain.SubcontractOrder,
+		actorID string,
+		changedAt time.Time,
+	) (productiondomain.SubcontractOrder, error) {
+		return order.StartMassProduction(actorID, changedAt)
+	})
+}
+
 func (s SubcontractOrderService) CancelSubcontractOrder(
 	ctx context.Context,
 	input SubcontractOrderActionInput,
@@ -799,6 +885,98 @@ func (s SubcontractOrderService) RejectSubcontractSample(
 	) (SubcontractSampleApprovalBuildResult, error) {
 		return s.sampleApprovalBuild.BuildRejection(ctx, buildInput)
 	})
+}
+
+func (s SubcontractOrderService) ReceiveSubcontractFinishedGoods(
+	ctx context.Context,
+	input ReceiveSubcontractFinishedGoodsInput,
+) (ReceiveSubcontractFinishedGoodsResult, error) {
+	if err := s.ensureReadyForFinishedGoodsReceipt(); err != nil {
+		return ReceiveSubcontractFinishedGoodsResult{}, err
+	}
+	if err := requireSubcontractOrderActor(input.ActorID); err != nil {
+		return ReceiveSubcontractFinishedGoodsResult{}, err
+	}
+
+	var result ReceiveSubcontractFinishedGoodsResult
+	err := s.store.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		current, err := tx.GetForUpdate(txCtx, input.ID)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{"subcontract_order_id": strings.TrimSpace(input.ID)})
+		}
+		if err := ensureSubcontractOrderExpectedVersion(current, input.ExpectedVersion); err != nil {
+			return err
+		}
+
+		buildResult, err := s.finishedGoodsBuild.BuildReceipt(txCtx, BuildSubcontractFinishedGoodsReceiptInput{
+			ID:             input.ReceiptID,
+			ReceiptNo:      input.ReceiptNo,
+			Order:          current,
+			WarehouseID:    input.WarehouseID,
+			WarehouseCode:  input.WarehouseCode,
+			LocationID:     input.LocationID,
+			LocationCode:   input.LocationCode,
+			DeliveryNoteNo: input.DeliveryNoteNo,
+			Lines:          receiveSubcontractFinishedGoodsBuildLineInputs(input.Lines),
+			Evidence:       receiveSubcontractFinishedGoodsBuildEvidenceInputs(input.Evidence),
+			ReceivedBy:     input.ReceivedBy,
+			ReceivedAt:     input.ReceivedAt,
+			Note:           input.Note,
+			ActorID:        input.ActorID,
+		})
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"status":               string(current.Status),
+			})
+		}
+		if err := s.finishedGoodsStore.Save(txCtx, buildResult.Receipt); err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id": current.ID,
+				"receipt_id":           buildResult.Receipt.ID,
+			})
+		}
+		for _, movement := range buildResult.StockMovements {
+			if err := s.finishedGoodsRecorder.Record(txCtx, movement); err != nil {
+				return err
+			}
+		}
+		if err := tx.Save(txCtx, buildResult.UpdatedOrder); err != nil {
+			return err
+		}
+		afterData := subcontractOrderAuditData(buildResult.UpdatedOrder)
+		for key, value := range subcontractFinishedGoodsReceiptAuditData(buildResult) {
+			afterData[key] = value
+		}
+		log, err := newSubcontractOrderAuditLog(
+			input.ActorID,
+			input.RequestID,
+			subcontractFinishedGoodsAction,
+			buildResult.UpdatedOrder,
+			subcontractOrderAuditData(current),
+			afterData,
+			buildResult.Receipt.ReceivedAt,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.RecordAudit(txCtx, log); err != nil {
+			return err
+		}
+		result = ReceiveSubcontractFinishedGoodsResult{
+			SubcontractOrder: buildResult.UpdatedOrder,
+			Receipt:          buildResult.Receipt,
+			StockMovements:   buildResult.StockMovements,
+			AuditLogID:       log.ID,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return ReceiveSubcontractFinishedGoodsResult{}, err
+	}
+
+	return result, nil
 }
 
 func (s SubcontractOrderService) decideSubcontractSample(
@@ -1217,6 +1395,23 @@ func (s SubcontractOrderService) ensureReadyForSampleApproval() error {
 	return nil
 }
 
+func (s SubcontractOrderService) ensureReadyForFinishedGoodsReceipt() error {
+	if s.store == nil {
+		return errors.New("subcontract order store is required")
+	}
+	if s.finishedGoodsStore == nil {
+		return errors.New("subcontract finished goods receipt store is required")
+	}
+	if s.finishedGoodsRecorder == nil {
+		return errors.New("subcontract finished goods receipt movement recorder is required")
+	}
+	if s.finishedGoodsBuild.clock == nil {
+		s.finishedGoodsBuild = NewSubcontractFinishedGoodsReceiptService()
+	}
+
+	return nil
+}
+
 func (s SubcontractOrderService) now() time.Time {
 	if s.clock == nil {
 		return time.Now().UTC()
@@ -1519,6 +1714,52 @@ func subcontractSampleBuildEvidenceInputs(
 	return evidence
 }
 
+func receiveSubcontractFinishedGoodsBuildLineInputs(
+	inputs []ReceiveSubcontractFinishedGoodsLineInput,
+) []BuildSubcontractFinishedGoodsReceiptLineInput {
+	lines := make([]BuildSubcontractFinishedGoodsReceiptLineInput, 0, len(inputs))
+	for _, input := range inputs {
+		lines = append(lines, BuildSubcontractFinishedGoodsReceiptLineInput{
+			ID:               input.ID,
+			LineNo:           input.LineNo,
+			ItemID:           input.ItemID,
+			SKUCode:          input.SKUCode,
+			ItemName:         input.ItemName,
+			BatchID:          input.BatchID,
+			BatchNo:          input.BatchNo,
+			LotNo:            input.LotNo,
+			ExpiryDate:       input.ExpiryDate,
+			ReceiveQty:       input.ReceiveQty,
+			UOMCode:          input.UOMCode,
+			BaseReceiveQty:   input.BaseReceiveQty,
+			BaseUOMCode:      input.BaseUOMCode,
+			ConversionFactor: input.ConversionFactor,
+			PackagingStatus:  input.PackagingStatus,
+			Note:             input.Note,
+		})
+	}
+
+	return lines
+}
+
+func receiveSubcontractFinishedGoodsBuildEvidenceInputs(
+	inputs []ReceiveSubcontractFinishedGoodsEvidenceInput,
+) []BuildSubcontractFinishedGoodsReceiptEvidenceInput {
+	evidence := make([]BuildSubcontractFinishedGoodsReceiptEvidenceInput, 0, len(inputs))
+	for _, input := range inputs {
+		evidence = append(evidence, BuildSubcontractFinishedGoodsReceiptEvidenceInput{
+			ID:           input.ID,
+			EvidenceType: input.EvidenceType,
+			FileName:     input.FileName,
+			ObjectKey:    input.ObjectKey,
+			ExternalURL:  input.ExternalURL,
+			Note:         input.Note,
+		})
+	}
+
+	return evidence
+}
+
 func subcontractOrderValidationError(cause error, details map[string]any) error {
 	return apperrors.BadRequest(ErrorCodeSubcontractOrderValidation, "Subcontract order request is invalid", cause, details)
 }
@@ -1616,7 +1857,13 @@ func subcontractOrderAuditData(order productiondomain.SubcontractOrder) map[stri
 		"finished_item_id":      order.FinishedItemID,
 		"finished_sku_code":     order.FinishedSKUCode,
 		"planned_qty":           order.PlannedQty.String(),
+		"received_qty":          order.ReceivedQty.String(),
+		"accepted_qty":          order.AcceptedQty.String(),
+		"rejected_qty":          order.RejectedQty.String(),
 		"base_planned_qty":      order.BasePlannedQty.String(),
+		"base_received_qty":     order.BaseReceivedQty.String(),
+		"base_accepted_qty":     order.BaseAcceptedQty.String(),
+		"base_rejected_qty":     order.BaseRejectedQty.String(),
 		"uom_code":              order.UOMCode.String(),
 		"base_uom_code":         order.BaseUOMCode.String(),
 		"expected_receipt_date": order.ExpectedReceiptDate,
@@ -1639,6 +1886,21 @@ func subcontractOrderAuditData(order productiondomain.SubcontractOrder) map[stri
 	}
 
 	return data
+}
+
+func subcontractFinishedGoodsReceiptAuditData(result SubcontractFinishedGoodsReceiptBuildResult) map[string]any {
+	return map[string]any{
+		"receipt_id":           result.Receipt.ID,
+		"receipt_no":           result.Receipt.ReceiptNo,
+		"receipt_status":       string(result.Receipt.Status),
+		"warehouse_id":         result.Receipt.WarehouseID,
+		"location_id":          result.Receipt.LocationID,
+		"delivery_note_no":     result.Receipt.DeliveryNoteNo,
+		"received_by":          result.Receipt.ReceivedBy,
+		"received_at":          result.Receipt.ReceivedAt.Format(time.RFC3339),
+		"receipt_line_count":   len(result.Receipt.Lines),
+		"stock_movement_count": len(result.StockMovements),
+	}
 }
 
 func subcontractMaterialIssueAuditData(result SubcontractMaterialTransferBuildResult) map[string]any {
