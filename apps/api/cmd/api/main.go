@@ -5341,6 +5341,15 @@ func writeCloseReconciliationError(w http.ResponseWriter, r *http.Request, err e
 			"Exception note is required before closing this shift",
 			map[string]any{"exception_note": "required"},
 		)
+	case errors.Is(err, domain.ErrReconciliationUnresolvedIssue):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Resolve return, manifest, adjustment, or pending issue before closing this shift",
+			map[string]any{"unresolved_issue": "required"},
+		)
 	default:
 		response.WriteError(
 			w,

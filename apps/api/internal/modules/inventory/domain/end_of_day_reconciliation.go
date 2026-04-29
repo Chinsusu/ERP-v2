@@ -15,6 +15,7 @@ const ReconciliationStatusClosed EndOfDayReconciliationStatus = "closed"
 
 var ErrReconciliationAlreadyClosed = errors.New("end-of-day reconciliation is already closed")
 var ErrReconciliationNeedsExceptionNote = errors.New("end-of-day reconciliation requires exception note")
+var ErrReconciliationUnresolvedIssue = errors.New("end-of-day reconciliation has unresolved operational issue")
 
 type ReconciliationChecklistItem struct {
 	Key      string
@@ -122,6 +123,9 @@ func (r EndOfDayReconciliation) CanClose(exceptionNote string) bool {
 	if r.Status == ReconciliationStatusClosed {
 		return false
 	}
+	if len(r.UnresolvedOperationalIssues()) > 0 {
+		return false
+	}
 	if len(r.OpenBlockingChecklistItems()) == 0 {
 		return true
 	}
@@ -132,6 +136,9 @@ func (r EndOfDayReconciliation) CanClose(exceptionNote string) bool {
 func (r EndOfDayReconciliation) Close(actorID string, exceptionNote string, closedAt time.Time) (EndOfDayReconciliation, error) {
 	if r.Status == ReconciliationStatusClosed {
 		return EndOfDayReconciliation{}, ErrReconciliationAlreadyClosed
+	}
+	if len(r.UnresolvedOperationalIssues()) > 0 {
+		return EndOfDayReconciliation{}, ErrReconciliationUnresolvedIssue
 	}
 	if !r.CanClose(exceptionNote) {
 		return EndOfDayReconciliation{}, ErrReconciliationNeedsExceptionNote
@@ -152,6 +159,17 @@ func (r EndOfDayReconciliation) OpenBlockingChecklistItems() []ReconciliationChe
 	items := make([]ReconciliationChecklistItem, 0)
 	for _, item := range r.Checklist {
 		if item.Blocking && !item.Complete {
+			items = append(items, item)
+		}
+	}
+
+	return items
+}
+
+func (r EndOfDayReconciliation) UnresolvedOperationalIssues() []ReconciliationChecklistItem {
+	items := make([]ReconciliationChecklistItem, 0)
+	for _, item := range r.OpenBlockingChecklistItems() {
+		if item.BlocksShiftClosing() {
 			items = append(items, item)
 		}
 	}
@@ -183,6 +201,28 @@ func SortEndOfDayReconciliations(rows []EndOfDayReconciliation) {
 
 func (line ReconciliationLine) VarianceQuantity() int64 {
 	return line.CountedQuantity - line.SystemQuantity
+}
+
+func (item ReconciliationChecklistItem) BlocksShiftClosing() bool {
+	switch strings.ToLower(strings.TrimSpace(item.Key)) {
+	case "returns",
+		"return",
+		"return_inspection",
+		"manifest",
+		"manifests",
+		"carrier_manifest",
+		"handover",
+		"shipments",
+		"adjustment",
+		"adjustments",
+		"stock_adjustment",
+		"stock_adjustments",
+		"pending_tasks",
+		"pending_issues":
+		return true
+	default:
+		return false
+	}
 }
 
 func completedChecklistCount(items []ReconciliationChecklistItem) int {
