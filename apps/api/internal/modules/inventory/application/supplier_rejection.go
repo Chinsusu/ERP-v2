@@ -19,6 +19,9 @@ var ErrSupplierRejectionDuplicate = errors.New("supplier rejection already exist
 const (
 	supplierRejectionAuditEntityType = "inventory.supplier_rejection"
 	supplierRejectionCreatedAction   = "inventory.supplier_rejection.created"
+	supplierRejectionSubmittedAction = "inventory.supplier_rejection.submitted"
+	supplierRejectionConfirmedAction = "inventory.supplier_rejection.confirmed"
+	supplierRejectionCancelledAction = "inventory.supplier_rejection.cancelled"
 )
 
 type SupplierRejectionStore interface {
@@ -32,6 +35,12 @@ type ListSupplierRejections struct {
 }
 
 type CreateSupplierRejection struct {
+	store    SupplierRejectionStore
+	auditLog audit.LogStore
+	clock    func() time.Time
+}
+
+type TransitionSupplierRejection struct {
 	store    SupplierRejectionStore
 	auditLog audit.LogStore
 	clock    func() time.Time
@@ -90,12 +99,27 @@ type SupplierRejectionResult struct {
 	AuditLogID string
 }
 
+type SupplierRejectionTransitionResult struct {
+	Rejection      domain.SupplierRejection
+	PreviousStatus domain.SupplierRejectionStatus
+	CurrentStatus  domain.SupplierRejectionStatus
+	AuditLogID     string
+}
+
 func NewListSupplierRejections(store SupplierRejectionStore) ListSupplierRejections {
 	return ListSupplierRejections{store: store}
 }
 
 func NewCreateSupplierRejection(store SupplierRejectionStore, auditLog audit.LogStore) CreateSupplierRejection {
 	return CreateSupplierRejection{
+		store:    store,
+		auditLog: auditLog,
+		clock:    func() time.Time { return time.Now().UTC() },
+	}
+}
+
+func NewTransitionSupplierRejection(store SupplierRejectionStore, auditLog audit.LogStore) TransitionSupplierRejection {
+	return TransitionSupplierRejection{
 		store:    store,
 		auditLog: auditLog,
 		clock:    func() time.Time { return time.Now().UTC() },
@@ -174,6 +198,91 @@ func (uc CreateSupplierRejection) Execute(
 	}
 
 	return SupplierRejectionResult{Rejection: rejection, AuditLogID: log.ID}, nil
+}
+
+func (uc TransitionSupplierRejection) Submit(
+	ctx context.Context,
+	id string,
+	actorID string,
+	requestID string,
+) (SupplierRejectionTransitionResult, error) {
+	return uc.transition(ctx, id, actorID, requestID, supplierRejectionSubmittedAction, func(
+		current domain.SupplierRejection,
+		now time.Time,
+	) (domain.SupplierRejection, error) {
+		return current.Submit(actorID, now)
+	})
+}
+
+func (uc TransitionSupplierRejection) Confirm(
+	ctx context.Context,
+	id string,
+	actorID string,
+	requestID string,
+) (SupplierRejectionTransitionResult, error) {
+	return uc.transition(ctx, id, actorID, requestID, supplierRejectionConfirmedAction, func(
+		current domain.SupplierRejection,
+		now time.Time,
+	) (domain.SupplierRejection, error) {
+		return current.Confirm(actorID, now)
+	})
+}
+
+func (uc TransitionSupplierRejection) Cancel(
+	ctx context.Context,
+	id string,
+	actorID string,
+	requestID string,
+	reason string,
+) (SupplierRejectionTransitionResult, error) {
+	return uc.transition(ctx, id, actorID, requestID, supplierRejectionCancelledAction, func(
+		current domain.SupplierRejection,
+		now time.Time,
+	) (domain.SupplierRejection, error) {
+		return current.Cancel(actorID, reason, now)
+	})
+}
+
+func (uc TransitionSupplierRejection) transition(
+	ctx context.Context,
+	id string,
+	actorID string,
+	requestID string,
+	action string,
+	apply func(domain.SupplierRejection, time.Time) (domain.SupplierRejection, error),
+) (SupplierRejectionTransitionResult, error) {
+	if uc.store == nil {
+		return SupplierRejectionTransitionResult{}, errors.New("supplier rejection store is required")
+	}
+	if uc.auditLog == nil {
+		return SupplierRejectionTransitionResult{}, errors.New("audit log store is required")
+	}
+
+	current, err := uc.store.Get(ctx, id)
+	if err != nil {
+		return SupplierRejectionTransitionResult{}, err
+	}
+	updated, err := apply(current, uc.clock())
+	if err != nil {
+		return SupplierRejectionTransitionResult{}, err
+	}
+	if err := uc.store.Save(ctx, updated); err != nil {
+		return SupplierRejectionTransitionResult{}, err
+	}
+	log, err := newSupplierRejectionTransitionAuditLog(actorID, requestID, action, current, updated)
+	if err != nil {
+		return SupplierRejectionTransitionResult{}, err
+	}
+	if err := uc.auditLog.Record(ctx, log); err != nil {
+		return SupplierRejectionTransitionResult{}, err
+	}
+
+	return SupplierRejectionTransitionResult{
+		Rejection:      updated,
+		PreviousStatus: current.Status,
+		CurrentStatus:  updated.Status,
+		AuditLogID:     log.ID,
+	}, nil
 }
 
 type PrototypeSupplierRejectionStore struct {
@@ -344,6 +453,36 @@ func newSupplierRejectionAuditLog(
 			"reason":       rejection.Reason,
 		},
 		CreatedAt: rejection.CreatedAt,
+	})
+}
+
+func newSupplierRejectionTransitionAuditLog(
+	actorID string,
+	requestID string,
+	action string,
+	before domain.SupplierRejection,
+	after domain.SupplierRejection,
+) (audit.Log, error) {
+	return audit.NewLog(audit.NewLogInput{
+		OrgID:      after.OrgID,
+		ActorID:    strings.TrimSpace(actorID),
+		Action:     action,
+		EntityType: supplierRejectionAuditEntityType,
+		EntityID:   after.ID,
+		RequestID:  strings.TrimSpace(requestID),
+		BeforeData: map[string]any{
+			"status": string(before.Status),
+		},
+		AfterData: map[string]any{
+			"status": string(after.Status),
+		},
+		Metadata: map[string]any{
+			"rejection_no": after.RejectionNo,
+			"supplier_id":  after.SupplierID,
+			"warehouse_id": after.WarehouseID,
+			"reason":       after.Reason,
+		},
+		CreatedAt: after.UpdatedAt,
 	})
 }
 

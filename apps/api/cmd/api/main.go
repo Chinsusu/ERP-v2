@@ -1106,6 +1106,10 @@ func main() {
 	inboundQCInspections := qcapp.NewInboundQCInspectionService(inboundQCStore, warehouseReceivingStore, auditLogStore).
 		WithStockMovementRecorder(stockMovementStore).
 		WithBatchQCStatusUpdater(inboundQCBatchQCStatusAdapter{catalog: batchCatalog})
+	supplierRejectionStore := inventoryapp.NewPrototypeSupplierRejectionStore()
+	listSupplierRejections := inventoryapp.NewListSupplierRejections(supplierRejectionStore)
+	createSupplierRejection := inventoryapp.NewCreateSupplierRejection(supplierRejectionStore, auditLogStore)
+	transitionSupplierRejection := inventoryapp.NewTransitionSupplierRejection(supplierRejectionStore, auditLogStore)
 	reconciliationStore := inventoryapp.NewPrototypeEndOfDayReconciliationStore()
 	listEndOfDayReconciliations := inventoryapp.NewListEndOfDayReconciliations(reconciliationStore)
 	closeEndOfDayReconciliation := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditLogStore)
@@ -1530,6 +1534,37 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(inboundQCInspectionDetailHandler(inboundQCInspections)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/supplier-rejections",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(supplierRejectionsHandler(listSupplierRejections, createSupplierRejection)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/supplier-rejections/{supplier_rejection_id}/submit",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(supplierRejectionActionHandler(transitionSupplierRejection, "submit")),
+		),
+	)
+	mux.Handle(
+		"/api/v1/supplier-rejections/{supplier_rejection_id}/confirm",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(supplierRejectionActionHandler(transitionSupplierRejection, "confirm")),
+		),
+	)
+	mux.Handle(
+		"/api/v1/supplier-rejections/{supplier_rejection_id}",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionWarehouseView,
+			http.HandlerFunc(supplierRejectionDetailHandler(supplierRejectionStore)),
 		),
 	)
 	mux.Handle(

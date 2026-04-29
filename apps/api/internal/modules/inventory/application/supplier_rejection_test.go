@@ -95,6 +95,59 @@ func TestSupplierRejectionStoreAllowsUpdatingSameRecord(t *testing.T) {
 	}
 }
 
+func TestTransitionSupplierRejectionSubmitsAndConfirmsWithAudit(t *testing.T) {
+	store := NewPrototypeSupplierRejectionStore()
+	auditStore := audit.NewInMemoryLogStore()
+	createService := NewCreateSupplierRejection(store, auditStore)
+	createService.clock = func() time.Time {
+		return time.Date(2026, 4, 29, 9, 0, 0, 0, time.UTC)
+	}
+	created, err := createService.Execute(context.Background(), validCreateSupplierRejectionInput())
+	if err != nil {
+		t.Fatalf("create supplier rejection: %v", err)
+	}
+	transition := NewTransitionSupplierRejection(store, auditStore)
+	transition.clock = func() time.Time {
+		return time.Date(2026, 4, 29, 10, 0, 0, 0, time.UTC)
+	}
+
+	submitted, err := transition.Submit(
+		context.Background(),
+		created.Rejection.ID,
+		"user-warehouse-lead",
+		"req-supplier-rejection-submit",
+	)
+	if err != nil {
+		t.Fatalf("submit supplier rejection: %v", err)
+	}
+	transition.clock = func() time.Time {
+		return time.Date(2026, 4, 29, 11, 0, 0, 0, time.UTC)
+	}
+	confirmed, err := transition.Confirm(
+		context.Background(),
+		created.Rejection.ID,
+		"user-warehouse-lead",
+		"req-supplier-rejection-confirm",
+	)
+	if err != nil {
+		t.Fatalf("confirm supplier rejection: %v", err)
+	}
+
+	if submitted.PreviousStatus != domain.SupplierRejectionStatusDraft ||
+		submitted.CurrentStatus != domain.SupplierRejectionStatusSubmitted ||
+		confirmed.PreviousStatus != domain.SupplierRejectionStatusSubmitted ||
+		confirmed.CurrentStatus != domain.SupplierRejectionStatusConfirmed {
+		t.Fatalf("submitted = %+v confirmed = %+v, want draft -> submitted -> confirmed", submitted, confirmed)
+	}
+	logs, err := auditStore.List(context.Background(), audit.Query{EntityID: created.Rejection.ID})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 3 {
+		t.Fatalf("audit logs = %d, want create, submit, confirm", len(logs))
+	}
+}
+
 func TestListSupplierRejectionsFiltersRows(t *testing.T) {
 	store := NewPrototypeSupplierRejectionStore()
 	service := NewCreateSupplierRejection(store, audit.NewInMemoryLogStore())
