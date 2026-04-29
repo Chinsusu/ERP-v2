@@ -43,10 +43,20 @@ type EndOfDayReconciliation struct {
 	ShiftCode     string
 	Status        EndOfDayReconciliationStatus
 	Owner         string
+	Operations    ReconciliationOperations
 	Checklist     []ReconciliationChecklistItem
 	Lines         []ReconciliationLine
 	ClosedAt      time.Time
 	ClosedBy      string
+}
+
+type ReconciliationOperations struct {
+	OrderCount             int
+	HandoverOrderCount     int
+	ReturnOrderCount       int
+	StockMovementCount     int
+	StockCountSessionCount int
+	PendingIssueCount      int
 }
 
 type EndOfDayReconciliationSummary struct {
@@ -62,17 +72,20 @@ type EndOfDayReconciliationSummary struct {
 type EndOfDayReconciliationFilter struct {
 	WarehouseID string
 	Date        string
+	ShiftCode   string
 	Status      EndOfDayReconciliationStatus
 }
 
 func NewEndOfDayReconciliationFilter(
 	warehouseID string,
 	date string,
+	shiftCode string,
 	status EndOfDayReconciliationStatus,
 ) EndOfDayReconciliationFilter {
 	return EndOfDayReconciliationFilter{
 		WarehouseID: strings.TrimSpace(warehouseID),
 		Date:        strings.TrimSpace(date),
+		ShiftCode:   strings.ToLower(strings.TrimSpace(shiftCode)),
 		Status:      NormalizeReconciliationStatus(status),
 	}
 }
