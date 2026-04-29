@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AuditLogItem } from "@/modules/audit/types";
 import { DataTable, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
 import {
@@ -13,17 +13,28 @@ import {
   summarizeSubcontractMaterialTransfers
 } from "../services/subcontractMaterialTransferService";
 import {
+  approveSubcontractOrder,
+  availableSubcontractOrderActions,
+  cancelSubcontractOrder,
   changeSubcontractOrderStatus,
+  closeSubcontractOrder,
+  confirmFactorySubcontractOrder,
   createSubcontractOrder,
   formatSubcontractDepositStatus,
   formatSubcontractOrderStatus,
+  getSubcontractOrder,
+  getSubcontractOrders,
   prototypeSubcontractOrders,
   subcontractDepositStatusOptions,
   subcontractFactoryOptions,
+  subcontractMaterialItemOptions,
+  subcontractOrderActionOptions,
   subcontractOrderStatusOptions,
   subcontractOrderStatusTone,
   subcontractProductOptions,
-  summarizeSubcontractOrders
+  submitSubcontractOrder,
+  summarizeSubcontractOrders,
+  updateSubcontractOrder
 } from "../services/subcontractOrderService";
 import type {
   SubcontractDepositStatus,
@@ -33,7 +44,8 @@ import type {
   SubcontractOrderStatus
 } from "../types";
 
-const orderColumns: DataTableColumn<SubcontractOrder>[] = [
+function subcontractOrderColumns(onOpen: (order: SubcontractOrder) => void): DataTableColumn<SubcontractOrder>[] {
+  return [
   {
     key: "order",
     header: "Order",
@@ -98,10 +110,15 @@ const orderColumns: DataTableColumn<SubcontractOrder>[] = [
   {
     key: "action",
     header: "Action",
-    render: () => <span className="erp-button erp-button--secondary erp-button--compact">Open</span>,
+    render: (row) => (
+      <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => onOpen(row)}>
+        Open
+      </button>
+    ),
     width: "110px"
   }
-];
+  ];
+}
 
 const subcontractTimelineSteps = [
   "Order",
@@ -164,8 +181,13 @@ export function SubcontractOrderPrototype() {
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState("2026-05-20");
   const [depositStatus, setDepositStatus] = useState<SubcontractDepositStatus>("pending");
   const [depositAmount, setDepositAmount] = useState("5000000");
-  const [orders, setOrders] = useState<SubcontractOrder[]>(prototypeSubcontractOrders);
-  const [selectedOrderId, setSelectedOrderId] = useState(prototypeSubcontractOrders[0]?.id ?? "");
+  const [materialItemId, setMaterialItemId] = useState(subcontractMaterialItemOptions[0].id);
+  const [materialQty, setMaterialQty] = useState("20");
+  const [materialUnitCost, setMaterialUnitCost] = useState(subcontractMaterialItemOptions[0].defaultUnitCost);
+  const [orders, setOrders] = useState<SubcontractOrder[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState("");
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [search, setSearch] = useState("");
   const [factoryFilter, setFactoryFilter] = useState("all");
   const [productFilter, setProductFilter] = useState("all");
@@ -179,6 +201,7 @@ export function SubcontractOrderPrototype() {
   const [transferFeedback, setTransferFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
   const summary = useMemo(() => summarizeSubcontractOrders(orders), [orders]);
   const transferSummary = useMemo(() => summarizeSubcontractMaterialTransfers(transfers), [transfers]);
+  const orderColumns = useMemo(() => subcontractOrderColumns(handleOpenOrder), []);
   const displayedOrders = useMemo(
     () =>
       orders.filter((order) => {
@@ -211,9 +234,81 @@ export function SubcontractOrderPrototype() {
   const selectedOrder = orders.find((order) => order.id === selectedOrderId) ?? orders[0] ?? null;
   const latestTransfer = transfers[0] ?? null;
 
-  function handleCreateOrder() {
+  useEffect(() => {
+    if (!selectedOrder) {
+      return;
+    }
+    const firstLine = selectedOrder.materialLines[0];
+    setFactoryId(selectedOrder.factoryId);
+    setProductId(selectedOrder.productId);
+    setQuantity(String(selectedOrder.quantity));
+    setSpecVersion(selectedOrder.specVersion);
+    setSampleRequired(selectedOrder.sampleRequired);
+    setExpectedDeliveryDate(selectedOrder.expectedDeliveryDate);
+    setDepositStatus(selectedOrder.depositStatus);
+    setDepositAmount(selectedOrder.depositAmount ? String(selectedOrder.depositAmount) : "");
+    if (firstLine) {
+      setMaterialItemId(firstLine.itemId);
+      setMaterialQty(firstLine.plannedQty);
+      setMaterialUnitCost(firstLine.unitCost);
+    }
+  }, [selectedOrder]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadOrders() {
+      try {
+        const loadedOrders = await getSubcontractOrders();
+        if (!active) {
+          return;
+        }
+        setOrders(loadedOrders);
+        setSelectedOrderId(loadedOrders[0]?.id ?? "");
+        setFeedback(null);
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+        setOrders(prototypeSubcontractOrders);
+        setSelectedOrderId(prototypeSubcontractOrders[0]?.id ?? "");
+        setFeedback({
+          tone: "warning",
+          message: error instanceof Error ? error.message : "Loaded prototype subcontract orders"
+        });
+      } finally {
+        if (active) {
+          setIsLoadingOrders(false);
+        }
+      }
+    }
+
+    loadOrders();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleOpenOrder(order: SubcontractOrder) {
     try {
-      const order = createSubcontractOrder({
+      const detail = await getSubcontractOrder(order.id);
+      setOrders((current) => [detail, ...current.filter((candidate) => candidate.id !== detail.id)]);
+      setSelectedOrderId(detail.id);
+      setFeedback(null);
+    } catch (error) {
+      setSelectedOrderId(order.id);
+      setFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "Subcontract order detail could not be loaded"
+      });
+    }
+  }
+
+  async function handleCreateOrder() {
+    try {
+      setIsSavingOrder(true);
+      const order = await createSubcontractOrder({
         factoryId,
         productId,
         quantity: Number(quantity),
@@ -221,7 +316,10 @@ export function SubcontractOrderPrototype() {
         sampleRequired,
         expectedDeliveryDate,
         depositStatus,
-        depositAmount: depositAmount.trim() === "" ? undefined : Number(depositAmount)
+        depositAmount: depositAmount.trim() === "" ? undefined : Number(depositAmount),
+        materialItemId,
+        materialQty,
+        materialUnitCost
       });
 
       setOrders((current) => [order, ...current]);
@@ -235,6 +333,77 @@ export function SubcontractOrderPrototype() {
       setFeedback({
         tone: "danger",
         message: error instanceof Error ? error.message : "Subcontract order could not be created"
+      });
+    } finally {
+      setIsSavingOrder(false);
+    }
+  }
+
+  async function handleUpdateDraft() {
+    if (!selectedOrder) {
+      return;
+    }
+    try {
+      setIsSavingOrder(true);
+      const order = await updateSubcontractOrder(selectedOrder.id, {
+        factoryId,
+        productId,
+        quantity: Number(quantity),
+        specVersion,
+        sampleRequired,
+        expectedDeliveryDate,
+        depositStatus,
+        depositAmount: depositAmount.trim() === "" ? undefined : Number(depositAmount),
+        materialItemId,
+        materialQty,
+        materialUnitCost,
+        expectedVersion: selectedOrder.version
+      });
+
+      setOrders((current) => [order, ...current.filter((candidate) => candidate.id !== order.id)]);
+      setSelectedOrderId(order.id);
+      setFeedback({
+        tone: "success",
+        message: `${order.orderNo} updated as draft`
+      });
+    } catch (error) {
+      setFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "Subcontract order could not be updated"
+      });
+    } finally {
+      setIsSavingOrder(false);
+    }
+  }
+
+  async function handleStatusAction(action: (typeof subcontractOrderActionOptions)[number]["value"]) {
+    if (!selectedOrder) {
+      return;
+    }
+
+    try {
+      const result =
+        action === "submit"
+          ? await submitSubcontractOrder(selectedOrder.id, selectedOrder.version)
+          : action === "approve"
+            ? await approveSubcontractOrder(selectedOrder.id, selectedOrder.version)
+            : action === "confirm-factory"
+              ? await confirmFactorySubcontractOrder(selectedOrder.id, selectedOrder.version)
+              : action === "cancel"
+                ? await cancelSubcontractOrder(selectedOrder.id, "Cancelled from subcontract UI", selectedOrder.version)
+                : await closeSubcontractOrder(selectedOrder.id, selectedOrder.version);
+
+      setOrders((current) => [result.order, ...current.filter((order) => order.id !== result.order.id)]);
+      setSelectedOrderId(result.order.id);
+      setLastAudit(result.auditLog);
+      setFeedback({
+        tone: subcontractOrderStatusTone(result.order.status),
+        message: `${result.order.orderNo} moved to ${formatSubcontractOrderStatus(result.order.status)}`
+      });
+    } catch (error) {
+      setFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "Subcontract order action failed"
       });
     }
   }
@@ -278,7 +447,7 @@ export function SubcontractOrderPrototype() {
       });
       const statusResult = changeSubcontractOrderStatus({
         order: selectedOrder,
-        nextStatus: "MATERIAL_TRANSFERRED",
+        nextStatus: "materials_issued_to_factory",
         actorName: "Subcontract Coordinator",
         note: `${transfer.transferNo} created with SUBCONTRACT_ISSUE movement`
       });
@@ -407,7 +576,7 @@ export function SubcontractOrderPrototype() {
               </select>
             </label>
             <label className="erp-field">
-              <span>Product</span>
+              <span>Finished item</span>
               <select className="erp-input" value={productId} onChange={(event) => setProductId(event.target.value)}>
                 {subcontractProductOptions.map((product) => (
                   <option key={product.id} value={product.id}>
@@ -417,7 +586,7 @@ export function SubcontractOrderPrototype() {
               </select>
             </label>
             <label className="erp-field">
-              <span>Quantity</span>
+              <span>Planned quantity</span>
               <input
                 className="erp-input"
                 min="1"
@@ -427,7 +596,7 @@ export function SubcontractOrderPrototype() {
               />
             </label>
             <label className="erp-field">
-              <span>Spec</span>
+              <span>Spec summary</span>
               <input
                 className="erp-input"
                 type="text"
@@ -436,7 +605,7 @@ export function SubcontractOrderPrototype() {
               />
             </label>
             <label className="erp-field">
-              <span>Expected delivery date</span>
+              <span>Expected receipt date</span>
               <input
                 className="erp-input"
                 type="date"
@@ -468,6 +637,44 @@ export function SubcontractOrderPrototype() {
                 onChange={(event) => setDepositAmount(event.target.value)}
               />
             </label>
+            <label className="erp-field">
+              <span>Material line</span>
+              <select
+                className="erp-input"
+                value={materialItemId}
+                onChange={(event) => {
+                  const nextItem = subcontractMaterialItemOptions.find((item) => item.id === event.target.value);
+                  setMaterialItemId(event.target.value);
+                  setMaterialUnitCost(nextItem?.defaultUnitCost ?? materialUnitCost);
+                }}
+              >
+                {subcontractMaterialItemOptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.sku} / {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="erp-field">
+              <span>Material qty</span>
+              <input
+                className="erp-input"
+                inputMode="decimal"
+                type="text"
+                value={materialQty}
+                onChange={(event) => setMaterialQty(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Unit cost</span>
+              <input
+                className="erp-input"
+                inputMode="decimal"
+                type="text"
+                value={materialUnitCost}
+                onChange={(event) => setMaterialUnitCost(event.target.value)}
+              />
+            </label>
             <label className="erp-subcontract-sample-toggle">
               <input
                 checked={sampleRequired}
@@ -479,8 +686,16 @@ export function SubcontractOrderPrototype() {
           </div>
 
           <div className="erp-subcontract-actions">
-            <button className="erp-button erp-button--primary" type="button" onClick={handleCreateOrder}>
+            <button className="erp-button erp-button--primary" type="button" disabled={isSavingOrder} onClick={handleCreateOrder}>
               Create order
+            </button>
+            <button
+              className="erp-button erp-button--secondary"
+              type="button"
+              disabled={isSavingOrder || selectedOrder?.status !== "draft"}
+              onClick={handleUpdateDraft}
+            >
+              Update draft
             </button>
             {feedback ? <StatusChip tone={feedback.tone}>{feedback.message}</StatusChip> : null}
           </div>
@@ -534,18 +749,32 @@ export function SubcontractOrderPrototype() {
 
               <div className="erp-subcontract-status-grid" aria-label="Subcontract order status model">
                 {subcontractOrderStatusOptions.map((option, index) => (
-                  <button
-                    aria-pressed={selectedOrder.status === option.value}
+                  <span
+                    aria-current={selectedOrder.status === option.value ? "step" : undefined}
                     className="erp-subcontract-status-step"
                     data-active={selectedOrder.status === option.value ? "true" : "false"}
                     key={option.value}
-                    type="button"
-                    onClick={() => handleStatusChange(option.value)}
                   >
                     <span>{index + 1}</span>
                     <strong>{option.label}</strong>
-                  </button>
+                  </span>
                 ))}
+              </div>
+              <div className="erp-subcontract-actions">
+                {availableSubcontractOrderActions(selectedOrder.status).map((action) => {
+                  const option = subcontractOrderActionOptions.find((candidate) => candidate.value === action);
+
+                  return (
+                    <button
+                      className={`erp-button erp-button--${action === "cancel" ? "danger" : "primary"}`}
+                      key={action}
+                      type="button"
+                      onClick={() => handleStatusAction(action)}
+                    >
+                      {option?.label ?? action}
+                    </button>
+                  );
+                })}
               </div>
             </>
           ) : (
@@ -727,7 +956,7 @@ export function SubcontractOrderPrototype() {
           <h2 className="erp-section-title">External factory orders</h2>
           <StatusChip tone={displayedOrders.length === 0 ? "warning" : "info"}>{displayedOrders.length} rows</StatusChip>
         </div>
-        <DataTable columns={orderColumns} rows={displayedOrders} getRowKey={(row) => row.id} />
+        <DataTable columns={orderColumns} rows={displayedOrders} getRowKey={(row) => row.id} loading={isLoadingOrders} />
       </section>
     </section>
   );
@@ -761,13 +990,13 @@ function formatMoney(value: number) {
 }
 
 function subcontractQcLabel(order: SubcontractOrder) {
-  if (order.status === "ACCEPTED" || order.status === "CLOSED") {
+  if (order.status === "accepted" || order.status === "closed") {
     return "QC pass";
   }
-  if (order.status === "REJECTED") {
+  if (order.status === "rejected_with_factory_issue") {
     return "Claim hold";
   }
-  if (order.status === "QC_REVIEW") {
+  if (order.status === "qc_in_progress") {
     return "QC review";
   }
   if (order.sampleRequired) {
@@ -778,13 +1007,13 @@ function subcontractQcLabel(order: SubcontractOrder) {
 }
 
 function subcontractQcTone(order: SubcontractOrder): StatusTone {
-  if (order.status === "ACCEPTED" || order.status === "CLOSED") {
+  if (order.status === "accepted" || order.status === "closed") {
     return "success";
   }
-  if (order.status === "REJECTED") {
+  if (order.status === "rejected_with_factory_issue") {
     return "danger";
   }
-  if (order.status === "QC_REVIEW" || order.sampleRequired) {
+  if (order.status === "qc_in_progress" || order.sampleRequired) {
     return "warning";
   }
 
@@ -805,23 +1034,30 @@ function formatFinalPaymentStatus(status: SubcontractFinalPaymentStatus) {
 
 function timelineIndexForStatus(status: SubcontractOrderStatus) {
   switch (status) {
-    case "DRAFT":
+    case "draft":
       return 0;
-    case "CONFIRMED":
+    case "submitted":
+    case "approved":
+    case "factory_confirmed":
+    case "deposit_recorded":
       return 1;
-    case "MATERIAL_TRANSFERRED":
+    case "materials_issued_to_factory":
       return 2;
-    case "SAMPLE_APPROVED":
+    case "sample_submitted":
+    case "sample_approved":
+    case "sample_rejected":
       return 3;
-    case "IN_PRODUCTION":
+    case "mass_production_started":
       return 4;
-    case "DELIVERED":
+    case "finished_goods_received":
       return 5;
-    case "QC_REVIEW":
-    case "ACCEPTED":
-    case "REJECTED":
+    case "qc_in_progress":
+    case "accepted":
+    case "rejected_with_factory_issue":
       return 6;
-    case "CLOSED":
+    case "final_payment_ready":
+    case "closed":
+    case "cancelled":
     default:
       return 7;
   }
