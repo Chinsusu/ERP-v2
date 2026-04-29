@@ -629,6 +629,15 @@ type endOfDayReconciliationSummaryResponse struct {
 	ReadyToClose       bool  `json:"ready_to_close"`
 }
 
+type endOfDayReconciliationOperationsResponse struct {
+	OrderCount             int `json:"order_count"`
+	HandoverOrderCount     int `json:"handover_order_count"`
+	ReturnOrderCount       int `json:"return_order_count"`
+	StockMovementCount     int `json:"stock_movement_count"`
+	StockCountSessionCount int `json:"stock_count_session_count"`
+	PendingIssueCount      int `json:"pending_issue_count"`
+}
+
 type endOfDayReconciliationChecklistResponse struct {
 	Key      string `json:"key"`
 	Label    string `json:"label"`
@@ -661,6 +670,7 @@ type endOfDayReconciliationResponse struct {
 	ClosedBy      string                                    `json:"closed_by,omitempty"`
 	AuditLogID    string                                    `json:"audit_log_id,omitempty"`
 	Summary       endOfDayReconciliationSummaryResponse     `json:"summary"`
+	Operations    endOfDayReconciliationOperationsResponse  `json:"operations"`
 	Checklist     []endOfDayReconciliationChecklistResponse `json:"checklist"`
 	Lines         []endOfDayReconciliationLineResponse      `json:"lines"`
 }
@@ -3687,6 +3697,7 @@ func endOfDayReconciliationsHandler(service inventoryapp.ListEndOfDayReconciliat
 		filter := domain.NewEndOfDayReconciliationFilter(
 			r.URL.Query().Get("warehouse_id"),
 			r.URL.Query().Get("date"),
+			r.URL.Query().Get("shift_code"),
 			domain.EndOfDayReconciliationStatus(r.URL.Query().Get("status")),
 		)
 		reconciliations, err := service.Execute(r.Context(), filter)
@@ -4837,6 +4848,14 @@ func newEndOfDayReconciliationResponse(
 			ChecklistTotal:     summary.ChecklistTotal,
 			ChecklistCompleted: summary.ChecklistCompleted,
 			ReadyToClose:       summary.ReadyToClose,
+		},
+		Operations: endOfDayReconciliationOperationsResponse{
+			OrderCount:             reconciliation.Operations.OrderCount,
+			HandoverOrderCount:     reconciliation.Operations.HandoverOrderCount,
+			ReturnOrderCount:       reconciliation.Operations.ReturnOrderCount,
+			StockMovementCount:     reconciliation.Operations.StockMovementCount,
+			StockCountSessionCount: reconciliation.Operations.StockCountSessionCount,
+			PendingIssueCount:      reconciliation.Operations.PendingIssueCount,
 		},
 		Checklist: make([]endOfDayReconciliationChecklistResponse, 0, len(reconciliation.Checklist)),
 		Lines:     make([]endOfDayReconciliationLineResponse, 0, len(reconciliation.Lines)),

@@ -17,6 +17,7 @@ func TestPrototypeEndOfDayReconciliationStoreFiltersRows(t *testing.T) {
 	rows, err := usecase.Execute(context.Background(), domain.NewEndOfDayReconciliationFilter(
 		"wh-hcm",
 		"2026-04-26",
+		"day",
 		domain.ReconciliationStatusInReview,
 	))
 	if err != nil {
@@ -27,6 +28,9 @@ func TestPrototypeEndOfDayReconciliationStoreFiltersRows(t *testing.T) {
 	}
 	if rows[0].ID != "rec-hcm-260426-day" {
 		t.Fatalf("row id = %q, want rec-hcm-260426-day", rows[0].ID)
+	}
+	if rows[0].Operations.HandoverOrderCount != 27 {
+		t.Fatalf("handover order count = %d, want 27", rows[0].Operations.HandoverOrderCount)
 	}
 }
 
@@ -65,6 +69,15 @@ func TestCloseEndOfDayReconciliationRecordsAuditLog(t *testing.T) {
 	}
 	if logs[0].AfterData["variance_count"] != 1 {
 		t.Fatalf("audit variance count = %v, want 1", logs[0].AfterData["variance_count"])
+	}
+	if logs[0].AfterData["order_count"] != 42 {
+		t.Fatalf("audit order count = %v, want 42", logs[0].AfterData["order_count"])
+	}
+	if logs[0].AfterData["handover_count"] != 27 {
+		t.Fatalf("audit handover count = %v, want 27", logs[0].AfterData["handover_count"])
+	}
+	if logs[0].AfterData["pending_issue_count"] != 2 {
+		t.Fatalf("audit pending issue count = %v, want 2", logs[0].AfterData["pending_issue_count"])
 	}
 }
 

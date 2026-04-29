@@ -1710,8 +1710,17 @@ export interface components {
             closed_by?: string;
             audit_log_id?: string;
             summary: components["schemas"]["EndOfDayReconciliationSummary"];
+            operations: components["schemas"]["EndOfDayReconciliationOperations"];
             checklist: components["schemas"]["ReconciliationChecklistItem"][];
             lines: components["schemas"]["ReconciliationLine"][];
+        };
+        EndOfDayReconciliationOperations: {
+            order_count: number;
+            handover_order_count: number;
+            return_order_count: number;
+            stock_movement_count: number;
+            stock_count_session_count: number;
+            pending_issue_count: number;
         };
         EndOfDayReconciliationSummary: {
             system_quantity: number;
@@ -3534,6 +3543,7 @@ export interface operations {
             query?: {
                 warehouse_id?: string;
                 date?: string;
+                shift_code?: string;
                 status?: components["schemas"]["EndOfDayReconciliationStatus"];
             };
             header?: never;

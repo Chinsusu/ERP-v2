@@ -100,15 +100,21 @@ func (uc CloseEndOfDayReconciliation) Execute(
 		EntityID:   closed.ID,
 		RequestID:  strings.TrimSpace(input.RequestID),
 		AfterData: map[string]any{
-			"status":             string(closed.Status),
-			"warehouse_id":       closed.WarehouseID,
-			"warehouse_code":     closed.WarehouseCode,
-			"date":               closed.Date,
-			"shift_code":         closed.ShiftCode,
-			"variance_count":     summary.VarianceCount,
-			"variance_quantity":  summary.VarianceQuantity,
-			"checklist_total":    summary.ChecklistTotal,
-			"checklist_complete": summary.ChecklistCompleted,
+			"status":              string(closed.Status),
+			"warehouse_id":        closed.WarehouseID,
+			"warehouse_code":      closed.WarehouseCode,
+			"date":                closed.Date,
+			"shift_code":          closed.ShiftCode,
+			"variance_count":      summary.VarianceCount,
+			"variance_quantity":   summary.VarianceQuantity,
+			"checklist_total":     summary.ChecklistTotal,
+			"checklist_complete":  summary.ChecklistCompleted,
+			"order_count":         closed.Operations.OrderCount,
+			"handover_count":      closed.Operations.HandoverOrderCount,
+			"return_count":        closed.Operations.ReturnOrderCount,
+			"movement_count":      closed.Operations.StockMovementCount,
+			"stock_count_count":   closed.Operations.StockCountSessionCount,
+			"pending_issue_count": closed.Operations.PendingIssueCount,
 		},
 		Metadata: map[string]any{
 			"exception_note": strings.TrimSpace(input.ExceptionNote),
@@ -162,6 +168,9 @@ func (s *PrototypeEndOfDayReconciliationStore) List(
 			continue
 		}
 		if filter.Date != "" && record.Date != filter.Date {
+			continue
+		}
+		if filter.ShiftCode != "" && record.ShiftCode != filter.ShiftCode {
 			continue
 		}
 		if filter.Status != "" && record.Status != filter.Status {
@@ -222,6 +231,14 @@ func prototypeEndOfDayReconciliations() []domain.EndOfDayReconciliation {
 			ShiftCode:     "day",
 			Status:        domain.ReconciliationStatusInReview,
 			Owner:         "Warehouse Lead",
+			Operations: domain.ReconciliationOperations{
+				OrderCount:             42,
+				HandoverOrderCount:     27,
+				ReturnOrderCount:       3,
+				StockMovementCount:     6,
+				StockCountSessionCount: 1,
+				PendingIssueCount:      2,
+			},
 			Checklist: []domain.ReconciliationChecklistItem{
 				{Key: "shipments", Label: "Shipments reconciled", Complete: true, Blocking: true},
 				{Key: "inbound", Label: "Inbound and QC checked", Complete: true, Blocking: true},
@@ -259,6 +276,14 @@ func prototypeEndOfDayReconciliations() []domain.EndOfDayReconciliation {
 			ShiftCode:     "day",
 			Status:        domain.ReconciliationStatusOpen,
 			Owner:         "HN Lead",
+			Operations: domain.ReconciliationOperations{
+				OrderCount:             18,
+				HandoverOrderCount:     14,
+				ReturnOrderCount:       1,
+				StockMovementCount:     3,
+				StockCountSessionCount: 1,
+				PendingIssueCount:      0,
+			},
 			Checklist: []domain.ReconciliationChecklistItem{
 				{Key: "shipments", Label: "Shipments reconciled", Complete: true, Blocking: true},
 				{Key: "returns", Label: "Returns triaged", Complete: true, Blocking: true},
@@ -287,6 +312,14 @@ func prototypeEndOfDayReconciliations() []domain.EndOfDayReconciliation {
 			Owner:         "Warehouse Lead",
 			ClosedAt:      time.Date(2026, 4, 25, 17, 42, 0, 0, time.UTC),
 			ClosedBy:      "user-warehouse-lead",
+			Operations: domain.ReconciliationOperations{
+				OrderCount:             39,
+				HandoverOrderCount:     32,
+				ReturnOrderCount:       2,
+				StockMovementCount:     5,
+				StockCountSessionCount: 1,
+				PendingIssueCount:      0,
+			},
 			Checklist: []domain.ReconciliationChecklistItem{
 				{Key: "shipments", Label: "Shipments reconciled", Complete: true, Blocking: true},
 				{Key: "returns", Label: "Returns triaged", Complete: true, Blocking: true},

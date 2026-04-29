@@ -487,7 +487,7 @@ func TestEndOfDayReconciliationsHandlerReturnsFilteredRows(t *testing.T) {
 	service := inventoryapp.NewListEndOfDayReconciliations(store)
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/api/v1/warehouse/end-of-day-reconciliations?warehouse_id=wh-hcm&date=2026-04-26&status=in_review",
+		"/api/v1/warehouse/end-of-day-reconciliations?warehouse_id=wh-hcm&date=2026-04-26&shift_code=day&status=in_review",
 		nil,
 	)
 	req.Header.Set(response.HeaderRequestID, "req-reconciliation")
@@ -508,6 +508,9 @@ func TestEndOfDayReconciliationsHandlerReturnsFilteredRows(t *testing.T) {
 	}
 	if payload.Data[0].Summary.VarianceQuantity != -2 {
 		t.Fatalf("variance = %d, want -2", payload.Data[0].Summary.VarianceQuantity)
+	}
+	if payload.Data[0].Operations.HandoverOrderCount != 27 {
+		t.Fatalf("handover order count = %d, want 27", payload.Data[0].Operations.HandoverOrderCount)
 	}
 }
 
@@ -545,6 +548,9 @@ func TestCloseEndOfDayReconciliationHandlerWritesAudit(t *testing.T) {
 	}
 	if payload.Data.AuditLogID == "" {
 		t.Fatal("audit log id is empty")
+	}
+	if payload.Data.Operations.PendingIssueCount != 2 {
+		t.Fatalf("pending issue count = %d, want 2", payload.Data.Operations.PendingIssueCount)
 	}
 
 	logs, err := auditStore.List(req.Context(), audit.Query{Action: "warehouse.shift.closed"})
