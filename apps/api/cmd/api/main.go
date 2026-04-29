@@ -17,6 +17,7 @@ import (
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
+	purchaseapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/purchase/application"
 	returnsapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/application"
 	returnsdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/returns/domain"
 	salesapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/sales/application"
@@ -1065,8 +1066,17 @@ func main() {
 	submitStockCount := inventoryapp.NewSubmitStockCount(stockCountStore, auditLogStore)
 	batchCatalog := inventoryapp.NewPrototypeBatchCatalog(auditLogStore)
 	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
+	uomCatalog := masterdataapp.NewPrototypeUOMCatalog()
 	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
 	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditLogStore)
+	purchaseOrderStore := purchaseapp.NewPrototypePurchaseOrderStore(auditLogStore)
+	purchaseOrderService := purchaseapp.NewPurchaseOrderService(
+		purchaseOrderStore,
+		partyCatalog,
+		itemCatalog,
+		warehouseCatalog,
+		purchaseOrderUOMConverterAdapter{catalog: uomCatalog},
+	)
 	salesOrderStore := salesapp.NewPrototypeSalesOrderStore(auditLogStore)
 	salesOrderReservationStore := inventoryapp.NewPrototypeSalesOrderReservationStore(auditLogStore)
 	salesOrderService := salesapp.NewSalesOrderService(salesOrderStore, partyCatalog, itemCatalog, warehouseCatalog).
@@ -1279,6 +1289,54 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(salesOrderCancelHandler(salesOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/purchase-orders",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionPurchaseView,
+			http.HandlerFunc(purchaseOrdersHandler(purchaseOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/purchase-orders/{purchase_order_id}",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionPurchaseView,
+			http.HandlerFunc(purchaseOrderDetailHandler(purchaseOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/purchase-orders/{purchase_order_id}/submit",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(purchaseOrderSubmitHandler(purchaseOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/purchase-orders/{purchase_order_id}/approve",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(purchaseOrderApproveHandler(purchaseOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/purchase-orders/{purchase_order_id}/cancel",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(purchaseOrderCancelHandler(purchaseOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/purchase-orders/{purchase_order_id}/close",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(purchaseOrderCloseHandler(purchaseOrderService)),
 		),
 	)
 	mux.Handle(
