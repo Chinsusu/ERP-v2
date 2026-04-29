@@ -1556,7 +1556,10 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 		errors.Is(err, productiondomain.ErrSubcontractSampleApprovalRequiredField) ||
 		errors.Is(err, productiondomain.ErrSubcontractMaterialTransferRequiredField) ||
 		errors.Is(err, productiondomain.ErrSubcontractMaterialTransferInvalidQuantity) ||
-		errors.Is(err, productiondomain.ErrSubcontractMaterialTransferBatchRequired) {
+		errors.Is(err, productiondomain.ErrSubcontractMaterialTransferBatchRequired) ||
+		errors.Is(err, productiondomain.ErrSubcontractFinishedGoodsReceiptRequiredField) ||
+		errors.Is(err, productiondomain.ErrSubcontractFinishedGoodsReceiptInvalidQuantity) ||
+		errors.Is(err, productiondomain.ErrSubcontractFinishedGoodsReceiptInvalidStatus) {
 		return subcontractOrderValidationError(err, details)
 	}
 

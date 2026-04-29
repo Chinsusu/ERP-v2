@@ -123,7 +123,7 @@ var movementEffects = map[MovementType]movementEffect{
 	MovementReturnRestock:      {direction: DirectionIn, onHand: 1, available: 1},
 	MovementReturnToLab:        {direction: DirectionOut, onHand: -1},
 	MovementSubcontractIssue:   {direction: DirectionOut, onHand: -1, available: -1},
-	MovementSubcontractReceipt: {direction: DirectionIn, onHand: 1, available: 1},
+	MovementSubcontractReceipt: {direction: DirectionIn, onHand: 1},
 	MovementTransferIn:         {direction: DirectionTransfer, onHand: 1, available: 1},
 	MovementTransferOut:        {direction: DirectionTransfer, onHand: -1, available: -1},
 	MovementAdjustmentIn:       {direction: DirectionAdjustment, onHand: 1, available: 1, adjustment: true},
