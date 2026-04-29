@@ -1499,6 +1499,14 @@ func main() {
 		),
 	)
 	mux.Handle(
+		"/api/v1/subcontract-orders/{subcontract_order_id}/report-factory-defect",
+		auth.RequireSessionPermission(
+			authSessions,
+			auth.PermissionRecordCreate,
+			http.HandlerFunc(subcontractOrderReportFactoryDefectHandler(subcontractOrderService)),
+		),
+	)
+	mux.Handle(
 		"/api/v1/subcontract-orders/{subcontract_order_id}/accept",
 		auth.RequireSessionPermission(
 			authSessions,

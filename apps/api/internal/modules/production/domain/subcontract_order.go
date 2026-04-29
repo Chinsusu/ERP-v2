@@ -871,6 +871,20 @@ func (o SubcontractOrder) RejectWithFactoryIssue(actorID string, reason string, 
 	return rejected, nil
 }
 
+func (o SubcontractOrder) RejectFinishedGoodsWithFactoryIssue(actorID string, reason string, changedAt time.Time) (SubcontractOrder, error) {
+	current := o
+	status := NormalizeSubcontractOrderStatus(current.Status)
+	if status == SubcontractOrderStatusFinishedGoodsReceived {
+		next, err := current.StartQC(actorID, changedAt)
+		if err != nil {
+			return SubcontractOrder{}, err
+		}
+		current = next
+	}
+
+	return current.RejectWithFactoryIssue(actorID, reason, changedAt)
+}
+
 func (o SubcontractOrder) MarkFinalPaymentReady(actorID string, changedAt time.Time) (SubcontractOrder, error) {
 	return o.TransitionTo(SubcontractOrderStatusFinalPaymentReady, actorID, changedAt)
 }

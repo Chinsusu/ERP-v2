@@ -139,7 +139,7 @@ func (s SubcontractFactoryClaimService) BuildClaim(
 	if err != nil {
 		return SubcontractFactoryClaimBuildResult{}, err
 	}
-	updatedOrder, err := input.Order.RejectWithFactoryIssue(actorID, claim.Reason, openedAt)
+	updatedOrder, err := input.Order.RejectFinishedGoodsWithFactoryIssue(actorID, claim.Reason, openedAt)
 	if err != nil {
 		return SubcontractFactoryClaimBuildResult{}, err
 	}

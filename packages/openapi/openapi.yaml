@@ -1599,6 +1599,37 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/report-factory-defect:
+    post:
+      summary: Report subcontract finished goods factory defect
+      operationId: reportSubcontractFactoryDefect
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportSubcontractFactoryDefectRequest"
+      responses:
+        "200":
+          description: Subcontract factory defect reported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportSubcontractFactoryDefectSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /subcontract-orders/{subcontract_order_id}/accept:
     post:
       summary: Accept subcontract finished goods into available stock
@@ -5328,6 +5359,14 @@ components:
       type: string
       enum:
         - qc_hold
+    SubcontractFactoryClaimStatus:
+      type: string
+      enum:
+        - open
+        - acknowledged
+        - resolved
+        - closed
+        - cancelled
     SubcontractSampleApprovalStatus:
       type: string
       enum:
@@ -5403,6 +5442,15 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/ReceiveSubcontractFinishedGoodsResult"
+    ReportSubcontractFactoryDefectSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ReportSubcontractFactoryDefectResult"
     AcceptSubcontractFinishedGoodsSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
@@ -5767,6 +5815,52 @@ components:
           format: date-time
         note:
           type: string
+    ReportSubcontractFactoryDefectRequest:
+      type: object
+      required:
+        - expected_version
+        - receipt_id
+        - reason
+        - affected_qty
+        - uom_code
+        - evidence
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        claim_id:
+          type: string
+        claim_no:
+          type: string
+        receipt_id:
+          type: string
+        receipt_no:
+          type: string
+        reason_code:
+          type: string
+        reason:
+          type: string
+        severity:
+          type: string
+        affected_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_affected_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractEvidenceRequest"
+        owner_id:
+          type: string
+        opened_by:
+          type: string
+        opened_at:
+          type: string
+          format: date-time
     SubmitSubcontractSampleRequest:
       type: object
       required:
@@ -6393,6 +6487,110 @@ components:
           $ref: "#/components/schemas/SubcontractOrderStatus"
         audit_log_id:
           type: string
+    ReportSubcontractFactoryDefectResult:
+      type: object
+      required:
+        - subcontract_order
+        - claim
+        - previous_status
+        - current_status
+      properties:
+        subcontract_order:
+          $ref: "#/components/schemas/SubcontractOrder"
+        claim:
+          $ref: "#/components/schemas/SubcontractFactoryClaim"
+        previous_status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
+        current_status:
+          $ref: "#/components/schemas/SubcontractOrderStatus"
+        audit_log_id:
+          type: string
+    SubcontractFactoryClaim:
+      type: object
+      required:
+        - id
+        - org_id
+        - claim_no
+        - subcontract_order_id
+        - subcontract_order_no
+        - factory_id
+        - factory_name
+        - receipt_id
+        - reason
+        - status
+        - affected_qty
+        - uom_code
+        - base_affected_qty
+        - base_uom_code
+        - opened_by
+        - opened_at
+        - due_at
+        - blocks_final_payment
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        claim_no:
+          type: string
+        subcontract_order_id:
+          type: string
+        subcontract_order_no:
+          type: string
+        factory_id:
+          type: string
+        factory_code:
+          type: string
+        factory_name:
+          type: string
+        receipt_id:
+          type: string
+        receipt_no:
+          type: string
+        reason_code:
+          type: string
+        reason:
+          type: string
+        severity:
+          type: string
+        status:
+          $ref: "#/components/schemas/SubcontractFactoryClaimStatus"
+        affected_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_affected_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractEvidence"
+        owner_id:
+          type: string
+        opened_by:
+          type: string
+        opened_at:
+          type: string
+          format: date-time
+        due_at:
+          type: string
+          format: date-time
+        blocks_final_payment:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 0
     SubcontractFinishedGoodsReceipt:
       type: object
       required:

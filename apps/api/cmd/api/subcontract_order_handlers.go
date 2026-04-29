@@ -211,6 +211,34 @@ type acceptSubcontractFinishedGoodsRequest struct {
 	Note            string `json:"note"`
 }
 
+type reportSubcontractFactoryDefectEvidenceRequest struct {
+	ID           string `json:"id"`
+	EvidenceType string `json:"evidence_type"`
+	FileName     string `json:"file_name"`
+	ObjectKey    string `json:"object_key"`
+	ExternalURL  string `json:"external_url"`
+	Note         string `json:"note"`
+}
+
+type reportSubcontractFactoryDefectRequest struct {
+	ExpectedVersion int                                             `json:"expected_version"`
+	ClaimID         string                                          `json:"claim_id"`
+	ClaimNo         string                                          `json:"claim_no"`
+	ReceiptID       string                                          `json:"receipt_id"`
+	ReceiptNo       string                                          `json:"receipt_no"`
+	ReasonCode      string                                          `json:"reason_code"`
+	Reason          string                                          `json:"reason"`
+	Severity        string                                          `json:"severity"`
+	AffectedQty     string                                          `json:"affected_qty"`
+	UOMCode         string                                          `json:"uom_code"`
+	BaseAffectedQty string                                          `json:"base_affected_qty"`
+	BaseUOMCode     string                                          `json:"base_uom_code"`
+	Evidence        []reportSubcontractFactoryDefectEvidenceRequest `json:"evidence"`
+	OwnerID         string                                          `json:"owner_id"`
+	OpenedBy        string                                          `json:"opened_by"`
+	OpenedAt        string                                          `json:"opened_at"`
+}
+
 type subcontractOrderMaterialLineResponse struct {
 	ID               string `json:"id"`
 	LineNo           int    `json:"line_no"`
@@ -496,6 +524,53 @@ type acceptSubcontractFinishedGoodsResponse struct {
 	PreviousStatus   string                                     `json:"previous_status"`
 	CurrentStatus    string                                     `json:"current_status"`
 	AuditLogID       string                                     `json:"audit_log_id,omitempty"`
+}
+
+type subcontractFactoryClaimEvidenceResponse struct {
+	ID           string `json:"id"`
+	EvidenceType string `json:"evidence_type"`
+	FileName     string `json:"file_name,omitempty"`
+	ObjectKey    string `json:"object_key,omitempty"`
+	ExternalURL  string `json:"external_url,omitempty"`
+	Note         string `json:"note,omitempty"`
+}
+
+type subcontractFactoryClaimResponse struct {
+	ID                 string                                    `json:"id"`
+	OrgID              string                                    `json:"org_id"`
+	ClaimNo            string                                    `json:"claim_no"`
+	SubcontractOrderID string                                    `json:"subcontract_order_id"`
+	SubcontractOrderNo string                                    `json:"subcontract_order_no"`
+	FactoryID          string                                    `json:"factory_id"`
+	FactoryCode        string                                    `json:"factory_code,omitempty"`
+	FactoryName        string                                    `json:"factory_name"`
+	ReceiptID          string                                    `json:"receipt_id"`
+	ReceiptNo          string                                    `json:"receipt_no"`
+	ReasonCode         string                                    `json:"reason_code"`
+	Reason             string                                    `json:"reason"`
+	Severity           string                                    `json:"severity"`
+	Status             string                                    `json:"status"`
+	AffectedQty        string                                    `json:"affected_qty"`
+	UOMCode            string                                    `json:"uom_code"`
+	BaseAffectedQty    string                                    `json:"base_affected_qty"`
+	BaseUOMCode        string                                    `json:"base_uom_code"`
+	Evidence           []subcontractFactoryClaimEvidenceResponse `json:"evidence,omitempty"`
+	OwnerID            string                                    `json:"owner_id,omitempty"`
+	OpenedBy           string                                    `json:"opened_by"`
+	OpenedAt           string                                    `json:"opened_at"`
+	DueAt              string                                    `json:"due_at"`
+	BlocksFinalPayment bool                                      `json:"blocks_final_payment"`
+	CreatedAt          string                                    `json:"created_at"`
+	UpdatedAt          string                                    `json:"updated_at"`
+	Version            int                                       `json:"version"`
+}
+
+type reportSubcontractFactoryDefectResponse struct {
+	SubcontractOrder subcontractOrderResponse        `json:"subcontract_order"`
+	Claim            subcontractFactoryClaimResponse `json:"claim"`
+	PreviousStatus   string                          `json:"previous_status"`
+	CurrentStatus    string                          `json:"current_status"`
+	AuditLogID       string                          `json:"audit_log_id,omitempty"`
 }
 
 type subcontractSampleEvidenceResponse struct {
@@ -1003,6 +1078,74 @@ func subcontractOrderAcceptFinishedGoodsHandler(service productionapp.Subcontrac
 	}
 }
 
+func subcontractOrderReportFactoryDefectHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload reportSubcontractFactoryDefectRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory defect payload", nil)
+			return
+		}
+		openedAt, err := parseSubcontractOptionalTime(payload.OpenedAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory defect payload", map[string]any{"field": "opened_at"})
+			return
+		}
+
+		result, err := service.CreateSubcontractFactoryClaim(r.Context(), productionapp.CreateSubcontractFactoryClaimInput{
+			ID:              r.PathValue("subcontract_order_id"),
+			ExpectedVersion: payload.ExpectedVersion,
+			ClaimID:         payload.ClaimID,
+			ClaimNo:         payload.ClaimNo,
+			ReceiptID:       payload.ReceiptID,
+			ReceiptNo:       payload.ReceiptNo,
+			ReasonCode:      payload.ReasonCode,
+			Reason:          payload.Reason,
+			Severity:        payload.Severity,
+			AffectedQty:     payload.AffectedQty,
+			UOMCode:         payload.UOMCode,
+			BaseAffectedQty: payload.BaseAffectedQty,
+			BaseUOMCode:     payload.BaseUOMCode,
+			Evidence:        reportSubcontractFactoryDefectEvidenceInputs(payload.Evidence),
+			OwnerID:         payload.OwnerID,
+			OpenedBy:        payload.OpenedBy,
+			OpenedAt:        openedAt,
+			ActorID:         principal.UserID,
+			RequestID:       response.RequestID(r),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, reportSubcontractFactoryDefectResponse{
+			SubcontractOrder: newSubcontractOrderResponse(result.SubcontractOrder, ""),
+			Claim:            newSubcontractFactoryClaimResponse(result.Claim),
+			PreviousStatus:   string(result.PreviousStatus),
+			CurrentStatus:    string(result.CurrentStatus),
+			AuditLogID:       result.AuditLogID,
+		})
+	}
+}
+
 func subcontractOrderSubmitSampleHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -1351,6 +1494,24 @@ func receiveSubcontractFinishedGoodsEvidenceInputs(
 	return evidence
 }
 
+func reportSubcontractFactoryDefectEvidenceInputs(
+	inputs []reportSubcontractFactoryDefectEvidenceRequest,
+) []productionapp.CreateSubcontractFactoryClaimEvidenceInput {
+	evidence := make([]productionapp.CreateSubcontractFactoryClaimEvidenceInput, 0, len(inputs))
+	for _, input := range inputs {
+		evidence = append(evidence, productionapp.CreateSubcontractFactoryClaimEvidenceInput{
+			ID:           input.ID,
+			EvidenceType: input.EvidenceType,
+			FileName:     input.FileName,
+			ObjectKey:    input.ObjectKey,
+			ExternalURL:  input.ExternalURL,
+			Note:         input.Note,
+		})
+	}
+
+	return evidence
+}
+
 func parseSubcontractOptionalTime(value string) (time.Time, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -1618,6 +1779,52 @@ func newSubcontractFinishedGoodsReceiptResponse(
 	}
 	for _, evidence := range receipt.Evidence {
 		payload.Evidence = append(payload.Evidence, subcontractFinishedGoodsReceiptEvidenceResponse{
+			ID:           evidence.ID,
+			EvidenceType: evidence.EvidenceType,
+			FileName:     evidence.FileName,
+			ObjectKey:    evidence.ObjectKey,
+			ExternalURL:  evidence.ExternalURL,
+			Note:         evidence.Note,
+		})
+	}
+
+	return payload
+}
+
+func newSubcontractFactoryClaimResponse(
+	claim productiondomain.SubcontractFactoryClaim,
+) subcontractFactoryClaimResponse {
+	payload := subcontractFactoryClaimResponse{
+		ID:                 claim.ID,
+		OrgID:              claim.OrgID,
+		ClaimNo:            claim.ClaimNo,
+		SubcontractOrderID: claim.SubcontractOrderID,
+		SubcontractOrderNo: claim.SubcontractOrderNo,
+		FactoryID:          claim.FactoryID,
+		FactoryCode:        claim.FactoryCode,
+		FactoryName:        claim.FactoryName,
+		ReceiptID:          claim.ReceiptID,
+		ReceiptNo:          claim.ReceiptNo,
+		ReasonCode:         claim.ReasonCode,
+		Reason:             claim.Reason,
+		Severity:           claim.Severity,
+		Status:             string(claim.Status),
+		AffectedQty:        claim.AffectedQty.String(),
+		UOMCode:            claim.UOMCode.String(),
+		BaseAffectedQty:    claim.BaseAffectedQty.String(),
+		BaseUOMCode:        claim.BaseUOMCode.String(),
+		Evidence:           make([]subcontractFactoryClaimEvidenceResponse, 0, len(claim.Evidence)),
+		OwnerID:            claim.OwnerID,
+		OpenedBy:           claim.OpenedBy,
+		OpenedAt:           timeString(claim.OpenedAt),
+		DueAt:              timeString(claim.DueAt),
+		BlocksFinalPayment: claim.BlocksFinalPayment(),
+		CreatedAt:          timeString(claim.CreatedAt),
+		UpdatedAt:          timeString(claim.UpdatedAt),
+		Version:            claim.Version,
+	}
+	for _, evidence := range claim.Evidence {
+		payload.Evidence = append(payload.Evidence, subcontractFactoryClaimEvidenceResponse{
 			ID:           evidence.ID,
 			EvidenceType: evidence.EvidenceType,
 			FileName:     evidence.FileName,

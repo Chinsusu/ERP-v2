@@ -176,6 +176,11 @@ const sprint5Routes = [
     operationIds: ["receiveSubcontractFinishedGoods"]
   },
   {
+    path: "/subcontract-orders/{subcontract_order_id}/report-factory-defect",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/report-factory-defect",
+    operationIds: ["reportSubcontractFactoryDefect"]
+  },
+  {
     path: "/subcontract-orders/{subcontract_order_id}/accept",
     apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/accept",
     operationIds: ["acceptSubcontractFinishedGoods"]
@@ -236,6 +241,7 @@ const requiredSuccessSchemas = [
   "SubcontractPaymentMilestoneResultSuccessResponse",
   "IssueSubcontractMaterialsSuccessResponse",
   "ReceiveSubcontractFinishedGoodsSuccessResponse",
+  "ReportSubcontractFactoryDefectSuccessResponse",
   "AcceptSubcontractFinishedGoodsSuccessResponse",
   "SubcontractSampleApprovalResultSuccessResponse",
   "WarehouseSubcontractMetricsSuccessResponse"
