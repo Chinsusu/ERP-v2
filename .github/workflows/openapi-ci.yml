@@ -10,10 +10,12 @@ on:
       - "hotfix/**"
     paths:
       - "packages/openapi/**"
+      - "apps/api/cmd/api/**"
       - ".github/workflows/openapi-ci.yml"
   pull_request:
     paths:
       - "packages/openapi/**"
+      - "apps/api/cmd/api/**"
       - ".github/workflows/openapi-ci.yml"
 
 jobs:
@@ -27,5 +29,7 @@ jobs:
           node-version: 22
       - name: Validate OpenAPI
         run: pnpm --package=@redocly/cli dlx redocly lint packages/openapi/openapi.yaml
+      - name: Check Sprint 4 contract coverage
+        run: pnpm openapi:contract
       - name: Frontend client generate dry run
         run: pnpm dlx openapi-typescript packages/openapi/openapi.yaml -o /tmp/erp-openapi-schema.ts
