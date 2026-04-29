@@ -14,14 +14,23 @@ var ErrReceivingInvalidStatus = errors.New("warehouse receiving status is invali
 var ErrReceivingInvalidTransition = errors.New("warehouse receiving status transition is invalid")
 var ErrReceivingAlreadyPosted = errors.New("warehouse receiving is already posted")
 var ErrReceivingMissingBatchQCData = errors.New("warehouse receiving line is missing batch or qc data")
+var ErrReceivingInvalidPackagingStatus = errors.New("warehouse receiving packaging status is invalid")
 
 type WarehouseReceivingStatus string
+type ReceivingPackagingStatus string
 
 const (
 	WarehouseReceivingStatusDraft        WarehouseReceivingStatus = "draft"
 	WarehouseReceivingStatusSubmitted    WarehouseReceivingStatus = "submitted"
 	WarehouseReceivingStatusInspectReady WarehouseReceivingStatus = "inspect_ready"
 	WarehouseReceivingStatusPosted       WarehouseReceivingStatus = "posted"
+
+	ReceivingReferenceDocTypePurchaseOrder = "purchase_order"
+
+	ReceivingPackagingStatusIntact       ReceivingPackagingStatus = "intact"
+	ReceivingPackagingStatusDamaged      ReceivingPackagingStatus = "damaged"
+	ReceivingPackagingStatusMissingLabel ReceivingPackagingStatus = "missing_label"
+	ReceivingPackagingStatusLeaking      ReceivingPackagingStatus = "leaking"
 )
 
 type WarehouseReceiving struct {
@@ -35,6 +44,7 @@ type WarehouseReceiving struct {
 	ReferenceDocType string
 	ReferenceDocID   string
 	SupplierID       string
+	DeliveryNoteNo   string
 	Status           WarehouseReceivingStatus
 	Lines            []WarehouseReceivingLine
 	StockMovements   []StockMovement
@@ -50,17 +60,22 @@ type WarehouseReceiving struct {
 }
 
 type WarehouseReceivingLine struct {
-	ID          string
-	ItemID      string
-	SKU         string
-	ItemName    string
-	BatchID     string
-	BatchNo     string
-	WarehouseID string
-	LocationID  string
-	Quantity    decimal.Decimal
-	BaseUOMCode decimal.UOMCode
-	QCStatus    QCStatus
+	ID                  string
+	PurchaseOrderLineID string
+	ItemID              string
+	SKU                 string
+	ItemName            string
+	BatchID             string
+	BatchNo             string
+	LotNo               string
+	ExpiryDate          time.Time
+	WarehouseID         string
+	LocationID          string
+	Quantity            decimal.Decimal
+	UOMCode             decimal.UOMCode
+	BaseUOMCode         decimal.UOMCode
+	PackagingStatus     ReceivingPackagingStatus
+	QCStatus            QCStatus
 }
 
 type NewWarehouseReceivingInput struct {
@@ -74,6 +89,7 @@ type NewWarehouseReceivingInput struct {
 	ReferenceDocType string
 	ReferenceDocID   string
 	SupplierID       string
+	DeliveryNoteNo   string
 	Status           WarehouseReceivingStatus
 	Lines            []NewWarehouseReceivingLineInput
 	CreatedBy        string
@@ -82,17 +98,22 @@ type NewWarehouseReceivingInput struct {
 }
 
 type NewWarehouseReceivingLineInput struct {
-	ID          string
-	ItemID      string
-	SKU         string
-	ItemName    string
-	BatchID     string
-	BatchNo     string
-	WarehouseID string
-	LocationID  string
-	Quantity    decimal.Decimal
-	BaseUOMCode string
-	QCStatus    QCStatus
+	ID                  string
+	PurchaseOrderLineID string
+	ItemID              string
+	SKU                 string
+	ItemName            string
+	BatchID             string
+	BatchNo             string
+	LotNo               string
+	ExpiryDate          time.Time
+	WarehouseID         string
+	LocationID          string
+	Quantity            decimal.Decimal
+	UOMCode             string
+	BaseUOMCode         string
+	PackagingStatus     ReceivingPackagingStatus
+	QCStatus            QCStatus
 }
 
 type WarehouseReceivingFilter struct {
@@ -122,9 +143,10 @@ func NewWarehouseReceiving(input NewWarehouseReceivingInput) (WarehouseReceiving
 		WarehouseCode:    strings.ToUpper(strings.TrimSpace(input.WarehouseCode)),
 		LocationID:       strings.TrimSpace(input.LocationID),
 		LocationCode:     strings.ToUpper(strings.TrimSpace(input.LocationCode)),
-		ReferenceDocType: strings.TrimSpace(input.ReferenceDocType),
+		ReferenceDocType: NormalizeReceivingReferenceDocType(input.ReferenceDocType),
 		ReferenceDocID:   strings.TrimSpace(input.ReferenceDocID),
 		SupplierID:       strings.TrimSpace(input.SupplierID),
+		DeliveryNoteNo:   strings.ToUpper(strings.TrimSpace(input.DeliveryNoteNo)),
 		Status:           status,
 		Lines:            make([]WarehouseReceivingLine, 0, len(input.Lines)),
 		CreatedBy:        strings.TrimSpace(input.CreatedBy),
@@ -184,9 +206,17 @@ func (r WarehouseReceiving) Validate() error {
 	if !IsValidWarehouseReceivingStatus(r.Status) {
 		return ErrReceivingInvalidStatus
 	}
+	if r.ReferenceDocType == ReceivingReferenceDocTypePurchaseOrder &&
+		(strings.TrimSpace(r.SupplierID) == "" || strings.TrimSpace(r.DeliveryNoteNo) == "") {
+		return ErrReceivingRequiredField
+	}
 	for _, line := range r.Lines {
 		if err := line.Validate(); err != nil {
 			return err
+		}
+		if r.ReferenceDocType == ReceivingReferenceDocTypePurchaseOrder &&
+			strings.TrimSpace(line.PurchaseOrderLineID) == "" {
+			return ErrReceivingRequiredField
 		}
 	}
 
@@ -299,6 +329,16 @@ func (l WarehouseReceivingLine) Validate() error {
 	if _, err := decimal.NormalizeUOMCode(l.BaseUOMCode.String()); err != nil {
 		return ErrReceivingRequiredField
 	}
+	if _, err := decimal.NormalizeUOMCode(l.UOMCode.String()); err != nil {
+		return ErrReceivingRequiredField
+	}
+	if (strings.TrimSpace(l.BatchID) != "" || strings.TrimSpace(l.BatchNo) != "" || strings.TrimSpace(l.LotNo) != "") &&
+		l.ExpiryDate.IsZero() {
+		return ErrReceivingRequiredField
+	}
+	if !IsValidReceivingPackagingStatus(l.PackagingStatus) {
+		return ErrReceivingInvalidPackagingStatus
+	}
 	if l.QCStatus != "" && !IsValidQCStatus(l.QCStatus) {
 		return ErrBatchInvalidQCStatus
 	}
@@ -315,18 +355,36 @@ func newWarehouseReceivingLine(input NewWarehouseReceivingLineInput) (WarehouseR
 	if err != nil {
 		return WarehouseReceivingLine{}, err
 	}
+	uomCodeValue := strings.TrimSpace(input.UOMCode)
+	if uomCodeValue == "" {
+		uomCodeValue = baseUOMCode.String()
+	}
+	uomCode, err := decimal.NormalizeUOMCode(uomCodeValue)
+	if err != nil {
+		return WarehouseReceivingLine{}, err
+	}
+	batchNo := NormalizeBatchNo(input.BatchNo)
+	lotNo := NormalizeBatchNo(input.LotNo)
+	if lotNo == "" {
+		lotNo = batchNo
+	}
 	line := WarehouseReceivingLine{
-		ID:          strings.TrimSpace(input.ID),
-		ItemID:      strings.TrimSpace(input.ItemID),
-		SKU:         strings.ToUpper(strings.TrimSpace(input.SKU)),
-		ItemName:    strings.TrimSpace(input.ItemName),
-		BatchID:     strings.TrimSpace(input.BatchID),
-		BatchNo:     NormalizeBatchNo(input.BatchNo),
-		WarehouseID: strings.TrimSpace(input.WarehouseID),
-		LocationID:  strings.TrimSpace(input.LocationID),
-		Quantity:    quantity,
-		BaseUOMCode: baseUOMCode,
-		QCStatus:    NormalizeQCStatus(input.QCStatus),
+		ID:                  strings.TrimSpace(input.ID),
+		PurchaseOrderLineID: strings.TrimSpace(input.PurchaseOrderLineID),
+		ItemID:              strings.TrimSpace(input.ItemID),
+		SKU:                 strings.ToUpper(strings.TrimSpace(input.SKU)),
+		ItemName:            strings.TrimSpace(input.ItemName),
+		BatchID:             strings.TrimSpace(input.BatchID),
+		BatchNo:             batchNo,
+		LotNo:               lotNo,
+		ExpiryDate:          dateOnly(input.ExpiryDate),
+		WarehouseID:         strings.TrimSpace(input.WarehouseID),
+		LocationID:          strings.TrimSpace(input.LocationID),
+		Quantity:            quantity,
+		UOMCode:             uomCode,
+		BaseUOMCode:         baseUOMCode,
+		PackagingStatus:     NormalizeReceivingPackagingStatus(input.PackagingStatus),
+		QCStatus:            NormalizeQCStatus(input.QCStatus),
 	}
 	if err := line.Validate(); err != nil {
 		return WarehouseReceivingLine{}, err
@@ -339,12 +397,35 @@ func NormalizeWarehouseReceivingStatus(value WarehouseReceivingStatus) Warehouse
 	return WarehouseReceivingStatus(strings.ToLower(strings.TrimSpace(string(value))))
 }
 
+func NormalizeReceivingReferenceDocType(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func NormalizeReceivingPackagingStatus(value ReceivingPackagingStatus) ReceivingPackagingStatus {
+	normalized := strings.ToLower(strings.TrimSpace(string(value)))
+	normalized = strings.ReplaceAll(normalized, " ", "_")
+
+	return ReceivingPackagingStatus(normalized)
+}
+
 func IsValidWarehouseReceivingStatus(value WarehouseReceivingStatus) bool {
 	switch NormalizeWarehouseReceivingStatus(value) {
 	case WarehouseReceivingStatusDraft,
 		WarehouseReceivingStatusSubmitted,
 		WarehouseReceivingStatusInspectReady,
 		WarehouseReceivingStatusPosted:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsValidReceivingPackagingStatus(value ReceivingPackagingStatus) bool {
+	switch NormalizeReceivingPackagingStatus(value) {
+	case ReceivingPackagingStatusIntact,
+		ReceivingPackagingStatusDamaged,
+		ReceivingPackagingStatusMissingLabel,
+		ReceivingPackagingStatusLeaking:
 		return true
 	default:
 		return false

@@ -398,12 +398,17 @@ func TestGoodsReceiptsHandlerCreatesAndPostsReceipt(t *testing.T) {
 		"location_id": "loc-hcm-fg-recv-01",
 		"reference_doc_type": "purchase_order",
 		"reference_doc_id": "PO-260427-API",
+		"supplier_id": "supplier-local",
+		"delivery_note_no": "dn-260427-api",
 		"lines": [
 			{
 				"id": "line-api-test",
+				"purchase_order_line_id": "po-line-260427-api-001",
 				"batch_id": "batch-cream-2603b",
 				"quantity": "6",
-				"base_uom_code": "EA"
+				"uom_code": "EA",
+				"base_uom_code": "EA",
+				"packaging_status": "intact"
 			}
 		]
 	}`)
@@ -421,7 +426,13 @@ func TestGoodsReceiptsHandlerCreatesAndPostsReceipt(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&createPayload); err != nil {
 		t.Fatalf("decode create response: %v", err)
 	}
-	if createPayload.Data.Status != "draft" || createPayload.Data.Lines[0].SKU != "CREAM-50G" {
+	if createPayload.Data.Status != "draft" ||
+		createPayload.Data.DeliveryNoteNo != "DN-260427-API" ||
+		createPayload.Data.Lines[0].SKU != "CREAM-50G" ||
+		createPayload.Data.Lines[0].PurchaseOrderLineID != "po-line-260427-api-001" ||
+		createPayload.Data.Lines[0].LotNo != "LOT-2603B" ||
+		createPayload.Data.Lines[0].ExpiryDate != "2028-03-01" ||
+		createPayload.Data.Lines[0].PackagingStatus != "intact" {
 		t.Fatalf("create payload = %+v, want hydrated draft cream receipt", createPayload.Data)
 	}
 

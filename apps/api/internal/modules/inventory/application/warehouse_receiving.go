@@ -56,21 +56,27 @@ type CreateWarehouseReceivingInput struct {
 	ReferenceDocType string
 	ReferenceDocID   string
 	SupplierID       string
+	DeliveryNoteNo   string
 	Lines            []CreateWarehouseReceivingLineInput
 	ActorID          string
 	RequestID        string
 }
 
 type CreateWarehouseReceivingLineInput struct {
-	ID          string
-	ItemID      string
-	SKU         string
-	ItemName    string
-	BatchID     string
-	BatchNo     string
-	Quantity    string
-	BaseUOMCode string
-	QCStatus    string
+	ID                  string
+	PurchaseOrderLineID string
+	ItemID              string
+	SKU                 string
+	ItemName            string
+	BatchID             string
+	BatchNo             string
+	LotNo               string
+	ExpiryDate          string
+	Quantity            string
+	UOMCode             string
+	BaseUOMCode         string
+	PackagingStatus     string
+	QCStatus            string
 }
 
 type WarehouseReceivingTransitionInput struct {
@@ -178,6 +184,7 @@ func (s WarehouseReceivingService) CreateWarehouseReceiving(
 		ReferenceDocType: input.ReferenceDocType,
 		ReferenceDocID:   input.ReferenceDocID,
 		SupplierID:       input.SupplierID,
+		DeliveryNoteNo:   input.DeliveryNoteNo,
 		Lines:            lines,
 		CreatedBy:        input.ActorID,
 		CreatedAt:        now,
@@ -363,16 +370,25 @@ func (s WarehouseReceivingService) newReceivingLines(
 ) ([]domain.NewWarehouseReceivingLineInput, error) {
 	lines := make([]domain.NewWarehouseReceivingLineInput, 0, len(inputs))
 	for index, input := range inputs {
+		expiryDate, err := parseReceivingDate(input.ExpiryDate)
+		if err != nil {
+			return nil, err
+		}
 		line := domain.NewWarehouseReceivingLineInput{
-			ID:          strings.TrimSpace(input.ID),
-			ItemID:      strings.TrimSpace(input.ItemID),
-			SKU:         strings.ToUpper(strings.TrimSpace(input.SKU)),
-			ItemName:    strings.TrimSpace(input.ItemName),
-			BatchID:     strings.TrimSpace(input.BatchID),
-			BatchNo:     domain.NormalizeBatchNo(input.BatchNo),
-			Quantity:    decimal.Decimal(strings.TrimSpace(input.Quantity)),
-			BaseUOMCode: input.BaseUOMCode,
-			QCStatus:    domain.QCStatus(input.QCStatus),
+			ID:                  strings.TrimSpace(input.ID),
+			PurchaseOrderLineID: strings.TrimSpace(input.PurchaseOrderLineID),
+			ItemID:              strings.TrimSpace(input.ItemID),
+			SKU:                 strings.ToUpper(strings.TrimSpace(input.SKU)),
+			ItemName:            strings.TrimSpace(input.ItemName),
+			BatchID:             strings.TrimSpace(input.BatchID),
+			BatchNo:             domain.NormalizeBatchNo(input.BatchNo),
+			LotNo:               domain.NormalizeBatchNo(input.LotNo),
+			ExpiryDate:          expiryDate,
+			Quantity:            decimal.Decimal(strings.TrimSpace(input.Quantity)),
+			UOMCode:             input.UOMCode,
+			BaseUOMCode:         input.BaseUOMCode,
+			PackagingStatus:     domain.ReceivingPackagingStatus(input.PackagingStatus),
+			QCStatus:            domain.QCStatus(input.QCStatus),
 		}
 		if line.ID == "" {
 			line.ID = fmt.Sprintf("line-%03d", index+1)
@@ -414,6 +430,12 @@ func hydrateLineFromBatch(line *domain.NewWarehouseReceivingLineInput, batch dom
 	}
 	if strings.TrimSpace(line.BatchNo) == "" {
 		line.BatchNo = batch.BatchNo
+	}
+	if strings.TrimSpace(line.LotNo) == "" {
+		line.LotNo = batch.BatchNo
+	}
+	if line.ExpiryDate.IsZero() {
+		line.ExpiryDate = batch.ExpiryDate
 	}
 	if strings.TrimSpace(string(line.QCStatus)) == "" {
 		line.QCStatus = batch.QCStatus
@@ -457,7 +479,7 @@ func (s WarehouseReceivingService) newReceivingMovements(
 			Quantity:         line.Quantity,
 			BaseUOMCode:      line.BaseUOMCode.String(),
 			SourceQuantity:   line.Quantity,
-			SourceUOMCode:    line.BaseUOMCode.String(),
+			SourceUOMCode:    line.UOMCode.String(),
 			ConversionFactor: decimal.MustQuantity("1"),
 			StockStatus:      stockStatusForReceivingLine(line),
 			SourceDocType:    receivingSourceDocType,
@@ -559,6 +581,7 @@ func newWarehouseReceivingAuditLog(
 			"receipt_no":         receipt.ReceiptNo,
 			"reference_doc_type": receipt.ReferenceDocType,
 			"reference_doc_id":   receipt.ReferenceDocID,
+			"delivery_note_no":   receipt.DeliveryNoteNo,
 			"warehouse_id":       receipt.WarehouseID,
 			"location_id":        receipt.LocationID,
 			"source":             "warehouse receiving",
@@ -575,8 +598,23 @@ func receivingAuditData(receipt domain.WarehouseReceiving) map[string]any {
 		"status":             string(receipt.Status),
 		"reference_doc_type": receipt.ReferenceDocType,
 		"reference_doc_id":   receipt.ReferenceDocID,
+		"supplier_id":        receipt.SupplierID,
+		"delivery_note_no":   receipt.DeliveryNoteNo,
 		"line_count":         len(receipt.Lines),
 	}
+}
+
+func parseReceivingDate(value string) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return time.Time{}, nil
+	}
+	parsed, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return time.Time{}, domain.ErrReceivingRequiredField
+	}
+
+	return parsed, nil
 }
 
 func newReceivingID(now time.Time) string {
@@ -600,17 +638,23 @@ func prototypeWarehouseReceivings() []domain.WarehouseReceiving {
 		ReferenceDocType: "purchase_order",
 		ReferenceDocID:   "PO-260427-0001",
 		SupplierID:       "supplier-local",
+		DeliveryNoteNo:   "DN-260427-0001",
 		Lines: []domain.NewWarehouseReceivingLineInput{
 			{
-				ID:          "grn-line-draft-001",
-				ItemID:      "item-serum-30ml",
-				SKU:         "SERUM-30ML",
-				ItemName:    "Vitamin C Serum",
-				BatchID:     "batch-serum-2604a",
-				BatchNo:     "LOT-2604A",
-				Quantity:    decimal.MustQuantity("24"),
-				BaseUOMCode: "EA",
-				QCStatus:    domain.QCStatusHold,
+				ID:                  "grn-line-draft-001",
+				PurchaseOrderLineID: "po-line-260427-0001-001",
+				ItemID:              "item-serum-30ml",
+				SKU:                 "SERUM-30ML",
+				ItemName:            "Vitamin C Serum",
+				BatchID:             "batch-serum-2604a",
+				BatchNo:             "LOT-2604A",
+				LotNo:               "LOT-2604A",
+				ExpiryDate:          time.Date(2027, 4, 1, 0, 0, 0, 0, time.UTC),
+				Quantity:            decimal.MustQuantity("24"),
+				UOMCode:             "EA",
+				BaseUOMCode:         "EA",
+				PackagingStatus:     domain.ReceivingPackagingStatusIntact,
+				QCStatus:            domain.QCStatusHold,
 			},
 		},
 		CreatedBy: "user-warehouse-lead",
@@ -621,15 +665,21 @@ func prototypeWarehouseReceivings() []domain.WarehouseReceiving {
 	submitted.ID = "grn-hcm-260427-submitted"
 	submitted.ReceiptNo = "GRN-260427-0002"
 	submitted.ReferenceDocID = "PO-260427-0002"
+	submitted.DeliveryNoteNo = "DN-260427-0002"
+	submitted.Lines[0].PurchaseOrderLineID = "po-line-260427-0002-001"
 	inspectReady := mustWarehouseReceiving(submitted.MarkInspectReady("user-qa", baseTime.Add(60*time.Minute)))
 	inspectReady.ID = "grn-hcm-260427-inspect"
 	inspectReady.ReceiptNo = "GRN-260427-0003"
 	inspectReady.ReferenceDocID = "PO-260427-0003"
+	inspectReady.DeliveryNoteNo = "DN-260427-0003"
+	inspectReady.Lines[0].PurchaseOrderLineID = "po-line-260427-0003-001"
 	inspectReady.Lines[0].ItemID = "item-cream-50g"
 	inspectReady.Lines[0].SKU = "CREAM-50G"
 	inspectReady.Lines[0].ItemName = "Moisturizing Cream"
 	inspectReady.Lines[0].BatchID = "batch-cream-2603b"
 	inspectReady.Lines[0].BatchNo = "LOT-2603B"
+	inspectReady.Lines[0].LotNo = "LOT-2603B"
+	inspectReady.Lines[0].ExpiryDate = time.Date(2028, 3, 1, 0, 0, 0, 0, time.UTC)
 	inspectReady.Lines[0].QCStatus = domain.QCStatusPass
 
 	return []domain.WarehouseReceiving{draft, submitted, inspectReady}

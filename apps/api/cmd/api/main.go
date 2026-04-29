@@ -781,17 +781,22 @@ type carrierManifestScanResponse struct {
 }
 
 type warehouseReceivingLineResponse struct {
-	ID          string `json:"id"`
-	ItemID      string `json:"item_id"`
-	SKU         string `json:"sku"`
-	ItemName    string `json:"item_name,omitempty"`
-	BatchID     string `json:"batch_id,omitempty"`
-	BatchNo     string `json:"batch_no,omitempty"`
-	WarehouseID string `json:"warehouse_id"`
-	LocationID  string `json:"location_id"`
-	Quantity    string `json:"quantity"`
-	BaseUOMCode string `json:"base_uom_code"`
-	QCStatus    string `json:"qc_status,omitempty"`
+	ID                  string `json:"id"`
+	PurchaseOrderLineID string `json:"purchase_order_line_id,omitempty"`
+	ItemID              string `json:"item_id"`
+	SKU                 string `json:"sku"`
+	ItemName            string `json:"item_name,omitempty"`
+	BatchID             string `json:"batch_id,omitempty"`
+	BatchNo             string `json:"batch_no,omitempty"`
+	LotNo               string `json:"lot_no,omitempty"`
+	ExpiryDate          string `json:"expiry_date,omitempty"`
+	WarehouseID         string `json:"warehouse_id"`
+	LocationID          string `json:"location_id"`
+	Quantity            string `json:"quantity"`
+	UOMCode             string `json:"uom_code"`
+	BaseUOMCode         string `json:"base_uom_code"`
+	PackagingStatus     string `json:"packaging_status"`
+	QCStatus            string `json:"qc_status,omitempty"`
 }
 
 type warehouseReceivingStockMovementResponse struct {
@@ -819,6 +824,7 @@ type warehouseReceivingResponse struct {
 	ReferenceDocType string                                    `json:"reference_doc_type"`
 	ReferenceDocID   string                                    `json:"reference_doc_id"`
 	SupplierID       string                                    `json:"supplier_id,omitempty"`
+	DeliveryNoteNo   string                                    `json:"delivery_note_no,omitempty"`
 	Status           string                                    `json:"status"`
 	Lines            []warehouseReceivingLineResponse          `json:"lines"`
 	StockMovements   []warehouseReceivingStockMovementResponse `json:"stock_movements,omitempty"`
@@ -835,15 +841,20 @@ type warehouseReceivingResponse struct {
 }
 
 type createWarehouseReceivingLineRequest struct {
-	ID          string `json:"id"`
-	ItemID      string `json:"item_id"`
-	SKU         string `json:"sku"`
-	ItemName    string `json:"item_name"`
-	BatchID     string `json:"batch_id"`
-	BatchNo     string `json:"batch_no"`
-	Quantity    string `json:"quantity"`
-	BaseUOMCode string `json:"base_uom_code"`
-	QCStatus    string `json:"qc_status"`
+	ID                  string `json:"id"`
+	PurchaseOrderLineID string `json:"purchase_order_line_id"`
+	ItemID              string `json:"item_id"`
+	SKU                 string `json:"sku"`
+	ItemName            string `json:"item_name"`
+	BatchID             string `json:"batch_id"`
+	BatchNo             string `json:"batch_no"`
+	LotNo               string `json:"lot_no"`
+	ExpiryDate          string `json:"expiry_date"`
+	Quantity            string `json:"quantity"`
+	UOMCode             string `json:"uom_code"`
+	BaseUOMCode         string `json:"base_uom_code"`
+	PackagingStatus     string `json:"packaging_status"`
+	QCStatus            string `json:"qc_status"`
 }
 
 type createWarehouseReceivingRequest struct {
@@ -855,6 +866,7 @@ type createWarehouseReceivingRequest struct {
 	ReferenceDocType string                                `json:"reference_doc_type"`
 	ReferenceDocID   string                                `json:"reference_doc_id"`
 	SupplierID       string                                `json:"supplier_id"`
+	DeliveryNoteNo   string                                `json:"delivery_note_no"`
 	Lines            []createWarehouseReceivingLineRequest `json:"lines"`
 }
 
@@ -3652,6 +3664,7 @@ func goodsReceiptsHandler(service inventoryapp.WarehouseReceivingService) http.H
 				ReferenceDocType: payload.ReferenceDocType,
 				ReferenceDocID:   payload.ReferenceDocID,
 				SupplierID:       payload.SupplierID,
+				DeliveryNoteNo:   payload.DeliveryNoteNo,
 				Lines:            newCreateWarehouseReceivingLines(payload.Lines),
 				ActorID:          principal.UserID,
 				RequestID:        response.RequestID(r),
@@ -4794,15 +4807,20 @@ func newCreateWarehouseReceivingLines(
 	lines := make([]inventoryapp.CreateWarehouseReceivingLineInput, 0, len(inputs))
 	for _, input := range inputs {
 		lines = append(lines, inventoryapp.CreateWarehouseReceivingLineInput{
-			ID:          input.ID,
-			ItemID:      input.ItemID,
-			SKU:         input.SKU,
-			ItemName:    input.ItemName,
-			BatchID:     input.BatchID,
-			BatchNo:     input.BatchNo,
-			Quantity:    input.Quantity,
-			BaseUOMCode: input.BaseUOMCode,
-			QCStatus:    input.QCStatus,
+			ID:                  input.ID,
+			PurchaseOrderLineID: input.PurchaseOrderLineID,
+			ItemID:              input.ItemID,
+			SKU:                 input.SKU,
+			ItemName:            input.ItemName,
+			BatchID:             input.BatchID,
+			BatchNo:             input.BatchNo,
+			LotNo:               input.LotNo,
+			ExpiryDate:          input.ExpiryDate,
+			Quantity:            input.Quantity,
+			UOMCode:             input.UOMCode,
+			BaseUOMCode:         input.BaseUOMCode,
+			PackagingStatus:     input.PackagingStatus,
+			QCStatus:            input.QCStatus,
 		})
 	}
 
@@ -4824,6 +4842,7 @@ func newWarehouseReceivingResponse(
 		ReferenceDocType: receipt.ReferenceDocType,
 		ReferenceDocID:   receipt.ReferenceDocID,
 		SupplierID:       receipt.SupplierID,
+		DeliveryNoteNo:   receipt.DeliveryNoteNo,
 		Status:           string(receipt.Status),
 		Lines:            make([]warehouseReceivingLineResponse, 0, len(receipt.Lines)),
 		StockMovements:   make([]warehouseReceivingStockMovementResponse, 0, len(receipt.StockMovements)),
@@ -4840,17 +4859,22 @@ func newWarehouseReceivingResponse(
 	}
 	for _, line := range receipt.Lines {
 		payload.Lines = append(payload.Lines, warehouseReceivingLineResponse{
-			ID:          line.ID,
-			ItemID:      line.ItemID,
-			SKU:         line.SKU,
-			ItemName:    line.ItemName,
-			BatchID:     line.BatchID,
-			BatchNo:     line.BatchNo,
-			WarehouseID: line.WarehouseID,
-			LocationID:  line.LocationID,
-			Quantity:    line.Quantity.String(),
-			BaseUOMCode: line.BaseUOMCode.String(),
-			QCStatus:    string(line.QCStatus),
+			ID:                  line.ID,
+			PurchaseOrderLineID: line.PurchaseOrderLineID,
+			ItemID:              line.ItemID,
+			SKU:                 line.SKU,
+			ItemName:            line.ItemName,
+			BatchID:             line.BatchID,
+			BatchNo:             line.BatchNo,
+			LotNo:               line.LotNo,
+			ExpiryDate:          dateString(line.ExpiryDate),
+			WarehouseID:         line.WarehouseID,
+			LocationID:          line.LocationID,
+			Quantity:            line.Quantity.String(),
+			UOMCode:             line.UOMCode.String(),
+			BaseUOMCode:         line.BaseUOMCode.String(),
+			PackagingStatus:     string(line.PackagingStatus),
+			QCStatus:            string(line.QCStatus),
 		})
 	}
 	for _, movement := range receipt.StockMovements {
@@ -5344,6 +5368,7 @@ func writeWarehouseReceivingError(w http.ResponseWriter, r *http.Request, err er
 		)
 	case errors.Is(err, domain.ErrReceivingRequiredField),
 		errors.Is(err, domain.ErrReceivingInvalidStatus),
+		errors.Is(err, domain.ErrReceivingInvalidPackagingStatus),
 		errors.Is(err, domain.ErrBatchInvalidQCStatus),
 		errors.Is(err, decimal.ErrInvalidDecimal),
 		errors.Is(err, decimal.ErrInvalidUOMCode),
@@ -5354,7 +5379,7 @@ func writeWarehouseReceivingError(w http.ResponseWriter, r *http.Request, err er
 			http.StatusBadRequest,
 			response.ErrorCodeValidation,
 			"Invalid goods receipt payload",
-			map[string]any{"required": "warehouse_id, location_id, reference_doc_type, reference_doc_id, lines, quantity, and base_uom_code"},
+			map[string]any{"required": "warehouse_id, location_id, reference_doc_type, reference_doc_id, supplier_id, delivery_note_no, lines, purchase_order_line_id, quantity, uom_code, base_uom_code, packaging_status, and expiry_date when batch/lot is present"},
 		)
 	case errors.Is(err, domain.ErrReceivingMissingBatchQCData):
 		response.WriteError(
