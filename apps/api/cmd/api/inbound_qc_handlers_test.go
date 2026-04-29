@@ -117,7 +117,7 @@ func TestInboundQCInspectionHandlersCreateStartPass(t *testing.T) {
 }
 
 func TestInboundQCInspectionActionRequiresQCDecisionPermission(t *testing.T) {
-	service, _ := newTestInboundQCHandlerService()
+	service, auditStore := newTestInboundQCHandlerService()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/inbound-qc-inspections/iqc-handler-flow/pass", nil)
 	req.SetPathValue("inspection_id", "iqc-handler-flow")
 	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
@@ -131,6 +131,13 @@ func TestInboundQCInspectionActionRequiresQCDecisionPermission(t *testing.T) {
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+	logs, err := auditStore.List(context.Background(), audit.Query{Action: "qc.inbound_inspection.passed"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 0 {
+		t.Fatalf("pass audit log count = %d, want 0 for denied action", len(logs))
 	}
 }
 

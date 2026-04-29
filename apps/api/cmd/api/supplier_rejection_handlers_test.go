@@ -159,7 +159,8 @@ func TestSupplierRejectionHandlersCreateSubmitConfirm(t *testing.T) {
 
 func TestSupplierRejectionActionRequiresRecordCreatePermission(t *testing.T) {
 	store := inventoryapp.NewPrototypeSupplierRejectionStore()
-	transitionSupplierRejection := inventoryapp.NewTransitionSupplierRejection(store, audit.NewInMemoryLogStore())
+	auditStore := audit.NewInMemoryLogStore()
+	transitionSupplierRejection := inventoryapp.NewTransitionSupplierRejection(store, auditStore)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/supplier-rejections/srj-handler-flow/confirm", nil)
 	req.SetPathValue("supplier_rejection_id", "srj-handler-flow")
 	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
@@ -173,5 +174,12 @@ func TestSupplierRejectionActionRequiresRecordCreatePermission(t *testing.T) {
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+	logs, err := auditStore.List(context.Background(), audit.Query{Action: "inventory.supplier_rejection.confirmed"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 0 {
+		t.Fatalf("confirm audit log count = %d, want 0 for denied action", len(logs))
 	}
 }

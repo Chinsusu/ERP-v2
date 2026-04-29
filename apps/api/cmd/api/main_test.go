@@ -482,7 +482,7 @@ func TestGoodsReceiptsHandlerCreatesAndPostsReceipt(t *testing.T) {
 }
 
 func TestPostGoodsReceiptHandlerRequiresRecordCreate(t *testing.T) {
-	service, _ := newTestGoodsReceiptService()
+	service, auditStore := newTestGoodsReceiptService()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/goods-receipts/grn-hcm-260427-inspect/post", nil)
 	req.SetPathValue("receipt_id", "grn-hcm-260427-inspect")
 	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
@@ -496,6 +496,13 @@ func TestPostGoodsReceiptHandlerRequiresRecordCreate(t *testing.T) {
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+	logs, err := auditStore.List(req.Context(), audit.Query{Action: "inventory.receiving.posted"})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 0 {
+		t.Fatalf("posted audit log count = %d, want 0 for denied action", len(logs))
 	}
 }
 
