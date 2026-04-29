@@ -468,6 +468,7 @@ describe("subcontractOrderService", () => {
       receivedBy: "warehouse-user"
     });
     expect(received.receipt.lines[0]).toMatchObject({
+      batchId: "FG-LOT-001",
       receiveQty: "80.000000",
       batchNo: "FG-LOT-001",
       packagingStatus: "intact"

@@ -1181,7 +1181,7 @@ function toApiIssueMaterialsInput(input: IssueSubcontractMaterialsInput): IssueS
       conversion_factor: line.conversionFactor
         ? normalizeDecimalInput(line.conversionFactor, decimalScales.quantity)
         : undefined,
-      batch_id: line.batchId,
+      batch_id: line.batchId || line.batchNo,
       batch_no: line.batchNo,
       lot_no: line.lotNo,
       source_bin_id: line.sourceBinId,
@@ -1714,7 +1714,7 @@ function receivePrototypeSubcontractFinishedGoods(
       itemId: line.itemId || current.productId,
       skuCode: line.skuCode || current.sku,
       itemName: line.itemName || current.productName,
-      batchId: line.batchId,
+      batchId: line.batchId || line.batchNo,
       batchNo: normalizeRequiredText(line.batchNo, "Batch / lot is required"),
       lotNo: line.lotNo || line.batchNo,
       expiryDate: normalizeRequiredText(line.expiryDate, "Expiry date is required"),
