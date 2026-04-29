@@ -63,6 +63,7 @@ export type WarehouseFulfillmentDrillDownKey =
   | "waiting_handover"
   | "missing"
   | "handover";
+export type WarehouseDailyBoardDrillDownQueue = WarehouseDailyTaskStatus | "overdue";
 
 export const warehouseDailyBoardCounterSources: WarehouseDailyBoardCounterSource[] = [
   {
@@ -417,6 +418,43 @@ export function buildWarehouseFulfillmentDrillDownHref(
   }
 }
 
+export function buildWarehouseQueueDrillDownHref(
+  queue: WarehouseDailyBoardDrillDownQueue,
+  query: WarehouseDailyBoardQuery = {}
+) {
+  switch (queue) {
+    case "returns":
+    case "qa_hold":
+      return returnReceiptDrillDownHref(query, queue);
+    case "adjustment":
+      return inventoryDrillDownHref(query, queue, "stock-adjustments");
+    case "mismatch":
+      return inventoryDrillDownHref(query, queue, "stock-counts");
+    case "closing":
+      return buildWarehouseShiftClosingDrillDownHref(query);
+    case "overdue":
+      return warehouseTaskBoardDrillDownHref(query, queue);
+    case "handover":
+    case "packed":
+    case "picking":
+    case "waiting":
+    default:
+      return warehouseTaskDrillDownHref(query, queue);
+  }
+}
+
+export function buildWarehouseShiftClosingDrillDownHref(query: WarehouseDailyBoardQuery = {}) {
+  return drillDownHref(
+    "/warehouse",
+    {
+      warehouse_id: query.warehouseId,
+      date: query.date,
+      shift_code: query.shiftCode
+    },
+    "shift-closing"
+  );
+}
+
 export function composeWarehouseDailyBoard(
   query: WarehouseDailyBoardQuery = {},
   sources: WarehouseDailyBoardSources = {}
@@ -614,7 +652,14 @@ function returnTasks(receipts: ReturnReceipt[]): WarehouseDailyTask[] {
           priority: receipt.unknownCase ? "P0" : "P1",
           owner: "Returns",
           dueAt: receipt.receivedAt,
-          href: "/returns",
+          href: returnReceiptDrillDownHref(
+            {
+              warehouseId: receipt.warehouseId,
+              date: receipt.receivedAt.slice(0, 10),
+              shiftCode: defaultWarehouseDailyBoardShiftCode
+            },
+            "returns"
+          ),
           source: "returns",
           sourceField: "return_receipts.status,return_receipts.disposition"
         }
@@ -633,7 +678,14 @@ function returnTasks(receipts: ReturnReceipt[]): WarehouseDailyTask[] {
           priority: "P0" as const,
           owner: "QA",
           dueAt: receipt.receivedAt,
-          href: "/returns",
+          href: returnReceiptDrillDownHref(
+            {
+              warehouseId: receipt.warehouseId,
+              date: receipt.receivedAt.slice(0, 10),
+              shiftCode: defaultWarehouseDailyBoardShiftCode
+            },
+            "qa_hold"
+          ),
           source: "returns" as const,
           sourceField: "return_receipts.status,return_receipts.disposition"
         }
@@ -661,7 +713,15 @@ function adjustmentTasks(adjustments: StockAdjustment[]): WarehouseDailyTask[] {
         priority: adjustment.status === "submitted" ? "P0" as const : "P1" as const,
         owner: adjustment.status === "submitted" ? "Approver" : "Inventory",
         dueAt: adjustment.submittedAt ?? adjustment.updatedAt,
-        href: "/inventory",
+        href: inventoryDrillDownHref(
+          {
+            warehouseId: adjustment.warehouseId,
+            date: (adjustment.submittedAt ?? adjustment.updatedAt).slice(0, 10),
+            shiftCode: defaultWarehouseDailyBoardShiftCode
+          },
+          "adjustment",
+          "stock-adjustments"
+        ),
         source: "adjustment" as const,
         sourceField: "stock_adjustments.status"
       };
@@ -683,7 +743,15 @@ function reconciliationTasks(reconciliations: EndOfDayReconciliation[]): Warehou
         priority: "P0" as const,
         owner: line.owner,
         dueAt: `${reconciliation.date}T09:15:00Z`,
-        href: "/inventory",
+        href: inventoryDrillDownHref(
+          {
+            warehouseId: reconciliation.warehouseId,
+            date: reconciliation.date,
+            shiftCode: reconciliation.shiftCode as WarehouseDailyShiftCode
+          },
+          "mismatch",
+          "stock-counts"
+        ),
         source: "reconciliation" as const,
         sourceField: "reconciliation_lines.variance_quantity"
       }))
@@ -704,7 +772,11 @@ function closingTasks(reconciliations: EndOfDayReconciliation[]): WarehouseDaily
       priority: reconciliation.summary.readyToClose ? "P1" as const : "P0" as const,
       owner: reconciliation.owner,
       dueAt: `${reconciliation.date}T17:00:00Z`,
-      href: "/warehouse#shift-closing",
+      href: buildWarehouseShiftClosingDrillDownHref({
+        warehouseId: reconciliation.warehouseId,
+        date: reconciliation.date,
+        shiftCode: reconciliation.shiftCode as WarehouseDailyShiftCode
+      }),
       source: "closing" as const,
       sourceField: "end_of_day_reconciliations.status,reconciliation_checklist.blocking"
     }));
@@ -912,6 +984,10 @@ function normalizeCarrierCode(carrierCode?: string) {
 }
 
 function warehouseTaskDrillDownHref(query: WarehouseDailyBoardQuery, queue: WarehouseDailyTaskStatus) {
+  return warehouseTaskBoardDrillDownHref(query, queue);
+}
+
+function warehouseTaskBoardDrillDownHref(query: WarehouseDailyBoardQuery, queue: WarehouseDailyBoardDrillDownQueue) {
   return drillDownHref(
     "/warehouse",
     {
@@ -922,6 +998,30 @@ function warehouseTaskDrillDownHref(query: WarehouseDailyBoardQuery, queue: Ware
       queue
     },
     "task-board"
+  );
+}
+
+function returnReceiptDrillDownHref(query: WarehouseDailyBoardQuery, queue: "returns" | "qa_hold") {
+  return drillDownHref(
+    "/returns",
+    {
+      warehouse_id: query.warehouseId,
+      date: query.date,
+      queue
+    },
+    "return-receipts"
+  );
+}
+
+function inventoryDrillDownHref(query: WarehouseDailyBoardQuery, queue: WarehouseDailyTaskStatus, hash: string) {
+  return drillDownHref(
+    "/inventory",
+    {
+      warehouse_id: query.warehouseId,
+      date: query.date,
+      queue
+    },
+    hash
   );
 }
 

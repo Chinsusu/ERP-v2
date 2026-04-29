@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import {
   DataTable,
   EmptyState,
@@ -14,6 +14,8 @@ import { useWarehouseDailyBoard } from "../hooks/useWarehouseDailyBoard";
 import { ShiftClosingPanel } from "./ShiftClosingPanel";
 import {
   buildWarehouseFulfillmentDrillDownHref,
+  buildWarehouseQueueDrillDownHref,
+  buildWarehouseShiftClosingDrillDownHref,
   defaultWarehouseDailyBoardShiftCode,
   defaultWarehouseDailyBoardDate,
   warehouseShiftOptions,
@@ -24,6 +26,7 @@ import type { WarehouseFulfillmentDrillDownKey } from "../services/warehouseDail
 import type { WarehouseDailyBoardQuery, WarehouseDailyShiftCode, WarehouseDailyTask, WarehouseDailyTaskStatus } from "../types";
 
 type QueueFilter = "" | WarehouseDailyTaskStatus | "overdue";
+type QueueCardTarget = "task-board" | "drill-down";
 
 const queueOptions: { label: string; value: QueueFilter }[] = [
   { label: "All active queues", value: "" },
@@ -190,35 +193,110 @@ export default function WarehouseDailyBoard() {
     value: number;
     tone: "normal" | "success" | "warning" | "danger" | "info";
     helper: string;
+    href: string;
+    actionLabel: string;
+    target: QueueCardTarget;
   }[] = [
-    { key: "waiting", label: "New orders", value: board?.summary.waiting ?? 0, tone: "normal", helper: "Receive" },
-    { key: "picking", label: "Picking", value: board?.summary.picking ?? 0, tone: "warning", helper: "Pick" },
-    { key: "packed", label: "Packed", value: board?.summary.packed ?? 0, tone: "success", helper: "Pack" },
-    { key: "handover", label: "Handover", value: board?.summary.handover ?? 0, tone: "info", helper: "Scan" },
-    { key: "returns", label: "Return pending", value: board?.summary.returnPending ?? 0, tone: "warning", helper: "Inspect" },
-    { key: "qa_hold", label: "QA hold", value: board?.summary.qaHold ?? 0, tone: "danger", helper: "Release" },
+    {
+      key: "waiting",
+      label: "New orders",
+      value: board?.summary.waiting ?? 0,
+      tone: "normal",
+      helper: "Receive",
+      href: buildWarehouseQueueDrillDownHref("waiting", query),
+      actionLabel: "Open queue",
+      target: "task-board"
+    },
+    {
+      key: "picking",
+      label: "Picking",
+      value: board?.summary.picking ?? 0,
+      tone: "warning",
+      helper: "Pick",
+      href: buildWarehouseQueueDrillDownHref("picking", query),
+      actionLabel: "Open queue",
+      target: "task-board"
+    },
+    {
+      key: "packed",
+      label: "Packed",
+      value: board?.summary.packed ?? 0,
+      tone: "success",
+      helper: "Pack",
+      href: buildWarehouseQueueDrillDownHref("packed", query),
+      actionLabel: "Open queue",
+      target: "task-board"
+    },
+    {
+      key: "handover",
+      label: "Handover",
+      value: board?.summary.handover ?? 0,
+      tone: "info",
+      helper: "Scan",
+      href: buildWarehouseQueueDrillDownHref("handover", query),
+      actionLabel: "Open queue",
+      target: "task-board"
+    },
+    {
+      key: "returns",
+      label: "Return pending",
+      value: board?.summary.returnPending ?? 0,
+      tone: "warning",
+      helper: "Inspect",
+      href: buildWarehouseQueueDrillDownHref("returns", query),
+      actionLabel: "Open returns",
+      target: "drill-down"
+    },
+    {
+      key: "qa_hold",
+      label: "QA hold",
+      value: board?.summary.qaHold ?? 0,
+      tone: "danger",
+      helper: "Release",
+      href: buildWarehouseQueueDrillDownHref("qa_hold", query),
+      actionLabel: "Open returns",
+      target: "drill-down"
+    },
     {
       key: "adjustment",
       label: "Adjustment pending",
       value: board?.summary.adjustmentPending ?? 0,
       tone: "danger",
-      helper: "Approve"
+      helper: "Approve",
+      href: buildWarehouseQueueDrillDownHref("adjustment", query),
+      actionLabel: "Open inventory",
+      target: "drill-down"
     },
     {
       key: "mismatch",
       label: "Stock count variance",
       value: board?.summary.stockCountVariance ?? 0,
       tone: "danger",
-      helper: "Reconcile"
+      helper: "Reconcile",
+      href: buildWarehouseQueueDrillDownHref("mismatch", query),
+      actionLabel: "Open counts",
+      target: "drill-down"
     },
     {
       key: "closing",
       label: "Closing blocked",
       value: board?.summary.closingBlocked ?? 0,
       tone: (board?.summary.closingBlocked ?? 0) > 0 ? "danger" : "success",
-      helper: "Close"
+      helper: "Close",
+      href: buildWarehouseQueueDrillDownHref("closing", query),
+      actionLabel: "Open closing",
+      target: "drill-down"
     },
-    { key: "overdue", label: "P0 exceptions", value: board?.summary.overdue ?? 0, tone: "danger", helper: "Resolve" }
+    {
+      key: "overdue",
+      label: "P0 exceptions",
+      value: board?.summary.overdue ?? 0,
+      tone: "danger",
+      helper: "Resolve",
+      href: buildWarehouseQueueDrillDownHref("overdue", query),
+      actionLabel: "Open queue",
+      target: "task-board"
+    }
   ];
 
   useEffect(() => {
@@ -247,8 +325,19 @@ export default function WarehouseDailyBoard() {
     }
   }, []);
 
-  function openQueue(nextQueue: QueueFilter) {
+  function handleQueueCardClick(
+    event: MouseEvent<HTMLAnchorElement>,
+    nextQueue: QueueFilter,
+    href: string,
+    target: QueueCardTarget
+  ) {
+    if (target !== "task-board" || !shouldHandleClientNavigation(event)) {
+      return;
+    }
+
+    event.preventDefault();
     setQueueFilter(nextQueue);
+    window.history.replaceState(null, "", href);
     window.setTimeout(scrollTaskBoardIntoView, 0);
   }
 
@@ -264,7 +353,7 @@ export default function WarehouseDailyBoard() {
           <a className="erp-button erp-button--secondary" href="#scan-station">
             Scan
           </a>
-          <a className="erp-button erp-button--primary" href="#shift-closing">
+          <a className="erp-button erp-button--primary" href={buildWarehouseShiftClosingDrillDownHref(query)}>
             Shift closing
           </a>
         </div>
@@ -343,7 +432,9 @@ export default function WarehouseDailyBoard() {
             label={card.label}
             tone={card.tone}
             value={card.value}
-            onSelect={() => openQueue(card.key)}
+            href={card.href}
+            actionLabel={card.actionLabel}
+            onSelect={(event) => handleQueueCardClick(event, card.key, card.href, card.target)}
           />
         ))}
       </section>
@@ -458,35 +549,59 @@ function WarehouseContext({ label, value }: { label: string; value: string }) {
 }
 
 function WarehouseKPI({
+  actionLabel,
   active,
   helper,
+  href,
   label,
   onSelect,
   value,
   tone
 }: {
+  actionLabel: string;
   active: boolean;
   helper: string;
+  href: string;
   label: string;
-  onSelect: () => void;
+  onSelect: (event: MouseEvent<HTMLAnchorElement>) => void;
   value: number;
   tone: "normal" | "success" | "warning" | "danger" | "info";
 }) {
   return (
-    <button
-      aria-pressed={active}
-      className={`erp-card erp-card--padded erp-kpi-card erp-warehouse-kpi-button${active ? " is-active" : ""}`}
-      type="button"
+    <a
+      aria-current={active ? "true" : undefined}
+      className={warehouseKpiClassName(active, value, tone)}
+      href={href}
       onClick={onSelect}
     >
       <div className="erp-kpi-label">{label}</div>
       <strong className="erp-kpi-value">{value}</strong>
       <span className="erp-warehouse-kpi-footer">
         <StatusChip tone={tone}>{helper}</StatusChip>
-        <span className="erp-warehouse-kpi-action">Open queue</span>
+        <span className="erp-warehouse-kpi-action">{actionLabel}</span>
       </span>
-    </button>
+    </a>
   );
+}
+
+function warehouseKpiClassName(active: boolean, value: number, tone: "normal" | "success" | "warning" | "danger" | "info") {
+  const classes = ["erp-card", "erp-card--padded", "erp-kpi-card", "erp-warehouse-kpi-button"];
+  if (active) {
+    classes.push("is-active");
+  }
+  if (value === 0) {
+    classes.push("is-muted");
+  } else if (tone === "danger") {
+    classes.push("is-critical");
+  } else if (tone === "warning") {
+    classes.push("is-warning");
+  }
+
+  return classes.join(" ");
+}
+
+function shouldHandleClientNavigation(event: MouseEvent<HTMLAnchorElement>) {
+  return event.button === 0 && !event.metaKey && !event.altKey && !event.ctrlKey && !event.shiftKey;
 }
 
 function filterTasksByQueue(tasks: WarehouseDailyTask[], queueFilter: QueueFilter) {

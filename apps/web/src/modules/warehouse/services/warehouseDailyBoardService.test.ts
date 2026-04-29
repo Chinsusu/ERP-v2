@@ -4,6 +4,8 @@ import { prototypeCarrierManifests } from "../../shipping/services/carrierManife
 import type { GoodsReceipt } from "../../receiving/types";
 import {
   buildWarehouseFulfillmentDrillDownHref,
+  buildWarehouseQueueDrillDownHref,
+  buildWarehouseShiftClosingDrillDownHref,
   closeEndOfDayReconciliation,
   composeWarehouseDailyBoard,
   getEndOfDayReconciliations,
@@ -244,6 +246,44 @@ describe("warehouseDailyBoardService", () => {
     );
   });
 
+  it("builds drill-down links for daily board queue alerts", () => {
+    expect(
+      buildWarehouseQueueDrillDownHref("returns", {
+        warehouseId: "wh-hcm",
+        date: "2026-04-26",
+        shiftCode: "day"
+      })
+    ).toBe("/returns?warehouse_id=wh-hcm&date=2026-04-26&queue=returns#return-receipts");
+    expect(
+      buildWarehouseQueueDrillDownHref("qa_hold", {
+        warehouseId: "wh-hcm",
+        date: "2026-04-26",
+        shiftCode: "day"
+      })
+    ).toBe("/returns?warehouse_id=wh-hcm&date=2026-04-26&queue=qa_hold#return-receipts");
+    expect(
+      buildWarehouseQueueDrillDownHref("overdue", {
+        warehouseId: "wh-hcm",
+        date: "2026-04-26",
+        shiftCode: "day",
+        carrierCode: "ghn"
+      })
+    ).toBe("/warehouse?warehouse_id=wh-hcm&date=2026-04-26&shift_code=day&carrier_code=GHN&queue=overdue#task-board");
+    expect(buildWarehouseQueueDrillDownHref("adjustment", { warehouseId: "wh-hcm", date: "2026-04-26" })).toBe(
+      "/inventory?warehouse_id=wh-hcm&date=2026-04-26&queue=adjustment#stock-adjustments"
+    );
+    expect(buildWarehouseQueueDrillDownHref("mismatch", { warehouseId: "wh-hcm", date: "2026-04-26" })).toBe(
+      "/inventory?warehouse_id=wh-hcm&date=2026-04-26&queue=mismatch#stock-counts"
+    );
+    expect(
+      buildWarehouseShiftClosingDrillDownHref({
+        warehouseId: "wh-hcm",
+        date: "2026-04-26",
+        shiftCode: "day"
+      })
+    ).toBe("/warehouse?warehouse_id=wh-hcm&date=2026-04-26&shift_code=day#shift-closing");
+  });
+
   it("keeps active shift open when a P0 exception exists", () => {
     const board = composeWarehouseDailyBoard(
       { warehouseId: "wh-hcm", date: "2026-04-26", shiftCode: "day" },
@@ -263,6 +303,8 @@ describe("warehouseDailyBoardService", () => {
     expect(board.sourceFields.find((source) => source.counter === "reconciliationMismatch")?.fields).toContain(
       "reconciliation_lines.variance_quantity"
     );
+    expect(board.tasks.find((task) => task.status === "returns")?.href).toContain("#return-receipts");
+    expect(board.tasks.find((task) => task.status === "closing")?.href).toContain("#shift-closing");
   });
 
   it("composes mixed receiving, stock movement, shipping, return, and exception workloads", () => {
