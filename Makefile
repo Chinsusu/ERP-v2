@@ -28,7 +28,7 @@ help:
 	@echo "  seed-local         Seed local data"
 	@echo "  openapi-generate   Generate API clients"
 	@echo "  openapi-validate   Validate OpenAPI contract"
-	@echo "  openapi-contract   Check Sprint 4 OpenAPI route coverage"
+	@echo "  openapi-contract   Check Sprint 4/5 OpenAPI route coverage"
 	@echo "  ci-check           Run required local checks"
 
 local-up:

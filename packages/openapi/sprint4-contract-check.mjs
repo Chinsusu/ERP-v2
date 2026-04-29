@@ -129,6 +129,89 @@ const sprint4Routes = [
   }
 ];
 
+const sprint5Routes = [
+  {
+    path: "/subcontract-orders",
+    apiRoute: "/api/v1/subcontract-orders",
+    operationIds: ["listSubcontractOrders", "createSubcontractOrder"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}",
+    operationIds: ["getSubcontractOrder", "updateSubcontractOrder"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/submit",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/submit",
+    operationIds: ["submitSubcontractOrder"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/approve",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/approve",
+    operationIds: ["approveSubcontractOrder"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/confirm-factory",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/confirm-factory",
+    operationIds: ["confirmFactorySubcontractOrder"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/record-deposit",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/record-deposit",
+    operationIds: ["recordSubcontractDeposit"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/issue-materials",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/issue-materials",
+    operationIds: ["issueSubcontractMaterials"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/start-mass-production",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/start-mass-production",
+    operationIds: ["startMassProductionSubcontractOrder"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/receive-finished-goods",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/receive-finished-goods",
+    operationIds: ["receiveSubcontractFinishedGoods"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/mark-final-payment-ready",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/mark-final-payment-ready",
+    operationIds: ["markSubcontractFinalPaymentReady"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/submit-sample",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/submit-sample",
+    operationIds: ["submitSubcontractSample"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/approve-sample",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/approve-sample",
+    operationIds: ["approveSubcontractSample"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/reject-sample",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/reject-sample",
+    operationIds: ["rejectSubcontractSample"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/cancel",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/cancel",
+    operationIds: ["cancelSubcontractOrder"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/close",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/close",
+    operationIds: ["closeSubcontractOrder"]
+  },
+  {
+    path: "/warehouse/daily-board/subcontract-metrics",
+    apiRoute: "/api/v1/warehouse/daily-board/subcontract-metrics",
+    operationIds: ["getWarehouseDailyBoardSubcontractMetrics"]
+  }
+];
+
 const requiredSuccessSchemas = [
   "PurchaseOrderListSuccessResponse",
   "PurchaseOrderSuccessResponse",
@@ -141,12 +224,22 @@ const requiredSuccessSchemas = [
   "SupplierRejectionListSuccessResponse",
   "SupplierRejectionSuccessResponse",
   "SupplierRejectionActionResultSuccessResponse",
-  "WarehouseInboundMetricsSuccessResponse"
+  "WarehouseInboundMetricsSuccessResponse",
+  "SubcontractOrderListSuccessResponse",
+  "SubcontractOrderSuccessResponse",
+  "SubcontractOrderActionResultSuccessResponse",
+  "SubcontractPaymentMilestoneResultSuccessResponse",
+  "IssueSubcontractMaterialsSuccessResponse",
+  "ReceiveSubcontractFinishedGoodsSuccessResponse",
+  "SubcontractSampleApprovalResultSuccessResponse",
+  "WarehouseSubcontractMetricsSuccessResponse"
 ];
 
 const failures = [];
 
-for (const route of sprint4Routes) {
+const routes = [...sprint4Routes, ...sprint5Routes];
+
+for (const route of routes) {
   requireContains(openapi, `  ${route.path}:`, `OpenAPI path missing: ${route.path}`);
   requireContains(apiMain, `"${route.apiRoute}"`, `API route registration missing: ${route.apiRoute}`);
   for (const operationId of route.operationIds) {
@@ -166,20 +259,20 @@ for (const schemaName of requiredSuccessSchemas) {
 }
 
 const colonActionPattern =
-  /^  \/(purchase-orders|goods-receipts|inbound-qc-inspections|supplier-rejections|warehouse\/daily-board\/inbound-metrics)[^\n]*:[A-Za-z0-9_-]+:/m;
+  /^  \/(purchase-orders|goods-receipts|inbound-qc-inspections|supplier-rejections|subcontract-orders|warehouse\/daily-board\/(inbound|subcontract)-metrics)[^\n]*:[A-Za-z0-9_-]+:/m;
 if (colonActionPattern.test(openapi)) {
-  failures.push("Sprint 4 OpenAPI paths must use slash action style, not colon action style.");
+  failures.push("Sprint 4/5 OpenAPI paths must use slash action style, not colon action style.");
 }
 
 if (failures.length > 0) {
-  console.error("Sprint 4 OpenAPI contract check failed:");
+  console.error("Sprint 4/5 OpenAPI contract check failed:");
   for (const failure of failures) {
     console.error(`- ${failure}`);
   }
   process.exit(1);
 }
 
-console.log(`Sprint 4 OpenAPI contract check passed: ${sprint4Routes.length} routes and ${requiredSuccessSchemas.length} envelopes.`);
+console.log(`Sprint 4/5 OpenAPI contract check passed: ${routes.length} routes and ${requiredSuccessSchemas.length} envelopes.`);
 
 function requireContains(haystack, needle, message) {
   if (!haystack.includes(needle)) {
