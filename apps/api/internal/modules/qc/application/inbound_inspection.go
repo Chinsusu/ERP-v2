@@ -345,7 +345,7 @@ func (s InboundQCInspectionService) transition(
 	if err != nil {
 		return InboundQCInspectionResult{}, err
 	}
-	stockMovements, err := s.recordPassStockMovement(ctx, updated, input.ActorID, now)
+	stockMovements, err := s.recordDecisionStockMovements(ctx, updated, input.ActorID, now)
 	if err != nil {
 		return InboundQCInspectionResult{}, err
 	}
@@ -358,6 +358,8 @@ func (s InboundQCInspectionService) transition(
 		afterData["stock_movement_no"] = stockMovements[0].MovementNo
 		afterData["stock_movement_type"] = string(stockMovements[0].MovementType)
 		afterData["target_stock_status"] = string(stockMovements[0].StockStatus)
+		afterData["stock_movement_nos"] = inboundQCStockMovementNos(stockMovements)
+		afterData["target_stock_statuses"] = inboundQCStockMovementStatuses(stockMovements)
 	}
 	log, err := newInboundQCAuditLog(
 		input.ActorID,
@@ -394,48 +396,124 @@ func (s InboundQCInspectionService) transition(
 	}, nil
 }
 
-func (s InboundQCInspectionService) recordPassStockMovement(
+type inboundQCStockMovementSpec struct {
+	suffix      string
+	quantity    decimal.Decimal
+	stockStatus inventorydomain.StockStatus
+	reason      string
+}
+
+func (s InboundQCInspectionService) recordDecisionStockMovements(
 	ctx context.Context,
 	inspection qcdomain.InboundQCInspection,
 	actorID string,
 	movementAt time.Time,
 ) ([]inventorydomain.StockMovement, error) {
-	if inspection.Result != qcdomain.InboundQCResultPass {
+	specs := inboundQCStockMovementSpecs(inspection)
+	if len(specs) == 0 {
 		return nil, nil
 	}
 	if s.stockMovement == nil {
 		return nil, errors.New("stock movement store is required")
 	}
 
-	movement, err := inventorydomain.NewStockMovement(inventorydomain.NewStockMovementInput{
-		MovementNo:       fmt.Sprintf("%s-PASS-001", strings.ToUpper(inspection.ID)),
+	movements := make([]inventorydomain.StockMovement, 0, len(specs))
+	for _, spec := range specs {
+		movement, err := newInboundQCStockMovement(inspection, spec, actorID, movementAt)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.stockMovement.Record(ctx, movement); err != nil {
+			return nil, err
+		}
+		movements = append(movements, movement)
+	}
+
+	return movements, nil
+}
+
+func inboundQCStockMovementSpecs(inspection qcdomain.InboundQCInspection) []inboundQCStockMovementSpec {
+	switch inspection.Result {
+	case qcdomain.InboundQCResultPass:
+		return []inboundQCStockMovementSpec{{
+			suffix:      "PASS",
+			quantity:    inspection.PassedQuantity,
+			stockStatus: inventorydomain.StockStatusAvailable,
+			reason:      "inbound qc pass released to available",
+		}}
+	case qcdomain.InboundQCResultFail:
+		return []inboundQCStockMovementSpec{{
+			suffix:      "FAIL",
+			quantity:    inspection.FailedQuantity,
+			stockStatus: inventorydomain.StockStatusDamaged,
+			reason:      "inbound qc fail blocked from available stock",
+		}}
+	case qcdomain.InboundQCResultHold:
+		return []inboundQCStockMovementSpec{{
+			suffix:      "HOLD",
+			quantity:    inspection.HoldQuantity,
+			stockStatus: inventorydomain.StockStatusQCHold,
+			reason:      "inbound qc hold quarantined",
+		}}
+	case qcdomain.InboundQCResultPartial:
+		specs := make([]inboundQCStockMovementSpec, 0, 3)
+		if !inspection.PassedQuantity.IsZero() {
+			specs = append(specs, inboundQCStockMovementSpec{
+				suffix:      "PASS",
+				quantity:    inspection.PassedQuantity,
+				stockStatus: inventorydomain.StockStatusAvailable,
+				reason:      "inbound qc partial pass released to available",
+			})
+		}
+		if !inspection.FailedQuantity.IsZero() {
+			specs = append(specs, inboundQCStockMovementSpec{
+				suffix:      "FAIL",
+				quantity:    inspection.FailedQuantity,
+				stockStatus: inventorydomain.StockStatusDamaged,
+				reason:      "inbound qc partial fail blocked from available stock",
+			})
+		}
+		if !inspection.HoldQuantity.IsZero() {
+			specs = append(specs, inboundQCStockMovementSpec{
+				suffix:      "HOLD",
+				quantity:    inspection.HoldQuantity,
+				stockStatus: inventorydomain.StockStatusQCHold,
+				reason:      "inbound qc partial hold quarantined",
+			})
+		}
+		return specs
+	default:
+		return nil
+	}
+}
+
+func newInboundQCStockMovement(
+	inspection qcdomain.InboundQCInspection,
+	spec inboundQCStockMovementSpec,
+	actorID string,
+	movementAt time.Time,
+) (inventorydomain.StockMovement, error) {
+	return inventorydomain.NewStockMovement(inventorydomain.NewStockMovementInput{
+		MovementNo:       fmt.Sprintf("%s-%s-001", strings.ToUpper(inspection.ID), spec.suffix),
 		MovementType:     inventorydomain.MovementPurchaseReceipt,
 		OrgID:            inspection.OrgID,
 		ItemID:           inspection.ItemID,
 		BatchID:          inspection.BatchID,
 		WarehouseID:      inspection.WarehouseID,
 		BinID:            inspection.LocationID,
-		Quantity:         inspection.PassedQuantity,
+		Quantity:         spec.quantity,
 		BaseUOMCode:      inspection.UOMCode.String(),
-		SourceQuantity:   inspection.PassedQuantity,
+		SourceQuantity:   spec.quantity,
 		SourceUOMCode:    inspection.UOMCode.String(),
 		ConversionFactor: decimal.MustQuantity("1"),
-		StockStatus:      inventorydomain.StockStatusAvailable,
+		StockStatus:      spec.stockStatus,
 		SourceDocType:    inboundQCStockMovementSourceDoc,
 		SourceDocID:      inspection.ID,
 		SourceDocLineID:  inspection.GoodsReceiptLineID,
-		Reason:           "inbound qc pass released to available",
+		Reason:           spec.reason,
 		CreatedBy:        actorID,
 		MovementAt:       movementAt,
 	})
-	if err != nil {
-		return nil, err
-	}
-	if err := s.stockMovement.Record(ctx, movement); err != nil {
-		return nil, err
-	}
-
-	return []inventorydomain.StockMovement{movement}, nil
 }
 
 func (s InboundQCInspectionService) ensureReadyForWrite() error {
@@ -757,6 +835,24 @@ func newInboundQCStockMovementAuditLog(
 		},
 		CreatedAt: createdAt,
 	})
+}
+
+func inboundQCStockMovementNos(movements []inventorydomain.StockMovement) []string {
+	values := make([]string, 0, len(movements))
+	for _, movement := range movements {
+		values = append(values, movement.MovementNo)
+	}
+
+	return values
+}
+
+func inboundQCStockMovementStatuses(movements []inventorydomain.StockMovement) []string {
+	values := make([]string, 0, len(movements))
+	for _, movement := range movements {
+		values = append(values, string(movement.StockStatus))
+	}
+
+	return values
 }
 
 func inboundQCAuditData(inspection qcdomain.InboundQCInspection) map[string]any {
