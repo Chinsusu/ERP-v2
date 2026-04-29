@@ -26,7 +26,9 @@ import {
   getSubcontractOrders,
   issueSubcontractMaterials,
   prototypeSubcontractOrders,
+  receiveSubcontractFinishedGoods,
   rejectSubcontractSample,
+  startMassProductionSubcontractOrder,
   subcontractDepositStatusOptions,
   subcontractFactoryOptions,
   subcontractMaterialItemOptions,
@@ -41,11 +43,14 @@ import {
 } from "../services/subcontractOrderService";
 import type {
   SubcontractDepositStatus,
+  SubcontractFinishedGoodsPackagingStatus,
+  SubcontractFinishedGoodsReceipt,
   SubcontractFinalPaymentStatus,
   SubcontractMaterialTransfer,
   SubcontractOrder,
   SubcontractOrderStatus,
-  SubcontractSampleApproval
+  SubcontractSampleApproval,
+  SubcontractStockMovement
 } from "../types";
 
 function subcontractOrderColumns(onOpen: (order: SubcontractOrder) => void): DataTableColumn<SubcontractOrder>[] {
@@ -197,6 +202,22 @@ export function SubcontractOrderPrototype() {
   const [sampleStorageStatus, setSampleStorageStatus] = useState("retained_in_qa_cabinet");
   const [sampleFeedback, setSampleFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
   const [isSavingSample, setIsSavingSample] = useState(false);
+  const [receiptWarehouseId, setReceiptWarehouseId] = useState<string>(subcontractTransferWarehouseOptions[0].value);
+  const [receiptLocationId, setReceiptLocationId] = useState("loc-hcm-fg-qc");
+  const [receiptLocationCode, setReceiptLocationCode] = useState("FG-QC-01");
+  const [deliveryNoteNo, setDeliveryNoteNo] = useState("DN-FACTORY-001");
+  const [receivedBy, setReceivedBy] = useState("warehouse-user");
+  const [finishedGoodsQty, setFinishedGoodsQty] = useState("100.000000");
+  const [finishedGoodsBatchNo, setFinishedGoodsBatchNo] = useState("FG-LOT-001");
+  const [finishedGoodsLotNo, setFinishedGoodsLotNo] = useState("FG-LOT-001");
+  const [finishedGoodsExpiryDate, setFinishedGoodsExpiryDate] = useState("2028-04-29");
+  const [packagingStatus, setPackagingStatus] = useState<SubcontractFinishedGoodsPackagingStatus>("intact");
+  const [receiptEvidenceName, setReceiptEvidenceName] = useState("factory-delivery.pdf");
+  const [receiptNote, setReceiptNote] = useState("");
+  const [finishedGoodsReceipts, setFinishedGoodsReceipts] = useState<SubcontractFinishedGoodsReceipt[]>([]);
+  const [receiptMovements, setReceiptMovements] = useState<SubcontractStockMovement[]>([]);
+  const [receiptFeedback, setReceiptFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
+  const [isReceivingFinishedGoods, setIsReceivingFinishedGoods] = useState(false);
   const summary = useMemo(() => summarizeSubcontractOrders(orders), [orders]);
   const transferSummary = useMemo(() => summarizeSubcontractMaterialTransfers(transfers), [transfers]);
   const orderColumns = useMemo(() => subcontractOrderColumns(handleOpenOrder), []);
@@ -233,12 +254,19 @@ export function SubcontractOrderPrototype() {
   const latestTransfer = transfers[0] ?? null;
   const latestSampleApproval =
     sampleApprovals.find((sampleApproval) => sampleApproval.orderId === selectedOrder?.id) ?? null;
+  const latestFinishedGoodsReceipt =
+    finishedGoodsReceipts.find((receipt) => receipt.orderId === selectedOrder?.id) ?? null;
+  const latestReceiptMovements = latestFinishedGoodsReceipt
+    ? receiptMovements.filter((movement) => movement.sourceDocId === latestFinishedGoodsReceipt.id)
+    : [];
   const canIssueSelectedOrder =
     selectedOrder?.status === "factory_confirmed" || selectedOrder?.status === "deposit_recorded";
   const canSubmitSample =
     selectedOrder?.sampleRequired &&
     (selectedOrder.status === "materials_issued_to_factory" || selectedOrder.status === "sample_rejected");
   const canDecideSample = selectedOrder?.status === "sample_submitted" && latestSampleApproval?.status === "submitted";
+  const canReceiveFinishedGoods =
+    selectedOrder?.status === "mass_production_started" || selectedOrder?.status === "finished_goods_received";
 
   useEffect(() => {
     if (!selectedOrder) {
@@ -296,6 +324,22 @@ export function SubcontractOrderPrototype() {
         : "Approved against retained standard"
     );
     setSampleStorageStatus("retained_in_qa_cabinet");
+  }, [selectedOrder?.id, selectedOrder?.version]);
+
+  useEffect(() => {
+    if (!selectedOrder) {
+      return;
+    }
+
+    setDeliveryNoteNo(`${selectedOrder.orderNo}-DN-001`);
+    setReceivedBy("warehouse-user");
+    setFinishedGoodsQty(remainingFinishedGoodsQty(selectedOrder));
+    setFinishedGoodsBatchNo(`${selectedOrder.sku}-LOT-001`);
+    setFinishedGoodsLotNo(`${selectedOrder.sku}-LOT-001`);
+    setFinishedGoodsExpiryDate("2028-04-29");
+    setPackagingStatus("intact");
+    setReceiptEvidenceName("factory-delivery.pdf");
+    setReceiptNote("");
   }, [selectedOrder?.id, selectedOrder?.version]);
 
   useEffect(() => {
@@ -433,9 +477,11 @@ export function SubcontractOrderPrototype() {
             ? await approveSubcontractOrder(selectedOrder.id, selectedOrder.version)
             : action === "confirm-factory"
               ? await confirmFactorySubcontractOrder(selectedOrder.id, selectedOrder.version)
-              : action === "cancel"
-                ? await cancelSubcontractOrder(selectedOrder.id, "Cancelled from subcontract UI", selectedOrder.version)
-                : await closeSubcontractOrder(selectedOrder.id, selectedOrder.version);
+              : action === "start-mass-production"
+                ? await startMassProductionSubcontractOrder(selectedOrder.id, selectedOrder.version)
+                : action === "cancel"
+                  ? await cancelSubcontractOrder(selectedOrder.id, "Cancelled from subcontract UI", selectedOrder.version)
+                  : await closeSubcontractOrder(selectedOrder.id, selectedOrder.version);
 
       setOrders((current) => [result.order, ...current.filter((order) => order.id !== result.order.id)]);
       setSelectedOrderId(result.order.id);
@@ -628,6 +674,81 @@ export function SubcontractOrderPrototype() {
     }
   }
 
+  async function handleReceiveFinishedGoods() {
+    if (!selectedOrder) {
+      return;
+    }
+
+    const warehouse =
+      subcontractTransferWarehouseOptions.find((option) => option.value === receiptWarehouseId) ??
+      subcontractTransferWarehouseOptions[0];
+
+    try {
+      setIsReceivingFinishedGoods(true);
+      const result = await receiveSubcontractFinishedGoods({
+        order: selectedOrder,
+        receiptId: `${selectedOrder.id}-fg-receipt-${Date.now()}`,
+        warehouseId: warehouse.value,
+        warehouseCode: warehouse.code,
+        locationId: receiptLocationId,
+        locationCode: receiptLocationCode,
+        deliveryNoteNo,
+        receivedBy,
+        receivedAt: new Date().toISOString(),
+        note: receiptNote,
+        lines: [
+          {
+            itemId: selectedOrder.productId,
+            skuCode: selectedOrder.sku,
+            itemName: selectedOrder.productName,
+            receiveQty: finishedGoodsQty,
+            uomCode: "EA",
+            baseReceiveQty: finishedGoodsQty,
+            baseUOMCode: "EA",
+            conversionFactor: "1",
+            batchNo: finishedGoodsBatchNo,
+            lotNo: finishedGoodsLotNo,
+            expiryDate: finishedGoodsExpiryDate,
+            packagingStatus
+          }
+        ],
+        evidence: receiptEvidenceName.trim()
+          ? [
+              {
+                id: `${selectedOrder.id}-fg-delivery-note`,
+                evidenceType: "delivery_note",
+                fileName: receiptEvidenceName.trim(),
+                objectKey: `subcontract/${selectedOrder.id}/${receiptEvidenceName.trim()}`
+              }
+            ]
+          : undefined
+      });
+
+      setOrders((current) => [result.order, ...current.filter((order) => order.id !== result.order.id)]);
+      setSelectedOrderId(result.order.id);
+      setFinishedGoodsReceipts((current) => [
+        result.receipt,
+        ...current.filter((receipt) => receipt.id !== result.receipt.id)
+      ]);
+      setReceiptMovements((current) => [
+        ...result.stockMovements,
+        ...current.filter((movement) => movement.sourceDocId !== result.receipt.id)
+      ]);
+      setLastAudit(result.auditLog);
+      setReceiptFeedback({
+        tone: "success",
+        message: `${result.receipt.receiptNo} received into QC hold`
+      });
+    } catch (error) {
+      setReceiptFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "Finished goods receipt could not be created"
+      });
+    } finally {
+      setIsReceivingFinishedGoods(false);
+    }
+  }
+
   return (
     <section className="erp-module-page erp-subcontract-page">
       <header className="erp-page-header">
@@ -645,6 +766,9 @@ export function SubcontractOrderPrototype() {
           </a>
           <a className="erp-button erp-button--secondary" href="#subcontract-transfer">
             Transfer
+          </a>
+          <a className="erp-button erp-button--secondary" href="#subcontract-inbound">
+            Inbound
           </a>
           <a className="erp-button erp-button--primary" href="#subcontract-orders">
             Orders
@@ -921,7 +1045,7 @@ export function SubcontractOrderPrototype() {
                 ))}
               </div>
               <div className="erp-subcontract-actions">
-                {availableSubcontractOrderActions(selectedOrder.status).map((action) => {
+                {availableSubcontractOrderActions(selectedOrder.status, selectedOrder.sampleRequired).map((action) => {
                   const option = subcontractOrderActionOptions.find((candidate) => candidate.value === action);
 
                   return (
@@ -1104,6 +1228,207 @@ export function SubcontractOrderPrototype() {
             </>
           ) : (
             <div className="erp-subcontract-empty-state">No material transfer created</div>
+          )}
+        </div>
+      </section>
+
+      <section className="erp-subcontract-quality-grid" id="subcontract-inbound">
+        <div className="erp-card erp-card--padded erp-subcontract-card">
+          <div className="erp-section-header">
+            <h2 className="erp-section-title">Finished goods receipt</h2>
+            <StatusChip tone={canReceiveFinishedGoods ? "info" : "normal"}>
+              {selectedOrder ? formatSubcontractOrderStatus(selectedOrder.status) : "No order"}
+            </StatusChip>
+          </div>
+
+          <div className="erp-subcontract-receipt-controls">
+            <label className="erp-field">
+              <span>Warehouse</span>
+              <select
+                className="erp-input"
+                value={receiptWarehouseId}
+                onChange={(event) => setReceiptWarehouseId(event.target.value)}
+              >
+                {subcontractTransferWarehouseOptions.map((warehouse) => (
+                  <option key={warehouse.value} value={warehouse.value}>
+                    {warehouse.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="erp-field">
+              <span>QC location</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={receiptLocationCode}
+                onChange={(event) => {
+                  setReceiptLocationCode(event.target.value);
+                  setReceiptLocationId(event.target.value.trim() ? `loc-${event.target.value.toLowerCase()}` : "");
+                }}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Delivery note</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={deliveryNoteNo}
+                onChange={(event) => setDeliveryNoteNo(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Received by</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={receivedBy}
+                onChange={(event) => setReceivedBy(event.target.value)}
+              />
+            </label>
+            <label className="erp-field">
+              <span>Evidence file</span>
+              <input
+                className="erp-input"
+                type="text"
+                value={receiptEvidenceName}
+                onChange={(event) => setReceiptEvidenceName(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="erp-subcontract-line-list" aria-label="Finished goods receipt line">
+            <div className="erp-subcontract-line-item erp-subcontract-line-item--receipt">
+              <strong>{selectedOrder?.productName ?? "Finished item"}</strong>
+              <span>{selectedOrder ? `${selectedOrder.sku} / remaining ${remainingFinishedGoodsQty(selectedOrder)} EA` : "-"}</span>
+              <label className="erp-field">
+                <span>Receive qty</span>
+                <input
+                  className="erp-input"
+                  inputMode="decimal"
+                  type="text"
+                  value={finishedGoodsQty}
+                  onChange={(event) => setFinishedGoodsQty(event.target.value)}
+                />
+              </label>
+              <label className="erp-field">
+                <span>Batch / lot</span>
+                <input
+                  className="erp-input"
+                  type="text"
+                  value={finishedGoodsBatchNo}
+                  onChange={(event) => {
+                    setFinishedGoodsBatchNo(event.target.value);
+                    setFinishedGoodsLotNo(event.target.value);
+                  }}
+                />
+              </label>
+              <label className="erp-field">
+                <span>Expiry</span>
+                <input
+                  className="erp-input"
+                  type="date"
+                  value={finishedGoodsExpiryDate}
+                  onChange={(event) => setFinishedGoodsExpiryDate(event.target.value)}
+                />
+              </label>
+              <label className="erp-field">
+                <span>Packaging</span>
+                <select
+                  className="erp-input"
+                  value={packagingStatus}
+                  onChange={(event) => setPackagingStatus(event.target.value as SubcontractFinishedGoodsPackagingStatus)}
+                >
+                  <option value="intact">Intact</option>
+                  <option value="damaged">Damaged</option>
+                  <option value="mixed">Mixed</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <label className="erp-field erp-subcontract-note-field">
+            <span>Receipt note</span>
+            <input
+              className="erp-input"
+              type="text"
+              value={receiptNote}
+              onChange={(event) => setReceiptNote(event.target.value)}
+            />
+          </label>
+
+          <div className="erp-subcontract-actions">
+            <button
+              className="erp-button erp-button--primary"
+              type="button"
+              disabled={
+                !selectedOrder ||
+                !canReceiveFinishedGoods ||
+                isReceivingFinishedGoods ||
+                deliveryNoteNo.trim() === "" ||
+                receivedBy.trim() === "" ||
+                finishedGoodsQty.trim() === "" ||
+                finishedGoodsBatchNo.trim() === "" ||
+                finishedGoodsExpiryDate.trim() === ""
+              }
+              onClick={handleReceiveFinishedGoods}
+            >
+              Receive to QC hold
+            </button>
+            {receiptFeedback ? <StatusChip tone={receiptFeedback.tone}>{receiptFeedback.message}</StatusChip> : null}
+          </div>
+        </div>
+
+        <div className="erp-card erp-card--padded erp-subcontract-card">
+          <div className="erp-section-header">
+            <h2 className="erp-section-title">Receipt result</h2>
+            <StatusChip tone={latestFinishedGoodsReceipt ? "warning" : "normal"}>
+              {latestFinishedGoodsReceipt ? "QC hold" : "No receipt"}
+            </StatusChip>
+          </div>
+
+          {latestFinishedGoodsReceipt ? (
+            <>
+              <div className="erp-subcontract-fact-grid">
+                <SubcontractFact label="Receipt" value={latestFinishedGoodsReceipt.receiptNo} />
+                <SubcontractFact label="Delivery note" value={latestFinishedGoodsReceipt.deliveryNoteNo} />
+                <SubcontractFact label="Warehouse" value={latestFinishedGoodsReceipt.warehouseCode} />
+                <SubcontractFact label="Location" value={latestFinishedGoodsReceipt.locationCode} />
+                <SubcontractFact label="Received by" value={latestFinishedGoodsReceipt.receivedBy} />
+                <SubcontractFact label="Received at" value={latestFinishedGoodsReceipt.receivedAt.slice(0, 10)} />
+              </div>
+              <div className="erp-subcontract-line-list" aria-label="Finished goods receipt lines">
+                {latestFinishedGoodsReceipt.lines.map((line) => (
+                  <div className="erp-subcontract-line-item" key={line.id}>
+                    <strong>{line.itemName}</strong>
+                    <span>{line.skuCode}</span>
+                    <span>
+                      {Number(line.receiveQty).toLocaleString("en-US")} {line.uomCode} / {line.batchNo}
+                    </span>
+                    <StatusChip tone="warning">{line.packagingStatus ?? "qc_hold"}</StatusChip>
+                  </div>
+                ))}
+              </div>
+              <div className="erp-subcontract-movement-list" aria-label="Finished goods receipt movements">
+                {latestReceiptMovements.map((movement) => (
+                  <div className="erp-subcontract-movement-item" key={movement.id}>
+                    <strong>{movement.movementType}</strong>
+                    <span>
+                      {movement.itemCode} / {formatQuantity(movement.quantity)} {movement.unit} / {movement.targetLocation}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="erp-subcontract-attachment-list" aria-label="Finished goods receipt evidence">
+                {latestFinishedGoodsReceipt.evidence.map((evidence) => (
+                  <StatusChip key={evidence.id} tone="info">
+                    {evidence.fileName ?? evidence.objectKey ?? evidence.evidenceType}
+                  </StatusChip>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="erp-subcontract-empty-state">No factory delivery received into QC hold</div>
           )}
         </div>
       </section>
@@ -1295,6 +1620,18 @@ function formatQuantity(value: number) {
 function remainingMaterialQty(plannedQty: string, issuedQty: string) {
   const remaining =
     toScaledBigInt(plannedQty, decimalScales.quantity) - toScaledBigInt(issuedQty, decimalScales.quantity);
+  if (remaining < BigInt(0)) {
+    return "0.000000";
+  }
+
+  return fromScaledBigInt(remaining, decimalScales.quantity);
+}
+
+function remainingFinishedGoodsQty(order: SubcontractOrder) {
+  const plannedQty = normalizeDecimalInput(String(order.quantity), decimalScales.quantity);
+  const receivedQty = normalizeDecimalInput(order.receivedQty ?? "0", decimalScales.quantity);
+  const remaining =
+    toScaledBigInt(plannedQty, decimalScales.quantity) - toScaledBigInt(receivedQty, decimalScales.quantity);
   if (remaining < BigInt(0)) {
     return "0.000000";
   }

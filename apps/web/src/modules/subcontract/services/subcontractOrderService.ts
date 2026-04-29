@@ -7,8 +7,11 @@ import type {
   DecideSubcontractSampleInput,
   IssueSubcontractMaterialsInput,
   IssueSubcontractMaterialsResult,
+  ReceiveSubcontractFinishedGoodsInput,
+  ReceiveSubcontractFinishedGoodsResult,
   SubcontractDepositStatus,
   SubcontractFactory,
+  SubcontractFinishedGoodsReceipt,
   SubcontractFinalPaymentStatus,
   SubcontractMaterialTransfer,
   SubcontractOrder,
@@ -228,6 +231,109 @@ type SubcontractMaterialIssueMovementApi = {
   source_doc_id: string;
 };
 
+type ReceiveSubcontractFinishedGoodsApiLineRequest = {
+  id?: string;
+  line_no?: number;
+  item_id?: string;
+  sku_code?: string;
+  item_name?: string;
+  batch_id?: string;
+  batch_no?: string;
+  lot_no?: string;
+  expiry_date?: string;
+  receive_qty: string;
+  uom_code: string;
+  base_receive_qty?: string;
+  base_uom_code?: string;
+  conversion_factor?: string;
+  packaging_status: string;
+  note?: string;
+};
+
+type ReceiveSubcontractFinishedGoodsApiEvidenceRequest = {
+  id?: string;
+  evidence_type: string;
+  file_name?: string;
+  object_key?: string;
+  external_url?: string;
+  note?: string;
+};
+
+type ReceiveSubcontractFinishedGoodsApiRequest = {
+  expected_version: number;
+  receipt_id?: string;
+  receipt_no?: string;
+  warehouse_id: string;
+  warehouse_code: string;
+  location_id: string;
+  location_code: string;
+  delivery_note_no: string;
+  received_by: string;
+  received_at?: string;
+  note?: string;
+  lines: ReceiveSubcontractFinishedGoodsApiLineRequest[];
+  evidence?: ReceiveSubcontractFinishedGoodsApiEvidenceRequest[];
+};
+
+type SubcontractFinishedGoodsReceiptApiLine = {
+  id: string;
+  line_no: number;
+  item_id: string;
+  sku_code: string;
+  item_name: string;
+  batch_id?: string;
+  batch_no: string;
+  lot_no?: string;
+  expiry_date?: string;
+  receive_qty: string;
+  uom_code: string;
+  base_receive_qty: string;
+  base_uom_code: string;
+  conversion_factor: string;
+  packaging_status?: string;
+  note?: string;
+};
+
+type SubcontractFinishedGoodsReceiptApiEvidence = {
+  id: string;
+  evidence_type: string;
+  file_name?: string;
+  object_key?: string;
+  external_url?: string;
+  note?: string;
+};
+
+type SubcontractFinishedGoodsReceiptApi = {
+  id: string;
+  receipt_no: string;
+  subcontract_order_id: string;
+  subcontract_order_no: string;
+  factory_id: string;
+  factory_code?: string;
+  factory_name: string;
+  warehouse_id: string;
+  warehouse_code?: string;
+  location_id: string;
+  location_code?: string;
+  delivery_note_no: string;
+  status: "qc_hold";
+  lines: SubcontractFinishedGoodsReceiptApiLine[];
+  evidence?: SubcontractFinishedGoodsReceiptApiEvidence[];
+  received_by: string;
+  received_at: string;
+  note?: string;
+  created_at: string;
+  updated_at: string;
+  version: number;
+};
+
+type ReceiveSubcontractFinishedGoodsApiResult = {
+  subcontract_order: SubcontractOrderApi;
+  receipt: SubcontractFinishedGoodsReceiptApi;
+  stock_movements: SubcontractMaterialIssueMovementApi[];
+  audit_log_id?: string;
+};
+
 type IssueSubcontractMaterialsApiResult = {
   subcontract_order: SubcontractOrderApi;
   transfer: SubcontractMaterialTransferApi;
@@ -304,7 +410,7 @@ type SubcontractSampleApprovalApiResult = {
   audit_log_id?: string;
 };
 
-type SubcontractOrderAction = "submit" | "approve" | "confirm-factory" | "cancel" | "close";
+type SubcontractOrderAction = "submit" | "approve" | "confirm-factory" | "start-mass-production" | "cancel" | "close";
 
 const defaultAccessToken = "local-dev-access-token";
 const prototypeNow = "2026-04-29T10:00:00Z";
@@ -312,6 +418,7 @@ let subcontractOrderSequence = 2;
 let subcontractAuditSequence = 1;
 let prototypeSampleApprovalSequence = 1;
 let prototypeSampleApprovalStore: SubcontractSampleApproval[] = [];
+let prototypeFinishedGoodsReceiptSequence = 1;
 
 export const subcontractFactoryOptions: SubcontractFactory[] = [
   { id: "sup-out-lotus", code: "SUP-OUT-LOTUS", name: "Lotus Filling Partner" },
@@ -361,6 +468,7 @@ export const subcontractOrderActionOptions: { label: string; value: SubcontractO
   { label: "Submit", value: "submit" },
   { label: "Approve", value: "approve" },
   { label: "Confirm factory", value: "confirm-factory" },
+  { label: "Start mass production", value: "start-mass-production" },
   { label: "Cancel", value: "cancel" },
   { label: "Close", value: "close" }
 ];
@@ -376,6 +484,9 @@ export const prototypeSubcontractOrders: SubcontractOrder[] = [
     sku: "SERUM-30ML",
     productName: "Hydrating Serum 30ml",
     quantity: 5000,
+    receivedQty: "0.000000",
+    acceptedQty: "0.000000",
+    rejectedQty: "0.000000",
     specVersion: "SPEC-SERUM-2026.04",
     sampleRequired: true,
     expectedDeliveryDate: "2026-05-20",
@@ -495,6 +606,13 @@ export async function confirmFactorySubcontractOrder(
   return runSubcontractOrderAction(id, "confirm-factory", expectedVersion);
 }
 
+export async function startMassProductionSubcontractOrder(
+  id: string,
+  expectedVersion?: number
+): Promise<SubcontractStatusChangeResult> {
+  return runSubcontractOrderAction(id, "start-mass-production", expectedVersion);
+}
+
 export async function cancelSubcontractOrder(
   id: string,
   reason: string,
@@ -587,6 +705,26 @@ export async function rejectSubcontractSample(
   }
 }
 
+export async function receiveSubcontractFinishedGoods(
+  input: ReceiveSubcontractFinishedGoodsInput
+): Promise<ReceiveSubcontractFinishedGoodsResult> {
+  try {
+    const result = await apiPost<ReceiveSubcontractFinishedGoodsApiResult, ReceiveSubcontractFinishedGoodsApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/receive-finished-goods`,
+      toApiReceiveFinishedGoodsInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiReceiveFinishedGoodsResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return receivePrototypeSubcontractFinishedGoods(input);
+  }
+}
+
 export function changeSubcontractOrderStatus(input: ChangeSubcontractOrderStatusInput): SubcontractStatusChangeResult {
   const nextStatus = normalizeOrderStatus(input.nextStatus);
   const beforeStatus = input.order.status;
@@ -671,7 +809,10 @@ export function formatSubcontractDepositStatus(status: SubcontractDepositStatus)
   return subcontractDepositStatusOptions.find((option) => option.value === status)?.label ?? status;
 }
 
-export function availableSubcontractOrderActions(status: SubcontractOrderStatus): SubcontractOrderAction[] {
+export function availableSubcontractOrderActions(
+  status: SubcontractOrderStatus,
+  sampleRequired = true
+): SubcontractOrderAction[] {
   switch (status) {
     case "draft":
       return ["submit", "cancel"];
@@ -679,6 +820,10 @@ export function availableSubcontractOrderActions(status: SubcontractOrderStatus)
       return ["approve", "cancel"];
     case "approved":
       return ["confirm-factory", "cancel"];
+    case "materials_issued_to_factory":
+      return sampleRequired ? [] : ["start-mass-production", "cancel"];
+    case "sample_approved":
+      return ["start-mass-production", "cancel"];
     case "accepted":
     case "final_payment_ready":
       return ["close"];
@@ -692,6 +837,7 @@ export function resetPrototypeSubcontractOrdersForTest() {
   subcontractAuditSequence = 1;
   prototypeSampleApprovalSequence = 1;
   prototypeSampleApprovalStore = [];
+  prototypeFinishedGoodsReceiptSequence = 1;
   prototypeStore = prototypeSubcontractOrders.map(cloneSubcontractOrder);
 }
 
@@ -737,6 +883,9 @@ function fromApiSubcontractOrderListItem(order: SubcontractOrderApiListItem): Su
     sku: order.finished_sku_code,
     productName: order.finished_item_name,
     quantity: Number(order.planned_qty),
+    receivedQty: order.received_qty,
+    acceptedQty: order.accepted_qty,
+    rejectedQty: order.rejected_qty,
     specVersion: order.spec_summary ?? "",
     sampleRequired: order.sample_required,
     expectedDeliveryDate: order.expected_receipt_date,
@@ -832,6 +981,23 @@ function fromApiSampleApprovalResult(result: SubcontractSampleApprovalApiResult)
   };
 }
 
+function fromApiReceiveFinishedGoodsResult(
+  result: ReceiveSubcontractFinishedGoodsApiResult
+): ReceiveSubcontractFinishedGoodsResult {
+  const order = fromApiSubcontractOrder(result.subcontract_order);
+  const receipt = fromApiSubcontractFinishedGoodsReceipt(result.receipt);
+  const stockMovements = result.stock_movements.map((movement) => fromApiSubcontractStockMovement(movement));
+  const auditLog = createFinishedGoodsReceiptAuditLog(order, receipt, stockMovements, result.audit_log_id);
+
+  return {
+    order,
+    receipt,
+    stockMovements,
+    auditLog,
+    auditLogId: result.audit_log_id
+  };
+}
+
 function fromApiSampleApproval(sampleApproval: SubcontractSampleApprovalApi): SubcontractSampleApproval {
   return {
     id: sampleApproval.id,
@@ -861,6 +1027,58 @@ function fromApiSampleApproval(sampleApproval: SubcontractSampleApprovalApi): Su
     createdAt: sampleApproval.created_at,
     updatedAt: sampleApproval.updated_at,
     version: sampleApproval.version
+  };
+}
+
+function fromApiSubcontractFinishedGoodsReceipt(
+  receipt: SubcontractFinishedGoodsReceiptApi
+): SubcontractFinishedGoodsReceipt {
+  return {
+    id: receipt.id,
+    receiptNo: receipt.receipt_no,
+    orderId: receipt.subcontract_order_id,
+    orderNo: receipt.subcontract_order_no,
+    factoryId: receipt.factory_id,
+    factoryCode: receipt.factory_code,
+    factoryName: receipt.factory_name,
+    warehouseId: receipt.warehouse_id,
+    warehouseCode: receipt.warehouse_code ?? receipt.warehouse_id,
+    locationId: receipt.location_id,
+    locationCode: receipt.location_code ?? receipt.location_id,
+    deliveryNoteNo: receipt.delivery_note_no,
+    status: receipt.status,
+    lines: receipt.lines.map((line) => ({
+      id: line.id,
+      lineNo: line.line_no,
+      itemId: line.item_id,
+      skuCode: line.sku_code,
+      itemName: line.item_name,
+      batchId: line.batch_id,
+      batchNo: line.batch_no,
+      lotNo: line.lot_no,
+      expiryDate: line.expiry_date ?? "",
+      receiveQty: line.receive_qty,
+      uomCode: line.uom_code,
+      baseReceiveQty: line.base_receive_qty,
+      baseUOMCode: line.base_uom_code,
+      conversionFactor: line.conversion_factor,
+      packagingStatus: line.packaging_status,
+      note: line.note
+    })),
+    evidence: (receipt.evidence ?? []).map((evidence) => ({
+      id: evidence.id,
+      evidenceType: evidence.evidence_type,
+      fileName: evidence.file_name,
+      objectKey: evidence.object_key,
+      externalURL: evidence.external_url,
+      note: evidence.note
+    })),
+    receivedBy: receipt.received_by,
+    receivedAt: receipt.received_at,
+    note: receipt.note,
+    createdAt: receipt.created_at,
+    updatedAt: receipt.updated_at,
+    version: receipt.version
   };
 }
 
@@ -901,13 +1119,26 @@ function fromApiSubcontractMaterialTransfer(
 
 function fromApiMaterialIssueMovement(movement: SubcontractMaterialIssueMovementApi): SubcontractStockMovement {
   return {
+    ...fromApiSubcontractStockMovement(movement, "SUBCONTRACT_ISSUE"),
+    targetLocation: `stock_in_subcontractor_hold:${movement.stock_status}`
+  };
+}
+
+function fromApiSubcontractStockMovement(
+  movement: SubcontractMaterialIssueMovementApi,
+  fallbackMovementType?: SubcontractStockMovement["movementType"]
+): SubcontractStockMovement {
+  return {
     id: movement.movement_no,
-    movementType: "SUBCONTRACT_ISSUE",
+    movementType:
+      movement.movement_type === "subcontract_receipt"
+        ? "SUBCONTRACT_RECEIPT"
+        : fallbackMovementType ?? "SUBCONTRACT_ISSUE",
     itemCode: movement.item_id,
     quantity: Number(movement.source_quantity || movement.quantity),
     unit: movement.source_uom_code || movement.base_uom_code,
     sourceWarehouseId: movement.warehouse_id,
-    targetLocation: `stock_in_subcontractor_hold:${movement.stock_status}`,
+    targetLocation: `${movement.warehouse_id}/${movement.bin_id || "qc_hold"}:${movement.stock_status}`,
     batchNo: movement.batch_id,
     sourceDocId: movement.source_doc_id
   };
@@ -950,7 +1181,7 @@ function toApiIssueMaterialsInput(input: IssueSubcontractMaterialsInput): IssueS
       conversion_factor: line.conversionFactor
         ? normalizeDecimalInput(line.conversionFactor, decimalScales.quantity)
         : undefined,
-      batch_id: line.batchId,
+      batch_id: line.batchId || line.batchNo,
       batch_no: line.batchNo,
       lot_no: line.lotNo,
       source_bin_id: line.sourceBinId,
@@ -995,6 +1226,54 @@ function toApiDecideSampleInput(input: DecideSubcontractSampleInput): DecideSubc
     decision_at: input.decisionAt,
     reason: input.reason,
     storage_status: input.storageStatus
+  };
+}
+
+function toApiReceiveFinishedGoodsInput(
+  input: ReceiveSubcontractFinishedGoodsInput
+): ReceiveSubcontractFinishedGoodsApiRequest {
+  return {
+    expected_version: input.order.version,
+    receipt_id: input.receiptId,
+    receipt_no: input.receiptNo,
+    warehouse_id: input.warehouseId,
+    warehouse_code: input.warehouseCode,
+    location_id: input.locationId,
+    location_code: input.locationCode,
+    delivery_note_no: input.deliveryNoteNo,
+    received_by: input.receivedBy,
+    received_at: input.receivedAt,
+    note: input.note,
+    lines: input.lines.map((line) => ({
+      id: line.id,
+      line_no: line.lineNo,
+      item_id: line.itemId,
+      sku_code: line.skuCode,
+      item_name: line.itemName,
+      batch_id: line.batchId,
+      batch_no: line.batchNo,
+      lot_no: line.lotNo,
+      expiry_date: line.expiryDate,
+      receive_qty: normalizeDecimalInput(line.receiveQty, decimalScales.quantity),
+      uom_code: line.uomCode,
+      base_receive_qty: line.baseReceiveQty
+        ? normalizeDecimalInput(line.baseReceiveQty, decimalScales.quantity)
+        : undefined,
+      base_uom_code: line.baseUOMCode,
+      conversion_factor: line.conversionFactor
+        ? normalizeDecimalInput(line.conversionFactor, decimalScales.quantity)
+        : undefined,
+      packaging_status: line.packagingStatus,
+      note: line.note
+    })),
+    evidence: input.evidence?.map((evidence) => ({
+      id: evidence.id,
+      evidence_type: evidence.evidenceType,
+      file_name: evidence.fileName,
+      object_key: evidence.objectKey,
+      external_url: evidence.externalURL,
+      note: evidence.note
+    }))
   };
 }
 
@@ -1085,6 +1364,9 @@ function createPrototypeSubcontractOrder(input: CreateSubcontractOrderInput): Su
     sku: product.sku,
     productName: product.name,
     quantity,
+    receivedQty: "0.000000",
+    acceptedQty: "0.000000",
+    rejectedQty: "0.000000",
     specVersion: normalizeRequiredText(input.specVersion, "Spec summary is required"),
     sampleRequired: input.sampleRequired,
     expectedDeliveryDate: normalizeRequiredText(input.expectedDeliveryDate, "Expected receipt date is required"),
@@ -1162,7 +1444,7 @@ function transitionPrototypeSubcontractOrder(
   if (expectedVersion && expectedVersion !== current.version) {
     throw new Error("Subcontract order version changed");
   }
-  const nextStatus = nextPrototypeStatus(current.status, action);
+  const nextStatus = nextPrototypeStatus(current, action);
   const result = changeSubcontractOrderStatus({
     order: current,
     nextStatus,
@@ -1396,6 +1678,126 @@ function decidePrototypeSubcontractSample(
   };
 }
 
+function receivePrototypeSubcontractFinishedGoods(
+  input: ReceiveSubcontractFinishedGoodsInput
+): ReceiveSubcontractFinishedGoodsResult {
+  const current = getPrototypeSubcontractOrder(input.order.id);
+  if (input.order.version && input.order.version !== current.version) {
+    throw new Error("Subcontract order version changed");
+  }
+  if (!["mass_production_started", "finished_goods_received"].includes(current.status)) {
+    throw new Error(`Cannot receive finished goods from ${formatSubcontractOrderStatus(current.status)}`);
+  }
+  if (input.lines.length === 0) {
+    throw new Error("At least one finished goods receipt line is required");
+  }
+
+  const sequence = prototypeFinishedGoodsReceiptSequence++;
+  const receivedAt = input.receivedAt || prototypeNow;
+  const receiptId = input.receiptId || `sfgr-${current.id}-${String(sequence).padStart(4, "0")}`;
+  const receiptNo = input.receiptNo || `SFGR-260429-${String(sequence).padStart(4, "0")}`;
+  const deliveryNoteNo = normalizeRequiredText(input.deliveryNoteNo, "Factory delivery note is required");
+  const warehouseId = normalizeRequiredText(input.warehouseId, "Warehouse is required");
+  const warehouseCode = normalizeRequiredText(input.warehouseCode, "Warehouse code is required");
+  const locationId = normalizeRequiredText(input.locationId, "QC hold location is required");
+  const locationCode = normalizeRequiredText(input.locationCode, "QC hold location code is required");
+  const receivedBy = normalizeRequiredText(input.receivedBy, "Receiver is required");
+  const lines = input.lines.map((line, index) => {
+    const receiveQty = normalizeDecimalInput(line.receiveQty, decimalScales.quantity);
+    if (toScaledBigInt(receiveQty, decimalScales.quantity) <= BigInt(0)) {
+      throw new Error("Receive quantity must be greater than zero");
+    }
+
+    return {
+      id: line.id || `${receiptId}-line-${String(index + 1).padStart(2, "0")}`,
+      lineNo: line.lineNo ?? index + 1,
+      itemId: line.itemId || current.productId,
+      skuCode: line.skuCode || current.sku,
+      itemName: line.itemName || current.productName,
+      batchId: line.batchId || line.batchNo,
+      batchNo: normalizeRequiredText(line.batchNo, "Batch / lot is required"),
+      lotNo: line.lotNo || line.batchNo,
+      expiryDate: normalizeRequiredText(line.expiryDate, "Expiry date is required"),
+      receiveQty,
+      uomCode: line.uomCode || "EA",
+      baseReceiveQty: normalizeDecimalInput(line.baseReceiveQty || line.receiveQty, decimalScales.quantity),
+      baseUOMCode: line.baseUOMCode || line.uomCode || "EA",
+      conversionFactor: normalizeDecimalInput(line.conversionFactor || "1", decimalScales.quantity),
+      packagingStatus: line.packagingStatus,
+      note: line.note
+    };
+  });
+  const totalReceivedQty = lines.reduce(
+    (sum, line) => addQuantityStrings(sum, line.receiveQty),
+    "0.000000"
+  );
+  const nextReceivedQty = addQuantityStrings(current.receivedQty ?? "0.000000", totalReceivedQty);
+  const plannedQty = normalizeDecimalInput(String(current.quantity), decimalScales.quantity);
+  if (toScaledBigInt(nextReceivedQty, decimalScales.quantity) > toScaledBigInt(plannedQty, decimalScales.quantity)) {
+    throw new Error("Receive quantity exceeds remaining subcontract finished goods quantity");
+  }
+
+  const order = createSubcontractOrderRecord({
+    ...current,
+    status: "finished_goods_received",
+    receivedQty: nextReceivedQty,
+    updatedAt: receivedAt,
+    version: current.version + 1
+  });
+  const receipt: SubcontractFinishedGoodsReceipt = {
+    id: receiptId,
+    receiptNo,
+    orderId: current.id,
+    orderNo: current.orderNo,
+    factoryId: current.factoryId,
+    factoryCode: current.factoryCode,
+    factoryName: current.factoryName,
+    warehouseId,
+    warehouseCode,
+    locationId,
+    locationCode,
+    deliveryNoteNo,
+    status: "qc_hold",
+    lines,
+    evidence: (input.evidence ?? []).map((evidence, index) => ({
+      id: evidence.id || `${receiptId}-evidence-${index + 1}`,
+      evidenceType: evidence.evidenceType,
+      fileName: evidence.fileName,
+      objectKey: evidence.objectKey,
+      externalURL: evidence.externalURL,
+      note: evidence.note
+    })),
+    receivedBy,
+    receivedAt,
+    note: input.note,
+    createdAt: receivedAt,
+    updatedAt: receivedAt,
+    version: 1
+  };
+  const stockMovements = receipt.lines.map((line) => ({
+    id: `mov-${receipt.id}-${line.id}`,
+    movementType: "SUBCONTRACT_RECEIPT" as const,
+    itemCode: line.skuCode,
+    quantity: Number(line.receiveQty),
+    unit: line.uomCode,
+    sourceWarehouseId: warehouseId,
+    targetLocation: `${warehouseCode}/${locationCode}:qc_hold`,
+    batchNo: line.batchNo,
+    sourceDocId: receipt.id
+  }));
+  const auditLog = createFinishedGoodsReceiptAuditLog(order, receipt, stockMovements, undefined, current.status);
+  order.auditLogIds = [...order.auditLogIds, auditLog.id];
+  prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== current.id)];
+
+  return {
+    order,
+    receipt,
+    stockMovements,
+    auditLog,
+    auditLogId: auditLog.id
+  };
+}
+
 function latestPrototypeSampleApproval(orderId: string, sampleApprovalId?: string) {
   const samples = prototypeSampleApprovalStore.filter((sample) =>
     sampleApprovalId ? sample.id === sampleApprovalId : sample.orderId === orderId
@@ -1404,7 +1806,8 @@ function latestPrototypeSampleApproval(orderId: string, sampleApprovalId?: strin
   return samples[0];
 }
 
-function nextPrototypeStatus(currentStatus: SubcontractOrderStatus, action: SubcontractOrderAction) {
+function nextPrototypeStatus(order: SubcontractOrder, action: SubcontractOrderAction) {
+  const currentStatus = order.status;
   if (action === "submit" && currentStatus === "draft") {
     return "submitted";
   }
@@ -1414,10 +1817,21 @@ function nextPrototypeStatus(currentStatus: SubcontractOrderStatus, action: Subc
   if (action === "confirm-factory" && currentStatus === "approved") {
     return "factory_confirmed";
   }
+  if (action === "start-mass-production" && currentStatus === "sample_approved") {
+    return "mass_production_started";
+  }
+  if (action === "start-mass-production" && currentStatus === "materials_issued_to_factory" && !order.sampleRequired) {
+    return "mass_production_started";
+  }
   if (action === "close" && ["accepted", "final_payment_ready"].includes(currentStatus)) {
     return "closed";
   }
-  if (action === "cancel" && ["draft", "submitted", "approved", "factory_confirmed"].includes(currentStatus)) {
+  if (
+    action === "cancel" &&
+    ["draft", "submitted", "approved", "factory_confirmed", "materials_issued_to_factory", "sample_approved"].includes(
+      currentStatus
+    )
+  ) {
     return "cancelled";
   }
 
@@ -1535,6 +1949,43 @@ function createSampleApprovalAuditLog(
       storage_status: sampleApproval.storageStatus ?? ""
     },
     createdAt: sampleApproval.updatedAt || prototypeNow
+  };
+}
+
+function createFinishedGoodsReceiptAuditLog(
+  order: SubcontractOrder,
+  receipt: SubcontractFinishedGoodsReceipt,
+  stockMovements: SubcontractStockMovement[],
+  auditLogId?: string,
+  beforeStatus: SubcontractOrderStatus = "mass_production_started"
+): AuditLogItem {
+  const id = auditLogId ?? `audit-subcontract-fg-receipt-${String(subcontractAuditSequence++).padStart(4, "0")}`;
+
+  return {
+    id,
+    actorId: "user-subcontract-warehouse",
+    action: "subcontract.finished_goods_received",
+    entityType: "subcontract_order",
+    entityId: order.id,
+    requestId: `req_${id}`,
+    beforeData: {
+      status: beforeStatus
+    },
+    afterData: {
+      status: order.status,
+      receipt_no: receipt.receiptNo,
+      receipt_status: receipt.status,
+      stock_movement_count: stockMovements.length
+    },
+    metadata: {
+      order_no: order.orderNo,
+      factory: order.factoryName,
+      delivery_note_no: receipt.deliveryNoteNo,
+      warehouse: receipt.warehouseCode,
+      location: receipt.locationCode,
+      received_by: receipt.receivedBy
+    },
+    createdAt: receipt.receivedAt || prototypeNow
   };
 }
 

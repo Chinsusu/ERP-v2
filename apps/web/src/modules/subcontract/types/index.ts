@@ -31,6 +31,10 @@ export type SubcontractMaterialQcStatus = "passed" | "pending" | "failed";
 
 export type SubcontractTransferAttachmentType = "COA" | "MSDS" | "LABEL" | "VAT_INVOICE";
 
+export type SubcontractFinishedGoodsReceiptStatus = "qc_hold";
+
+export type SubcontractFinishedGoodsPackagingStatus = "intact" | "damaged" | "mixed";
+
 export type SubcontractFactory = {
   id: string;
   code: string;
@@ -53,6 +57,9 @@ export type SubcontractOrder = {
   sku: string;
   productName: string;
   quantity: number;
+  receivedQty?: string;
+  acceptedQty?: string;
+  rejectedQty?: string;
   specVersion: string;
   sampleRequired: boolean;
   expectedDeliveryDate: string;
@@ -247,6 +254,110 @@ export type SubcontractSampleApprovalResult = {
   auditLogId?: string;
 };
 
+export type ReceiveSubcontractFinishedGoodsLineInput = {
+  id?: string;
+  lineNo?: number;
+  itemId?: string;
+  skuCode?: string;
+  itemName?: string;
+  batchId?: string;
+  batchNo: string;
+  lotNo?: string;
+  expiryDate: string;
+  receiveQty: string;
+  uomCode: string;
+  baseReceiveQty?: string;
+  baseUOMCode?: string;
+  conversionFactor?: string;
+  packagingStatus: SubcontractFinishedGoodsPackagingStatus;
+  note?: string;
+};
+
+export type ReceiveSubcontractFinishedGoodsEvidenceInput = {
+  id?: string;
+  evidenceType: "delivery_note" | "packing_list" | "coa" | "photo";
+  fileName?: string;
+  objectKey?: string;
+  externalURL?: string;
+  note?: string;
+};
+
+export type ReceiveSubcontractFinishedGoodsInput = {
+  order: SubcontractOrder;
+  receiptId?: string;
+  receiptNo?: string;
+  warehouseId: string;
+  warehouseCode: string;
+  locationId: string;
+  locationCode: string;
+  deliveryNoteNo: string;
+  receivedBy: string;
+  receivedAt?: string;
+  note?: string;
+  lines: ReceiveSubcontractFinishedGoodsLineInput[];
+  evidence?: ReceiveSubcontractFinishedGoodsEvidenceInput[];
+};
+
+export type SubcontractFinishedGoodsReceiptLine = {
+  id: string;
+  lineNo: number;
+  itemId: string;
+  skuCode: string;
+  itemName: string;
+  batchId?: string;
+  batchNo: string;
+  lotNo?: string;
+  expiryDate: string;
+  receiveQty: string;
+  uomCode: string;
+  baseReceiveQty: string;
+  baseUOMCode: string;
+  conversionFactor: string;
+  packagingStatus?: string;
+  note?: string;
+};
+
+export type SubcontractFinishedGoodsReceiptEvidence = {
+  id: string;
+  evidenceType: string;
+  fileName?: string;
+  objectKey?: string;
+  externalURL?: string;
+  note?: string;
+};
+
+export type SubcontractFinishedGoodsReceipt = {
+  id: string;
+  receiptNo: string;
+  orderId: string;
+  orderNo: string;
+  factoryId: string;
+  factoryCode?: string;
+  factoryName: string;
+  warehouseId: string;
+  warehouseCode: string;
+  locationId: string;
+  locationCode: string;
+  deliveryNoteNo: string;
+  status: SubcontractFinishedGoodsReceiptStatus;
+  lines: SubcontractFinishedGoodsReceiptLine[];
+  evidence: SubcontractFinishedGoodsReceiptEvidence[];
+  receivedBy: string;
+  receivedAt: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
+export type ReceiveSubcontractFinishedGoodsResult = {
+  order: SubcontractOrder;
+  receipt: SubcontractFinishedGoodsReceipt;
+  stockMovements: SubcontractStockMovement[];
+  auditLog: AuditLogItem;
+  auditLogId?: string;
+};
+
 export type SubcontractOrderSummary = {
   total: number;
   draft: number;
@@ -279,7 +390,7 @@ export type SubcontractTransferAttachmentPlaceholder = {
 
 export type SubcontractStockMovement = {
   id: string;
-  movementType: "SUBCONTRACT_ISSUE";
+  movementType: "SUBCONTRACT_ISSUE" | "SUBCONTRACT_RECEIPT";
   itemCode: string;
   quantity: number;
   unit: string;
