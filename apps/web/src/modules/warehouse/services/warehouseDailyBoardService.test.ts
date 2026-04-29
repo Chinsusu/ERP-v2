@@ -16,6 +16,7 @@ import { resetPrototypeStockAdjustmentsForTest } from "../../inventory/services/
 import {
   buildWarehouseFulfillmentDrillDownHref,
   buildWarehouseInboundDrillDownHref,
+  buildWarehouseSubcontractDrillDownHref,
   buildWarehouseQueueDrillDownHref,
   buildWarehouseShiftClosingDrillDownHref,
   closeEndOfDayReconciliation,
@@ -591,6 +592,22 @@ describe("warehouseDailyBoardService", () => {
     );
     expect(buildWarehouseInboundDrillDownHref("supplier_rejections", { warehouseId: "wh-hcm" })).toBe(
       "/returns?warehouse_id=wh-hcm-fg&panel=supplier_rejections#supplier-rejections"
+    );
+  });
+
+  it("builds drill-down links for subcontract metrics", () => {
+    expect(
+      buildWarehouseSubcontractDrillDownHref("open_orders", {
+        warehouseId: "wh-hcm",
+        date: "2026-04-29",
+        shiftCode: "day"
+      })
+    ).toBe("/subcontract?warehouse_id=wh-hcm&date=2026-04-29&view=open_orders#subcontract-orders");
+    expect(buildWarehouseSubcontractDrillDownHref("factory_claims", { warehouseId: "wh-hcm" })).toBe(
+      "/subcontract?warehouse_id=wh-hcm&view=factory_claims#subcontract-orders"
+    );
+    expect(buildWarehouseSubcontractDrillDownHref("final_payment_ready_orders", { date: "2026-04-29" })).toBe(
+      "/subcontract?date=2026-04-29&view=final_payment_ready#subcontract-orders"
     );
   });
 

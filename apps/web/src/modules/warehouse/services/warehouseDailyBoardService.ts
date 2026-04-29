@@ -89,6 +89,12 @@ export type WarehouseInboundDrillDownKey =
   | "qc_pass"
   | "qc_partial"
   | "supplier_rejections";
+export type WarehouseSubcontractDrillDownKey =
+  | "open_orders"
+  | "material_issued_orders"
+  | "sample_pending"
+  | "factory_claims"
+  | "final_payment_ready_orders";
 export type WarehouseDailyBoardDrillDownQueue = WarehouseDailyTaskStatus | "overdue";
 
 export const warehouseDailyBoardCounterSources: WarehouseDailyBoardCounterSource[] = [
@@ -517,6 +523,25 @@ export function buildWarehouseInboundDrillDownHref(
     case "supplier_rejections":
     default:
       return supplierRejectionDrillDownHref(query);
+  }
+}
+
+export function buildWarehouseSubcontractDrillDownHref(
+  key: WarehouseSubcontractDrillDownKey,
+  query: WarehouseDailyBoardQuery = {}
+) {
+  switch (key) {
+    case "material_issued_orders":
+      return subcontractDrillDownHref(query, "materials_issued");
+    case "sample_pending":
+      return subcontractDrillDownHref(query, "sample_pending");
+    case "factory_claims":
+      return subcontractDrillDownHref(query, "factory_claims");
+    case "final_payment_ready_orders":
+      return subcontractDrillDownHref(query, "final_payment_ready");
+    case "open_orders":
+    default:
+      return subcontractDrillDownHref(query, "open_orders");
   }
 }
 
@@ -1271,6 +1296,18 @@ function supplierRejectionDrillDownHref(query: WarehouseDailyBoardQuery) {
       panel: "supplier_rejections"
     },
     "supplier-rejections"
+  );
+}
+
+function subcontractDrillDownHref(query: WarehouseDailyBoardQuery, view: string) {
+  return drillDownHref(
+    "/subcontract",
+    {
+      warehouse_id: query.warehouseId,
+      date: query.date,
+      view
+    },
+    "subcontract-orders"
   );
 }
 

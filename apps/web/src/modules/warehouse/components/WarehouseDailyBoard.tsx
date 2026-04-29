@@ -15,6 +15,7 @@ import { ShiftClosingPanel } from "./ShiftClosingPanel";
 import {
   buildWarehouseFulfillmentDrillDownHref,
   buildWarehouseInboundDrillDownHref,
+  buildWarehouseSubcontractDrillDownHref,
   buildWarehouseQueueDrillDownHref,
   buildWarehouseShiftClosingDrillDownHref,
   defaultWarehouseDailyBoardShiftCode,
@@ -23,13 +24,18 @@ import {
   warehouseOptions,
   warehouseTaskTone
 } from "../services/warehouseDailyBoardService";
-import type { WarehouseFulfillmentDrillDownKey, WarehouseInboundDrillDownKey } from "../services/warehouseDailyBoardService";
+import type {
+  WarehouseFulfillmentDrillDownKey,
+  WarehouseInboundDrillDownKey,
+  WarehouseSubcontractDrillDownKey
+} from "../services/warehouseDailyBoardService";
 import type {
   WarehouseDailyBoardQuery,
   WarehouseDailyShiftCode,
   WarehouseDailyTask,
   WarehouseDailyTaskStatus,
-  WarehouseInboundMetrics
+  WarehouseInboundMetrics,
+  WarehouseSubcontractMetrics
 } from "../types";
 
 type QueueFilter = "" | WarehouseDailyTaskStatus | "overdue";
@@ -138,6 +144,7 @@ export default function WarehouseDailyBoard() {
   const activeQueueLabel = queueLabel(queueFilter);
   const fulfillment = board?.fulfillment;
   const inbound = board?.inbound;
+  const subcontract = board?.subcontract;
   const fulfillmentCards: {
     key: WarehouseFulfillmentDrillDownKey;
     label: string;
@@ -258,6 +265,55 @@ export default function WarehouseDailyBoard() {
       tone: "danger",
       href: buildWarehouseInboundDrillDownHref("supplier_rejections", query),
       chip: "RTS"
+    }
+  ];
+  const subcontractCards: {
+    key: WarehouseSubcontractDrillDownKey;
+    label: string;
+    value: number;
+    tone: "normal" | "success" | "warning" | "danger" | "info";
+    href: string;
+    chip: string;
+  }[] = [
+    {
+      key: "open_orders",
+      label: "Open orders",
+      value: subcontract?.openOrders ?? 0,
+      tone: "info",
+      href: buildWarehouseSubcontractDrillDownHref("open_orders", query),
+      chip: "Order"
+    },
+    {
+      key: "material_issued_orders",
+      label: "Material issued",
+      value: subcontract?.materialIssuedOrders ?? 0,
+      tone: "warning",
+      href: buildWarehouseSubcontractDrillDownHref("material_issued_orders", query),
+      chip: `${subcontract?.materialTransferCount ?? 0} transfers`
+    },
+    {
+      key: "sample_pending",
+      label: "Sample pending",
+      value: subcontract?.samplePending ?? 0,
+      tone: "warning",
+      href: buildWarehouseSubcontractDrillDownHref("sample_pending", query),
+      chip: "Sample"
+    },
+    {
+      key: "factory_claims",
+      label: "Factory claims",
+      value: subcontract?.factoryClaims ?? 0,
+      tone: (subcontract?.factoryClaims ?? 0) > 0 ? "danger" : "success",
+      href: buildWarehouseSubcontractDrillDownHref("factory_claims", query),
+      chip: `${subcontract?.factoryClaimsOverdue ?? 0} overdue`
+    },
+    {
+      key: "final_payment_ready_orders",
+      label: "Final ready",
+      value: subcontract?.finalPaymentReadyOrders ?? 0,
+      tone: "success",
+      href: buildWarehouseSubcontractDrillDownHref("final_payment_ready_orders", query),
+      chip: "Pay"
     }
   ];
   const queueCards: {
@@ -526,6 +582,29 @@ export default function WarehouseDailyBoard() {
         </div>
         <div className="erp-warehouse-fulfillment-grid">
           {inboundCards.map((card) => (
+            <a className="erp-warehouse-fulfillment-card" href={card.href} key={card.key}>
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              <StatusChip tone={card.tone}>{card.chip}</StatusChip>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="erp-warehouse-fulfillment" aria-label="Subcontract manufacturing metrics">
+        <div className="erp-section-header">
+          <div>
+            <h2 className="erp-section-title">Subcontract manufacturing</h2>
+            <p className="erp-section-description">
+              {subcontract?.openOrders ?? 0} open orders / {subcontract?.factoryClaims ?? 0} factory claims
+            </p>
+          </div>
+          <StatusChip tone={subcontractStatusTone(subcontract)}>
+            {formatMetricTimestamp(subcontract?.generatedAt)}
+          </StatusChip>
+        </div>
+        <div className="erp-warehouse-fulfillment-grid erp-warehouse-subcontract-grid">
+          {subcontractCards.map((card) => (
             <a className="erp-warehouse-fulfillment-card" href={card.href} key={card.key}>
               <span>{card.label}</span>
               <strong>{card.value}</strong>
@@ -893,6 +972,23 @@ function inboundStatusTone(metrics?: WarehouseInboundMetrics) {
   }
   if (metrics.qcHold > 0 || metrics.qcPartial > 0 || metrics.receivingPending > 0) {
     return "warning";
+  }
+
+  return "success";
+}
+
+function subcontractStatusTone(metrics?: WarehouseSubcontractMetrics) {
+  if (!metrics) {
+    return "info";
+  }
+  if (metrics.factoryClaimsOverdue > 0 || metrics.factoryClaims > 0) {
+    return "danger";
+  }
+  if (metrics.samplePending > 0 || metrics.materialIssuedOrders > 0) {
+    return "warning";
+  }
+  if (metrics.openOrders > 0) {
+    return "info";
   }
 
   return "success";

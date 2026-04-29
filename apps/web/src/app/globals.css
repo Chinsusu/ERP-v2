@@ -910,6 +910,10 @@ textarea {
   border-radius: var(--erp-radius);
 }
 
+.erp-warehouse-subcontract-grid {
+  grid-template-columns: repeat(5, minmax(104px, 1fr));
+}
+
 .erp-warehouse-fulfillment-card {
   display: grid;
   gap: 6px;
