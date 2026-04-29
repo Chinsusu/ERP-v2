@@ -61,6 +61,8 @@ jobs:
           node-version: 22
       - name: Validate OpenAPI
         run: pnpm --package=@redocly/cli dlx redocly lint packages/openapi/openapi.yaml
+      - name: Check Sprint 4 contract coverage
+        run: pnpm openapi:contract
       - name: Generate frontend client dry run
         run: pnpm dlx openapi-typescript packages/openapi/openapi.yaml -o /tmp/erp-openapi-schema.ts
 

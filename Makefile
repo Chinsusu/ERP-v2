@@ -1,7 +1,7 @@
 COMPOSE = docker compose -f infra/compose/docker-compose.local.yml
 MIGRATE_DSN = postgres://erp:erp@postgres:5432/erp?sslmode=disable
 
-.PHONY: help local-up local-down local-reset local-logs deploy-dev deploy-staging smoke-dev smoke-staging smoke-test logs-dev logs-staging api-dev worker-dev web-dev api-test web-test api-lint web-lint migrate-up migrate-down seed-local openapi-generate openapi-validate ci-check
+.PHONY: help local-up local-down local-reset local-logs deploy-dev deploy-staging smoke-dev smoke-staging smoke-test logs-dev logs-staging api-dev worker-dev web-dev api-test web-test api-lint web-lint migrate-up migrate-down seed-local openapi-generate openapi-validate openapi-contract ci-check
 
 help:
 	@echo "ERP Platform commands"
@@ -28,6 +28,7 @@ help:
 	@echo "  seed-local         Seed local data"
 	@echo "  openapi-generate   Generate API clients"
 	@echo "  openapi-validate   Validate OpenAPI contract"
+	@echo "  openapi-contract   Check Sprint 4 OpenAPI route coverage"
 	@echo "  ci-check           Run required local checks"
 
 local-up:
@@ -104,4 +105,7 @@ openapi-generate:
 openapi-validate:
 	pnpm --package=@redocly/cli dlx redocly lint packages/openapi/openapi.yaml
 
-ci-check: openapi-validate api-lint api-test web-lint web-test
+openapi-contract:
+	node packages/openapi/sprint4-contract-check.mjs
+
+ci-check: openapi-validate openapi-contract api-lint api-test web-lint web-test
