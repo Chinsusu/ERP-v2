@@ -107,6 +107,7 @@ type NewPurchaseOrderDocumentInput struct {
 	CreatedAt     time.Time
 	CreatedBy     string
 	UpdatedAt     time.Time
+	UpdatedBy     string
 }
 
 type UpdatePurchaseOrderDocumentInput struct {
