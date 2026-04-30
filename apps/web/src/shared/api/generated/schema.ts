@@ -1350,6 +1350,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/customer-receivables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List customer receivables */
+        get: operations["listCustomerReceivables"];
+        put?: never;
+        /** Create a customer receivable */
+        post: operations["createCustomerReceivable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customer-receivables/{customer_receivable_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get customer receivable detail */
+        get: operations["getCustomerReceivable"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customer-receivables/{customer_receivable_id}/record-receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a receipt against a customer receivable */
+        post: operations["recordCustomerReceivableReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customer-receivables/{customer_receivable_id}/mark-disputed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a customer receivable disputed */
+        post: operations["markCustomerReceivableDisputed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customer-receivables/{customer_receivable_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a customer receivable */
+        post: operations["voidCustomerReceivable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shipping/manifests": {
         parameters: {
             query?: never;
@@ -3567,6 +3653,103 @@ export interface components {
             sales_order: components["schemas"]["SalesOrder"];
             previous_status: components["schemas"]["SalesOrderStatus"];
             current_status: components["schemas"]["SalesOrderStatus"];
+            audit_log_id?: string;
+        };
+        /** @enum {string} */
+        CustomerReceivableStatus: "draft" | "open" | "partially_paid" | "paid" | "disputed" | "void";
+        FinanceSourceDocument: {
+            /** @enum {string} */
+            type: "sales_order" | "shipment" | "return_order" | "purchase_order" | "warehouse_receipt" | "qc_inspection" | "subcontract_order" | "subcontract_payment_milestone" | "cod_remittance" | "manual_adjustment";
+            id?: string;
+            no?: string;
+        };
+        CustomerReceivableListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CustomerReceivableListItem"][];
+        };
+        CustomerReceivableSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CustomerReceivable"];
+        };
+        CustomerReceivableActionSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CustomerReceivableActionResult"];
+        };
+        CustomerReceivableListItem: {
+            id: string;
+            receivable_no: string;
+            customer_id: string;
+            customer_code?: string;
+            customer_name: string;
+            status: components["schemas"]["CustomerReceivableStatus"];
+            total_amount: components["schemas"]["MoneyAmount"];
+            paid_amount: components["schemas"]["MoneyAmount"];
+            outstanding_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            /** Format: date */
+            due_date?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        CustomerReceivable: {
+            id: string;
+            org_id: string;
+            receivable_no: string;
+            customer_id: string;
+            customer_code?: string;
+            customer_name: string;
+            status: components["schemas"]["CustomerReceivableStatus"];
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            lines: components["schemas"]["CustomerReceivableLine"][];
+            total_amount: components["schemas"]["MoneyAmount"];
+            paid_amount: components["schemas"]["MoneyAmount"];
+            outstanding_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            /** Format: date */
+            due_date?: string;
+            dispute_reason?: string;
+            void_reason?: string;
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        CustomerReceivableLine: {
+            id: string;
+            description: string;
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            amount: components["schemas"]["MoneyAmount"];
+        };
+        CreateCustomerReceivableRequest: {
+            id?: string;
+            receivable_no?: string;
+            customer_id: string;
+            customer_code?: string;
+            customer_name: string;
+            status?: components["schemas"]["CustomerReceivableStatus"];
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            lines: components["schemas"]["CreateCustomerReceivableLineRequest"][];
+            total_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            /** Format: date */
+            due_date?: string;
+        };
+        CreateCustomerReceivableLineRequest: {
+            id: string;
+            description: string;
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            amount: components["schemas"]["MoneyAmount"];
+        };
+        CustomerReceivableActionRequest: {
+            amount?: components["schemas"]["MoneyAmount"];
+            reason?: string;
+        };
+        CustomerReceivableActionResult: {
+            customer_receivable: components["schemas"]["CustomerReceivable"];
+            previous_status: components["schemas"]["CustomerReceivableStatus"];
+            current_status: components["schemas"]["CustomerReceivableStatus"];
             audit_log_id?: string;
         };
         /** @enum {string} */
@@ -6754,6 +6937,180 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SalesOrderActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listCustomerReceivables: {
+        parameters: {
+            query?: {
+                /** @description Quick search term for code, name, phone, or other whitelisted fields. */
+                q?: components["parameters"]["SearchParam"];
+                /** @description Comma-separated customer receivable statuses. */
+                status?: string;
+                customer_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Customer receivable rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerReceivableListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createCustomerReceivable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerReceivableRequest"];
+            };
+        };
+        responses: {
+            /** @description Customer receivable created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerReceivableSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getCustomerReceivable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_receivable_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Customer receivable detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerReceivableSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    recordCustomerReceivableReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_receivable_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerReceivableActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Customer receivable receipt recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerReceivableActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    markCustomerReceivableDisputed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_receivable_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerReceivableActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Customer receivable marked disputed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerReceivableActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    voidCustomerReceivable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_receivable_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerReceivableActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Customer receivable voided */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerReceivableActionSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];

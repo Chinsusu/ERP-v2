@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	financeapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/finance/application"
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
@@ -1151,6 +1152,8 @@ func main() {
 	salesOrderReservationStore := inventoryapp.NewPrototypeSalesOrderReservationStore(auditLogStore)
 	salesOrderService := salesapp.NewSalesOrderService(salesOrderStore, partyCatalog, itemCatalog, warehouseCatalog).
 		WithStockReserver(salesOrderReservationStore)
+	customerReceivableStore := financeapp.NewPrototypeCustomerReceivableStore()
+	customerReceivableService := financeapp.NewCustomerReceivableService(customerReceivableStore, auditLogStore)
 	warehouseReceivingStore := inventoryapp.NewPrototypeWarehouseReceivingStore()
 	warehouseReceiving := inventoryapp.NewWarehouseReceivingService(
 		warehouseReceivingStore,
@@ -1376,6 +1379,41 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(salesOrderCancelHandler(salesOrderService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/customer-receivables",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(customerReceivablesHandler(customerReceivableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/customer-receivables/{customer_receivable_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(customerReceivableDetailHandler(customerReceivableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/customer-receivables/{customer_receivable_id}/record-receipt",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(customerReceivableRecordReceiptHandler(customerReceivableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/customer-receivables/{customer_receivable_id}/mark-disputed",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(customerReceivableMarkDisputedHandler(customerReceivableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/customer-receivables/{customer_receivable_id}/void",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(customerReceivableVoidHandler(customerReceivableService)),
 		),
 	)
 	mux.Handle(
