@@ -4537,6 +4537,7 @@ export interface components {
             overdue_amount: components["schemas"]["MoneyAmount"];
             outstanding_amount: components["schemas"]["MoneyAmount"];
             aging_buckets: components["schemas"]["FinanceSummaryAgingBucket"][];
+            source_references: components["schemas"]["ReportSourceReference"][];
         };
         FinanceSummaryPayable: {
             open_count: number;
@@ -4547,11 +4548,13 @@ export interface components {
             due_amount: components["schemas"]["MoneyAmount"];
             outstanding_amount: components["schemas"]["MoneyAmount"];
             aging_buckets: components["schemas"]["FinanceSummaryAgingBucket"][];
+            source_references: components["schemas"]["ReportSourceReference"][];
         };
         FinanceSummaryAgingBucket: {
             bucket: string;
             count: number;
             amount: components["schemas"]["MoneyAmount"];
+            source_reference: components["schemas"]["ReportSourceReference"];
         };
         FinanceSummaryCOD: {
             pending_count: number;
@@ -4559,18 +4562,21 @@ export interface components {
             pending_amount: components["schemas"]["MoneyAmount"];
             discrepancy_amount: components["schemas"]["MoneyAmount"];
             discrepancy_buckets: components["schemas"]["FinanceSummaryDiscrepancyBucket"][];
+            source_references: components["schemas"]["ReportSourceReference"][];
         };
         FinanceSummaryDiscrepancyBucket: {
             type: string;
             status: string;
             count: number;
             amount: components["schemas"]["MoneyAmount"];
+            source_reference: components["schemas"]["ReportSourceReference"];
         };
         FinanceSummaryCash: {
             transaction_count: number;
             cash_in_amount: components["schemas"]["MoneyAmount"];
             cash_out_amount: components["schemas"]["MoneyAmount"];
             net_cash_amount: components["schemas"]["MoneyAmount"];
+            source_references: components["schemas"]["ReportSourceReference"][];
         };
         /** @enum {string} */
         CODRemittanceStatus: "draft" | "matching" | "submitted" | "approved" | "discrepancy" | "closed" | "void";

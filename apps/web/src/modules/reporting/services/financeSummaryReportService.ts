@@ -9,7 +9,8 @@ import type {
   FinanceSummaryQuery,
   FinanceSummaryReceivable,
   FinanceSummaryReport,
-  ReportMetadata
+  ReportMetadata,
+  ReportSourceReference
 } from "../types";
 
 type FinanceSummaryReportApi = ApiGetResponse<"/reports/finance-summary">;
@@ -79,7 +80,8 @@ export function createPrototypeFinanceSummaryReport(query: FinanceSummaryQuery =
       openAmount: "1250000.00",
       overdueAmount: businessDate > "2026-05-03" ? "1250000.00" : zeroMoney,
       outstandingAmount: "1250000.00",
-      agingBuckets: agingBuckets("2026-05-03", businessDate, "1250000.00")
+      agingBuckets: agingBuckets("customer_receivable", "2026-05-03", businessDate, "1250000.00", { fromDate, toDate, businessDate }),
+      sourceReferences: sectionReferences(["customer_receivable"], { fromDate, toDate, businessDate })
     },
     ap: {
       openCount: 1,
@@ -89,7 +91,8 @@ export function createPrototypeFinanceSummaryReport(query: FinanceSummaryQuery =
       openAmount: "4250000.00",
       dueAmount: businessDate >= "2026-05-07" ? "4250000.00" : zeroMoney,
       outstandingAmount: "4250000.00",
-      agingBuckets: agingBuckets("2026-05-07", businessDate, "4250000.00")
+      agingBuckets: agingBuckets("supplier_payable", "2026-05-07", businessDate, "4250000.00", { fromDate, toDate, businessDate }),
+      sourceReferences: sectionReferences(["supplier_payable", "payment_approval"], { fromDate, toDate, businessDate })
     },
     cod: {
       pendingCount: includesPrototypeCash ? 1 : 0,
@@ -97,14 +100,30 @@ export function createPrototypeFinanceSummaryReport(query: FinanceSummaryQuery =
       pendingAmount: includesPrototypeCash ? "2000000.00" : zeroMoney,
       discrepancyAmount: includesPrototypeCash ? "-50000.00" : zeroMoney,
       discrepancyBuckets: includesPrototypeCash
-        ? [{ type: "short_paid", status: "open", count: 1, amount: "-50000.00" }]
-        : []
+        ? [
+            {
+              type: "short_paid",
+              status: "open",
+              count: 1,
+              amount: "-50000.00",
+              sourceReference: financeSourceReference("cod_discrepancy", "short_paid:open", "short_paid:open", {
+                fromDate,
+                toDate,
+                businessDate,
+                type: "short_paid",
+                status: "open"
+              })
+            }
+          ]
+        : [],
+      sourceReferences: sectionReferences(["cod_remittance", "cod_discrepancy"], { fromDate, toDate, businessDate })
     },
     cash: {
       transactionCount: includesPrototypeCash ? 2 : 0,
       cashInAmount: includesPrototypeCash ? "1250000.00" : zeroMoney,
       cashOutAmount: includesPrototypeCash ? "4250000.00" : zeroMoney,
-      netCashAmount: includesPrototypeCash ? "-3000000.00" : zeroMoney
+      netCashAmount: includesPrototypeCash ? "-3000000.00" : zeroMoney,
+      sourceReferences: sectionReferences(["cash_transaction"], { fromDate, toDate, businessDate })
     }
   };
 }
@@ -165,7 +184,8 @@ function fromApiReceivable(receivable: FinanceSummaryReceivableApi): FinanceSumm
     openAmount: receivable.open_amount,
     overdueAmount: receivable.overdue_amount,
     outstandingAmount: receivable.outstanding_amount,
-    agingBuckets: receivable.aging_buckets.map(fromApiAgingBucket)
+    agingBuckets: receivable.aging_buckets.map(fromApiAgingBucket),
+    sourceReferences: fromApiSourceReferences(receivable.source_references)
   };
 }
 
@@ -178,7 +198,8 @@ function fromApiPayable(payable: FinanceSummaryPayableApi): FinanceSummaryPayabl
     openAmount: payable.open_amount,
     dueAmount: payable.due_amount,
     outstandingAmount: payable.outstanding_amount,
-    agingBuckets: payable.aging_buckets.map(fromApiAgingBucket)
+    agingBuckets: payable.aging_buckets.map(fromApiAgingBucket),
+    sourceReferences: fromApiSourceReferences(payable.source_references)
   };
 }
 
@@ -188,7 +209,8 @@ function fromApiCOD(cod: FinanceSummaryCODApi): FinanceSummaryCOD {
     discrepancyCount: cod.discrepancy_count,
     pendingAmount: cod.pending_amount,
     discrepancyAmount: cod.discrepancy_amount,
-    discrepancyBuckets: cod.discrepancy_buckets.map(fromApiDiscrepancyBucket)
+    discrepancyBuckets: cod.discrepancy_buckets.map(fromApiDiscrepancyBucket),
+    sourceReferences: fromApiSourceReferences(cod.source_references)
   };
 }
 
@@ -197,7 +219,8 @@ function fromApiCash(cash: FinanceSummaryCashApi): FinanceSummaryCash {
     transactionCount: cash.transaction_count,
     cashInAmount: cash.cash_in_amount,
     cashOutAmount: cash.cash_out_amount,
-    netCashAmount: cash.net_cash_amount
+    netCashAmount: cash.net_cash_amount,
+    sourceReferences: fromApiSourceReferences(cash.source_references)
   };
 }
 
@@ -205,7 +228,8 @@ function fromApiAgingBucket(bucket: FinanceSummaryAgingBucketApi): FinanceSummar
   return {
     bucket: bucket.bucket,
     count: bucket.count,
-    amount: bucket.amount
+    amount: bucket.amount,
+    sourceReference: fromApiSourceReference(bucket.source_reference)
   };
 }
 
@@ -214,7 +238,22 @@ function fromApiDiscrepancyBucket(bucket: FinanceSummaryDiscrepancyBucketApi): F
     type: bucket.type,
     status: bucket.status,
     count: bucket.count,
-    amount: bucket.amount
+    amount: bucket.amount,
+    sourceReference: fromApiSourceReference(bucket.source_reference)
+  };
+}
+
+function fromApiSourceReferences(references: Array<FinanceSummaryAgingBucketApi["source_reference"]> | undefined) {
+  return references?.map(fromApiSourceReference) ?? [];
+}
+
+function fromApiSourceReference(reference: FinanceSummaryAgingBucketApi["source_reference"]): ReportSourceReference {
+  return {
+    entityType: reference.entity_type,
+    id: reference.id,
+    label: reference.label,
+    href: reference.href,
+    unavailable: reference.unavailable
   };
 }
 
@@ -226,15 +265,68 @@ function shouldUsePrototypeFallback(reason: unknown) {
   return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
 }
 
-function agingBuckets(dueDate: string, businessDate: string, amount: string): FinanceSummaryAgingBucket[] {
+function agingBuckets(
+  entityType: string,
+  dueDate: string,
+  businessDate: string,
+  amount: string,
+  filters: { fromDate: string; toDate: string; businessDate: string }
+): FinanceSummaryAgingBucket[] {
   const rows = new Map<string, FinanceSummaryAgingBucket>();
   for (const bucket of ["current", "1_7", "8_30", "31_plus"]) {
-    rows.set(bucket, { bucket, count: 0, amount: zeroMoney });
+    rows.set(bucket, {
+      bucket,
+      count: 0,
+      amount: zeroMoney,
+      sourceReference: financeSourceReference(entityType, bucket, bucket, { ...filters, bucket })
+    });
   }
   const bucket = agingBucket(dueDate, businessDate);
-  rows.set(bucket, { bucket, count: 1, amount });
+  rows.set(bucket, {
+    bucket,
+    count: 1,
+    amount,
+    sourceReference: financeSourceReference(entityType, bucket, bucket, { ...filters, bucket })
+  });
 
   return Array.from(rows.values());
+}
+
+function sectionReferences(
+  entityTypes: string[],
+  filters: { fromDate: string; toDate: string; businessDate: string }
+): ReportSourceReference[] {
+  return entityTypes.map((entityType) => financeSourceReference(entityType, entityType, entityType, filters));
+}
+
+function financeSourceReference(
+  entityType: string,
+  id: string,
+  label: string,
+  filters: { fromDate: string; toDate: string; businessDate: string; bucket?: string; type?: string; status?: string }
+): ReportSourceReference {
+  const params = new URLSearchParams();
+  params.set("source_type", entityType);
+  params.set("from_date", filters.fromDate);
+  params.set("to_date", filters.toDate);
+  params.set("business_date", filters.businessDate);
+  if (filters.bucket) {
+    params.set("bucket", filters.bucket);
+  }
+  if (filters.type) {
+    params.set("type", filters.type);
+  }
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  return {
+    entityType,
+    id,
+    label,
+    href: `/finance?${params.toString()}`,
+    unavailable: false
+  };
 }
 
 function agingBucket(dueDate: string, businessDate: string) {

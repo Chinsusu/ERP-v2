@@ -60,6 +60,11 @@ func TestNewFinanceSummaryReportBuildsARAPCODAndCashSummary(t *testing.T) {
 	requireAgingBucket(t, report.AR.AgingBuckets, "current", 1, "300000.00")
 	requireAgingBucket(t, report.AR.AgingBuckets, "8_30", 1, "1250000.00")
 	requireAgingBucket(t, report.AR.AgingBuckets, "31_plus", 1, "1000000.00")
+	requireFinanceSourceReference(t, report.AR.SourceReferences, "customer_receivable")
+	if report.AR.AgingBuckets[0].SourceReference.EntityType != "customer_receivable" ||
+		report.AR.AgingBuckets[0].SourceReference.Href == "" {
+		t.Fatalf("ar aging source reference = %+v", report.AR.AgingBuckets[0].SourceReference)
+	}
 
 	if report.AP.OpenCount != 3 ||
 		report.AP.DueCount != 3 ||
@@ -73,6 +78,8 @@ func TestNewFinanceSummaryReportBuildsARAPCODAndCashSummary(t *testing.T) {
 	requireAgingBucket(t, report.AP.AgingBuckets, "current", 1, "4250000.00")
 	requireAgingBucket(t, report.AP.AgingBuckets, "1_7", 1, "800000.00")
 	requireAgingBucket(t, report.AP.AgingBuckets, "31_plus", 1, "1200000.00")
+	requireFinanceSourceReference(t, report.AP.SourceReferences, "supplier_payable")
+	requireFinanceSourceReference(t, report.AP.SourceReferences, "payment_approval")
 
 	if report.COD.PendingCount != 1 ||
 		report.COD.DiscrepancyCount != 1 ||
@@ -86,12 +93,19 @@ func TestNewFinanceSummaryReportBuildsARAPCODAndCashSummary(t *testing.T) {
 		report.COD.DiscrepancyBuckets[0].Amount != "-50000.00" {
 		t.Fatalf("cod discrepancy buckets = %+v", report.COD.DiscrepancyBuckets)
 	}
+	requireFinanceSourceReference(t, report.COD.SourceReferences, "cod_remittance")
+	requireFinanceSourceReference(t, report.COD.SourceReferences, "cod_discrepancy")
+	if report.COD.DiscrepancyBuckets[0].SourceReference.EntityType != "cod_discrepancy" ||
+		report.COD.DiscrepancyBuckets[0].SourceReference.Href == "" {
+		t.Fatalf("cod discrepancy source reference = %+v", report.COD.DiscrepancyBuckets[0].SourceReference)
+	}
 	if report.Cash.TransactionCount != 2 ||
 		report.Cash.CashInAmount != "1250000.00" ||
 		report.Cash.CashOutAmount != "4250000.00" ||
 		report.Cash.NetCashAmount != "-3000000.00" {
 		t.Fatalf("cash summary = %+v", report.Cash)
 	}
+	requireFinanceSourceReference(t, report.Cash.SourceReferences, "cash_transaction")
 }
 
 func TestNewFinanceSummaryReportFiltersCODAndCashByDateRange(t *testing.T) {
@@ -145,6 +159,19 @@ func requireAgingBucket(t *testing.T, buckets []FinanceSummaryAgingBucket, bucke
 		}
 	}
 	t.Fatalf("bucket %s not found in %+v", bucket, buckets)
+}
+
+func requireFinanceSourceReference(t *testing.T, references []ReportSourceReference, entityType string) {
+	t.Helper()
+	for _, reference := range references {
+		if reference.EntityType == entityType {
+			if reference.ID == "" || reference.Label == "" || reference.Href == "" || reference.Unavailable {
+				t.Fatalf("reference = %+v, want available %s reference", reference, entityType)
+			}
+			return
+		}
+	}
+	t.Fatalf("references = %+v, missing %s", references, entityType)
 }
 
 func mustFinanceSummaryFilters(t *testing.T, fromDate string, toDate string, businessDate string) ReportFilters {

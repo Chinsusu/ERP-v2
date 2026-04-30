@@ -10884,6 +10884,7 @@ components:
         - overdue_amount
         - outstanding_amount
         - aging_buckets
+        - source_references
       properties:
         open_count:
           type: integer
@@ -10904,6 +10905,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FinanceSummaryAgingBucket"
+        source_references:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportSourceReference"
     FinanceSummaryPayable:
       type: object
       required:
@@ -10915,6 +10920,7 @@ components:
         - due_amount
         - outstanding_amount
         - aging_buckets
+        - source_references
       properties:
         open_count:
           type: integer
@@ -10938,12 +10944,17 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FinanceSummaryAgingBucket"
+        source_references:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportSourceReference"
     FinanceSummaryAgingBucket:
       type: object
       required:
         - bucket
         - count
         - amount
+        - source_reference
       properties:
         bucket:
           type: string
@@ -10952,6 +10963,8 @@ components:
           minimum: 0
         amount:
           $ref: "#/components/schemas/MoneyAmount"
+        source_reference:
+          $ref: "#/components/schemas/ReportSourceReference"
     FinanceSummaryCOD:
       type: object
       required:
@@ -10960,6 +10973,7 @@ components:
         - pending_amount
         - discrepancy_amount
         - discrepancy_buckets
+        - source_references
       properties:
         pending_count:
           type: integer
@@ -10975,6 +10989,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FinanceSummaryDiscrepancyBucket"
+        source_references:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportSourceReference"
     FinanceSummaryDiscrepancyBucket:
       type: object
       required:
@@ -10982,6 +11000,7 @@ components:
         - status
         - count
         - amount
+        - source_reference
       properties:
         type:
           type: string
@@ -10992,6 +11011,8 @@ components:
           minimum: 0
         amount:
           $ref: "#/components/schemas/MoneyAmount"
+        source_reference:
+          $ref: "#/components/schemas/ReportSourceReference"
     FinanceSummaryCash:
       type: object
       required:
@@ -10999,6 +11020,7 @@ components:
         - cash_in_amount
         - cash_out_amount
         - net_cash_amount
+        - source_references
       properties:
         transaction_count:
           type: integer
@@ -11009,6 +11031,10 @@ components:
           $ref: "#/components/schemas/MoneyAmount"
         net_cash_amount:
           $ref: "#/components/schemas/MoneyAmount"
+        source_references:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportSourceReference"
     CODRemittanceStatus:
       type: string
       enum:

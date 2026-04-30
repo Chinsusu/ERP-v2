@@ -44,8 +44,16 @@ describe("financeSummaryReportService", () => {
     expect(report.cod.discrepancyBuckets[0]).toMatchObject({
       type: "short_paid",
       status: "open",
-      amount: "-50000.00"
+      amount: "-50000.00",
+      sourceReference: {
+        entityType: "cod_discrepancy",
+        unavailable: false
+      }
     });
+    expect(report.ap.sourceReferences.map((reference) => reference.entityType)).toEqual([
+      "supplier_payable",
+      "payment_approval"
+    ]);
     expect(report.cash.netCashAmount).toBe("-3000000.00");
   });
 
@@ -73,7 +81,29 @@ describe("financeSummaryReportService", () => {
               open_amount: "1250000.00",
               overdue_amount: "1250000.00",
               outstanding_amount: "1250000.00",
-              aging_buckets: [{ bucket: "1_7", count: 1, amount: "1250000.00" }]
+              aging_buckets: [
+                {
+                  bucket: "1_7",
+                  count: 1,
+                  amount: "1250000.00",
+                  source_reference: {
+                    entity_type: "customer_receivable",
+                    id: "customer_receivable:1_7:2026-04-30:2026-05-08:2026-05-08",
+                    label: "1_7",
+                    href: "/finance?bucket=1_7&business_date=2026-05-08&from_date=2026-04-30&source_type=customer_receivable&to_date=2026-05-08",
+                    unavailable: false
+                  }
+                }
+              ],
+              source_references: [
+                {
+                  entity_type: "customer_receivable",
+                  id: "customer_receivable:2026-04-30:2026-05-08:2026-05-08",
+                  label: "customer_receivables",
+                  href: "/finance?business_date=2026-05-08&from_date=2026-04-30&source_type=customer_receivable&to_date=2026-05-08",
+                  unavailable: false
+                }
+              ]
             },
             ap: {
               open_count: 1,
@@ -83,20 +113,36 @@ describe("financeSummaryReportService", () => {
               open_amount: "4250000.00",
               due_amount: "4250000.00",
               outstanding_amount: "4250000.00",
-              aging_buckets: [{ bucket: "1_7", count: 1, amount: "4250000.00" }]
+              aging_buckets: [
+                {
+                  bucket: "1_7",
+                  count: 1,
+                  amount: "4250000.00",
+                  source_reference: {
+                    entity_type: "supplier_payable",
+                    id: "supplier_payable:1_7:2026-04-30:2026-05-08:2026-05-08",
+                    label: "1_7",
+                    href: "/finance?bucket=1_7&business_date=2026-05-08&from_date=2026-04-30&source_type=supplier_payable&to_date=2026-05-08",
+                    unavailable: false
+                  }
+                }
+              ],
+              source_references: []
             },
             cod: {
               pending_count: 1,
               discrepancy_count: 1,
               pending_amount: "2000000.00",
               discrepancy_amount: "-50000.00",
-              discrepancy_buckets: []
+              discrepancy_buckets: [],
+              source_references: []
             },
             cash: {
               transaction_count: 2,
               cash_in_amount: "1250000.00",
               cash_out_amount: "4250000.00",
-              net_cash_amount: "-3000000.00"
+              net_cash_amount: "-3000000.00",
+              source_references: []
             }
           },
           request_id: "req-report-finance"
@@ -121,6 +167,10 @@ describe("financeSummaryReportService", () => {
       }
     );
     expect(report.ar.agingBuckets[0]).toMatchObject({ bucket: "1_7", count: 1 });
+    expect(report.ar.agingBuckets[0].sourceReference).toMatchObject({
+      entityType: "customer_receivable",
+      href: "/finance?bucket=1_7&business_date=2026-05-08&from_date=2026-04-30&source_type=customer_receivable&to_date=2026-05-08"
+    });
     expect(report.cash.transactionCount).toBe(2);
   });
 
