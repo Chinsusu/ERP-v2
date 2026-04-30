@@ -68,6 +68,29 @@ func TestSupplierPayableHandlersCreateListApproveAndRecordPayment(t *testing.T) 
 		t.Fatalf("list payload = %+v", listPayload.Data)
 	}
 
+	requestPaymentReq := supplierPayableRequest(
+		http.MethodPost,
+		"/api/v1/supplier-payables/ap-handler-0001/request-payment",
+		[]byte(`{}`),
+		auth.RoleFinanceOps,
+	)
+	requestPaymentReq.SetPathValue("supplier_payable_id", "ap-handler-0001")
+	requestPaymentRec := httptest.NewRecorder()
+	supplierPayableRequestPaymentHandler(service).ServeHTTP(requestPaymentRec, requestPaymentReq)
+	if requestPaymentRec.Code != http.StatusOK {
+		t.Fatalf("request payment status = %d, body = %s", requestPaymentRec.Code, requestPaymentRec.Body.String())
+	}
+	var requestPaymentPayload struct {
+		Data supplierPayableActionResultResponse `json:"data"`
+	}
+	if err := json.NewDecoder(requestPaymentRec.Body).Decode(&requestPaymentPayload); err != nil {
+		t.Fatalf("decode request payment: %v", err)
+	}
+	if requestPaymentPayload.Data.CurrentStatus != string(financedomain.PayableStatusPaymentRequested) ||
+		requestPaymentPayload.Data.SupplierPayable.PaymentRequestedBy == "" {
+		t.Fatalf("request payment payload = %+v", requestPaymentPayload.Data)
+	}
+
 	approveReq := supplierPayableRequest(
 		http.MethodPost,
 		"/api/v1/supplier-payables/ap-handler-0001/approve-payment",
@@ -114,6 +137,47 @@ func TestSupplierPayableHandlersCreateListApproveAndRecordPayment(t *testing.T) 
 	}
 }
 
+func TestSupplierPayableHandlersRejectPaymentRequest(t *testing.T) {
+	service := newTestSupplierPayableHandlerService()
+
+	requestPaymentReq := supplierPayableRequest(
+		http.MethodPost,
+		"/api/v1/supplier-payables/ap-supplier-260430-0001/request-payment",
+		[]byte(`{}`),
+		auth.RoleFinanceOps,
+	)
+	requestPaymentReq.SetPathValue("supplier_payable_id", "ap-supplier-260430-0001")
+	requestPaymentRec := httptest.NewRecorder()
+	supplierPayableRequestPaymentHandler(service).ServeHTTP(requestPaymentRec, requestPaymentReq)
+	if requestPaymentRec.Code != http.StatusOK {
+		t.Fatalf("request payment status = %d, body = %s", requestPaymentRec.Code, requestPaymentRec.Body.String())
+	}
+
+	rejectReq := supplierPayableRequest(
+		http.MethodPost,
+		"/api/v1/supplier-payables/ap-supplier-260430-0001/reject-payment",
+		[]byte(`{"reason":"supplier invoice mismatch"}`),
+		auth.RoleFinanceOps,
+	)
+	rejectReq.SetPathValue("supplier_payable_id", "ap-supplier-260430-0001")
+	rejectRec := httptest.NewRecorder()
+	supplierPayableRejectPaymentHandler(service).ServeHTTP(rejectRec, rejectReq)
+	if rejectRec.Code != http.StatusOK {
+		t.Fatalf("reject status = %d, body = %s", rejectRec.Code, rejectRec.Body.String())
+	}
+	var rejectPayload struct {
+		Data supplierPayableActionResultResponse `json:"data"`
+	}
+	if err := json.NewDecoder(rejectRec.Body).Decode(&rejectPayload); err != nil {
+		t.Fatalf("decode reject: %v", err)
+	}
+	if rejectPayload.Data.PreviousStatus != string(financedomain.PayableStatusPaymentRequested) ||
+		rejectPayload.Data.CurrentStatus != string(financedomain.PayableStatusOpen) ||
+		rejectPayload.Data.SupplierPayable.PaymentRejectReason != "supplier invoice mismatch" {
+		t.Fatalf("reject payload = %+v", rejectPayload.Data)
+	}
+}
+
 func TestSupplierPayableApproveRequiresPaymentApprovePermission(t *testing.T) {
 	service := newTestSupplierPayableHandlerService()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/supplier-payables/ap-supplier-260430-0001/approve-payment", bytes.NewReader([]byte(`{}`)))
@@ -131,6 +195,33 @@ func TestSupplierPayableApproveRequiresPaymentApprovePermission(t *testing.T) {
 	rec := httptest.NewRecorder()
 
 	supplierPayableApprovePaymentHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want forbidden", rec.Code)
+	}
+}
+
+func TestSupplierPayableRejectRequiresPaymentApprovePermission(t *testing.T) {
+	service := newTestSupplierPayableHandlerService()
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/supplier-payables/ap-supplier-260430-0001/reject-payment",
+		bytes.NewReader([]byte(`{"reason":"supplier invoice mismatch"}`)),
+	)
+	req.SetPathValue("supplier_payable_id", "ap-supplier-260430-0001")
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{
+		UserID: "finance-manager-without-approval",
+		Email:  "finance-manager@example.local",
+		Name:   "Finance Manager",
+		Role:   auth.RoleFinanceOps,
+		Permissions: []auth.PermissionKey{
+			auth.PermissionFinanceView,
+			auth.PermissionFinanceManage,
+		},
+	}))
+	rec := httptest.NewRecorder()
+
+	supplierPayableRejectPaymentHandler(service).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want forbidden", rec.Code)

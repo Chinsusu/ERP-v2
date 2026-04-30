@@ -6,11 +6,15 @@ import { useSupplierPayables } from "../hooks/useSupplierPayables";
 import {
   approveSupplierPayablePayment,
   canApproveSupplierPayablePayment,
+  canRejectSupplierPayablePayment,
   canRecordSupplierPayablePayment,
+  canRequestSupplierPayablePayment,
   canVoidSupplierPayable,
   formatSupplierPayableStatus,
   getSupplierPayable,
   recordSupplierPayablePayment,
+  rejectSupplierPayablePayment,
+  requestSupplierPayablePayment,
   supplierPayableStatusOptions,
   supplierPayableStatusTone,
   voidSupplierPayable
@@ -108,6 +112,7 @@ export function SupplierPayablesPanel() {
   const [detailById, setDetailById] = useState<Record<string, SupplierPayable>>({});
   const [detailLoadingId, setDetailLoadingId] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [rejectReason, setRejectReason] = useState("Supplier invoice mismatch");
   const [voidReason, setVoidReason] = useState("Duplicate supplier invoice");
   const [busyAction, setBusyAction] = useState("");
   const [feedback, setFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
@@ -187,6 +192,37 @@ export function SupplierPayablesPanel() {
       setFeedback({
         tone: "success",
         message: `${result.supplierPayable.payableNo} payment approved`
+      });
+    });
+  }
+
+  async function handleRequestPayment() {
+    if (!selectedPayable || busyAction) {
+      return;
+    }
+
+    await runAction("request", async () => {
+      const result = await requestSupplierPayablePayment(selectedPayable.id);
+      applyActionResult(result.supplierPayable);
+      setFeedback({
+        tone: "info",
+        message: `${result.supplierPayable.payableNo} payment requested`
+      });
+    });
+  }
+
+  async function handleRejectPayment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedPayable || busyAction) {
+      return;
+    }
+
+    await runAction("reject", async () => {
+      const result = await rejectSupplierPayablePayment(selectedPayable.id, rejectReason);
+      applyActionResult(result.supplierPayable);
+      setFeedback({
+        tone: "warning",
+        message: `${result.supplierPayable.payableNo} payment rejected`
       });
     });
   }
@@ -349,6 +385,16 @@ export function SupplierPayablesPanel() {
                     Payment approved by {selectedPayable.paymentApprovedBy} on {formatFinanceDate(selectedPayable.paymentApprovedAt)}
                   </p>
                 ) : null}
+                {selectedPayable.paymentRequestedBy && selectedPayable.status === "payment_requested" ? (
+                  <p className="erp-finance-note">
+                    Payment requested by {selectedPayable.paymentRequestedBy} on {formatFinanceDate(selectedPayable.paymentRequestedAt)}
+                  </p>
+                ) : null}
+                {selectedPayable.paymentRejectReason ? (
+                  <p className="erp-finance-note">
+                    Payment rejected by {selectedPayable.paymentRejectedBy ?? "finance"}: {selectedPayable.paymentRejectReason}
+                  </p>
+                ) : null}
                 {selectedPayable.voidReason ? <p className="erp-finance-note">{selectedPayable.voidReason}</p> : null}
               </div>
             ) : (
@@ -379,6 +425,14 @@ export function SupplierPayablesPanel() {
 
             <div className="erp-finance-action-row">
               <button
+                className="erp-button erp-button--secondary"
+                type="button"
+                disabled={!canRequestSupplierPayablePayment(selectedPayable) || busyAction !== ""}
+                onClick={() => void handleRequestPayment()}
+              >
+                Request payment
+              </button>
+              <button
                 className="erp-button erp-button--primary"
                 type="button"
                 disabled={!canApproveSupplierPayablePayment(selectedPayable) || busyAction !== ""}
@@ -387,6 +441,26 @@ export function SupplierPayablesPanel() {
                 Approve payment
               </button>
             </div>
+
+            <form className="erp-finance-action-form" onSubmit={handleRejectPayment}>
+              <label className="erp-field">
+                <span>Reject reason</span>
+                <input
+                  className="erp-input"
+                  type="text"
+                  value={rejectReason}
+                  disabled={!canRejectSupplierPayablePayment(selectedPayable) || busyAction !== ""}
+                  onChange={(event) => setRejectReason(event.target.value)}
+                />
+              </label>
+              <button
+                className="erp-button erp-button--danger"
+                type="submit"
+                disabled={!canRejectSupplierPayablePayment(selectedPayable) || rejectReason.trim() === "" || busyAction !== ""}
+              >
+                Reject payment
+              </button>
+            </form>
 
             <form className="erp-finance-action-form" onSubmit={handleRecordPayment}>
               <label className="erp-field">

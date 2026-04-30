@@ -121,6 +121,9 @@ export type SupplierPayable = {
   paymentRequestedAt?: string;
   paymentApprovedBy?: string;
   paymentApprovedAt?: string;
+  paymentRejectedBy?: string;
+  paymentRejectedAt?: string;
+  paymentRejectReason?: string;
   disputeReason?: string;
   voidReason?: string;
   auditLogId?: string;

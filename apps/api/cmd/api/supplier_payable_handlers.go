@@ -77,30 +77,33 @@ type supplierPayableListItemResponse struct {
 }
 
 type supplierPayableResponse struct {
-	ID                 string                                `json:"id"`
-	OrgID              string                                `json:"org_id"`
-	PayableNo          string                                `json:"payable_no"`
-	SupplierID         string                                `json:"supplier_id"`
-	SupplierCode       string                                `json:"supplier_code,omitempty"`
-	SupplierName       string                                `json:"supplier_name"`
-	Status             string                                `json:"status"`
-	SourceDocument     supplierPayableSourceDocumentResponse `json:"source_document"`
-	Lines              []supplierPayableLineResponse         `json:"lines"`
-	TotalAmount        string                                `json:"total_amount"`
-	PaidAmount         string                                `json:"paid_amount"`
-	OutstandingAmount  string                                `json:"outstanding_amount"`
-	CurrencyCode       string                                `json:"currency_code"`
-	DueDate            string                                `json:"due_date,omitempty"`
-	PaymentRequestedBy string                                `json:"payment_requested_by,omitempty"`
-	PaymentRequestedAt string                                `json:"payment_requested_at,omitempty"`
-	PaymentApprovedBy  string                                `json:"payment_approved_by,omitempty"`
-	PaymentApprovedAt  string                                `json:"payment_approved_at,omitempty"`
-	DisputeReason      string                                `json:"dispute_reason,omitempty"`
-	VoidReason         string                                `json:"void_reason,omitempty"`
-	AuditLogID         string                                `json:"audit_log_id,omitempty"`
-	CreatedAt          string                                `json:"created_at"`
-	UpdatedAt          string                                `json:"updated_at"`
-	Version            int                                   `json:"version"`
+	ID                  string                                `json:"id"`
+	OrgID               string                                `json:"org_id"`
+	PayableNo           string                                `json:"payable_no"`
+	SupplierID          string                                `json:"supplier_id"`
+	SupplierCode        string                                `json:"supplier_code,omitempty"`
+	SupplierName        string                                `json:"supplier_name"`
+	Status              string                                `json:"status"`
+	SourceDocument      supplierPayableSourceDocumentResponse `json:"source_document"`
+	Lines               []supplierPayableLineResponse         `json:"lines"`
+	TotalAmount         string                                `json:"total_amount"`
+	PaidAmount          string                                `json:"paid_amount"`
+	OutstandingAmount   string                                `json:"outstanding_amount"`
+	CurrencyCode        string                                `json:"currency_code"`
+	DueDate             string                                `json:"due_date,omitempty"`
+	PaymentRequestedBy  string                                `json:"payment_requested_by,omitempty"`
+	PaymentRequestedAt  string                                `json:"payment_requested_at,omitempty"`
+	PaymentApprovedBy   string                                `json:"payment_approved_by,omitempty"`
+	PaymentApprovedAt   string                                `json:"payment_approved_at,omitempty"`
+	PaymentRejectedBy   string                                `json:"payment_rejected_by,omitempty"`
+	PaymentRejectedAt   string                                `json:"payment_rejected_at,omitempty"`
+	PaymentRejectReason string                                `json:"payment_reject_reason,omitempty"`
+	DisputeReason       string                                `json:"dispute_reason,omitempty"`
+	VoidReason          string                                `json:"void_reason,omitempty"`
+	AuditLogID          string                                `json:"audit_log_id,omitempty"`
+	CreatedAt           string                                `json:"created_at"`
+	UpdatedAt           string                                `json:"updated_at"`
+	Version             int                                   `json:"version"`
 }
 
 type supplierPayableActionResultResponse struct {
@@ -202,6 +205,14 @@ func supplierPayableApprovePaymentHandler(service financeapp.SupplierPayableServ
 	return supplierPayableActionHandler(service, "approve-payment")
 }
 
+func supplierPayableRequestPaymentHandler(service financeapp.SupplierPayableService) http.HandlerFunc {
+	return supplierPayableActionHandler(service, "request-payment")
+}
+
+func supplierPayableRejectPaymentHandler(service financeapp.SupplierPayableService) http.HandlerFunc {
+	return supplierPayableActionHandler(service, "reject-payment")
+}
+
 func supplierPayableRecordPaymentHandler(service financeapp.SupplierPayableService) http.HandlerFunc {
 	return supplierPayableActionHandler(service, "record-payment")
 }
@@ -228,7 +239,7 @@ func supplierPayableActionHandler(
 			writePermissionDenied(w, r, auth.PermissionFinanceView)
 			return
 		}
-		if action == "approve-payment" {
+		if action == "approve-payment" || action == "reject-payment" {
 			if !auth.HasPermission(principal, auth.PermissionPaymentApprove) {
 				writePermissionDenied(w, r, auth.PermissionPaymentApprove)
 				return
@@ -259,8 +270,12 @@ func supplierPayableActionHandler(
 			err    error
 		)
 		switch action {
+		case "request-payment":
+			result, err = service.RequestSupplierPayablePayment(r.Context(), input)
 		case "approve-payment":
 			result, err = service.ApproveSupplierPayablePayment(r.Context(), input)
+		case "reject-payment":
+			result, err = service.RejectSupplierPayablePayment(r.Context(), input)
 		case "record-payment":
 			result, err = service.RecordSupplierPayablePayment(r.Context(), input)
 		case "void":
@@ -354,30 +369,33 @@ func newSupplierPayableResponse(
 	auditLogID string,
 ) supplierPayableResponse {
 	payload := supplierPayableResponse{
-		ID:                 payable.ID,
-		OrgID:              payable.OrgID,
-		PayableNo:          payable.PayableNo,
-		SupplierID:         payable.SupplierID,
-		SupplierCode:       payable.SupplierCode,
-		SupplierName:       payable.SupplierName,
-		Status:             string(payable.Status),
-		SourceDocument:     newSupplierPayableSourceDocumentResponse(payable.SourceDocument),
-		Lines:              make([]supplierPayableLineResponse, 0, len(payable.Lines)),
-		TotalAmount:        payable.TotalAmount.String(),
-		PaidAmount:         payable.PaidAmount.String(),
-		OutstandingAmount:  payable.OutstandingAmount.String(),
-		CurrencyCode:       payable.CurrencyCode.String(),
-		DueDate:            dateString(payable.DueDate),
-		PaymentRequestedBy: payable.PaymentRequestedBy,
-		PaymentRequestedAt: timeString(payable.PaymentRequestedAt),
-		PaymentApprovedBy:  payable.PaymentApprovedBy,
-		PaymentApprovedAt:  timeString(payable.PaymentApprovedAt),
-		DisputeReason:      payable.DisputeReason,
-		VoidReason:         payable.VoidReason,
-		AuditLogID:         auditLogID,
-		CreatedAt:          timeString(payable.CreatedAt),
-		UpdatedAt:          timeString(payable.UpdatedAt),
-		Version:            payable.Version,
+		ID:                  payable.ID,
+		OrgID:               payable.OrgID,
+		PayableNo:           payable.PayableNo,
+		SupplierID:          payable.SupplierID,
+		SupplierCode:        payable.SupplierCode,
+		SupplierName:        payable.SupplierName,
+		Status:              string(payable.Status),
+		SourceDocument:      newSupplierPayableSourceDocumentResponse(payable.SourceDocument),
+		Lines:               make([]supplierPayableLineResponse, 0, len(payable.Lines)),
+		TotalAmount:         payable.TotalAmount.String(),
+		PaidAmount:          payable.PaidAmount.String(),
+		OutstandingAmount:   payable.OutstandingAmount.String(),
+		CurrencyCode:        payable.CurrencyCode.String(),
+		DueDate:             dateString(payable.DueDate),
+		PaymentRequestedBy:  payable.PaymentRequestedBy,
+		PaymentRequestedAt:  timeString(payable.PaymentRequestedAt),
+		PaymentApprovedBy:   payable.PaymentApprovedBy,
+		PaymentApprovedAt:   timeString(payable.PaymentApprovedAt),
+		PaymentRejectedBy:   payable.PaymentRejectedBy,
+		PaymentRejectedAt:   timeString(payable.PaymentRejectedAt),
+		PaymentRejectReason: payable.PaymentRejectReason,
+		DisputeReason:       payable.DisputeReason,
+		VoidReason:          payable.VoidReason,
+		AuditLogID:          auditLogID,
+		CreatedAt:           timeString(payable.CreatedAt),
+		UpdatedAt:           timeString(payable.UpdatedAt),
+		Version:             payable.Version,
 	}
 	for _, line := range payable.Lines {
 		payload.Lines = append(payload.Lines, supplierPayableLineResponse{

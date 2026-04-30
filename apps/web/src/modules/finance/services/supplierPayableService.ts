@@ -14,6 +14,7 @@ type SupplierPayableApi = components["schemas"]["SupplierPayable"];
 type SupplierPayableListItemApi = components["schemas"]["SupplierPayableListItem"];
 type SupplierPayableLineApi = components["schemas"]["SupplierPayableLine"];
 type SupplierPayableActionApiRequest = components["schemas"]["SupplierPayableActionRequest"];
+type SupplierPayableRejectPaymentApiRequest = components["schemas"]["SupplierPayableRejectPaymentRequest"];
 type SupplierPayableActionApiResult = components["schemas"]["SupplierPayableActionResult"];
 type SupplierPayableListApiQuery = operations["listSupplierPayables"]["parameters"]["query"];
 
@@ -71,6 +72,17 @@ export async function approveSupplierPayablePayment(id: string): Promise<Supplie
   return runSupplierPayableAction(id, "approve-payment", {});
 }
 
+export async function requestSupplierPayablePayment(id: string): Promise<SupplierPayableActionResult> {
+  return runSupplierPayableAction(id, "request-payment", {});
+}
+
+export async function rejectSupplierPayablePayment(
+  id: string,
+  reason: string
+): Promise<SupplierPayableActionResult> {
+  return runSupplierPayableAction(id, "reject-payment", { reason: reason.trim() });
+}
+
 export async function recordSupplierPayablePayment(
   id: string,
   amount: string
@@ -118,7 +130,15 @@ export function formatSupplierPayableStatus(status: SupplierPayableStatus) {
 }
 
 export function canApproveSupplierPayablePayment(payable: SupplierPayable | null) {
-  return Boolean(payable && ["open", "payment_requested"].includes(payable.status));
+  return Boolean(payable && payable.status === "payment_requested");
+}
+
+export function canRequestSupplierPayablePayment(payable: SupplierPayable | null) {
+  return Boolean(payable && payable.status === "open");
+}
+
+export function canRejectSupplierPayablePayment(payable: SupplierPayable | null) {
+  return Boolean(payable && payable.status === "payment_requested");
 }
 
 export function canRecordSupplierPayablePayment(payable: SupplierPayable | null) {
@@ -135,11 +155,14 @@ export function canVoidSupplierPayable(payable: SupplierPayable | null) {
 
 async function runSupplierPayableAction(
   id: string,
-  action: "approve-payment" | "record-payment" | "void",
-  body: SupplierPayableActionApiRequest
+  action: "request-payment" | "approve-payment" | "reject-payment" | "record-payment" | "void",
+  body: SupplierPayableActionApiRequest | SupplierPayableRejectPaymentApiRequest
 ): Promise<SupplierPayableActionResult> {
   try {
-    const result = await apiPost<SupplierPayableActionApiResult, SupplierPayableActionApiRequest>(
+    const result = await apiPost<
+      SupplierPayableActionApiResult,
+      SupplierPayableActionApiRequest | SupplierPayableRejectPaymentApiRequest
+    >(
       `/supplier-payables/${encodeURIComponent(id)}/${action}`,
       body,
       { accessToken: defaultAccessToken }
@@ -211,6 +234,9 @@ function fromApiSupplierPayable(payable: SupplierPayableApi): SupplierPayable {
     paymentRequestedAt: payable.payment_requested_at,
     paymentApprovedBy: payable.payment_approved_by,
     paymentApprovedAt: payable.payment_approved_at,
+    paymentRejectedBy: payable.payment_rejected_by,
+    paymentRejectedAt: payable.payment_rejected_at,
+    paymentRejectReason: payable.payment_reject_reason,
     disputeReason: payable.dispute_reason,
     voidReason: payable.void_reason,
     auditLogId: payable.audit_log_id,
@@ -263,27 +289,52 @@ function getPrototypeSupplierPayable(id: string) {
 
 function transitionPrototypeSupplierPayable(
   id: string,
-  action: "approve-payment" | "record-payment" | "void",
-  body: SupplierPayableActionApiRequest
+  action: "request-payment" | "approve-payment" | "reject-payment" | "record-payment" | "void",
+  body: SupplierPayableActionApiRequest | SupplierPayableRejectPaymentApiRequest
 ): SupplierPayableActionResult {
   const current = getPrototypeSupplierPayable(id);
   const previousStatus = current.status;
   let next = cloneSupplierPayable(current);
 
-  if (action === "approve-payment") {
+  if (action === "request-payment") {
+    if (!canRequestSupplierPayablePayment(next)) {
+      throw new Error("Only open AP can request payment");
+    }
+    next = {
+      ...next,
+      status: "payment_requested",
+      paymentRequestedBy: "finance-user",
+      paymentRequestedAt: prototypeNow,
+      paymentRejectedBy: undefined,
+      paymentRejectedAt: undefined,
+      paymentRejectReason: undefined
+    };
+  } else if (action === "approve-payment") {
     if (!canApproveSupplierPayablePayment(next)) {
-      throw new Error("Only open or requested AP can be approved");
+      throw new Error("Only requested AP can be approved");
     }
     next = {
       ...next,
       status: "payment_approved",
-      paymentRequestedBy: next.paymentRequestedBy ?? "finance-user",
-      paymentRequestedAt: next.paymentRequestedAt ?? prototypeNow,
       paymentApprovedBy: "finance-manager",
       paymentApprovedAt: prototypeNow
     };
+  } else if (action === "reject-payment") {
+    const reason = "reason" in body ? body.reason?.trim() : "";
+    if (!canRejectSupplierPayablePayment(next) || !reason) {
+      throw new Error("Only requested AP can be rejected with a reason");
+    }
+    next = {
+      ...next,
+      status: "open",
+      paymentApprovedBy: undefined,
+      paymentApprovedAt: undefined,
+      paymentRejectedBy: "finance-manager",
+      paymentRejectedAt: prototypeNow,
+      paymentRejectReason: reason
+    };
   } else if (action === "record-payment") {
-    const amount = normalizeDecimalInput(body.amount, decimalScales.money);
+    const amount = normalizeDecimalInput("amount" in body ? body.amount : undefined, decimalScales.money);
     const amountValue = Number(amount);
     if (!canRecordSupplierPayablePayment(next) || amountValue <= 0 || amountValue > Number(next.outstandingAmount)) {
       throw new Error("Payment amount is invalid for this AP");
@@ -403,6 +454,9 @@ function createSupplierPayableSeed(input: {
   dueDate: string;
   paymentApprovedBy?: string;
   paymentApprovedAt?: string;
+  paymentRejectedBy?: string;
+  paymentRejectedAt?: string;
+  paymentRejectReason?: string;
   lines: SupplierPayableLine[];
 }): SupplierPayable {
   return {
@@ -422,6 +476,9 @@ function createSupplierPayableSeed(input: {
     dueDate: input.dueDate,
     paymentApprovedBy: input.paymentApprovedBy,
     paymentApprovedAt: input.paymentApprovedAt,
+    paymentRejectedBy: input.paymentRejectedBy,
+    paymentRejectedAt: input.paymentRejectedAt,
+    paymentRejectReason: input.paymentRejectReason,
     createdAt: prototypeNow,
     updatedAt: prototypeNow,
     version: 1

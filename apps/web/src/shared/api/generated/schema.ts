@@ -1471,6 +1471,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/supplier-payables/{supplier_payable_id}/request-payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request payment for a supplier payable */
+        post: operations["requestSupplierPayablePayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/supplier-payables/{supplier_payable_id}/approve-payment": {
         parameters: {
             query?: never;
@@ -1482,6 +1499,23 @@ export interface paths {
         put?: never;
         /** Approve payment for a supplier payable */
         post: operations["approveSupplierPayablePayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-payables/{supplier_payable_id}/reject-payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject payment request for a supplier payable */
+        post: operations["rejectSupplierPayablePayment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4010,6 +4044,10 @@ export interface components {
             payment_approved_by?: string;
             /** Format: date-time */
             payment_approved_at?: string;
+            payment_rejected_by?: string;
+            /** Format: date-time */
+            payment_rejected_at?: string;
+            payment_reject_reason?: string;
             dispute_reason?: string;
             void_reason?: string;
             audit_log_id?: string;
@@ -4048,6 +4086,9 @@ export interface components {
         SupplierPayableActionRequest: {
             amount?: components["schemas"]["MoneyAmount"];
             reason?: string;
+        };
+        SupplierPayableRejectPaymentRequest: {
+            reason: string;
         };
         SupplierPayableActionResult: {
             supplier_payable: components["schemas"]["SupplierPayable"];
@@ -7640,6 +7681,37 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    requestSupplierPayablePayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_payable_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SupplierPayableActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier payable payment requested */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierPayableActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     approveSupplierPayablePayment: {
         parameters: {
             query?: never;
@@ -7656,6 +7728,37 @@ export interface operations {
         };
         responses: {
             /** @description Supplier payable payment approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierPayableActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    rejectSupplierPayablePayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_payable_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplierPayableRejectPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier payable payment request rejected */
             200: {
                 headers: {
                     [name: string]: unknown;
