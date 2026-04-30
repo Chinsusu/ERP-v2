@@ -3,6 +3,7 @@ import {
   createPrototypeOperationsDailyReport,
   downloadOperationsDailyCSV,
   getOperationsDailyReport,
+  operationsDailyCSVFilename,
   operationsDailyQueryString
 } from "./operationsDailyReportService";
 
@@ -202,6 +203,17 @@ describe("operationsDailyReportService", () => {
         warehouseId: "wh-hcm"
       })
     ).toBe("?to_date=2026-04-30&business_date=2026-04-30&warehouse_id=wh-hcm");
+  });
+
+  it("builds stable export filenames for the current date range", () => {
+    expect(
+      operationsDailyCSVFilename({
+        fromDate: "2026-04-26",
+        toDate: "2026-04-28",
+        warehouseId: "wh-hcm",
+        status: "blocked"
+      })
+    ).toBe("operations-daily-2026-04-26-to-2026-04-28.csv");
   });
 
   it("summarizes prototype areas by status", () => {

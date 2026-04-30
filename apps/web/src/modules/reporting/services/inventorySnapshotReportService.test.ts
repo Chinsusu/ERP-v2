@@ -3,6 +3,7 @@ import {
   createPrototypeInventorySnapshotReport,
   downloadInventorySnapshotCSV,
   getInventorySnapshotReport,
+  inventorySnapshotCSVFilename,
   inventorySnapshotQueryString
 } from "./inventorySnapshotReportService";
 
@@ -253,6 +254,16 @@ describe("inventorySnapshotReportService", () => {
         sku: "SERUM-30ML"
       })
     ).toBe("?to_date=2026-04-30&business_date=2026-04-30&warehouse_id=wh-hcm&sku=SERUM-30ML");
+  });
+
+  it("builds stable export filenames for the current business date", () => {
+    expect(
+      inventorySnapshotCSVFilename({
+        businessDate: "2026-04-30",
+        warehouseId: "wh-hcm",
+        status: "reserved"
+      })
+    ).toBe("inventory-snapshot-2026-04-30.csv");
   });
 
   it("summarizes prototype totals by UOM", () => {

@@ -222,7 +222,7 @@ function operationsDailyApiQuery(query: OperationsDailyQuery): OperationsDailyQu
   };
 }
 
-function operationsDailyCSVFilename(query: OperationsDailyQuery) {
+export function operationsDailyCSVFilename(query: OperationsDailyQuery) {
   const toDate = query.toDate || query.businessDate || todayString();
   const fromDate = query.fromDate || toDate;
   return `operations-daily-${fromDate}-to-${toDate}.csv`;

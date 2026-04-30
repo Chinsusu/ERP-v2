@@ -730,6 +730,33 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.erp-reporting-export-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.erp-reporting-export-status {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(320px, 45vw);
+  min-width: 0;
+  gap: 6px;
+}
+
+.erp-reporting-export-status small {
+  min-width: 0;
+  color: var(--erp-text-secondary);
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .erp-reporting-kpis {
   grid-template-columns: repeat(6, minmax(128px, 1fr));
 }

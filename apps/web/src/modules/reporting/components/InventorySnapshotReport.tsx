@@ -13,8 +13,13 @@ import {
 import { formatDateTimeVI, formatDateVI, formatQuantity } from "@/shared/format/numberFormat";
 import { useInventorySnapshotReport } from "../hooks/useInventorySnapshotReport";
 import { urlDateParam, urlOptionParam, urlParam, useReportUrlState } from "../hooks/useReportUrlState";
-import { downloadInventorySnapshotCSV, inventorySnapshotStatusOptions } from "../services/inventorySnapshotReportService";
-import { ReportStateBanner } from "./ReportSharedStates";
+import {
+  downloadInventorySnapshotCSV,
+  inventorySnapshotCSVFilename,
+  inventorySnapshotQueryString,
+  inventorySnapshotStatusOptions
+} from "../services/inventorySnapshotReportService";
+import { ReportExportAction, ReportStateBanner } from "./ReportSharedStates";
 import type {
   InventorySnapshotQuery,
   InventorySnapshotReport,
@@ -176,6 +181,7 @@ export function InventorySnapshotReportPanel({ controls }: InventorySnapshotRepo
   const [expiryWarningDays, setExpiryWarningDays] = useState(() => urlParam(searchParams, "expiry_warning_days") || "30");
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<Error | null>(null);
+  const [exportedFilename, setExportedFilename] = useState("");
 
   const query = useMemo<InventorySnapshotQuery>(
     () => ({
@@ -191,6 +197,8 @@ export function InventorySnapshotReportPanel({ controls }: InventorySnapshotRepo
   );
   const { report, loading, error } = useInventorySnapshotReport(query);
   const data = report ?? emptyInventorySnapshotReport(businessDate);
+  const exportFilename = inventorySnapshotCSVFilename(query);
+  const exportQueryKey = inventorySnapshotQueryString(query);
 
   useEffect(() => {
     replaceReportUrlParams("inventory", {
@@ -204,14 +212,21 @@ export function InventorySnapshotReportPanel({ controls }: InventorySnapshotRepo
     });
   }, [businessDate, expiryWarningDays, itemId, lowStockThreshold, replaceReportUrlParams, sku, status, warehouseId]);
 
+  useEffect(() => {
+    setExportedFilename("");
+    setExportError(null);
+  }, [exportQueryKey]);
+
   async function handleExportCSV() {
     setExporting(true);
     setExportError(null);
     try {
       const download = await downloadInventorySnapshotCSV(query);
       saveBlob(download.blob, download.filename);
+      setExportedFilename(download.filename);
     } catch (reason) {
       setExportError(reason instanceof Error ? reason : new Error("Inventory CSV could not be exported"));
+      setExportedFilename("");
     } finally {
       setExporting(false);
     }
@@ -227,16 +242,15 @@ export function InventorySnapshotReportPanel({ controls }: InventorySnapshotRepo
         </div>
         <div className="erp-page-actions">
           {controls}
-          {exportError ? <StatusChip tone="danger">Export failed</StatusChip> : null}
-          <button
-            className="erp-button erp-button--secondary"
-            type="button"
-            disabled={loading || exporting}
-            title={exportError?.message ?? "Export inventory snapshot CSV"}
-            onClick={handleExportCSV}
-          >
-            {exporting ? "Exporting" : "Export CSV"}
-          </button>
+          <ReportExportAction
+            disabled={loading}
+            exporting={exporting}
+            error={exportError}
+            filename={exportFilename}
+            exportedFilename={exportedFilename}
+            reportLabel="inventory snapshot"
+            onExport={handleExportCSV}
+          />
         </div>
       </header>
 

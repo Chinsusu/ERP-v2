@@ -13,8 +13,13 @@ import {
 import { formatDateTimeVI, formatDateVI } from "@/shared/format/numberFormat";
 import { useOperationsDailyReport } from "../hooks/useOperationsDailyReport";
 import { urlDateParam, urlOptionParam, urlParam, useReportUrlState } from "../hooks/useReportUrlState";
-import { downloadOperationsDailyCSV, operationsDailyStatusOptions } from "../services/operationsDailyReportService";
-import { ReportSourceReferenceLink, ReportStateBanner } from "./ReportSharedStates";
+import {
+  downloadOperationsDailyCSV,
+  operationsDailyCSVFilename,
+  operationsDailyQueryString,
+  operationsDailyStatusOptions
+} from "../services/operationsDailyReportService";
+import { ReportExportAction, ReportSourceReferenceLink, ReportStateBanner } from "./ReportSharedStates";
 import type {
   OperationsDailyAreaSummary,
   OperationsDailyQuery,
@@ -176,6 +181,7 @@ export function OperationsDailyReportPanel({ controls }: OperationsDailyReportPa
   );
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<Error | null>(null);
+  const [exportedFilename, setExportedFilename] = useState("");
 
   const query = useMemo<OperationsDailyQuery>(
     () => ({
@@ -189,6 +195,8 @@ export function OperationsDailyReportPanel({ controls }: OperationsDailyReportPa
   );
   const { report, loading, error } = useOperationsDailyReport(query);
   const data = report ?? emptyOperationsDailyReport(fromDate, toDate);
+  const exportFilename = operationsDailyCSVFilename(query);
+  const exportQueryKey = operationsDailyQueryString(query);
 
   useEffect(() => {
     replaceReportUrlParams("operations", {
@@ -200,14 +208,21 @@ export function OperationsDailyReportPanel({ controls }: OperationsDailyReportPa
     });
   }, [fromDate, replaceReportUrlParams, status, toDate, warehouseId]);
 
+  useEffect(() => {
+    setExportedFilename("");
+    setExportError(null);
+  }, [exportQueryKey]);
+
   async function handleExportCSV() {
     setExporting(true);
     setExportError(null);
     try {
       const download = await downloadOperationsDailyCSV(query);
       saveBlob(download.blob, download.filename);
+      setExportedFilename(download.filename);
     } catch (reason) {
       setExportError(reason instanceof Error ? reason : new Error("Operations CSV could not be exported"));
+      setExportedFilename("");
     } finally {
       setExporting(false);
     }
@@ -223,16 +238,15 @@ export function OperationsDailyReportPanel({ controls }: OperationsDailyReportPa
         </div>
         <div className="erp-page-actions">
           {controls}
-          {exportError ? <StatusChip tone="danger">Export failed</StatusChip> : null}
-          <button
-            className="erp-button erp-button--secondary"
-            type="button"
-            disabled={loading || exporting}
-            title={exportError?.message ?? "Export operations daily CSV"}
-            onClick={handleExportCSV}
-          >
-            {exporting ? "Exporting" : "Export CSV"}
-          </button>
+          <ReportExportAction
+            disabled={loading}
+            exporting={exporting}
+            error={exportError}
+            filename={exportFilename}
+            exportedFilename={exportedFilename}
+            reportLabel="operations daily"
+            onExport={handleExportCSV}
+          />
         </div>
       </header>
 

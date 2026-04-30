@@ -186,7 +186,7 @@ function inventorySnapshotApiQuery(query: InventorySnapshotQuery): InventorySnap
   };
 }
 
-function inventorySnapshotCSVFilename(query: InventorySnapshotQuery) {
+export function inventorySnapshotCSVFilename(query: InventorySnapshotQuery) {
   return `inventory-snapshot-${query.businessDate || todayString()}.csv`;
 }
 

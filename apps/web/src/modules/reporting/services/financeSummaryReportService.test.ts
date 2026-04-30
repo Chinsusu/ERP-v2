@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createPrototypeFinanceSummaryReport,
   downloadFinanceSummaryCSV,
+  financeSummaryCSVFilename,
   financeSummaryQueryString,
   getFinanceSummaryReport
 } from "./financeSummaryReportService";
@@ -242,6 +243,16 @@ describe("financeSummaryReportService", () => {
         businessDate: "2026-05-08"
       })
     ).toBe("?to_date=2026-05-08&business_date=2026-05-08");
+  });
+
+  it("builds stable export filenames for the current date range", () => {
+    expect(
+      financeSummaryCSVFilename({
+        fromDate: "2026-04-30",
+        toDate: "2026-05-08",
+        businessDate: "2026-05-08"
+      })
+    ).toBe("finance-summary-2026-04-30-to-2026-05-08.csv");
   });
 
   it("keeps out-of-range COD and cash at zero in prototype reports", () => {

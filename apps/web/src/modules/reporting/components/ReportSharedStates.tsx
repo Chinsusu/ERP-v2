@@ -12,6 +12,16 @@ type ReportStateBannerProps = {
   emptyLabel: string;
 };
 
+type ReportExportActionProps = {
+  disabled: boolean;
+  exporting: boolean;
+  error: Error | null;
+  filename: string;
+  exportedFilename: string;
+  reportLabel: string;
+  onExport: () => void;
+};
+
 export function ReportStateBanner({ loading, error, empty, liveLabel, emptyLabel }: ReportStateBannerProps) {
   const state = reportState({ loading, error, empty });
 
@@ -22,6 +32,38 @@ export function ReportStateBanner({ loading, error, empty, liveLabel, emptyLabel
         {error?.message ?? (loading ? "Loading report data" : empty ? emptyLabel : liveLabel)}
       </span>
     </section>
+  );
+}
+
+export function ReportExportAction({
+  disabled,
+  exporting,
+  error,
+  filename,
+  exportedFilename,
+  reportLabel,
+  onExport
+}: ReportExportActionProps) {
+  const state = reportExportState({ exporting, error, exportedFilename });
+  const visibleFilename = exportedFilename || filename;
+  const title = error?.message ?? `Export ${reportLabel} CSV as ${filename}`;
+
+  return (
+    <div className="erp-reporting-export-action">
+      <span className="erp-reporting-export-status" title={error?.message ?? visibleFilename} aria-live="polite">
+        <StatusChip tone={state.tone}>{state.label}</StatusChip>
+        <small>{visibleFilename}</small>
+      </span>
+      <button
+        className="erp-button erp-button--secondary"
+        type="button"
+        disabled={disabled || exporting}
+        title={title}
+        onClick={onExport}
+      >
+        {exporting ? "Exporting" : "Export CSV"}
+      </button>
+    </div>
   );
 }
 
@@ -73,4 +115,26 @@ function reportState({
   }
 
   return { label: "Live", tone: "info" };
+}
+
+function reportExportState({
+  exporting,
+  error,
+  exportedFilename
+}: {
+  exporting: boolean;
+  error: Error | null;
+  exportedFilename: string;
+}): { label: string; tone: StatusTone } {
+  if (error) {
+    return { label: "Export failed", tone: "danger" };
+  }
+  if (exporting) {
+    return { label: "Exporting", tone: "warning" };
+  }
+  if (exportedFilename) {
+    return { label: "Exported", tone: "success" };
+  }
+
+  return { label: "Ready", tone: "info" };
 }
