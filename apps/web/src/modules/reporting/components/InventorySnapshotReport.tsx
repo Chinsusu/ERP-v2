@@ -14,6 +14,7 @@ import { formatDateTimeVI, formatDateVI, formatQuantity } from "@/shared/format/
 import { useInventorySnapshotReport } from "../hooks/useInventorySnapshotReport";
 import { urlDateParam, urlOptionParam, urlParam, useReportUrlState } from "../hooks/useReportUrlState";
 import { downloadInventorySnapshotCSV, inventorySnapshotStatusOptions } from "../services/inventorySnapshotReportService";
+import { ReportStateBanner } from "./ReportSharedStates";
 import type {
   InventorySnapshotQuery,
   InventorySnapshotReport,
@@ -309,6 +310,14 @@ export function InventorySnapshotReportPanel({ controls }: InventorySnapshotRepo
           />
         </label>
       </section>
+
+      <ReportStateBanner
+        loading={loading}
+        error={error}
+        empty={data.summary.rowCount === 0}
+        liveLabel={`${data.summary.rowCount} inventory rows`}
+        emptyLabel="No inventory rows match current filters"
+      />
 
       <section className="erp-kpi-grid erp-reporting-kpis">
         <InventorySnapshotKPI label="Rows" value={String(data.summary.rowCount)} tone="info" />
