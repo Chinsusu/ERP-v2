@@ -19,6 +19,7 @@ func TestNewInventorySnapshotReportBuildsRowsAndUOMTotals(t *testing.T) {
 				WarehouseCode: "HCM",
 				LocationID:    "bin-a",
 				LocationCode:  "A-01",
+				ItemID:        "item-serum-30ml",
 				SKU:           "serum-30ml",
 				BatchID:       "batch-a",
 				BatchNo:       "LOT-A",
@@ -88,10 +89,35 @@ func TestNewInventorySnapshotReportBuildsRowsAndUOMTotals(t *testing.T) {
 		first.SourceStockState != "quarantine" {
 		t.Fatalf("first row = %+v", first)
 	}
+	assertInventorySourceReference(t, first.SourceReferences, "warehouse", "wh-hcm", "HCM")
+	assertInventorySourceReference(t, first.SourceReferences, "item", "item-serum-30ml", "SERUM-30ML")
+	assertInventorySourceReference(t, first.SourceReferences, "inventory_batch", "batch-a", "LOT-A")
+	assertInventorySourceReference(t, first.SourceReferences, "stock_state", "wh-hcm:bin-a:SERUM-30ML:batch-a:quarantine", "quarantine")
+	assertInventorySourceReference(t, first.SourceReferences, "inventory_warning", "wh-hcm:bin-a:SERUM-30ML:batch-a:quarantine:expiry_warning", "expiry_warning")
 	second := report.Rows[1]
 	if second.SKU != "CREAM-50G" || !second.LowStock {
 		t.Fatalf("second row = %+v, want low-stock row", second)
 	}
+}
+
+func assertInventorySourceReference(
+	t *testing.T,
+	references []ReportSourceReference,
+	entityType string,
+	id string,
+	label string,
+) {
+	t.Helper()
+	for _, reference := range references {
+		if reference.EntityType == entityType && reference.ID == id {
+			if reference.Label != label || reference.Href == "" || reference.Unavailable {
+				t.Fatalf("reference = %+v, want label %q and available href", reference, label)
+			}
+			return
+		}
+	}
+
+	t.Fatalf("references = %+v, missing %s %s", references, entityType, id)
 }
 
 func TestNewInventorySnapshotReportKeepsTotalsSeparatedByUOM(t *testing.T) {

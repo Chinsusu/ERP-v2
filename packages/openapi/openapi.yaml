@@ -10680,6 +10680,7 @@ components:
         - expiry_warning
         - expired
         - source_stock_state
+        - source_references
       properties:
         warehouse_id:
           type: string
@@ -10724,6 +10725,10 @@ components:
           type: string
         source_stock_state:
           type: string
+        source_references:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportSourceReference"
     OperationsDailyReportSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"

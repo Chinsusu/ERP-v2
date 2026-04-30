@@ -60,6 +60,14 @@ func TestInventorySnapshotReportHandlerReturnsFilteredReport(t *testing.T) {
 		payload.Data.Summary.TotalsByUOM[0].AvailableQty != "110.000000" {
 		t.Fatalf("totals = %+v, want filtered PCS total", payload.Data.Summary.TotalsByUOM)
 	}
+	if len(row.SourceReferences) < 4 {
+		t.Fatalf("source references = %+v, want warehouse/item/batch/stock refs", row.SourceReferences)
+	}
+	if row.SourceReferences[0].EntityType != "warehouse" ||
+		row.SourceReferences[0].ID != "wh-hcm" ||
+		row.SourceReferences[0].Href != "/master-data?source_id=wh-hcm&source_type=warehouse" {
+		t.Fatalf("warehouse source reference = %+v", row.SourceReferences[0])
+	}
 }
 
 func TestInventorySnapshotCSVExportHandlerReturnsCSV(t *testing.T) {

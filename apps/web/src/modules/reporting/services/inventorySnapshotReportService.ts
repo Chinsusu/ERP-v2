@@ -7,7 +7,8 @@ import type {
   InventorySnapshotStatusFilter,
   InventorySnapshotSummary,
   InventorySnapshotUOMTotal,
-  ReportMetadata
+  ReportMetadata,
+  ReportSourceReference
 } from "../types";
 
 type InventorySnapshotReportApi = ApiGetResponse<"/reports/inventory-snapshot">;
@@ -19,7 +20,7 @@ const defaultAccessToken = "local-dev-access-token";
 const quantityScale = 6;
 const zeroQuantity = "0.000000";
 
-const prototypeRows: InventorySnapshotRow[] = [
+const prototypeRows: InventorySnapshotRow[] = withInventorySourceReferences([
   {
     warehouseId: "wh-hcm",
     warehouseCode: "HCM",
@@ -87,7 +88,7 @@ const prototypeRows: InventorySnapshotRow[] = [
     batchStatus: "active",
     sourceStockState: "blocked"
   }
-];
+]);
 
 export async function getInventorySnapshotReport(
   query: InventorySnapshotQuery = {}
@@ -253,8 +254,167 @@ function fromApiRow(row: InventorySnapshotRowApi): InventorySnapshotRow {
     expired: row.expired,
     batchQcStatus: row.batch_qc_status,
     batchStatus: row.batch_status,
-    sourceStockState: row.source_stock_state
+    sourceStockState: row.source_stock_state,
+    sourceReferences: fromApiSourceReferences(row.source_references, row)
   };
+}
+
+function fromApiSourceReferences(
+  references: InventorySnapshotRowApi["source_references"] | undefined,
+  row: InventorySnapshotRowApi
+): ReportSourceReference[] {
+  if (references?.length) {
+    return references.map((reference) => ({
+      entityType: reference.entity_type,
+      id: reference.id,
+      label: reference.label,
+      href: reference.href,
+      unavailable: reference.unavailable
+    }));
+  }
+
+  return buildInventorySourceReferences({
+    warehouseId: row.warehouse_id,
+    warehouseCode: row.warehouse_code,
+    locationId: row.location_id,
+    itemId: row.item_id,
+    sku: row.sku,
+    batchId: row.batch_id,
+    batchNo: row.batch_no,
+    sourceStockState: row.source_stock_state,
+    lowStock: row.low_stock,
+    expiryWarning: row.expiry_warning,
+    expired: row.expired
+  });
+}
+
+function withInventorySourceReferences(
+  rows: Array<Omit<InventorySnapshotRow, "sourceReferences">>
+): InventorySnapshotRow[] {
+  return rows.map((row) => ({
+    ...row,
+    sourceReferences: buildInventorySourceReferences(row)
+  }));
+}
+
+function buildInventorySourceReferences(
+  row: Pick<
+    InventorySnapshotRow,
+    | "warehouseId"
+    | "warehouseCode"
+    | "locationId"
+    | "itemId"
+    | "sku"
+    | "batchId"
+    | "batchNo"
+    | "sourceStockState"
+    | "lowStock"
+    | "expiryWarning"
+    | "expired"
+  >
+): ReportSourceReference[] {
+  const references: ReportSourceReference[] = [];
+  references.push(
+    availableReference(
+      "warehouse",
+      row.warehouseId,
+      row.warehouseCode || row.warehouseId,
+      entityHref("master-data", "warehouse", row.warehouseId)
+    )
+  );
+  if (row.itemId) {
+    references.push(availableReference("item", row.itemId, row.sku, entityHref("master-data", "item", row.itemId)));
+  }
+  if (row.batchId) {
+    references.push(
+      availableReference(
+        "inventory_batch",
+        row.batchId,
+        row.batchNo || row.batchId,
+        entityHref("inventory", "inventory_batch", row.batchId)
+      )
+    );
+  }
+
+  const contextId = inventoryContextId(row);
+  references.push(
+    availableReference("stock_state", contextId, row.sourceStockState, inventoryContextHref(row))
+  );
+  for (const warning of inventoryWarnings(row)) {
+    references.push(
+      availableReference("inventory_warning", `${contextId}:${warning}`, warning, inventoryWarningHref(row, warning))
+    );
+  }
+
+  return references;
+}
+
+function availableReference(entityType: string, id: string, label: string, href: string): ReportSourceReference {
+  return {
+    entityType,
+    id,
+    label,
+    href,
+    unavailable: false
+  };
+}
+
+function entityHref(module: string, sourceType: string, sourceId: string) {
+  const params = new URLSearchParams();
+  params.set("source_type", sourceType);
+  params.set("source_id", sourceId);
+  return `/${module}?${params.toString()}`;
+}
+
+function inventoryContextHref(
+  row: Pick<InventorySnapshotRow, "warehouseId" | "itemId" | "sku" | "batchId" | "sourceStockState">
+) {
+  return `/inventory?${inventoryContextParams(row).toString()}`;
+}
+
+function inventoryWarningHref(
+  row: Pick<InventorySnapshotRow, "warehouseId" | "itemId" | "sku" | "batchId" | "sourceStockState">,
+  warning: string
+) {
+  const params = inventoryContextParams(row);
+  params.set("warning", warning);
+  return `/reports?report=inventory-snapshot&${params.toString()}`;
+}
+
+function inventoryContextParams(
+  row: Pick<InventorySnapshotRow, "warehouseId" | "itemId" | "sku" | "batchId" | "sourceStockState">
+) {
+  const params = new URLSearchParams();
+  params.set("warehouse_id", row.warehouseId);
+  params.set("sku", row.sku);
+  if (row.itemId) {
+    params.set("item_id", row.itemId);
+  }
+  if (row.batchId) {
+    params.set("batch_id", row.batchId);
+  }
+  params.set("status", row.sourceStockState);
+  return params;
+}
+
+function inventoryContextId(
+  row: Pick<InventorySnapshotRow, "warehouseId" | "locationId" | "sku" | "batchId" | "sourceStockState">
+) {
+  return [row.warehouseId, row.locationId || "-", row.sku, row.batchId || "-", row.sourceStockState].join(":");
+}
+
+function inventoryWarnings(row: Pick<InventorySnapshotRow, "lowStock" | "expiryWarning" | "expired">) {
+  const warnings: string[] = [];
+  if (row.lowStock) {
+    warnings.push("low_stock");
+  }
+  if (row.expiryWarning) {
+    warnings.push("expiry_warning");
+  }
+  if (row.expired) {
+    warnings.push("expired");
+  }
+  return warnings;
 }
 
 function summarizeInventorySnapshotRows(rows: InventorySnapshotRow[]): InventorySnapshotSummary {

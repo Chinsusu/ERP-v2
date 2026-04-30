@@ -63,27 +63,28 @@ type inventorySnapshotUOMTotalResponse struct {
 }
 
 type inventorySnapshotRowResponse struct {
-	WarehouseID      string `json:"warehouse_id"`
-	WarehouseCode    string `json:"warehouse_code,omitempty"`
-	LocationID       string `json:"location_id,omitempty"`
-	LocationCode     string `json:"location_code,omitempty"`
-	ItemID           string `json:"item_id,omitempty"`
-	SKU              string `json:"sku"`
-	BatchID          string `json:"batch_id,omitempty"`
-	BatchNo          string `json:"batch_no,omitempty"`
-	BatchExpiry      string `json:"batch_expiry,omitempty"`
-	BaseUOMCode      string `json:"base_uom_code"`
-	PhysicalQty      string `json:"physical_qty"`
-	ReservedQty      string `json:"reserved_qty"`
-	QuarantineQty    string `json:"quarantine_qty"`
-	BlockedQty       string `json:"blocked_qty"`
-	AvailableQty     string `json:"available_qty"`
-	LowStock         bool   `json:"low_stock"`
-	ExpiryWarning    bool   `json:"expiry_warning"`
-	Expired          bool   `json:"expired"`
-	BatchQCStatus    string `json:"batch_qc_status,omitempty"`
-	BatchStatus      string `json:"batch_status,omitempty"`
-	SourceStockState string `json:"source_stock_state"`
+	WarehouseID      string                          `json:"warehouse_id"`
+	WarehouseCode    string                          `json:"warehouse_code,omitempty"`
+	LocationID       string                          `json:"location_id,omitempty"`
+	LocationCode     string                          `json:"location_code,omitempty"`
+	ItemID           string                          `json:"item_id,omitempty"`
+	SKU              string                          `json:"sku"`
+	BatchID          string                          `json:"batch_id,omitempty"`
+	BatchNo          string                          `json:"batch_no,omitempty"`
+	BatchExpiry      string                          `json:"batch_expiry,omitempty"`
+	BaseUOMCode      string                          `json:"base_uom_code"`
+	PhysicalQty      string                          `json:"physical_qty"`
+	ReservedQty      string                          `json:"reserved_qty"`
+	QuarantineQty    string                          `json:"quarantine_qty"`
+	BlockedQty       string                          `json:"blocked_qty"`
+	AvailableQty     string                          `json:"available_qty"`
+	LowStock         bool                            `json:"low_stock"`
+	ExpiryWarning    bool                            `json:"expiry_warning"`
+	Expired          bool                            `json:"expired"`
+	BatchQCStatus    string                          `json:"batch_qc_status,omitempty"`
+	BatchStatus      string                          `json:"batch_status,omitempty"`
+	SourceStockState string                          `json:"source_stock_state"`
+	SourceReferences []reportSourceReferenceResponse `json:"source_references"`
 }
 
 var inventorySnapshotCSVHeaders = []string{
@@ -383,7 +384,19 @@ func newInventorySnapshotRowResponse(row reportingdomain.InventorySnapshotRow) i
 		BatchQCStatus:    row.BatchQCStatus,
 		BatchStatus:      row.BatchStatus,
 		SourceStockState: row.SourceStockState,
+		SourceReferences: newReportSourceReferenceResponses(row.SourceReferences),
 	}
+}
+
+func newReportSourceReferenceResponses(
+	references []reportingdomain.ReportSourceReference,
+) []reportSourceReferenceResponse {
+	rows := make([]reportSourceReferenceResponse, 0, len(references))
+	for _, reference := range references {
+		rows = append(rows, newReportSourceReferenceResponse(reference))
+	}
+
+	return rows
 }
 
 func newInventorySnapshotCSVRows(report reportingdomain.InventorySnapshotReport) [][]string {

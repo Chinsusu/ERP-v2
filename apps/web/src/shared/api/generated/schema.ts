@@ -4477,6 +4477,7 @@ export interface components {
             batch_qc_status?: string;
             batch_status?: string;
             source_stock_state: string;
+            source_references: components["schemas"]["ReportSourceReference"][];
         };
         OperationsDailyReportSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["OperationsDailyReport"];
