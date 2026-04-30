@@ -1,4 +1,5 @@
-import { ApiError, apiGetBlob, apiGetRaw } from "../../../shared/api/client";
+import { ApiError, apiGet, apiGetBlob } from "../../../shared/api/client";
+import type { ApiGetQuery, ApiGetResponse } from "../../../shared/api/client";
 import type {
   OperationsDailyAreaSummary,
   OperationsDailyQuery,
@@ -9,54 +10,11 @@ import type {
   ReportMetadata
 } from "../types";
 
-type OperationsDailyReportApi = {
-  metadata: {
-    generated_at: string;
-    timezone: string;
-    source_version: string;
-    filters: {
-      from_date: string;
-      to_date: string;
-      business_date: string;
-      warehouse_id?: string;
-      status?: string;
-    };
-  };
-  summary: OperationsDailySummaryApi;
-  areas: OperationsDailyAreaSummaryApi[];
-  rows: OperationsDailyRowApi[];
-};
-
-type OperationsDailySummaryApi = {
-  signal_count: number;
-  pending_count: number;
-  in_progress_count: number;
-  completed_count: number;
-  blocked_count: number;
-  exception_count: number;
-};
-
-type OperationsDailyAreaSummaryApi = OperationsDailySummaryApi & {
-  area: string;
-};
-
-type OperationsDailyRowApi = {
-  id: string;
-  area: string;
-  source_type: string;
-  source_id: string;
-  ref_no: string;
-  title: string;
-  warehouse_id: string;
-  warehouse_code?: string;
-  business_date: string;
-  status: string;
-  severity: string;
-  quantity?: string;
-  uom_code?: string;
-  exception_code?: string;
-  owner?: string;
-};
+type OperationsDailyReportApi = ApiGetResponse<"/reports/operations-daily">;
+type OperationsDailyQueryApi = NonNullable<ApiGetQuery<"/reports/operations-daily">>;
+type OperationsDailySummaryApi = OperationsDailyReportApi["summary"];
+type OperationsDailyAreaSummaryApi = OperationsDailyReportApi["areas"][number];
+type OperationsDailyRowApi = OperationsDailyReportApi["rows"][number];
 
 const defaultAccessToken = "local-dev-access-token";
 
@@ -188,10 +146,10 @@ const prototypeRows: OperationsDailyRow[] = [
 
 export async function getOperationsDailyReport(query: OperationsDailyQuery = {}): Promise<OperationsDailyReport> {
   try {
-    const report = await apiGetRaw<OperationsDailyReportApi>(
-      `/reports/operations-daily${operationsDailyQueryString(query)}`,
-      { accessToken: defaultAccessToken }
-    );
+    const report = await apiGet("/reports/operations-daily", {
+      accessToken: defaultAccessToken,
+      query: operationsDailyApiQuery(query)
+    });
 
     return fromApiOperationsDailyReport(report);
   } catch (cause) {
@@ -251,6 +209,16 @@ export function operationsDailyQueryString(query: OperationsDailyQuery) {
 
   const value = params.toString();
   return value ? `?${value}` : "";
+}
+
+function operationsDailyApiQuery(query: OperationsDailyQuery): OperationsDailyQueryApi {
+  return {
+    ...(optionalString(query.fromDate) ? { from_date: optionalString(query.fromDate) } : {}),
+    ...(optionalString(query.toDate) ? { to_date: optionalString(query.toDate) } : {}),
+    ...(optionalString(query.businessDate) ? { business_date: optionalString(query.businessDate) } : {}),
+    ...(optionalString(query.warehouseId) ? { warehouse_id: optionalString(query.warehouseId) } : {}),
+    ...(optionalString(query.status) ? { status: optionalString(query.status) } : {})
+  };
 }
 
 function operationsDailyCSVFilename(query: OperationsDailyQuery) {
@@ -449,10 +417,15 @@ function statusOrder(status: string) {
 }
 
 function setQueryParam(params: URLSearchParams, key: string, value: string | undefined) {
-  const normalized = value?.trim();
+  const normalized = optionalString(value);
   if (normalized) {
     params.set(key, normalized);
   }
+}
+
+function optionalString(value: string | undefined) {
+  const normalized = value?.trim();
+  return normalized || undefined;
 }
 
 function todayString() {

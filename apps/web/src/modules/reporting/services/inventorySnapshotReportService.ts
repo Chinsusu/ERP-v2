@@ -1,4 +1,5 @@
-import { ApiError, apiGetBlob, apiGetRaw } from "../../../shared/api/client";
+import { ApiError, apiGet, apiGetBlob } from "../../../shared/api/client";
+import type { ApiGetQuery, ApiGetResponse } from "../../../shared/api/client";
 import type {
   InventorySnapshotQuery,
   InventorySnapshotReport,
@@ -9,63 +10,10 @@ import type {
   ReportMetadata
 } from "../types";
 
-type InventorySnapshotReportApi = {
-  metadata: {
-    generated_at: string;
-    timezone: string;
-    source_version: string;
-    filters: {
-      from_date: string;
-      to_date: string;
-      business_date: string;
-      warehouse_id?: string;
-      status?: string;
-      item_id?: string;
-      category?: string;
-    };
-  };
-  summary: {
-    row_count: number;
-    low_stock_row_count: number;
-    expiry_warning_rows: number;
-    expired_rows: number;
-    totals_by_uom: InventorySnapshotUOMTotalApi[];
-  };
-  rows: InventorySnapshotRowApi[];
-};
-
-type InventorySnapshotUOMTotalApi = {
-  base_uom_code: string;
-  physical_qty: string;
-  reserved_qty: string;
-  quarantine_qty: string;
-  blocked_qty: string;
-  available_qty: string;
-};
-
-type InventorySnapshotRowApi = {
-  warehouse_id: string;
-  warehouse_code?: string;
-  location_id?: string;
-  location_code?: string;
-  item_id?: string;
-  sku: string;
-  batch_id?: string;
-  batch_no?: string;
-  batch_expiry?: string;
-  base_uom_code: string;
-  physical_qty: string;
-  reserved_qty: string;
-  quarantine_qty: string;
-  blocked_qty: string;
-  available_qty: string;
-  low_stock: boolean;
-  expiry_warning: boolean;
-  expired: boolean;
-  batch_qc_status?: string;
-  batch_status?: string;
-  source_stock_state: string;
-};
+type InventorySnapshotReportApi = ApiGetResponse<"/reports/inventory-snapshot">;
+type InventorySnapshotQueryApi = NonNullable<ApiGetQuery<"/reports/inventory-snapshot">>;
+type InventorySnapshotUOMTotalApi = InventorySnapshotReportApi["summary"]["totals_by_uom"][number];
+type InventorySnapshotRowApi = InventorySnapshotReportApi["rows"][number];
 
 const defaultAccessToken = "local-dev-access-token";
 const quantityScale = 6;
@@ -145,10 +93,10 @@ export async function getInventorySnapshotReport(
   query: InventorySnapshotQuery = {}
 ): Promise<InventorySnapshotReport> {
   try {
-    const report = await apiGetRaw<InventorySnapshotReportApi>(
-      `/reports/inventory-snapshot${inventorySnapshotQueryString(query)}`,
-      { accessToken: defaultAccessToken }
-    );
+    const report = await apiGet("/reports/inventory-snapshot", {
+      accessToken: defaultAccessToken,
+      query: inventorySnapshotApiQuery(query)
+    });
 
     return fromApiInventorySnapshotReport(report);
   } catch (cause) {
@@ -216,6 +164,25 @@ export function inventorySnapshotQueryString(query: InventorySnapshotQuery) {
 
   const value = params.toString();
   return value ? `?${value}` : "";
+}
+
+function inventorySnapshotApiQuery(query: InventorySnapshotQuery): InventorySnapshotQueryApi {
+  const expiryWarningDays = optionalNumber(query.expiryWarningDays);
+
+  return {
+    ...(optionalString(query.fromDate) ? { from_date: optionalString(query.fromDate) } : {}),
+    ...(optionalString(query.toDate) ? { to_date: optionalString(query.toDate) } : {}),
+    ...(optionalString(query.businessDate) ? { business_date: optionalString(query.businessDate) } : {}),
+    ...(optionalString(query.warehouseId) ? { warehouse_id: optionalString(query.warehouseId) } : {}),
+    ...(optionalString(query.status) ? { status: optionalString(query.status) } : {}),
+    ...(optionalString(query.itemId) ? { item_id: optionalString(query.itemId) } : {}),
+    ...(optionalString(query.category) ? { category: optionalString(query.category) } : {}),
+    ...(optionalString(query.locationId) ? { location_id: optionalString(query.locationId) } : {}),
+    ...(optionalString(query.sku) ? { sku: optionalString(query.sku) } : {}),
+    ...(optionalString(query.batchId) ? { batch_id: optionalString(query.batchId) } : {}),
+    ...(optionalString(query.lowStockThreshold) ? { low_stock_threshold: optionalString(query.lowStockThreshold) } : {}),
+    ...(expiryWarningDays !== undefined ? { expiry_warning_days: expiryWarningDays } : {})
+  };
 }
 
 function inventorySnapshotCSVFilename(query: InventorySnapshotQuery) {
@@ -354,10 +321,25 @@ function matchesPrototypeFilter(row: InventorySnapshotRow, query: InventorySnaps
 }
 
 function setQueryParam(params: URLSearchParams, key: string, value: string | undefined) {
-  const normalized = value?.trim();
+  const normalized = optionalString(value);
   if (normalized) {
     params.set(key, normalized);
   }
+}
+
+function optionalString(value: string | undefined) {
+  const normalized = value?.trim();
+  return normalized || undefined;
+}
+
+function optionalNumber(value: string | undefined) {
+  const normalized = optionalString(value);
+  if (!normalized) {
+    return undefined;
+  }
+
+  const parsed = Number(normalized);
+  return parsed;
 }
 
 function todayString() {
