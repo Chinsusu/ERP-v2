@@ -7,7 +7,8 @@ import type {
   OperationsDailyRow,
   OperationsDailyStatusFilter,
   OperationsDailySummary,
-  ReportMetadata
+  ReportMetadata,
+  ReportSourceReference
 } from "../types";
 
 type OperationsDailyReportApi = ApiGetResponse<"/reports/operations-daily">;
@@ -18,7 +19,7 @@ type OperationsDailyRowApi = OperationsDailyReportApi["rows"][number];
 
 const defaultAccessToken = "local-dev-access-token";
 
-const prototypeRows: OperationsDailyRow[] = [
+const prototypeRows: OperationsDailyRow[] = withSourceReferences([
   {
     id: "ops-inbound-hcm-260430-0001",
     area: "inbound",
@@ -142,7 +143,7 @@ const prototypeRows: OperationsDailyRow[] = [
     severity: "normal",
     owner: "shipping"
   }
-];
+]);
 
 export async function getOperationsDailyReport(query: OperationsDailyQuery = {}): Promise<OperationsDailyReport> {
   try {
@@ -275,6 +276,7 @@ function fromApiRow(row: OperationsDailyRowApi): OperationsDailyRow {
     area: row.area,
     sourceType: row.source_type,
     sourceId: row.source_id,
+    sourceReference: fromApiSourceReference(row.source_reference, row),
     refNo: row.ref_no,
     title: row.title,
     warehouseId: row.warehouse_id,
@@ -287,6 +289,74 @@ function fromApiRow(row: OperationsDailyRowApi): OperationsDailyRow {
     exceptionCode: row.exception_code,
     owner: row.owner
   };
+}
+
+function fromApiSourceReference(
+  reference: OperationsDailyRowApi["source_reference"] | undefined,
+  row: Pick<OperationsDailyRowApi, "source_type" | "source_id" | "ref_no">
+): ReportSourceReference {
+  if (reference) {
+    return {
+      entityType: reference.entity_type,
+      id: reference.id,
+      label: reference.label,
+      href: reference.href,
+      unavailable: reference.unavailable
+    };
+  }
+
+  return buildOperationsSourceReference(row.source_type, row.source_id, row.ref_no);
+}
+
+function withSourceReferences(rows: Array<Omit<OperationsDailyRow, "sourceReference">>): OperationsDailyRow[] {
+  return rows.map((row) => ({
+    ...row,
+    sourceReference: buildOperationsSourceReference(row.sourceType, row.sourceId, row.refNo)
+  }));
+}
+
+function buildOperationsSourceReference(sourceType: string, sourceId: string, label: string): ReportSourceReference {
+  const module = operationsSourceModule(sourceType);
+  if (!module) {
+    return {
+      entityType: sourceType,
+      id: sourceId,
+      label,
+      unavailable: true
+    };
+  }
+
+  const params = new URLSearchParams();
+  params.set("source_type", sourceType);
+  params.set("source_id", sourceId);
+
+  return {
+    entityType: sourceType,
+    id: sourceId,
+    label,
+    href: `/${module}?${params.toString()}`,
+    unavailable: false
+  };
+}
+
+function operationsSourceModule(sourceType: string) {
+  switch (sourceType) {
+    case "goods_receipt":
+      return "receiving";
+    case "inbound_qc":
+      return "qc";
+    case "pick_task":
+    case "carrier_manifest":
+      return "shipping";
+    case "return_receipt":
+      return "returns";
+    case "stock_count":
+      return "inventory";
+    case "subcontract_order":
+      return "subcontract";
+    default:
+      return "";
+  }
 }
 
 function summarizeOperationsDailyRows(rows: OperationsDailyRow[]): OperationsDailySummary {

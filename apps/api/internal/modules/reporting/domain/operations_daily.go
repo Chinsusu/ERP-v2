@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -87,21 +88,22 @@ type OperationsDailyAreaSummary struct {
 }
 
 type OperationsDailyRow struct {
-	ID            string
-	Area          string
-	SourceType    string
-	SourceID      string
-	RefNo         string
-	Title         string
-	WarehouseID   string
-	WarehouseCode string
-	BusinessDate  string
-	Status        string
-	Severity      string
-	Quantity      string
-	UOMCode       string
-	ExceptionCode string
-	Owner         string
+	ID              string
+	Area            string
+	SourceType      string
+	SourceID        string
+	SourceReference ReportSourceReference
+	RefNo           string
+	Title           string
+	WarehouseID     string
+	WarehouseCode   string
+	BusinessDate    string
+	Status          string
+	Severity        string
+	Quantity        string
+	UOMCode         string
+	ExceptionCode   string
+	Owner           string
 }
 
 func NewOperationsDailyReport(
@@ -231,21 +233,69 @@ func matchesOperationsDailyFilters(filters ReportFilters, signal OperationsDaily
 
 func newOperationsDailyRow(signal OperationsDailySignal) OperationsDailyRow {
 	return OperationsDailyRow{
-		ID:            signal.ID,
-		Area:          string(signal.Area),
-		SourceType:    signal.SourceType,
-		SourceID:      signal.SourceID,
-		RefNo:         signal.RefNo,
-		Title:         signal.Title,
-		WarehouseID:   signal.WarehouseID,
-		WarehouseCode: signal.WarehouseCode,
-		BusinessDate:  formatReportDate(signal.BusinessDate),
-		Status:        string(signal.Status),
-		Severity:      string(signal.Severity),
-		Quantity:      signal.Quantity,
-		UOMCode:       signal.UOMCode,
-		ExceptionCode: signal.ExceptionCode,
-		Owner:         signal.Owner,
+		ID:              signal.ID,
+		Area:            string(signal.Area),
+		SourceType:      signal.SourceType,
+		SourceID:        signal.SourceID,
+		SourceReference: newOperationsDailySourceReference(signal),
+		RefNo:           signal.RefNo,
+		Title:           signal.Title,
+		WarehouseID:     signal.WarehouseID,
+		WarehouseCode:   signal.WarehouseCode,
+		BusinessDate:    formatReportDate(signal.BusinessDate),
+		Status:          string(signal.Status),
+		Severity:        string(signal.Severity),
+		Quantity:        signal.Quantity,
+		UOMCode:         signal.UOMCode,
+		ExceptionCode:   signal.ExceptionCode,
+		Owner:           signal.Owner,
+	}
+}
+
+func newOperationsDailySourceReference(signal OperationsDailySignal) ReportSourceReference {
+	href := operationsDailySourceHref(signal.SourceType, signal.SourceID)
+	reference, err := NewReportSourceReference(ReportSourceReferenceInput{
+		EntityType:  signal.SourceType,
+		ID:          signal.SourceID,
+		Label:       signal.RefNo,
+		Href:        href,
+		Unavailable: href == "",
+	})
+	if err != nil {
+		panic(ErrInvalidOperationsDailyReport)
+	}
+
+	return reference
+}
+
+func operationsDailySourceHref(sourceType string, sourceID string) string {
+	module := operationsDailySourceModule(sourceType)
+	if module == "" {
+		return ""
+	}
+	params := url.Values{}
+	params.Set("source_type", sourceType)
+	params.Set("source_id", sourceID)
+
+	return "/" + module + "?" + params.Encode()
+}
+
+func operationsDailySourceModule(sourceType string) string {
+	switch sourceType {
+	case "goods_receipt":
+		return "receiving"
+	case "inbound_qc":
+		return "qc"
+	case "pick_task", "carrier_manifest":
+		return "shipping"
+	case "return_receipt":
+		return "returns"
+	case "stock_count":
+		return "inventory"
+	case "subcontract_order":
+		return "subcontract"
+	default:
+		return ""
 	}
 }
 

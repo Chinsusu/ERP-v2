@@ -15,6 +15,14 @@ export type ReportMetadata = {
   filters: ReportFilters;
 };
 
+export type ReportSourceReference = {
+  entityType: string;
+  id: string;
+  label: string;
+  href?: string;
+  unavailable: boolean;
+};
+
 export type InventorySnapshotQuery = {
   fromDate?: string;
   toDate?: string;
@@ -114,6 +122,7 @@ export type OperationsDailyRow = {
   area: string;
   sourceType: string;
   sourceId: string;
+  sourceReference: ReportSourceReference;
   refNo: string;
   title: string;
   warehouseId: string;

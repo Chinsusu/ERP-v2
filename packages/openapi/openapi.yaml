@@ -10567,6 +10567,33 @@ components:
           type: string
         category:
           type: string
+    ReportSourceReference:
+      type: object
+      required:
+        - entity_type
+        - id
+        - label
+        - unavailable
+      properties:
+        entity_type:
+          type: string
+          description: Source entity type used by the report row.
+          example: carrier_manifest
+        id:
+          type: string
+          description: Source entity identifier.
+          example: manifest-260430-ghn
+        label:
+          type: string
+          description: Human-readable source reference number or label.
+          example: MAN-260430-GHN
+        href:
+          type: string
+          description: Relative ERP route for the source record or filtered work queue when available.
+          example: /shipping?source_id=manifest-260430-ghn&source_type=carrier_manifest
+        unavailable:
+          type: boolean
+          description: True when the source record exists in the report but no ERP route is available yet.
     InventorySnapshotReportSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
@@ -10770,6 +10797,7 @@ components:
         - area
         - source_type
         - source_id
+        - source_reference
         - ref_no
         - title
         - warehouse_id
@@ -10785,6 +10813,8 @@ components:
           type: string
         source_id:
           type: string
+        source_reference:
+          $ref: "#/components/schemas/ReportSourceReference"
         ref_no:
           type: string
         title:

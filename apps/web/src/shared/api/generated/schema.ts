@@ -4407,6 +4407,30 @@ export interface components {
             item_id?: string;
             category?: string;
         };
+        ReportSourceReference: {
+            /**
+             * @description Source entity type used by the report row.
+             * @example carrier_manifest
+             */
+            entity_type: string;
+            /**
+             * @description Source entity identifier.
+             * @example manifest-260430-ghn
+             */
+            id: string;
+            /**
+             * @description Human-readable source reference number or label.
+             * @example MAN-260430-GHN
+             */
+            label: string;
+            /**
+             * @description Relative ERP route for the source record or filtered work queue when available.
+             * @example /shipping?source_id=manifest-260430-ghn&source_type=carrier_manifest
+             */
+            href?: string;
+            /** @description True when the source record exists in the report but no ERP route is available yet. */
+            unavailable: boolean;
+        };
         InventorySnapshotReportSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["InventorySnapshotReport"];
         };
@@ -4479,6 +4503,7 @@ export interface components {
             area: string;
             source_type: string;
             source_id: string;
+            source_reference: components["schemas"]["ReportSourceReference"];
             ref_no: string;
             title: string;
             warehouse_id: string;

@@ -81,6 +81,13 @@ describe("operationsDailyReportService", () => {
                 area: "outbound",
                 source_type: "carrier_manifest",
                 source_id: "manifest-260430-ghn",
+                source_reference: {
+                  entity_type: "carrier_manifest",
+                  id: "manifest-260430-ghn",
+                  label: "MAN-260430-GHN",
+                  href: "/shipping?source_id=manifest-260430-ghn&source_type=carrier_manifest",
+                  unavailable: false
+                },
                 ref_no: "MAN-260430-GHN",
                 title: "Carrier handover missing scan",
                 warehouse_id: "wh-hcm",
@@ -117,7 +124,14 @@ describe("operationsDailyReportService", () => {
     expect(report.summary.blockedCount).toBe(2);
     expect(report.rows[0]).toMatchObject({
       refNo: "MAN-260430-GHN",
-      exceptionCode: "MISSING_HANDOVER_SCAN"
+      exceptionCode: "MISSING_HANDOVER_SCAN",
+      sourceReference: {
+        entityType: "carrier_manifest",
+        id: "manifest-260430-ghn",
+        label: "MAN-260430-GHN",
+        href: "/shipping?source_id=manifest-260430-ghn&source_type=carrier_manifest",
+        unavailable: false
+      }
     });
   });
 
@@ -208,5 +222,11 @@ describe("operationsDailyReportService", () => {
       "stock_count",
       "subcontract"
     ]);
+    expect(report.rows[0].sourceReference).toMatchObject({
+      entityType: "goods_receipt",
+      id: "gr-260430-0001",
+      href: "/receiving?source_type=goods_receipt&source_id=gr-260430-0001",
+      unavailable: false
+    });
   });
 });
