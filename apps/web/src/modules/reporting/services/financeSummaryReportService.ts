@@ -1,4 +1,5 @@
-import { ApiError, apiGetBlob, apiGetRaw } from "../../../shared/api/client";
+import { ApiError, apiGet, apiGetBlob } from "../../../shared/api/client";
+import type { ApiGetQuery, ApiGetResponse } from "../../../shared/api/client";
 import type {
   FinanceSummaryAgingBucket,
   FinanceSummaryCOD,
@@ -11,82 +12,24 @@ import type {
   ReportMetadata
 } from "../types";
 
-type FinanceSummaryReportApi = {
-  metadata: {
-    generated_at: string;
-    timezone: string;
-    source_version: string;
-    filters: {
-      from_date: string;
-      to_date: string;
-      business_date: string;
-    };
-  };
-  currency_code: string;
-  ar: FinanceSummaryReceivableApi;
-  ap: FinanceSummaryPayableApi;
-  cod: FinanceSummaryCODApi;
-  cash: FinanceSummaryCashApi;
-};
-
-type FinanceSummaryReceivableApi = {
-  open_count: number;
-  overdue_count: number;
-  disputed_count: number;
-  open_amount: string;
-  overdue_amount: string;
-  outstanding_amount: string;
-  aging_buckets: FinanceSummaryAgingBucketApi[];
-};
-
-type FinanceSummaryPayableApi = {
-  open_count: number;
-  due_count: number;
-  payment_requested_count: number;
-  payment_approved_count: number;
-  open_amount: string;
-  due_amount: string;
-  outstanding_amount: string;
-  aging_buckets: FinanceSummaryAgingBucketApi[];
-};
-
-type FinanceSummaryCODApi = {
-  pending_count: number;
-  discrepancy_count: number;
-  pending_amount: string;
-  discrepancy_amount: string;
-  discrepancy_buckets: FinanceSummaryDiscrepancyBucketApi[];
-};
-
-type FinanceSummaryCashApi = {
-  transaction_count: number;
-  cash_in_amount: string;
-  cash_out_amount: string;
-  net_cash_amount: string;
-};
-
-type FinanceSummaryAgingBucketApi = {
-  bucket: string;
-  count: number;
-  amount: string;
-};
-
-type FinanceSummaryDiscrepancyBucketApi = {
-  type: string;
-  status: string;
-  count: number;
-  amount: string;
-};
+type FinanceSummaryReportApi = ApiGetResponse<"/reports/finance-summary">;
+type FinanceSummaryQueryApi = NonNullable<ApiGetQuery<"/reports/finance-summary">>;
+type FinanceSummaryReceivableApi = FinanceSummaryReportApi["ar"];
+type FinanceSummaryPayableApi = FinanceSummaryReportApi["ap"];
+type FinanceSummaryCODApi = FinanceSummaryReportApi["cod"];
+type FinanceSummaryCashApi = FinanceSummaryReportApi["cash"];
+type FinanceSummaryAgingBucketApi = FinanceSummaryReceivableApi["aging_buckets"][number];
+type FinanceSummaryDiscrepancyBucketApi = FinanceSummaryCODApi["discrepancy_buckets"][number];
 
 const defaultAccessToken = "local-dev-access-token";
 const zeroMoney = "0.00";
 
 export async function getFinanceSummaryReport(query: FinanceSummaryQuery = {}): Promise<FinanceSummaryReport> {
   try {
-    const report = await apiGetRaw<FinanceSummaryReportApi>(
-      `/reports/finance-summary${financeSummaryQueryString(query)}`,
-      { accessToken: defaultAccessToken }
-    );
+    const report = await apiGet("/reports/finance-summary", {
+      accessToken: defaultAccessToken,
+      query: financeSummaryApiQuery(query)
+    });
 
     return fromApiFinanceSummaryReport(report);
   } catch (cause) {
@@ -174,6 +117,14 @@ export function financeSummaryQueryString(query: FinanceSummaryQuery) {
 
   const value = params.toString();
   return value ? `?${value}` : "";
+}
+
+function financeSummaryApiQuery(query: FinanceSummaryQuery): FinanceSummaryQueryApi {
+  return {
+    ...(optionalString(query.fromDate) ? { from_date: optionalString(query.fromDate) } : {}),
+    ...(optionalString(query.toDate) ? { to_date: optionalString(query.toDate) } : {}),
+    ...(optionalString(query.businessDate) ? { business_date: optionalString(query.businessDate) } : {})
+  };
 }
 
 function financeSummaryCSVFilename(query: FinanceSummaryQuery) {
@@ -313,10 +264,15 @@ function includesDate(range: { fromDate: string; toDate: string }, date: string)
 }
 
 function setQueryParam(params: URLSearchParams, key: string, value: string | undefined) {
-  const normalized = value?.trim();
+  const normalized = optionalString(value);
   if (normalized) {
     params.set(key, normalized);
   }
+}
+
+function optionalString(value: string | undefined) {
+  const normalized = value?.trim();
+  return normalized || undefined;
 }
 
 function todayString() {

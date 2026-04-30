@@ -1608,6 +1608,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/inventory-snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get inventory snapshot report */
+        get: operations["getInventorySnapshotReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/inventory-snapshot/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export inventory snapshot report as CSV */
+        get: operations["exportInventorySnapshotReportCSV"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/operations-daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get operations daily report */
+        get: operations["getOperationsDailyReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/operations-daily/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export operations daily report as CSV */
+        get: operations["exportOperationsDailyReportCSV"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/finance-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get finance summary report */
+        get: operations["getFinanceSummaryReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/finance-summary/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export finance summary report as CSV */
+        get: operations["exportFinanceSummaryReportCSV"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cod-remittances": {
         parameters: {
             query?: never;
@@ -2035,7 +2137,7 @@ export interface components {
         /** @enum {string} */
         RoleKey: "CEO" | "ERP_ADMIN" | "WAREHOUSE_STAFF" | "WAREHOUSE_LEAD" | "QA" | "PURCHASE_OPS" | "FINANCE_OPS" | "SALES_OPS" | "PRODUCTION_OPS";
         /** @enum {string} */
-        PermissionKey: "dashboard:view" | "warehouse:view" | "inventory:view" | "purchase:view" | "finance:view" | "finance:manage" | "cod:reconcile" | "payment:approve" | "qc:view" | "production:view" | "subcontract:view" | "sales:view" | "shipping:view" | "returns:view" | "master-data:view" | "approvals:view" | "audit-log:view" | "reports:view" | "settings:view" | "qc:decision" | "record:create" | "record:export";
+        PermissionKey: "dashboard:view" | "warehouse:view" | "inventory:view" | "purchase:view" | "finance:view" | "finance:manage" | "cod:reconcile" | "payment:approve" | "qc:view" | "production:view" | "subcontract:view" | "sales:view" | "shipping:view" | "returns:view" | "master-data:view" | "approvals:view" | "audit-log:view" | "reports:view" | "reports:export" | "reports:finance:view" | "settings:view" | "qc:decision" | "record:create" | "record:export";
         Pagination: {
             /** @example 1 */
             page: number;
@@ -4284,6 +4386,166 @@ export interface components {
             cash_out_today: components["schemas"]["MoneyAmount"];
             net_cash_today: components["schemas"]["MoneyAmount"];
         };
+        ReportMetadata: {
+            /** Format: date-time */
+            generated_at: string;
+            /** @example Asia/Ho_Chi_Minh */
+            timezone: string;
+            /** @example reporting-v1 */
+            source_version: string;
+            filters: components["schemas"]["ReportFilters"];
+        };
+        ReportFilters: {
+            /** Format: date */
+            from_date: string;
+            /** Format: date */
+            to_date: string;
+            /** Format: date */
+            business_date: string;
+            warehouse_id?: string;
+            status?: string;
+            item_id?: string;
+            category?: string;
+        };
+        InventorySnapshotReportSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["InventorySnapshotReport"];
+        };
+        InventorySnapshotReport: {
+            metadata: components["schemas"]["ReportMetadata"];
+            summary: components["schemas"]["InventorySnapshotSummary"];
+            rows: components["schemas"]["InventorySnapshotRow"][];
+        };
+        InventorySnapshotSummary: {
+            row_count: number;
+            low_stock_row_count: number;
+            expiry_warning_rows: number;
+            expired_rows: number;
+            totals_by_uom: components["schemas"]["InventorySnapshotUOMTotal"][];
+        };
+        InventorySnapshotUOMTotal: {
+            base_uom_code: components["schemas"]["UOMCode"];
+            physical_qty: components["schemas"]["Quantity"];
+            reserved_qty: components["schemas"]["Quantity"];
+            quarantine_qty: components["schemas"]["Quantity"];
+            blocked_qty: components["schemas"]["Quantity"];
+            available_qty: components["schemas"]["Quantity"];
+        };
+        InventorySnapshotRow: {
+            warehouse_id: string;
+            warehouse_code?: string;
+            location_id?: string;
+            location_code?: string;
+            item_id?: string;
+            sku: string;
+            batch_id?: string;
+            batch_no?: string;
+            /** Format: date */
+            batch_expiry?: string;
+            base_uom_code: components["schemas"]["UOMCode"];
+            physical_qty: components["schemas"]["Quantity"];
+            reserved_qty: components["schemas"]["Quantity"];
+            quarantine_qty: components["schemas"]["Quantity"];
+            blocked_qty: components["schemas"]["Quantity"];
+            available_qty: components["schemas"]["Quantity"];
+            low_stock: boolean;
+            expiry_warning: boolean;
+            expired: boolean;
+            batch_qc_status?: string;
+            batch_status?: string;
+            source_stock_state: string;
+        };
+        OperationsDailyReportSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["OperationsDailyReport"];
+        };
+        OperationsDailyReport: {
+            metadata: components["schemas"]["ReportMetadata"];
+            summary: components["schemas"]["OperationsDailySummary"];
+            areas: components["schemas"]["OperationsDailyAreaSummary"][];
+            rows: components["schemas"]["OperationsDailyRow"][];
+        };
+        OperationsDailySummary: {
+            signal_count: number;
+            pending_count: number;
+            in_progress_count: number;
+            completed_count: number;
+            blocked_count: number;
+            exception_count: number;
+        };
+        OperationsDailyAreaSummary: components["schemas"]["OperationsDailySummary"] & {
+            area: string;
+        };
+        OperationsDailyRow: {
+            id: string;
+            area: string;
+            source_type: string;
+            source_id: string;
+            ref_no: string;
+            title: string;
+            warehouse_id: string;
+            warehouse_code?: string;
+            /** Format: date */
+            business_date: string;
+            status: string;
+            severity: string;
+            quantity?: components["schemas"]["Quantity"];
+            uom_code?: components["schemas"]["UOMCode"];
+            exception_code?: string;
+            owner?: string;
+        };
+        FinanceSummaryReportSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["FinanceSummaryReport"];
+        };
+        FinanceSummaryReport: {
+            metadata: components["schemas"]["ReportMetadata"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            ar: components["schemas"]["FinanceSummaryReceivable"];
+            ap: components["schemas"]["FinanceSummaryPayable"];
+            cod: components["schemas"]["FinanceSummaryCOD"];
+            cash: components["schemas"]["FinanceSummaryCash"];
+        };
+        FinanceSummaryReceivable: {
+            open_count: number;
+            overdue_count: number;
+            disputed_count: number;
+            open_amount: components["schemas"]["MoneyAmount"];
+            overdue_amount: components["schemas"]["MoneyAmount"];
+            outstanding_amount: components["schemas"]["MoneyAmount"];
+            aging_buckets: components["schemas"]["FinanceSummaryAgingBucket"][];
+        };
+        FinanceSummaryPayable: {
+            open_count: number;
+            due_count: number;
+            payment_requested_count: number;
+            payment_approved_count: number;
+            open_amount: components["schemas"]["MoneyAmount"];
+            due_amount: components["schemas"]["MoneyAmount"];
+            outstanding_amount: components["schemas"]["MoneyAmount"];
+            aging_buckets: components["schemas"]["FinanceSummaryAgingBucket"][];
+        };
+        FinanceSummaryAgingBucket: {
+            bucket: string;
+            count: number;
+            amount: components["schemas"]["MoneyAmount"];
+        };
+        FinanceSummaryCOD: {
+            pending_count: number;
+            discrepancy_count: number;
+            pending_amount: components["schemas"]["MoneyAmount"];
+            discrepancy_amount: components["schemas"]["MoneyAmount"];
+            discrepancy_buckets: components["schemas"]["FinanceSummaryDiscrepancyBucket"][];
+        };
+        FinanceSummaryDiscrepancyBucket: {
+            type: string;
+            status: string;
+            count: number;
+            amount: components["schemas"]["MoneyAmount"];
+        };
+        FinanceSummaryCash: {
+            transaction_count: number;
+            cash_in_amount: components["schemas"]["MoneyAmount"];
+            cash_out_amount: components["schemas"]["MoneyAmount"];
+            net_cash_amount: components["schemas"]["MoneyAmount"];
+        };
         /** @enum {string} */
         CODRemittanceStatus: "draft" | "matching" | "submitted" | "approved" | "discrepancy" | "closed" | "void";
         /** @enum {string} */
@@ -4793,6 +5055,16 @@ export interface components {
         PageSizeParam: number;
         /** @description Quick search term for code, name, phone, or other whitelisted fields. */
         SearchParam: string;
+        /** @description Inclusive report start business date in Asia/Ho_Chi_Minh. */
+        ReportFromDateParam: string;
+        /** @description Inclusive report end business date in Asia/Ho_Chi_Minh. */
+        ReportToDateParam: string;
+        /** @description As-of business date in Asia/Ho_Chi_Minh. */
+        ReportBusinessDateParam: string;
+        /** @description Warehouse identifier filter. */
+        ReportWarehouseIDParam: string;
+        /** @description Report status/state filter; blank means all. */
+        ReportStatusParam: string;
         /** @description Filter by master data lifecycle status. */
         MasterDataStatusParam: components["schemas"]["MasterDataStatus"];
         SubcontractOrderIDParam: string;
@@ -8131,6 +8403,221 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getInventorySnapshotReport: {
+        parameters: {
+            query?: {
+                /** @description Inclusive report start business date in Asia/Ho_Chi_Minh. */
+                from_date?: components["parameters"]["ReportFromDateParam"];
+                /** @description Inclusive report end business date in Asia/Ho_Chi_Minh. */
+                to_date?: components["parameters"]["ReportToDateParam"];
+                /** @description As-of business date in Asia/Ho_Chi_Minh. */
+                business_date?: components["parameters"]["ReportBusinessDateParam"];
+                /** @description Warehouse identifier filter. */
+                warehouse_id?: components["parameters"]["ReportWarehouseIDParam"];
+                /** @description Report status/state filter; blank means all. */
+                status?: components["parameters"]["ReportStatusParam"];
+                item_id?: string;
+                category?: string;
+                location_id?: string;
+                sku?: string;
+                batch_id?: string;
+                low_stock_threshold?: components["schemas"]["Quantity"];
+                expiry_warning_days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Inventory snapshot report */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventorySnapshotReportSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    exportInventorySnapshotReportCSV: {
+        parameters: {
+            query?: {
+                /** @description Inclusive report start business date in Asia/Ho_Chi_Minh. */
+                from_date?: components["parameters"]["ReportFromDateParam"];
+                /** @description Inclusive report end business date in Asia/Ho_Chi_Minh. */
+                to_date?: components["parameters"]["ReportToDateParam"];
+                /** @description As-of business date in Asia/Ho_Chi_Minh. */
+                business_date?: components["parameters"]["ReportBusinessDateParam"];
+                /** @description Warehouse identifier filter. */
+                warehouse_id?: components["parameters"]["ReportWarehouseIDParam"];
+                /** @description Report status/state filter; blank means all. */
+                status?: components["parameters"]["ReportStatusParam"];
+                item_id?: string;
+                category?: string;
+                location_id?: string;
+                sku?: string;
+                batch_id?: string;
+                low_stock_threshold?: components["schemas"]["Quantity"];
+                expiry_warning_days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Inventory snapshot CSV with stable headers and decimal quantity strings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getOperationsDailyReport: {
+        parameters: {
+            query?: {
+                /** @description Inclusive report start business date in Asia/Ho_Chi_Minh. */
+                from_date?: components["parameters"]["ReportFromDateParam"];
+                /** @description Inclusive report end business date in Asia/Ho_Chi_Minh. */
+                to_date?: components["parameters"]["ReportToDateParam"];
+                /** @description As-of business date in Asia/Ho_Chi_Minh. */
+                business_date?: components["parameters"]["ReportBusinessDateParam"];
+                /** @description Warehouse identifier filter. */
+                warehouse_id?: components["parameters"]["ReportWarehouseIDParam"];
+                /** @description Report status/state filter; blank means all. */
+                status?: components["parameters"]["ReportStatusParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Operations daily report */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationsDailyReportSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    exportOperationsDailyReportCSV: {
+        parameters: {
+            query?: {
+                /** @description Inclusive report start business date in Asia/Ho_Chi_Minh. */
+                from_date?: components["parameters"]["ReportFromDateParam"];
+                /** @description Inclusive report end business date in Asia/Ho_Chi_Minh. */
+                to_date?: components["parameters"]["ReportToDateParam"];
+                /** @description As-of business date in Asia/Ho_Chi_Minh. */
+                business_date?: components["parameters"]["ReportBusinessDateParam"];
+                /** @description Warehouse identifier filter. */
+                warehouse_id?: components["parameters"]["ReportWarehouseIDParam"];
+                /** @description Report status/state filter; blank means all. */
+                status?: components["parameters"]["ReportStatusParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Operations daily CSV with stable headers and decimal quantity strings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getFinanceSummaryReport: {
+        parameters: {
+            query?: {
+                /** @description Inclusive report start business date in Asia/Ho_Chi_Minh. */
+                from_date?: components["parameters"]["ReportFromDateParam"];
+                /** @description Inclusive report end business date in Asia/Ho_Chi_Minh. */
+                to_date?: components["parameters"]["ReportToDateParam"];
+                /** @description As-of business date in Asia/Ho_Chi_Minh. */
+                business_date?: components["parameters"]["ReportBusinessDateParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Finance summary report */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceSummaryReportSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    exportFinanceSummaryReportCSV: {
+        parameters: {
+            query?: {
+                /** @description Inclusive report start business date in Asia/Ho_Chi_Minh. */
+                from_date?: components["parameters"]["ReportFromDateParam"];
+                /** @description Inclusive report end business date in Asia/Ho_Chi_Minh. */
+                to_date?: components["parameters"]["ReportToDateParam"];
+                /** @description As-of business date in Asia/Ho_Chi_Minh. */
+                business_date?: components["parameters"]["ReportBusinessDateParam"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Finance summary CSV with stable headers and decimal money strings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
         };
     };
     listCODRemittances: {
