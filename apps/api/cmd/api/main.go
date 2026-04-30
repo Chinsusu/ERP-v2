@@ -1771,6 +1771,18 @@ func main() {
 		),
 	)
 	mux.Handle(
+		"/api/v1/reports/finance-summary",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(financeSummaryReportHandler(
+				customerReceivableStore,
+				supplierPayableStore,
+				codRemittanceStore,
+				cashTransactionStore,
+			)),
+		),
+	)
+	mux.Handle(
 		"/api/v1/stock-adjustments",
 		auth.RequireSessionToken(
 			authSessions,
