@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { DataTable, EmptyState, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
 import { CODReconciliationPanel } from "./CODReconciliationPanel";
+import { CashTransactionsPanel } from "./CashTransactionsPanel";
 import { SupplierPayablesPanel } from "./SupplierPayablesPanel";
 import { useCustomerReceivables } from "../hooks/useCustomerReceivables";
 import {
@@ -265,6 +266,9 @@ export function FinanceReceivablesPrototype() {
           <a className="erp-button erp-button--secondary" href="#supplier-payables">
             AP list
           </a>
+          <a className="erp-button erp-button--secondary" href="#cash-transactions">
+            Cash
+          </a>
           <a className="erp-button erp-button--secondary" href="#customer-receivables">
             AR list
           </a>
@@ -277,6 +281,8 @@ export function FinanceReceivablesPrototype() {
       <CODReconciliationPanel />
 
       <SupplierPayablesPanel />
+
+      <CashTransactionsPanel />
 
       <section className="erp-kpi-grid erp-finance-kpis">
         <FinanceKPI label="Open AR" value={totals.openCount} tone={totals.openCount > 0 ? "warning" : "normal"} />
