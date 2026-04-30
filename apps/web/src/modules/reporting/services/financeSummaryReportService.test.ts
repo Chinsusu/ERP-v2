@@ -50,6 +50,10 @@ describe("financeSummaryReportService", () => {
         unavailable: false
       }
     });
+    expect(report.cod.discrepancyBuckets[0].sourceReference.id).toContain(
+      "cod-remit-260430-0001:cod-remit-260430-0001-line-1"
+    );
+    expect(report.cod.discrepancyBuckets[0].sourceReference.href).toContain("source_ids=");
     expect(report.ap.sourceReferences.map((reference) => reference.entityType)).toEqual([
       "supplier_payable",
       "payment_approval"

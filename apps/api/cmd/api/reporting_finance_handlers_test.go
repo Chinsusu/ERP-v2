@@ -67,6 +67,12 @@ func TestFinanceSummaryReportHandlerReturnsReport(t *testing.T) {
 		payload.Data.COD.DiscrepancyAmount != "-50000.00" {
 		t.Fatalf("cod = %+v", payload.Data.COD)
 	}
+	if len(payload.Data.COD.DiscrepancyBuckets) != 1 ||
+		payload.Data.COD.DiscrepancyBuckets[0].Type != "short_paid" ||
+		payload.Data.COD.DiscrepancyBuckets[0].Status != "open" ||
+		!strings.Contains(payload.Data.COD.DiscrepancyBuckets[0].SourceReference.ID, "cod-remit-260430-0001:cod-remit-260430-0001-line-1") {
+		t.Fatalf("cod discrepancy buckets = %+v", payload.Data.COD.DiscrepancyBuckets)
+	}
 	if len(payload.Data.COD.SourceReferences) != 2 ||
 		payload.Data.COD.SourceReferences[1].EntityType != "cod_discrepancy" {
 		t.Fatalf("cod source references = %+v", payload.Data.COD.SourceReferences)
