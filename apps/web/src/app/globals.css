@@ -4443,6 +4443,15 @@ textarea {
   border-top: 1px solid var(--erp-border-soft);
 }
 
+.erp-finance-action-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
 .erp-finance-feedback {
   padding: 10px 12px;
   border: 1px solid var(--erp-border);

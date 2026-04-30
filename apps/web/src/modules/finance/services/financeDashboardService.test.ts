@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getFinanceDashboard } from "./financeDashboardService";
+import { buildFinanceSummaryReportHref, getFinanceDashboard } from "./financeDashboardService";
 
 describe("financeDashboardService", () => {
   beforeEach(() => {
@@ -23,6 +23,13 @@ describe("financeDashboardService", () => {
       cod: { pendingCount: 1, discrepancyAmount: "-50000.00" },
       cash: { transactionCount: 2, netCashToday: "-3000000.00" }
     });
+  });
+
+  it("builds finance summary report links with dashboard business date", () => {
+    expect(buildFinanceSummaryReportHref({ businessDate: "2026-04-30" })).toBe(
+      "/reports?report=finance&from_date=2026-04-30&to_date=2026-04-30&business_date=2026-04-30"
+    );
+    expect(buildFinanceSummaryReportHref()).toBe("/reports?report=finance");
   });
 
   it("maps API dashboard metrics and sends business date query", async () => {
