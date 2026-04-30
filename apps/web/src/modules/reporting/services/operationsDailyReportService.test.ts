@@ -1,0 +1,179 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  createPrototypeOperationsDailyReport,
+  getOperationsDailyReport,
+  operationsDailyQueryString
+} from "./operationsDailyReportService";
+
+describe("operationsDailyReportService", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("offline")))
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns filtered prototype report when API is unavailable", async () => {
+    const report = await getOperationsDailyReport({
+      businessDate: "2026-04-30",
+      warehouseId: "wh-hcm",
+      status: "blocked"
+    });
+
+    expect(report.metadata.filters).toMatchObject({
+      businessDate: "2026-04-30",
+      warehouseId: "wh-hcm",
+      status: "blocked"
+    });
+    expect(report.summary).toMatchObject({
+      signalCount: 2,
+      blockedCount: 2
+    });
+    expect(report.areas.map((area) => area.area)).toEqual(["outbound", "stock_count"]);
+    expect(report.rows.map((row) => row.exceptionCode)).toEqual(["MISSING_HANDOVER_SCAN", "VARIANCE_REVIEW"]);
+  });
+
+  it("maps API report and sends operations report filters", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            metadata: {
+              generated_at: "2026-04-30T07:00:52Z",
+              timezone: "Asia/Ho_Chi_Minh",
+              source_version: "reporting-v1",
+              filters: {
+                from_date: "2026-04-30",
+                to_date: "2026-04-30",
+                business_date: "2026-04-30",
+                warehouse_id: "wh-hcm",
+                status: "blocked"
+              }
+            },
+            summary: {
+              signal_count: 2,
+              pending_count: 0,
+              in_progress_count: 0,
+              completed_count: 0,
+              blocked_count: 2,
+              exception_count: 0
+            },
+            areas: [
+              {
+                area: "outbound",
+                signal_count: 1,
+                pending_count: 0,
+                in_progress_count: 0,
+                completed_count: 0,
+                blocked_count: 1,
+                exception_count: 0
+              }
+            ],
+            rows: [
+              {
+                id: "ops-outbound-hcm-260430-0002",
+                area: "outbound",
+                source_type: "carrier_manifest",
+                source_id: "manifest-260430-ghn",
+                ref_no: "MAN-260430-GHN",
+                title: "Carrier handover missing scan",
+                warehouse_id: "wh-hcm",
+                warehouse_code: "HCM",
+                business_date: "2026-04-30",
+                status: "blocked",
+                severity: "danger",
+                exception_code: "MISSING_HANDOVER_SCAN",
+                owner: "shipping"
+              }
+            ]
+          },
+          request_id: "req-report"
+        }),
+        { status: 200 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const report = await getOperationsDailyReport({
+      businessDate: "2026-04-30",
+      warehouseId: "wh-hcm",
+      status: "blocked"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/reports/operations-daily?business_date=2026-04-30&warehouse_id=wh-hcm&status=blocked",
+      {
+        headers: {
+          Authorization: "Bearer local-dev-access-token"
+        }
+      }
+    );
+    expect(report.summary.blockedCount).toBe(2);
+    expect(report.rows[0]).toMatchObject({
+      refNo: "MAN-260430-GHN",
+      exceptionCode: "MISSING_HANDOVER_SCAN"
+    });
+  });
+
+  it("does not hide API permission errors behind prototype fallback", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: "FORBIDDEN",
+              message: "Permission denied",
+              details: { permission: "reports:view" },
+              request_id: "req-denied"
+            }
+          }),
+          { status: 403 }
+        )
+      )
+    );
+
+    await expect(getOperationsDailyReport()).rejects.toMatchObject({
+      name: "ApiError",
+      status: 403,
+      code: "FORBIDDEN",
+      requestId: "req-denied"
+    });
+  });
+
+  it("builds stable query strings without blank filters", () => {
+    expect(
+      operationsDailyQueryString({
+        fromDate: "",
+        toDate: "2026-04-30",
+        businessDate: "2026-04-30",
+        warehouseId: "wh-hcm"
+      })
+    ).toBe("?to_date=2026-04-30&business_date=2026-04-30&warehouse_id=wh-hcm");
+  });
+
+  it("summarizes prototype areas by status", () => {
+    const report = createPrototypeOperationsDailyReport({ warehouseId: "wh-hcm" });
+
+    expect(report.summary).toMatchObject({
+      signalCount: 7,
+      pendingCount: 2,
+      inProgressCount: 2,
+      blockedCount: 2,
+      exceptionCount: 1
+    });
+    expect(report.areas.map((area) => area.area)).toEqual([
+      "inbound",
+      "qc",
+      "outbound",
+      "returns",
+      "stock_count",
+      "subcontract"
+    ]);
+  });
+});

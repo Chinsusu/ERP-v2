@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
   DataTable,
   EmptyState,
@@ -150,7 +151,11 @@ const totalColumns: DataTableColumn<InventorySnapshotUOMTotal>[] = [
   }
 ];
 
-export function InventorySnapshotReportPanel() {
+type InventorySnapshotReportPanelProps = {
+  controls?: ReactNode;
+};
+
+export function InventorySnapshotReportPanel({ controls }: InventorySnapshotReportPanelProps = {}) {
   const [businessDate, setBusinessDate] = useState(defaultBusinessDate());
   const [warehouseId, setWarehouseId] = useState("");
   const [status, setStatus] = useState<InventorySnapshotQuery["status"]>("");
@@ -183,6 +188,7 @@ export function InventorySnapshotReportPanel() {
           <p className="erp-page-description">Inventory snapshot by warehouse, item, batch, and stock state</p>
         </div>
         <div className="erp-page-actions">
+          {controls}
           <button className="erp-button erp-button--secondary" type="button" disabled title="S7-05-02">
             Export CSV
           </button>

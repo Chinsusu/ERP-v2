@@ -651,6 +651,47 @@ textarea {
   border-radius: var(--erp-radius);
 }
 
+.erp-reporting-toolbar--operations {
+  grid-template-columns: minmax(160px, 200px) minmax(160px, 200px) minmax(170px, 220px) minmax(170px, 220px);
+}
+
+.erp-reporting-tabs {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 3px;
+  background: var(--erp-neutral-bg);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-reporting-tab {
+  min-width: 96px;
+  height: 34px;
+  padding: 0 12px;
+  color: var(--erp-text-secondary);
+  font: inherit;
+  font-size: var(--erp-font-size-table);
+  font-weight: var(--erp-font-weight-semibold);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: calc(var(--erp-radius) - 2px);
+  cursor: pointer;
+}
+
+.erp-reporting-tab:hover,
+.erp-reporting-tab:focus-visible,
+.erp-reporting-tab.is-active {
+  color: var(--erp-text);
+  background: var(--erp-surface);
+  border-color: var(--erp-border-card);
+}
+
+.erp-reporting-tab:focus-visible {
+  outline: 2px solid rgba(213, 12, 45, 0.2);
+  outline-offset: 2px;
+}
+
 .erp-reporting-kpis {
   grid-template-columns: repeat(6, minmax(128px, 1fr));
 }
