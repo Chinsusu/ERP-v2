@@ -1229,6 +1229,16 @@ func main() {
 	uploadReturnAttachment := returnsapp.NewUploadReturnAttachment(returnReceiptStore, auditLogStore).
 		WithObjectStore(attachmentObjectStore).
 		WithStorageBucket(cfg.S3Bucket)
+	operationsDailySignals := operationsDailyRuntimeSignalSource{
+		receivings:           warehouseReceiving,
+		inboundQC:            inboundQCInspections,
+		carrierManifests:     listCarrierManifests,
+		pickTasks:            listPickTasks,
+		returnReceipts:       listReturnReceipts,
+		stockCounts:          listStockCounts,
+		subcontractOrders:    subcontractOrderService,
+		subcontractTransfers: subcontractMaterialTransferStore,
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
@@ -1774,14 +1784,14 @@ func main() {
 		"/api/v1/reports/operations-daily",
 		auth.RequireSessionToken(
 			authSessions,
-			http.HandlerFunc(operationsDailyReportHandler()),
+			http.HandlerFunc(operationsDailyReportHandler(operationsDailySignals)),
 		),
 	)
 	mux.Handle(
 		"/api/v1/reports/operations-daily/export.csv",
 		auth.RequireSessionToken(
 			authSessions,
-			http.HandlerFunc(operationsDailyCSVExportHandler()),
+			http.HandlerFunc(operationsDailyCSVExportHandler(operationsDailySignals)),
 		),
 	)
 	mux.Handle(

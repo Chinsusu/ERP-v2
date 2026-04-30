@@ -75,7 +75,7 @@ var operationsDailyCSVHeaders = []string{
 	"owner",
 }
 
-func operationsDailyReportHandler() http.HandlerFunc {
+func operationsDailyReportHandler(source operationsDailySignalSource) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
@@ -92,7 +92,7 @@ func operationsDailyReportHandler() http.HandlerFunc {
 			return
 		}
 
-		report, ok := operationsDailyReportFromRequest(w, r)
+		report, ok := operationsDailyReportFromRequest(w, r, source)
 		if !ok {
 			return
 		}
@@ -101,7 +101,7 @@ func operationsDailyReportHandler() http.HandlerFunc {
 	}
 }
 
-func operationsDailyCSVExportHandler() http.HandlerFunc {
+func operationsDailyCSVExportHandler(source operationsDailySignalSource) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
@@ -122,7 +122,7 @@ func operationsDailyCSVExportHandler() http.HandlerFunc {
 			return
 		}
 
-		report, ok := operationsDailyReportFromRequest(w, r)
+		report, ok := operationsDailyReportFromRequest(w, r, source)
 		if !ok {
 			return
 		}
@@ -145,7 +145,11 @@ func operationsDailyCSVExportHandler() http.HandlerFunc {
 	}
 }
 
-func operationsDailyReportFromRequest(w http.ResponseWriter, r *http.Request) (reportingdomain.OperationsDailyReport, bool) {
+func operationsDailyReportFromRequest(
+	w http.ResponseWriter,
+	r *http.Request,
+	source operationsDailySignalSource,
+) (reportingdomain.OperationsDailyReport, bool) {
 	filters, err := reportingdomain.NewReportFilters(reportFilterInputFromRequest(r))
 	if err != nil {
 		writeOperationsDailyValidationError(w, r, "Invalid operations daily filters", "date")
@@ -158,9 +162,18 @@ func operationsDailyReportFromRequest(w http.ResponseWriter, r *http.Request) (r
 	}
 	filters.Status = status
 
+	if source == nil {
+		source = prototypeOperationsDailySignalSource{}
+	}
+	signals, err := source.ListOperationsDailySignals(r.Context(), filters)
+	if err != nil {
+		writeOperationsDailyReportError(w, r, err)
+		return reportingdomain.OperationsDailyReport{}, false
+	}
+
 	report, err := reportingdomain.NewOperationsDailyReport(
 		filters,
-		prototypeOperationsDailySignals(),
+		signals,
 		reportingdomain.OperationsDailyOptions{},
 	)
 	if err != nil {

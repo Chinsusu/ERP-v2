@@ -26,7 +26,7 @@ func TestOperationsDailyReportSmoke(t *testing.T) {
 		req.Header.Set(response.HeaderRequestID, "req-smoke-operations-report")
 		rec := httptest.NewRecorder()
 
-		operationsDailyReportHandler().ServeHTTP(rec, req)
+		operationsDailyReportHandler(prototypeOperationsDailySignalSource{}).ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusOK {
 			t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
@@ -62,7 +62,7 @@ func TestOperationsDailyReportSmoke(t *testing.T) {
 		req.Header.Set(response.HeaderRequestID, "req-smoke-operations-report-csv")
 		rec := httptest.NewRecorder()
 
-		operationsDailyCSVExportHandler().ServeHTTP(rec, req)
+		operationsDailyCSVExportHandler(prototypeOperationsDailySignalSource{}).ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusOK {
 			t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
