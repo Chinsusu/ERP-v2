@@ -3,6 +3,8 @@ import {
   approveSupplierPayablePayment,
   getSupplierPayables,
   recordSupplierPayablePayment,
+  rejectSupplierPayablePayment,
+  requestSupplierPayablePayment,
   resetPrototypeSupplierPayablesForTest,
   voidSupplierPayable
 } from "./supplierPayableService";
@@ -103,10 +105,15 @@ describe("supplierPayableService", () => {
     });
   });
 
-  it("approves and records supplier payment through prototype actions", async () => {
+  it("requests, approves, and records supplier payment through prototype actions", async () => {
+    const requested = await requestSupplierPayablePayment("ap-supplier-260430-0001");
+
+    expect(requested.previousStatus).toBe("open");
+    expect(requested.currentStatus).toBe("payment_requested");
+
     const approved = await approveSupplierPayablePayment("ap-supplier-260430-0001");
 
-    expect(approved.previousStatus).toBe("open");
+    expect(approved.previousStatus).toBe("payment_requested");
     expect(approved.currentStatus).toBe("payment_approved");
 
     const paid = await recordSupplierPayablePayment("ap-supplier-260430-0001", "1250000");
@@ -117,6 +124,19 @@ describe("supplierPayableService", () => {
       paidAmount: "1250000.00",
       outstandingAmount: "3000000.00",
       auditLogId: "audit-ap-record-payment-ap-supplier-260430-0001"
+    });
+  });
+
+  it("rejects requested supplier payment with a reason", async () => {
+    await requestSupplierPayablePayment("ap-supplier-260430-0001");
+
+    const rejected = await rejectSupplierPayablePayment("ap-supplier-260430-0001", "supplier invoice mismatch");
+
+    expect(rejected.previousStatus).toBe("payment_requested");
+    expect(rejected.currentStatus).toBe("open");
+    expect(rejected.supplierPayable).toMatchObject({
+      paymentRejectedBy: "finance-manager",
+      paymentRejectReason: "supplier invoice mismatch"
     });
   });
 

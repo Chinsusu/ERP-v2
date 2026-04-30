@@ -3301,6 +3301,41 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /supplier-payables/{supplier_payable_id}/request-payment:
+    post:
+      summary: Request payment for a supplier payable
+      operationId: requestSupplierPayablePayment
+      tags:
+        - finance
+      parameters:
+        - name: supplier_payable_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierPayableActionRequest"
+      responses:
+        "200":
+          description: Supplier payable payment requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPayableActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /supplier-payables/{supplier_payable_id}/approve-payment:
     post:
       summary: Approve payment for a supplier payable
@@ -3322,6 +3357,41 @@ paths:
       responses:
         "200":
           description: Supplier payable payment approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPayableActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /supplier-payables/{supplier_payable_id}/reject-payment:
+    post:
+      summary: Reject payment request for a supplier payable
+      operationId: rejectSupplierPayablePayment
+      tags:
+        - finance
+      parameters:
+        - name: supplier_payable_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierPayableRejectPaymentRequest"
+      responses:
+        "200":
+          description: Supplier payable payment request rejected
           content:
             application/json:
               schema:
@@ -9585,6 +9655,13 @@ components:
         payment_approved_at:
           type: string
           format: date-time
+        payment_rejected_by:
+          type: string
+        payment_rejected_at:
+          type: string
+          format: date-time
+        payment_reject_reason:
+          type: string
         dispute_reason:
           type: string
         void_reason:
@@ -9675,6 +9752,14 @@ components:
           $ref: "#/components/schemas/MoneyAmount"
         reason:
           type: string
+    SupplierPayableRejectPaymentRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          minLength: 1
     SupplierPayableActionResult:
       type: object
       required:

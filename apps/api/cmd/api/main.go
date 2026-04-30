@@ -1436,10 +1436,24 @@ func main() {
 		),
 	)
 	mux.Handle(
+		"/api/v1/supplier-payables/{supplier_payable_id}/request-payment",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(supplierPayableRequestPaymentHandler(supplierPayableService)),
+		),
+	)
+	mux.Handle(
 		"/api/v1/supplier-payables/{supplier_payable_id}/approve-payment",
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(supplierPayableApprovePaymentHandler(supplierPayableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/supplier-payables/{supplier_payable_id}/reject-payment",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(supplierPayableRejectPaymentHandler(supplierPayableService)),
 		),
 	)
 	mux.Handle(
