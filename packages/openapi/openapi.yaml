@@ -3590,6 +3590,234 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /reports/inventory-snapshot:
+    get:
+      summary: Get inventory snapshot report
+      operationId: getInventorySnapshotReport
+      tags:
+        - reporting
+      parameters:
+        - $ref: "#/components/parameters/ReportFromDateParam"
+        - $ref: "#/components/parameters/ReportToDateParam"
+        - $ref: "#/components/parameters/ReportBusinessDateParam"
+        - $ref: "#/components/parameters/ReportWarehouseIDParam"
+        - $ref: "#/components/parameters/ReportStatusParam"
+        - name: item_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: location_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sku
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: batch_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: low_stock_threshold
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Quantity"
+        - name: expiry_warning_days
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Inventory snapshot report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventorySnapshotReportSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /reports/inventory-snapshot/export.csv:
+    get:
+      summary: Export inventory snapshot report as CSV
+      operationId: exportInventorySnapshotReportCSV
+      tags:
+        - reporting
+      parameters:
+        - $ref: "#/components/parameters/ReportFromDateParam"
+        - $ref: "#/components/parameters/ReportToDateParam"
+        - $ref: "#/components/parameters/ReportBusinessDateParam"
+        - $ref: "#/components/parameters/ReportWarehouseIDParam"
+        - $ref: "#/components/parameters/ReportStatusParam"
+        - name: item_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: location_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sku
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: batch_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: low_stock_threshold
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Quantity"
+        - name: expiry_warning_days
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Inventory snapshot CSV with stable headers and decimal quantity strings
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /reports/operations-daily:
+    get:
+      summary: Get operations daily report
+      operationId: getOperationsDailyReport
+      tags:
+        - reporting
+      parameters:
+        - $ref: "#/components/parameters/ReportFromDateParam"
+        - $ref: "#/components/parameters/ReportToDateParam"
+        - $ref: "#/components/parameters/ReportBusinessDateParam"
+        - $ref: "#/components/parameters/ReportWarehouseIDParam"
+        - $ref: "#/components/parameters/ReportStatusParam"
+      responses:
+        "200":
+          description: Operations daily report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationsDailyReportSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /reports/operations-daily/export.csv:
+    get:
+      summary: Export operations daily report as CSV
+      operationId: exportOperationsDailyReportCSV
+      tags:
+        - reporting
+      parameters:
+        - $ref: "#/components/parameters/ReportFromDateParam"
+        - $ref: "#/components/parameters/ReportToDateParam"
+        - $ref: "#/components/parameters/ReportBusinessDateParam"
+        - $ref: "#/components/parameters/ReportWarehouseIDParam"
+        - $ref: "#/components/parameters/ReportStatusParam"
+      responses:
+        "200":
+          description: Operations daily CSV with stable headers and decimal quantity strings
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /reports/finance-summary:
+    get:
+      summary: Get finance summary report
+      operationId: getFinanceSummaryReport
+      tags:
+        - reporting
+      parameters:
+        - $ref: "#/components/parameters/ReportFromDateParam"
+        - $ref: "#/components/parameters/ReportToDateParam"
+        - $ref: "#/components/parameters/ReportBusinessDateParam"
+      responses:
+        "200":
+          description: Finance summary report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinanceSummaryReportSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /reports/finance-summary/export.csv:
+    get:
+      summary: Export finance summary report as CSV
+      operationId: exportFinanceSummaryReportCSV
+      tags:
+        - reporting
+      parameters:
+        - $ref: "#/components/parameters/ReportFromDateParam"
+        - $ref: "#/components/parameters/ReportToDateParam"
+        - $ref: "#/components/parameters/ReportBusinessDateParam"
+      responses:
+        "200":
+          description: Finance summary CSV with stable headers and decimal money strings
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /cod-remittances:
     get:
       summary: List COD remittances
@@ -4296,6 +4524,44 @@ components:
         type: string
         maxLength: 100
       description: Quick search term for code, name, phone, or other whitelisted fields.
+    ReportFromDateParam:
+      name: from_date
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Inclusive report start business date in Asia/Ho_Chi_Minh.
+    ReportToDateParam:
+      name: to_date
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Inclusive report end business date in Asia/Ho_Chi_Minh.
+    ReportBusinessDateParam:
+      name: business_date
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: As-of business date in Asia/Ho_Chi_Minh.
+    ReportWarehouseIDParam:
+      name: warehouse_id
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Warehouse identifier filter.
+    ReportStatusParam:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Report status/state filter; blank means all.
     MasterDataStatusParam:
       name: status
       in: query
@@ -4628,6 +4894,8 @@ components:
         - approvals:view
         - audit-log:view
         - reports:view
+        - reports:export
+        - reports:finance:view
         - settings:view
         - qc:decision
         - record:create
@@ -10255,6 +10523,456 @@ components:
         cash_out_today:
           $ref: "#/components/schemas/MoneyAmount"
         net_cash_today:
+          $ref: "#/components/schemas/MoneyAmount"
+    ReportMetadata:
+      type: object
+      required:
+        - generated_at
+        - timezone
+        - source_version
+        - filters
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+          example: Asia/Ho_Chi_Minh
+        source_version:
+          type: string
+          example: reporting-v1
+        filters:
+          $ref: "#/components/schemas/ReportFilters"
+    ReportFilters:
+      type: object
+      required:
+        - from_date
+        - to_date
+        - business_date
+      properties:
+        from_date:
+          type: string
+          format: date
+        to_date:
+          type: string
+          format: date
+        business_date:
+          type: string
+          format: date
+        warehouse_id:
+          type: string
+        status:
+          type: string
+        item_id:
+          type: string
+        category:
+          type: string
+    InventorySnapshotReportSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/InventorySnapshotReport"
+    InventorySnapshotReport:
+      type: object
+      required:
+        - metadata
+        - summary
+        - rows
+      properties:
+        metadata:
+          $ref: "#/components/schemas/ReportMetadata"
+        summary:
+          $ref: "#/components/schemas/InventorySnapshotSummary"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventorySnapshotRow"
+    InventorySnapshotSummary:
+      type: object
+      required:
+        - row_count
+        - low_stock_row_count
+        - expiry_warning_rows
+        - expired_rows
+        - totals_by_uom
+      properties:
+        row_count:
+          type: integer
+          minimum: 0
+        low_stock_row_count:
+          type: integer
+          minimum: 0
+        expiry_warning_rows:
+          type: integer
+          minimum: 0
+        expired_rows:
+          type: integer
+          minimum: 0
+        totals_by_uom:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventorySnapshotUOMTotal"
+    InventorySnapshotUOMTotal:
+      type: object
+      required:
+        - base_uom_code
+        - physical_qty
+        - reserved_qty
+        - quarantine_qty
+        - blocked_qty
+        - available_qty
+      properties:
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        physical_qty:
+          $ref: "#/components/schemas/Quantity"
+        reserved_qty:
+          $ref: "#/components/schemas/Quantity"
+        quarantine_qty:
+          $ref: "#/components/schemas/Quantity"
+        blocked_qty:
+          $ref: "#/components/schemas/Quantity"
+        available_qty:
+          $ref: "#/components/schemas/Quantity"
+    InventorySnapshotRow:
+      type: object
+      required:
+        - warehouse_id
+        - sku
+        - base_uom_code
+        - physical_qty
+        - reserved_qty
+        - quarantine_qty
+        - blocked_qty
+        - available_qty
+        - low_stock
+        - expiry_warning
+        - expired
+        - source_stock_state
+      properties:
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        location_id:
+          type: string
+        location_code:
+          type: string
+        item_id:
+          type: string
+        sku:
+          type: string
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        batch_expiry:
+          type: string
+          format: date
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        physical_qty:
+          $ref: "#/components/schemas/Quantity"
+        reserved_qty:
+          $ref: "#/components/schemas/Quantity"
+        quarantine_qty:
+          $ref: "#/components/schemas/Quantity"
+        blocked_qty:
+          $ref: "#/components/schemas/Quantity"
+        available_qty:
+          $ref: "#/components/schemas/Quantity"
+        low_stock:
+          type: boolean
+        expiry_warning:
+          type: boolean
+        expired:
+          type: boolean
+        batch_qc_status:
+          type: string
+        batch_status:
+          type: string
+        source_stock_state:
+          type: string
+    OperationsDailyReportSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/OperationsDailyReport"
+    OperationsDailyReport:
+      type: object
+      required:
+        - metadata
+        - summary
+        - areas
+        - rows
+      properties:
+        metadata:
+          $ref: "#/components/schemas/ReportMetadata"
+        summary:
+          $ref: "#/components/schemas/OperationsDailySummary"
+        areas:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationsDailyAreaSummary"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationsDailyRow"
+    OperationsDailySummary:
+      type: object
+      required:
+        - signal_count
+        - pending_count
+        - in_progress_count
+        - completed_count
+        - blocked_count
+        - exception_count
+      properties:
+        signal_count:
+          type: integer
+          minimum: 0
+        pending_count:
+          type: integer
+          minimum: 0
+        in_progress_count:
+          type: integer
+          minimum: 0
+        completed_count:
+          type: integer
+          minimum: 0
+        blocked_count:
+          type: integer
+          minimum: 0
+        exception_count:
+          type: integer
+          minimum: 0
+    OperationsDailyAreaSummary:
+      allOf:
+        - $ref: "#/components/schemas/OperationsDailySummary"
+        - type: object
+          required:
+            - area
+          properties:
+            area:
+              type: string
+    OperationsDailyRow:
+      type: object
+      required:
+        - id
+        - area
+        - source_type
+        - source_id
+        - ref_no
+        - title
+        - warehouse_id
+        - business_date
+        - status
+        - severity
+      properties:
+        id:
+          type: string
+        area:
+          type: string
+        source_type:
+          type: string
+        source_id:
+          type: string
+        ref_no:
+          type: string
+        title:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        business_date:
+          type: string
+          format: date
+        status:
+          type: string
+        severity:
+          type: string
+        quantity:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        exception_code:
+          type: string
+        owner:
+          type: string
+    FinanceSummaryReportSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/FinanceSummaryReport"
+    FinanceSummaryReport:
+      type: object
+      required:
+        - metadata
+        - currency_code
+        - ar
+        - ap
+        - cod
+        - cash
+      properties:
+        metadata:
+          $ref: "#/components/schemas/ReportMetadata"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        ar:
+          $ref: "#/components/schemas/FinanceSummaryReceivable"
+        ap:
+          $ref: "#/components/schemas/FinanceSummaryPayable"
+        cod:
+          $ref: "#/components/schemas/FinanceSummaryCOD"
+        cash:
+          $ref: "#/components/schemas/FinanceSummaryCash"
+    FinanceSummaryReceivable:
+      type: object
+      required:
+        - open_count
+        - overdue_count
+        - disputed_count
+        - open_amount
+        - overdue_amount
+        - outstanding_amount
+        - aging_buckets
+      properties:
+        open_count:
+          type: integer
+          minimum: 0
+        overdue_count:
+          type: integer
+          minimum: 0
+        disputed_count:
+          type: integer
+          minimum: 0
+        open_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        overdue_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        outstanding_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        aging_buckets:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceSummaryAgingBucket"
+    FinanceSummaryPayable:
+      type: object
+      required:
+        - open_count
+        - due_count
+        - payment_requested_count
+        - payment_approved_count
+        - open_amount
+        - due_amount
+        - outstanding_amount
+        - aging_buckets
+      properties:
+        open_count:
+          type: integer
+          minimum: 0
+        due_count:
+          type: integer
+          minimum: 0
+        payment_requested_count:
+          type: integer
+          minimum: 0
+        payment_approved_count:
+          type: integer
+          minimum: 0
+        open_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        due_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        outstanding_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        aging_buckets:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceSummaryAgingBucket"
+    FinanceSummaryAgingBucket:
+      type: object
+      required:
+        - bucket
+        - count
+        - amount
+      properties:
+        bucket:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+        amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    FinanceSummaryCOD:
+      type: object
+      required:
+        - pending_count
+        - discrepancy_count
+        - pending_amount
+        - discrepancy_amount
+        - discrepancy_buckets
+      properties:
+        pending_count:
+          type: integer
+          minimum: 0
+        discrepancy_count:
+          type: integer
+          minimum: 0
+        pending_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        discrepancy_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        discrepancy_buckets:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceSummaryDiscrepancyBucket"
+    FinanceSummaryDiscrepancyBucket:
+      type: object
+      required:
+        - type
+        - status
+        - count
+        - amount
+      properties:
+        type:
+          type: string
+        status:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+        amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    FinanceSummaryCash:
+      type: object
+      required:
+        - transaction_count
+        - cash_in_amount
+        - cash_out_amount
+        - net_cash_amount
+      properties:
+        transaction_count:
+          type: integer
+          minimum: 0
+        cash_in_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        cash_out_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        net_cash_amount:
           $ref: "#/components/schemas/MoneyAmount"
     CODRemittanceStatus:
       type: string
