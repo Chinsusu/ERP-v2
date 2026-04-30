@@ -83,7 +83,7 @@ const rowColumns: DataTableColumn<OperationsDailyRow>[] = [
     header: "Reference",
     render: (row) => (
       <span className="erp-reporting-item-cell">
-        <strong>{row.refNo}</strong>
+        <OperationsSourceReference row={row} />
         <small>{sourceLabel(row.sourceType)}</small>
       </span>
     ),
@@ -145,6 +145,18 @@ const rowColumns: DataTableColumn<OperationsDailyRow>[] = [
     sticky: true
   }
 ];
+
+function OperationsSourceReference({ row }: { row: OperationsDailyRow }) {
+  if (!row.sourceReference.unavailable && row.sourceReference.href) {
+    return (
+      <a className="erp-reporting-source-link" href={row.sourceReference.href} aria-label={`Open ${row.refNo}`}>
+        {row.refNo}
+      </a>
+    );
+  }
+
+  return <strong>{row.refNo}</strong>;
+}
 
 type OperationsDailyReportPanelProps = {
   controls?: ReactNode;

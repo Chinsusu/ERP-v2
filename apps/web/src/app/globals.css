@@ -712,6 +712,18 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.erp-reporting-source-link {
+  color: var(--erp-accent);
+  font-weight: var(--erp-font-weight-semibold);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.erp-reporting-source-link:hover,
+.erp-reporting-source-link:focus-visible {
+  text-decoration: underline;
+}
+
 .erp-reporting-item-cell small {
   color: var(--erp-text-secondary);
   font-family: var(--erp-font-mono);
