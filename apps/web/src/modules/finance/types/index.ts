@@ -209,6 +209,53 @@ export type CreateCashTransactionInput = {
   memo?: string;
 };
 
+export type FinanceDashboardReceivableMetrics = {
+  openCount: number;
+  overdueCount: number;
+  disputedCount: number;
+  openAmount: string;
+  overdueAmount: string;
+  outstandingAmount: string;
+};
+
+export type FinanceDashboardPayableMetrics = {
+  openCount: number;
+  dueCount: number;
+  paymentRequestedCount: number;
+  paymentApprovedCount: number;
+  openAmount: string;
+  dueAmount: string;
+  outstandingAmount: string;
+};
+
+export type FinanceDashboardCODMetrics = {
+  pendingCount: number;
+  discrepancyCount: number;
+  pendingAmount: string;
+  discrepancyAmount: string;
+};
+
+export type FinanceDashboardCashMetrics = {
+  transactionCount: number;
+  cashInToday: string;
+  cashOutToday: string;
+  netCashToday: string;
+};
+
+export type FinanceDashboard = {
+  businessDate: string;
+  generatedAt: string;
+  currencyCode: string;
+  ar: FinanceDashboardReceivableMetrics;
+  ap: FinanceDashboardPayableMetrics;
+  cod: FinanceDashboardCODMetrics;
+  cash: FinanceDashboardCashMetrics;
+};
+
+export type FinanceDashboardQuery = {
+  businessDate?: string;
+};
+
 export type CODRemittanceLine = {
   id: string;
   receivableId: string;

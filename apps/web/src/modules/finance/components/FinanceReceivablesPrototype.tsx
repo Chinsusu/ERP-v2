@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { DataTable, EmptyState, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
 import { CODReconciliationPanel } from "./CODReconciliationPanel";
 import { CashTransactionsPanel } from "./CashTransactionsPanel";
+import { FinanceDashboardPanel } from "./FinanceDashboardPanel";
 import { SupplierPayablesPanel } from "./SupplierPayablesPanel";
 import { useCustomerReceivables } from "../hooks/useCustomerReceivables";
 import {
@@ -260,6 +261,9 @@ export function FinanceReceivablesPrototype() {
           <p className="erp-page-description">COD reconciliation, customer receivables, supplier payables, collection, and payment tracking</p>
         </div>
         <div className="erp-page-actions">
+          <a className="erp-button erp-button--primary" href="#finance-dashboard">
+            Dashboard
+          </a>
           <a className="erp-button erp-button--primary" href="#cod-reconciliation">
             COD reconciliation
           </a>
@@ -277,6 +281,8 @@ export function FinanceReceivablesPrototype() {
           </a>
         </div>
       </header>
+
+      <FinanceDashboardPanel />
 
       <CODReconciliationPanel />
 
