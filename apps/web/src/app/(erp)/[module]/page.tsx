@@ -6,6 +6,7 @@ import { MasterDataPrototype } from "@/modules/masterdata/components/MasterDataP
 import { PurchaseOrderPrototype } from "@/modules/purchase/components/PurchaseOrderPrototype";
 import { InboundQCPrototype } from "@/modules/qc/components/InboundQCPrototype";
 import { WarehouseReceivingPrototype } from "@/modules/receiving/components/WarehouseReceivingPrototype";
+import { InventorySnapshotReportPanel } from "@/modules/reporting/components/InventorySnapshotReport";
 import { ReturnReceivingPrototype } from "@/modules/returns/components/ReturnReceivingPrototype";
 import { SalesOrderPrototype } from "@/modules/sales/components/SalesOrderPrototype";
 import { ShippingOperationsPrototype } from "@/modules/shipping/components/ShippingOperationsPrototype";
@@ -78,6 +79,10 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
 
   if (module === "audit-log") {
     return <AuditLogPrototype />;
+  }
+
+  if (module === "reports") {
+    return <InventorySnapshotReportPanel />;
   }
 
   return <ModulePlaceholder item={item} user={session.user} />;

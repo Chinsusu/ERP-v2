@@ -630,6 +630,57 @@ textarea {
   white-space: nowrap;
 }
 
+.erp-reporting-page {
+  display: grid;
+  gap: 16px;
+}
+
+.erp-reporting-page .erp-page-header,
+.erp-reporting-page .erp-module-table-card {
+  margin-bottom: 0;
+}
+
+.erp-reporting-toolbar {
+  display: grid;
+  grid-template-columns: minmax(160px, 190px) minmax(170px, 220px) minmax(160px, 200px) minmax(180px, 1fr) minmax(170px, 240px) minmax(140px, 170px) minmax(130px, 160px);
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-card);
+  border-radius: var(--erp-radius);
+}
+
+.erp-reporting-kpis {
+  grid-template-columns: repeat(6, minmax(128px, 1fr));
+}
+
+.erp-reporting-item-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.erp-reporting-item-cell strong {
+  color: var(--erp-text);
+  font-weight: var(--erp-font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.erp-reporting-item-cell small {
+  color: var(--erp-text-secondary);
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+  overflow-wrap: anywhere;
+}
+
+.erp-reporting-chip-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .erp-audit-page {
   display: grid;
   gap: 16px;
@@ -4308,6 +4359,8 @@ textarea {
   }
 
   .erp-stock-toolbar,
+  .erp-reporting-toolbar,
+  .erp-reporting-kpis,
   .erp-stock-adjustment-actions,
   .erp-stock-count-form,
   .erp-stock-qc-form,
