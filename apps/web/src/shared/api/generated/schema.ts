@@ -1556,6 +1556,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cash-transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List cash transactions */
+        get: operations["listCashTransactions"];
+        put?: never;
+        /** Record a cash transaction */
+        post: operations["createCashTransaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cash-transactions/{cash_transaction_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get cash transaction detail */
+        get: operations["getCashTransaction"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cod-remittances": {
         parameters: {
             query?: never;
@@ -4095,6 +4130,99 @@ export interface components {
             previous_status: components["schemas"]["SupplierPayableStatus"];
             current_status: components["schemas"]["SupplierPayableStatus"];
             audit_log_id?: string;
+        };
+        /** @enum {string} */
+        CashTransactionStatus: "draft" | "posted" | "void";
+        /** @enum {string} */
+        CashTransactionDirection: "cash_in" | "cash_out";
+        /** @enum {string} */
+        CashAllocationTargetType: "customer_receivable" | "supplier_payable" | "cod_remittance" | "payment_request" | "manual_adjustment";
+        CashTransactionListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CashTransactionListItem"][];
+        };
+        CashTransactionSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CashTransaction"];
+        };
+        CashTransactionListItem: {
+            id: string;
+            transaction_no: string;
+            direction: components["schemas"]["CashTransactionDirection"];
+            status: components["schemas"]["CashTransactionStatus"];
+            /** Format: date */
+            business_date: string;
+            counterparty_id?: string;
+            counterparty_name: string;
+            payment_method: string;
+            reference_no?: string;
+            total_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            posted_by?: string;
+            /** Format: date-time */
+            posted_at?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        CashTransaction: {
+            id: string;
+            org_id: string;
+            transaction_no: string;
+            direction: components["schemas"]["CashTransactionDirection"];
+            status: components["schemas"]["CashTransactionStatus"];
+            /** Format: date */
+            business_date: string;
+            counterparty_id?: string;
+            counterparty_name: string;
+            payment_method: string;
+            reference_no?: string;
+            allocations: components["schemas"]["CashTransactionAllocation"][];
+            total_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            memo?: string;
+            posted_by?: string;
+            /** Format: date-time */
+            posted_at?: string;
+            void_reason?: string;
+            voided_by?: string;
+            /** Format: date-time */
+            voided_at?: string;
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        CashTransactionAllocation: {
+            id: string;
+            target_type: components["schemas"]["CashAllocationTargetType"];
+            target_id: string;
+            target_no: string;
+            amount: components["schemas"]["MoneyAmount"];
+        };
+        CreateCashTransactionRequest: {
+            id?: string;
+            transaction_no?: string;
+            direction: components["schemas"]["CashTransactionDirection"];
+            /** Format: date */
+            business_date: string;
+            counterparty_id?: string;
+            counterparty_name: string;
+            payment_method: string;
+            reference_no?: string;
+            allocations: components["schemas"]["CreateCashTransactionAllocationRequest"][];
+            total_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            memo?: string;
+        };
+        CreateCashTransactionAllocationRequest: {
+            id: string;
+            target_type: components["schemas"]["CashAllocationTargetType"];
+            target_id: string;
+            target_no: string;
+            amount: components["schemas"]["MoneyAmount"];
         };
         /** @enum {string} */
         CODRemittanceStatus: "draft" | "matching" | "submitted" | "approved" | "discrepancy" | "closed" | "void";
@@ -7834,6 +7962,89 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listCashTransactions: {
+        parameters: {
+            query?: {
+                /** @description Quick search term for code, name, phone, or other whitelisted fields. */
+                q?: components["parameters"]["SearchParam"];
+                /** @description Comma-separated cash transaction statuses. */
+                status?: string;
+                /** @description Comma-separated cash transaction directions. */
+                direction?: string;
+                counterparty_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cash transaction rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashTransactionListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createCashTransaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCashTransactionRequest"];
+            };
+        };
+        responses: {
+            /** @description Cash transaction recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashTransactionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getCashTransaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cash_transaction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cash transaction detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashTransactionSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listCODRemittances: {

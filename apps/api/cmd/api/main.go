@@ -1159,6 +1159,8 @@ func main() {
 	customerReceivableService := financeapp.NewCustomerReceivableService(customerReceivableStore, auditLogStore)
 	codRemittanceStore := financeapp.NewPrototypeCODRemittanceStore()
 	codRemittanceService := financeapp.NewCODRemittanceService(codRemittanceStore, auditLogStore)
+	cashTransactionStore := financeapp.NewPrototypeCashTransactionStore()
+	cashTransactionService := financeapp.NewCashTransactionService(cashTransactionStore, auditLogStore)
 	warehouseReceivingStore := inventoryapp.NewPrototypeWarehouseReceivingStore()
 	warehouseReceiving := inventoryapp.NewWarehouseReceivingService(
 		warehouseReceivingStore,
@@ -1468,6 +1470,20 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(supplierPayableVoidHandler(supplierPayableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/cash-transactions",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(cashTransactionsHandler(cashTransactionService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/cash-transactions/{cash_transaction_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(cashTransactionDetailHandler(cashTransactionService)),
 		),
 	)
 	mux.Handle(

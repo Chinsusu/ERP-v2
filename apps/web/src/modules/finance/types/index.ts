@@ -12,6 +12,14 @@ export type CODRemittanceStatus = "draft" | "matching" | "submitted" | "approved
 export type CODLineMatchStatus = "matched" | "short_paid" | "over_paid";
 export type CODDiscrepancyType = "short_paid" | "over_paid" | "carrier_fee" | "return_claim" | "other";
 export type CODDiscrepancyStatus = "open" | "resolved";
+export type CashTransactionStatus = "draft" | "posted" | "void";
+export type CashTransactionDirection = "cash_in" | "cash_out";
+export type CashAllocationTargetType =
+  | "customer_receivable"
+  | "supplier_payable"
+  | "cod_remittance"
+  | "payment_request"
+  | "manual_adjustment";
 
 export type FinanceSourceDocumentType =
   | "sales_order"
@@ -143,6 +151,62 @@ export type SupplierPayableActionResult = {
   previousStatus: SupplierPayableStatus;
   currentStatus: SupplierPayableStatus;
   auditLogId?: string;
+};
+
+export type CashTransactionAllocation = {
+  id: string;
+  targetType: CashAllocationTargetType;
+  targetId: string;
+  targetNo: string;
+  amount: string;
+};
+
+export type CashTransaction = {
+  id: string;
+  orgId?: string;
+  transactionNo: string;
+  direction: CashTransactionDirection;
+  status: CashTransactionStatus;
+  businessDate: string;
+  counterpartyId?: string;
+  counterpartyName: string;
+  paymentMethod: string;
+  referenceNo?: string;
+  allocations: CashTransactionAllocation[];
+  totalAmount: string;
+  currencyCode: string;
+  memo?: string;
+  postedBy?: string;
+  postedAt?: string;
+  voidReason?: string;
+  voidedBy?: string;
+  voidedAt?: string;
+  auditLogId?: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
+export type CashTransactionQuery = {
+  search?: string;
+  status?: CashTransactionStatus;
+  direction?: CashTransactionDirection;
+  counterpartyId?: string;
+};
+
+export type CreateCashTransactionInput = {
+  id?: string;
+  transactionNo?: string;
+  direction: CashTransactionDirection;
+  businessDate: string;
+  counterpartyId?: string;
+  counterpartyName: string;
+  paymentMethod: string;
+  referenceNo?: string;
+  allocations: CashTransactionAllocation[];
+  totalAmount: string;
+  currencyCode: string;
+  memo?: string;
 };
 
 export type CODRemittanceLine = {
