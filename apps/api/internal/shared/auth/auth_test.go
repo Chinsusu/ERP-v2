@@ -124,6 +124,9 @@ func TestPermissionCatalogIncludesPhaseOneModuleKeys(t *testing.T) {
 		PermissionPaymentApprove,
 		PermissionSubcontractView,
 		PermissionMasterDataView,
+		PermissionReportsView,
+		PermissionReportsExport,
+		PermissionFinanceReportsView,
 		PermissionSettingsView,
 		PermissionRecordCreate,
 	} {
@@ -164,6 +167,8 @@ func TestSprint4PurchaseAndFinanceRoleScopes(t *testing.T) {
 		PermissionCODReconcile,
 		PermissionPaymentApprove,
 		PermissionPurchaseView,
+		PermissionReportsExport,
+		PermissionFinanceReportsView,
 		PermissionAuditLogView,
 		PermissionRecordExport,
 	} {
@@ -173,6 +178,39 @@ func TestSprint4PurchaseAndFinanceRoleScopes(t *testing.T) {
 	}
 	if HasPermission(finance, PermissionRecordCreate) || HasPermission(finance, PermissionQCDecision) {
 		t.Fatal("finance role should not create operational records or make QC decisions")
+	}
+}
+
+func TestSprint7ReportingRoleScopes(t *testing.T) {
+	warehouseLead := MockPrincipalForRole(testConfig, RoleWarehouseLead)
+	for _, permission := range []PermissionKey{
+		PermissionReportsView,
+		PermissionReportsExport,
+	} {
+		if !HasPermission(warehouseLead, permission) {
+			t.Fatalf("warehouse lead missing reporting permission %q", permission)
+		}
+	}
+	if HasPermission(warehouseLead, PermissionFinanceReportsView) {
+		t.Fatal("warehouse lead should not see finance reports")
+	}
+
+	finance := MockPrincipalForRole(testConfig, RoleFinanceOps)
+	for _, permission := range []PermissionKey{
+		PermissionReportsView,
+		PermissionReportsExport,
+		PermissionFinanceReportsView,
+	} {
+		if !HasPermission(finance, permission) {
+			t.Fatalf("finance role missing reporting permission %q", permission)
+		}
+	}
+
+	warehouseStaff := MockPrincipalForRole(testConfig, RoleWarehouseStaff)
+	if HasPermission(warehouseStaff, PermissionReportsView) ||
+		HasPermission(warehouseStaff, PermissionReportsExport) ||
+		HasPermission(warehouseStaff, PermissionFinanceReportsView) {
+		t.Fatal("warehouse staff should not have Sprint 7 reporting permissions")
 	}
 }
 
