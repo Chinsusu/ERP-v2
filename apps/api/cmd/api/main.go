@@ -1154,6 +1154,8 @@ func main() {
 		WithStockReserver(salesOrderReservationStore)
 	customerReceivableStore := financeapp.NewPrototypeCustomerReceivableStore()
 	customerReceivableService := financeapp.NewCustomerReceivableService(customerReceivableStore, auditLogStore)
+	codRemittanceStore := financeapp.NewPrototypeCODRemittanceStore()
+	codRemittanceService := financeapp.NewCODRemittanceService(codRemittanceStore, auditLogStore)
 	warehouseReceivingStore := inventoryapp.NewPrototypeWarehouseReceivingStore()
 	warehouseReceiving := inventoryapp.NewWarehouseReceivingService(
 		warehouseReceivingStore,
@@ -1414,6 +1416,55 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(customerReceivableVoidHandler(customerReceivableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/cod-remittances",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(codRemittancesHandler(codRemittanceService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/cod-remittances/{cod_remittance_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(codRemittanceDetailHandler(codRemittanceService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/cod-remittances/{cod_remittance_id}/match",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(codRemittanceMatchHandler(codRemittanceService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/cod-remittances/{cod_remittance_id}/record-discrepancy",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(codRemittanceDiscrepancyHandler(codRemittanceService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/cod-remittances/{cod_remittance_id}/submit",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(codRemittanceSubmitHandler(codRemittanceService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/cod-remittances/{cod_remittance_id}/approve",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(codRemittanceApproveHandler(codRemittanceService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/cod-remittances/{cod_remittance_id}/close",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(codRemittanceCloseHandler(codRemittanceService)),
 		),
 	)
 	mux.Handle(

@@ -1436,6 +1436,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cod-remittances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List COD remittances */
+        get: operations["listCODRemittances"];
+        put?: never;
+        /** Create a COD remittance batch */
+        post: operations["createCODRemittance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cod-remittances/{cod_remittance_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get COD remittance detail */
+        get: operations["getCODRemittance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cod-remittances/{cod_remittance_id}/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a COD remittance matched */
+        post: operations["matchCODRemittance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cod-remittances/{cod_remittance_id}/record-discrepancy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a COD remittance discrepancy */
+        post: operations["recordCODRemittanceDiscrepancy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cod-remittances/{cod_remittance_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a COD remittance */
+        post: operations["submitCODRemittance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cod-remittances/{cod_remittance_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a COD remittance */
+        post: operations["approveCODRemittance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cod-remittances/{cod_remittance_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a COD remittance */
+        post: operations["closeCODRemittance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shipping/manifests": {
         parameters: {
             query?: never;
@@ -3750,6 +3870,142 @@ export interface components {
             customer_receivable: components["schemas"]["CustomerReceivable"];
             previous_status: components["schemas"]["CustomerReceivableStatus"];
             current_status: components["schemas"]["CustomerReceivableStatus"];
+            audit_log_id?: string;
+        };
+        /** @enum {string} */
+        CODRemittanceStatus: "draft" | "matching" | "submitted" | "approved" | "discrepancy" | "closed" | "void";
+        /** @enum {string} */
+        CODLineMatchStatus: "matched" | "short_paid" | "over_paid";
+        /** @enum {string} */
+        CODDiscrepancyType: "short_paid" | "over_paid" | "carrier_fee" | "return_claim" | "other";
+        /** @enum {string} */
+        CODDiscrepancyStatus: "open" | "resolved";
+        CODRemittanceListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CODRemittanceListItem"][];
+        };
+        CODRemittanceSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CODRemittance"];
+        };
+        CODRemittanceActionSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["CODRemittanceActionResult"];
+        };
+        CODRemittanceListItem: {
+            id: string;
+            remittance_no: string;
+            carrier_id: string;
+            carrier_code?: string;
+            carrier_name: string;
+            status: components["schemas"]["CODRemittanceStatus"];
+            /** Format: date */
+            business_date: string;
+            expected_amount: components["schemas"]["MoneyAmount"];
+            remitted_amount: components["schemas"]["MoneyAmount"];
+            discrepancy_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            line_count: number;
+            discrepancy_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        CODRemittance: {
+            id: string;
+            org_id: string;
+            remittance_no: string;
+            carrier_id: string;
+            carrier_code?: string;
+            carrier_name: string;
+            status: components["schemas"]["CODRemittanceStatus"];
+            /** Format: date */
+            business_date: string;
+            expected_amount: components["schemas"]["MoneyAmount"];
+            remitted_amount: components["schemas"]["MoneyAmount"];
+            discrepancy_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            lines: components["schemas"]["CODRemittanceLine"][];
+            discrepancies: components["schemas"]["CODDiscrepancy"][];
+            audit_log_id?: string;
+            submitted_by?: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            approved_by?: string;
+            /** Format: date-time */
+            approved_at?: string;
+            closed_by?: string;
+            /** Format: date-time */
+            closed_at?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        CODRemittanceLine: {
+            id: string;
+            receivable_id: string;
+            receivable_no: string;
+            shipment_id?: string;
+            tracking_no: string;
+            customer_name?: string;
+            expected_amount: components["schemas"]["MoneyAmount"];
+            remitted_amount: components["schemas"]["MoneyAmount"];
+            discrepancy_amount: components["schemas"]["MoneyAmount"];
+            match_status: components["schemas"]["CODLineMatchStatus"];
+        };
+        CODDiscrepancy: {
+            id: string;
+            line_id: string;
+            receivable_id: string;
+            type: components["schemas"]["CODDiscrepancyType"];
+            status: components["schemas"]["CODDiscrepancyStatus"];
+            amount: components["schemas"]["MoneyAmount"];
+            reason: string;
+            owner_id: string;
+            recorded_by: string;
+            /** Format: date-time */
+            recorded_at: string;
+            resolved_by?: string;
+            /** Format: date-time */
+            resolved_at?: string;
+            resolution?: string;
+        };
+        CreateCODRemittanceRequest: {
+            id?: string;
+            remittance_no?: string;
+            carrier_id: string;
+            carrier_code?: string;
+            carrier_name: string;
+            /** Format: date */
+            business_date: string;
+            expected_amount: components["schemas"]["MoneyAmount"];
+            remitted_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            lines: components["schemas"]["CreateCODRemittanceLineRequest"][];
+        };
+        CreateCODRemittanceLineRequest: {
+            id: string;
+            receivable_id: string;
+            receivable_no: string;
+            shipment_id?: string;
+            tracking_no: string;
+            customer_name?: string;
+            expected_amount: components["schemas"]["MoneyAmount"];
+            remitted_amount: components["schemas"]["MoneyAmount"];
+        };
+        CODRemittanceDiscrepancyRequest: {
+            id?: string;
+            line_id: string;
+            type?: components["schemas"]["CODDiscrepancyType"];
+            status?: components["schemas"]["CODDiscrepancyStatus"];
+            reason: string;
+            owner_id: string;
+        };
+        CODRemittanceActionResult: {
+            cod_remittance: components["schemas"]["CODRemittance"];
+            previous_status: components["schemas"]["CODRemittanceStatus"];
+            current_status: components["schemas"]["CODRemittanceStatus"];
             audit_log_id?: string;
         };
         /** @enum {string} */
@@ -7111,6 +7367,226 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerReceivableActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listCODRemittances: {
+        parameters: {
+            query?: {
+                /** @description Quick search term for code, name, phone, or other whitelisted fields. */
+                q?: components["parameters"]["SearchParam"];
+                /** @description Comma-separated COD remittance statuses. */
+                status?: string;
+                carrier_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description COD remittance rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CODRemittanceListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createCODRemittance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCODRemittanceRequest"];
+            };
+        };
+        responses: {
+            /** @description COD remittance created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CODRemittanceSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getCODRemittance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cod_remittance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description COD remittance detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CODRemittanceSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    matchCODRemittance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cod_remittance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description COD remittance matched */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CODRemittanceActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    recordCODRemittanceDiscrepancy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cod_remittance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CODRemittanceDiscrepancyRequest"];
+            };
+        };
+        responses: {
+            /** @description COD discrepancy recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CODRemittanceActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    submitCODRemittance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cod_remittance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description COD remittance submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CODRemittanceActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    approveCODRemittance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cod_remittance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description COD remittance approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CODRemittanceActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    closeCODRemittance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cod_remittance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description COD remittance closed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CODRemittanceActionSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];
