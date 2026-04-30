@@ -1,4 +1,4 @@
-import { ApiError, apiGetRaw } from "../../../shared/api/client";
+import { ApiError, apiGetBlob, apiGetRaw } from "../../../shared/api/client";
 import type {
   OperationsDailyAreaSummary,
   OperationsDailyQuery,
@@ -203,6 +203,19 @@ export async function getOperationsDailyReport(query: OperationsDailyQuery = {})
   }
 }
 
+export async function downloadOperationsDailyCSV(
+  query: OperationsDailyQuery = {}
+): Promise<{ blob: Blob; filename: string }> {
+  const result = await apiGetBlob(`/reports/operations-daily/export.csv${operationsDailyQueryString(query)}`, {
+    accessToken: defaultAccessToken
+  });
+
+  return {
+    blob: result.blob,
+    filename: result.filename ?? operationsDailyCSVFilename(query)
+  };
+}
+
 export function createPrototypeOperationsDailyReport(query: OperationsDailyQuery = {}): OperationsDailyReport {
   const businessDate = query.businessDate || todayString();
   const fromDate = query.fromDate || businessDate;
@@ -238,6 +251,12 @@ export function operationsDailyQueryString(query: OperationsDailyQuery) {
 
   const value = params.toString();
   return value ? `?${value}` : "";
+}
+
+function operationsDailyCSVFilename(query: OperationsDailyQuery) {
+  const toDate = query.toDate || query.businessDate || todayString();
+  const fromDate = query.fromDate || toDate;
+  return `operations-daily-${fromDate}-to-${toDate}.csv`;
 }
 
 function fromApiOperationsDailyReport(report: OperationsDailyReportApi): OperationsDailyReport {

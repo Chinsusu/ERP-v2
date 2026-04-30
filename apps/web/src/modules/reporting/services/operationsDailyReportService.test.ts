@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createPrototypeOperationsDailyReport,
+  downloadOperationsDailyCSV,
   getOperationsDailyReport,
   operationsDailyQueryString
 } from "./operationsDailyReportService";
@@ -118,6 +119,38 @@ describe("operationsDailyReportService", () => {
       refNo: "MAN-260430-GHN",
       exceptionCode: "MISSING_HANDOVER_SCAN"
     });
+  });
+
+  it("downloads operations CSV with current filters", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("ref_no,status,quantity\nGR-260430-0001,pending,12.000000\n", {
+        status: 200,
+        headers: {
+          "Content-Disposition": `attachment; filename="operations-daily-2026-04-30-to-2026-04-30.csv"`,
+          "Content-Type": "text/csv; charset=utf-8"
+        }
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const download = await downloadOperationsDailyCSV({
+      fromDate: "2026-04-30",
+      toDate: "2026-04-30",
+      businessDate: "2026-04-30",
+      warehouseId: "wh-hcm",
+      status: "pending"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/reports/operations-daily/export.csv?from_date=2026-04-30&to_date=2026-04-30&business_date=2026-04-30&warehouse_id=wh-hcm&status=pending",
+      {
+        headers: {
+          Authorization: "Bearer local-dev-access-token"
+        }
+      }
+    );
+    await expect(download.blob.text()).resolves.toContain("GR-260430-0001");
+    expect(download.filename).toBe("operations-daily-2026-04-30-to-2026-04-30.csv");
   });
 
   it("does not hide API permission errors behind prototype fallback", async () => {

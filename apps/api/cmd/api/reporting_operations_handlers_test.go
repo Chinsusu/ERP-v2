@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
@@ -65,11 +66,66 @@ func TestOperationsDailyReportHandlerReturnsFilteredReport(t *testing.T) {
 	}
 }
 
+func TestOperationsDailyCSVExportHandlerReturnsCSV(t *testing.T) {
+	req := cashTransactionRequest(
+		http.MethodGet,
+		"/api/v1/reports/operations-daily/export.csv?business_date=2026-04-30&warehouse_id=wh-hcm&status=pending",
+		nil,
+		auth.RoleWarehouseLead,
+	)
+	req.Header.Set(response.HeaderRequestID, "req-report-operations-csv")
+	rec := httptest.NewRecorder()
+
+	operationsDailyCSVExportHandler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); got != "text/csv; charset=utf-8" {
+		t.Fatalf("content type = %q, want text/csv", got)
+	}
+	if got := rec.Header().Get("Content-Disposition"); got != `attachment; filename="operations-daily-2026-04-30-to-2026-04-30.csv"` {
+		t.Fatalf("content disposition = %q", got)
+	}
+	if got := rec.Header().Get(response.HeaderRequestID); got != "req-report-operations-csv" {
+		t.Fatalf("request id = %q, want req-report-operations-csv", got)
+	}
+
+	lines := strings.Split(strings.TrimSpace(rec.Body.String()), "\n")
+	const header = "id,area,source_type,source_id,ref_no,title,warehouse_id,warehouse_code,business_date,status,severity,quantity,uom_code,exception_code,owner"
+	if len(lines) != 3 || lines[0] != header {
+		t.Fatalf("csv lines = %q, want header and two pending rows", lines)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		"GR-260430-0001",
+		"12.000000",
+		"RET-260430-0001",
+		"3.000000",
+		"pending",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("csv body = %q, want %q", body, want)
+		}
+	}
+}
+
 func TestOperationsDailyReportHandlerRequiresReportsPermission(t *testing.T) {
 	req := cashTransactionRequest(http.MethodGet, "/api/v1/reports/operations-daily", nil, auth.RoleWarehouseStaff)
 	rec := httptest.NewRecorder()
 
 	operationsDailyReportHandler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+func TestOperationsDailyCSVExportHandlerRequiresExportPermission(t *testing.T) {
+	req := cashTransactionRequest(http.MethodGet, "/api/v1/reports/operations-daily/export.csv", nil, auth.RoleQA)
+	rec := httptest.NewRecorder()
+
+	operationsDailyCSVExportHandler().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
@@ -94,11 +150,38 @@ func TestOperationsDailyReportHandlerRejectsInvalidFilters(t *testing.T) {
 	}
 }
 
+func TestOperationsDailyCSVExportHandlerRejectsInvalidFilters(t *testing.T) {
+	req := cashTransactionRequest(
+		http.MethodGet,
+		"/api/v1/reports/operations-daily/export.csv?from_date=2026-05-01&to_date=2026-04-30",
+		nil,
+		auth.RoleWarehouseLead,
+	)
+	rec := httptest.NewRecorder()
+
+	operationsDailyCSVExportHandler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
 func TestOperationsDailyReportHandlerRejectsUnsupportedMethod(t *testing.T) {
 	req := cashTransactionRequest(http.MethodPost, "/api/v1/reports/operations-daily", nil, auth.RoleWarehouseLead)
 	rec := httptest.NewRecorder()
 
 	operationsDailyReportHandler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestOperationsDailyCSVExportHandlerRejectsUnsupportedMethod(t *testing.T) {
+	req := cashTransactionRequest(http.MethodPost, "/api/v1/reports/operations-daily/export.csv", nil, auth.RoleWarehouseLead)
+	rec := httptest.NewRecorder()
+
+	operationsDailyCSVExportHandler().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
