@@ -29,6 +29,7 @@ type StockBalanceSnapshot struct {
 type AvailableStockFilter struct {
 	WarehouseID string
 	LocationID  string
+	ItemID      string
 	SKU         string
 	BatchID     string
 }
@@ -38,6 +39,7 @@ type AvailableStockSnapshot struct {
 	WarehouseCode    string
 	LocationID       string
 	LocationCode     string
+	ItemID           string
 	SKU              string
 	BatchID          string
 	BatchNo          string
@@ -98,6 +100,7 @@ func CalculateAvailableStockAt(rows []StockBalanceSnapshot, asOf time.Time) []Av
 				WarehouseCode:    strings.TrimSpace(row.WarehouseCode),
 				LocationID:       key.locationID,
 				LocationCode:     strings.TrimSpace(row.LocationCode),
+				ItemID:           strings.TrimSpace(row.ItemID),
 				SKU:              key.sku,
 				BatchID:          key.batchID,
 				BatchNo:          strings.TrimSpace(row.BatchNo),
