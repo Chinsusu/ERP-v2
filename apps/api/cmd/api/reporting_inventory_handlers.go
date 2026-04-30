@@ -278,13 +278,13 @@ func filterInventorySnapshotStatus(
 func inventorySnapshotStatusMatches(snapshot inventorydomain.AvailableStockSnapshot, status string) bool {
 	switch status {
 	case "available":
-		return snapshot.QCHoldQty.IsZero() && snapshot.BlockedQty.IsZero() && snapshot.ReservedQty.IsZero()
+		return !snapshot.AvailableQty.IsZero()
 	case "reserved":
-		return snapshot.QCHoldQty.IsZero() && snapshot.BlockedQty.IsZero() && !snapshot.ReservedQty.IsZero()
+		return !snapshot.ReservedQty.IsZero()
 	case "quarantine", "qc_hold":
 		return !snapshot.QCHoldQty.IsZero()
 	case "blocked":
-		return snapshot.QCHoldQty.IsZero() && !snapshot.BlockedQty.IsZero()
+		return !snapshot.BlockedQty.IsZero()
 	default:
 		return false
 	}
