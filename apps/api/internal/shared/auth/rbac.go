@@ -39,6 +39,8 @@ const PermissionMasterDataView PermissionKey = "master-data:view"
 const PermissionApprovalsView PermissionKey = "approvals:view"
 const PermissionAuditLogView PermissionKey = "audit-log:view"
 const PermissionReportsView PermissionKey = "reports:view"
+const PermissionReportsExport PermissionKey = "reports:export"
+const PermissionFinanceReportsView PermissionKey = "reports:finance:view"
 const PermissionSettingsView PermissionKey = "settings:view"
 const PermissionRecordCreate PermissionKey = "record:create"
 const PermissionRecordExport PermissionKey = "record:export"
@@ -87,6 +89,8 @@ var permissionCatalog = []PermissionDefinition{
 	{Key: PermissionApprovalsView, Name: "Approvals", Group: "control"},
 	{Key: PermissionAuditLogView, Name: "Audit Log", Group: "control"},
 	{Key: PermissionReportsView, Name: "Reports", Group: "control"},
+	{Key: PermissionReportsExport, Name: "Reports Export", Group: "action"},
+	{Key: PermissionFinanceReportsView, Name: "Finance Reports", Group: "control"},
 	{Key: PermissionSettingsView, Name: "Settings", Group: "control"},
 	{Key: PermissionRecordCreate, Name: "Create Record", Group: "action"},
 	{Key: PermissionRecordExport, Name: "Export Record", Group: "action"},
@@ -110,6 +114,8 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionApprovalsView,
 		PermissionAuditLogView,
 		PermissionReportsView,
+		PermissionReportsExport,
+		PermissionFinanceReportsView,
 		PermissionRecordExport,
 	},
 	RoleERPAdmin: {
@@ -132,6 +138,8 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionApprovalsView,
 		PermissionAuditLogView,
 		PermissionReportsView,
+		PermissionReportsExport,
+		PermissionFinanceReportsView,
 		PermissionSettingsView,
 		PermissionRecordCreate,
 		PermissionRecordExport,
@@ -151,6 +159,7 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionReturnsView,
 		PermissionApprovalsView,
 		PermissionReportsView,
+		PermissionReportsExport,
 		PermissionRecordCreate,
 		PermissionRecordExport,
 	},
@@ -170,6 +179,7 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionPurchaseView,
 		PermissionMasterDataView,
 		PermissionReportsView,
+		PermissionReportsExport,
 		PermissionRecordCreate,
 		PermissionRecordExport,
 	},
@@ -181,6 +191,8 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionCODReconcile,
 		PermissionPaymentApprove,
 		PermissionReportsView,
+		PermissionReportsExport,
+		PermissionFinanceReportsView,
 		PermissionAuditLogView,
 		PermissionRecordExport,
 	},

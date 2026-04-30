@@ -6,6 +6,7 @@ import {
   getVisibleMenuGroups,
   moduleActions,
   permissionCatalog,
+  reportingActions,
   roleKeys,
   rolePermissions
 } from "./menu";
@@ -47,9 +48,14 @@ describe("permission menu", () => {
     expect(rolePermissions.FINANCE_OPS).toContain("finance:manage");
     expect(rolePermissions.FINANCE_OPS).toContain("cod:reconcile");
     expect(rolePermissions.FINANCE_OPS).toContain("payment:approve");
+    expect(rolePermissions.FINANCE_OPS).toContain("reports:export");
+    expect(rolePermissions.FINANCE_OPS).toContain("reports:finance:view");
     expect(rolePermissions.FINANCE_OPS).not.toContain("record:create");
+    expect(rolePermissions.WAREHOUSE_LEAD).toContain("reports:export");
+    expect(rolePermissions.WAREHOUSE_LEAD).not.toContain("reports:finance:view");
     expect(rolePermissions.WAREHOUSE_LEAD).not.toContain("qc:decision");
     expect(rolePermissions.WAREHOUSE_STAFF).not.toContain("settings:view");
+    expect(rolePermissions.WAREHOUSE_STAFF).not.toContain("reports:view");
   });
 
   it("filters menu items by the mock user's permissions", () => {
@@ -106,6 +112,24 @@ describe("permission menu", () => {
     });
   });
 
+  it("defines Sprint 7 reporting permissions", () => {
+    expect(permissionCatalog).toContainEqual({
+      key: "reports:view",
+      label: "Reports",
+      group: "control"
+    });
+    expect(permissionCatalog).toContainEqual({
+      key: "reports:export",
+      label: "Reports Export",
+      group: "action"
+    });
+    expect(permissionCatalog).toContainEqual({
+      key: "reports:finance:view",
+      label: "Finance Reports",
+      group: "control"
+    });
+  });
+
   it("shows subcontract operations only to users with subcontract access", () => {
     const labels = getVisibleMenuGroups(productionUser).flatMap((group) => group.items.map((item) => item.label));
 
@@ -136,7 +160,24 @@ describe("permission menu", () => {
     expect(purchaseLabels).not.toContain("QC");
     expect(financeLabels).toContain("Finance");
     expect(financeLabels).toContain("Purchase");
+    expect(financeLabels).toContain("Reporting");
     expect(financeLabels).not.toContain("QC");
+  });
+
+  it("shows reporting to leads and protects finance reporting visibility", () => {
+    const warehouseLead: MockUser = {
+      id: "warehouse-lead",
+      name: "Warehouse Lead",
+      email: "warehouse-lead@example.local",
+      role: "WAREHOUSE_LEAD",
+      permissions: rolePermissions.WAREHOUSE_LEAD
+    };
+    const staffLabels = getVisibleMenuGroups(warehouseUser).flatMap((group) => group.items.map((item) => item.label));
+    const leadLabels = getVisibleMenuGroups(warehouseLead).flatMap((group) => group.items.map((item) => item.label));
+
+    expect(staffLabels).not.toContain("Reporting");
+    expect(leadLabels).toContain("Reporting");
+    expect(rolePermissions.WAREHOUSE_LEAD).not.toContain("reports:finance:view");
   });
 
   it("checks single menu item access", () => {
@@ -153,5 +194,20 @@ describe("permission menu", () => {
 
     expect(labels).not.toContain("Export");
     expect(labels).not.toContain("New record");
+  });
+
+  it("filters reporting export action by reporting export permission", () => {
+    const warehouseLead: MockUser = {
+      id: "warehouse-lead",
+      name: "Warehouse Lead",
+      email: "warehouse-lead@example.local",
+      role: "WAREHOUSE_LEAD",
+      permissions: rolePermissions.WAREHOUSE_LEAD
+    };
+    const staffActions = getVisibleActions(warehouseUser, reportingActions);
+    const leadActions = getVisibleActions(warehouseLead, reportingActions);
+
+    expect(staffActions).toEqual([]);
+    expect(leadActions.map((action) => action.label)).toEqual(["Export CSV"]);
   });
 });

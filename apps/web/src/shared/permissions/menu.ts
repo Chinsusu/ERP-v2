@@ -31,6 +31,8 @@ export type PermissionKey =
   | "approvals:view"
   | "audit-log:view"
   | "reports:view"
+  | "reports:export"
+  | "reports:finance:view"
   | "settings:view"
   | "record:create"
   | "record:export";
@@ -91,6 +93,8 @@ export const permissionCatalog: PermissionDefinition[] = [
   { key: "approvals:view", label: "Approvals", group: "control" },
   { key: "audit-log:view", label: "Audit Log", group: "control" },
   { key: "reports:view", label: "Reports", group: "control" },
+  { key: "reports:export", label: "Reports Export", group: "action" },
+  { key: "reports:finance:view", label: "Finance Reports", group: "control" },
   { key: "settings:view", label: "Settings", group: "control" },
   { key: "record:create", label: "Create Record", group: "action" },
   { key: "record:export", label: "Export Record", group: "action" }
@@ -102,6 +106,8 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "approvals:view",
     "audit-log:view",
     "reports:view",
+    "reports:export",
+    "reports:finance:view",
     "record:export"
   ],
   ERP_ADMIN: [
@@ -124,6 +130,8 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "approvals:view",
     "audit-log:view",
     "reports:view",
+    "reports:export",
+    "reports:finance:view",
     "settings:view",
     "record:create",
     "record:export"
@@ -143,6 +151,7 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "returns:view",
     "approvals:view",
     "reports:view",
+    "reports:export",
     "record:create",
     "record:export"
   ],
@@ -162,6 +171,7 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "purchase:view",
     "master-data:view",
     "reports:view",
+    "reports:export",
     "record:create",
     "record:export"
   ],
@@ -173,6 +183,8 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "cod:reconcile",
     "payment:approve",
     "reports:view",
+    "reports:export",
+    "reports:finance:view",
     "audit-log:view",
     "record:export"
   ],
@@ -234,7 +246,7 @@ export const appMenuGroups: AppMenuGroup[] = [
       { label: "Approvals", href: "/approvals", code: "AP", permission: "approvals:view" },
       { label: "Finance", href: "/finance", code: "FI", permission: "finance:view" },
       { label: "Audit Log", href: "/audit-log", code: "AU", permission: "audit-log:view" },
-      { label: "Reports", href: "/reports", code: "RP", permission: "reports:view" },
+      { label: "Reporting", href: "/reports", code: "RP", permission: "reports:view" },
       { label: "Settings", href: "/settings", code: "ST", permission: "settings:view" }
     ]
   }
@@ -249,6 +261,10 @@ export const topbarActions: AppAction[] = [
 export const moduleActions: AppAction[] = [
   { label: "Export", permission: "record:export", variant: "secondary" },
   { label: "New record", permission: "record:create", variant: "primary" }
+];
+
+export const reportingActions: AppAction[] = [
+  { label: "Export CSV", permission: "reports:export", variant: "secondary" }
 ];
 
 export function getPermissionsForRole(role: RoleKey): PermissionKey[] {
