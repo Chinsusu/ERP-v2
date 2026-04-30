@@ -3220,6 +3220,238 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /cod-remittances:
+    get:
+      summary: List COD remittances
+      operationId: listCODRemittances
+      tags:
+        - finance
+      parameters:
+        - $ref: "#/components/parameters/SearchParam"
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated COD remittance statuses.
+        - name: carrier_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: COD remittance rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CODRemittanceListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create a COD remittance batch
+      operationId: createCODRemittance
+      tags:
+        - finance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCODRemittanceRequest"
+      responses:
+        "201":
+          description: COD remittance created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CODRemittanceSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /cod-remittances/{cod_remittance_id}:
+    get:
+      summary: Get COD remittance detail
+      operationId: getCODRemittance
+      tags:
+        - finance
+      parameters:
+        - name: cod_remittance_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: COD remittance detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CODRemittanceSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /cod-remittances/{cod_remittance_id}/match:
+    post:
+      summary: Mark a COD remittance matched
+      operationId: matchCODRemittance
+      tags:
+        - finance
+      parameters:
+        - name: cod_remittance_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: COD remittance matched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CODRemittanceActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /cod-remittances/{cod_remittance_id}/record-discrepancy:
+    post:
+      summary: Record a COD remittance discrepancy
+      operationId: recordCODRemittanceDiscrepancy
+      tags:
+        - finance
+      parameters:
+        - name: cod_remittance_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CODRemittanceDiscrepancyRequest"
+      responses:
+        "200":
+          description: COD discrepancy recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CODRemittanceActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /cod-remittances/{cod_remittance_id}/submit:
+    post:
+      summary: Submit a COD remittance
+      operationId: submitCODRemittance
+      tags:
+        - finance
+      parameters:
+        - name: cod_remittance_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: COD remittance submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CODRemittanceActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /cod-remittances/{cod_remittance_id}/approve:
+    post:
+      summary: Approve a COD remittance
+      operationId: approveCODRemittance
+      tags:
+        - finance
+      parameters:
+        - name: cod_remittance_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: COD remittance approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CODRemittanceActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /cod-remittances/{cod_remittance_id}/close:
+    post:
+      summary: Close a COD remittance
+      operationId: closeCODRemittance
+      tags:
+        - finance
+      parameters:
+        - name: cod_remittance_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: COD remittance closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CODRemittanceActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /shipping/manifests:
     get:
       summary: List carrier manifests
@@ -9017,6 +9249,369 @@ components:
           $ref: "#/components/schemas/CustomerReceivableStatus"
         current_status:
           $ref: "#/components/schemas/CustomerReceivableStatus"
+        audit_log_id:
+          type: string
+    CODRemittanceStatus:
+      type: string
+      enum:
+        - draft
+        - matching
+        - submitted
+        - approved
+        - discrepancy
+        - closed
+        - void
+    CODLineMatchStatus:
+      type: string
+      enum:
+        - matched
+        - short_paid
+        - over_paid
+    CODDiscrepancyType:
+      type: string
+      enum:
+        - short_paid
+        - over_paid
+        - carrier_fee
+        - return_claim
+        - other
+    CODDiscrepancyStatus:
+      type: string
+      enum:
+        - open
+        - resolved
+    CODRemittanceListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/CODRemittanceListItem"
+    CODRemittanceSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/CODRemittance"
+    CODRemittanceActionSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/CODRemittanceActionResult"
+    CODRemittanceListItem:
+      type: object
+      required:
+        - id
+        - remittance_no
+        - carrier_id
+        - carrier_name
+        - status
+        - business_date
+        - expected_amount
+        - remitted_amount
+        - discrepancy_amount
+        - currency_code
+        - line_count
+        - discrepancy_count
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        remittance_no:
+          type: string
+        carrier_id:
+          type: string
+        carrier_code:
+          type: string
+        carrier_name:
+          type: string
+        status:
+          $ref: "#/components/schemas/CODRemittanceStatus"
+        business_date:
+          type: string
+          format: date
+        expected_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        remitted_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        discrepancy_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        line_count:
+          type: integer
+          minimum: 0
+        discrepancy_count:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+    CODRemittance:
+      type: object
+      required:
+        - id
+        - org_id
+        - remittance_no
+        - carrier_id
+        - carrier_name
+        - status
+        - business_date
+        - expected_amount
+        - remitted_amount
+        - discrepancy_amount
+        - currency_code
+        - lines
+        - discrepancies
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        remittance_no:
+          type: string
+        carrier_id:
+          type: string
+        carrier_code:
+          type: string
+        carrier_name:
+          type: string
+        status:
+          $ref: "#/components/schemas/CODRemittanceStatus"
+        business_date:
+          type: string
+          format: date
+        expected_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        remitted_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        discrepancy_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/CODRemittanceLine"
+        discrepancies:
+          type: array
+          items:
+            $ref: "#/components/schemas/CODDiscrepancy"
+        audit_log_id:
+          type: string
+        submitted_by:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+        approved_by:
+          type: string
+        approved_at:
+          type: string
+          format: date-time
+        closed_by:
+          type: string
+        closed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+    CODRemittanceLine:
+      type: object
+      required:
+        - id
+        - receivable_id
+        - receivable_no
+        - tracking_no
+        - expected_amount
+        - remitted_amount
+        - discrepancy_amount
+        - match_status
+      properties:
+        id:
+          type: string
+        receivable_id:
+          type: string
+        receivable_no:
+          type: string
+        shipment_id:
+          type: string
+        tracking_no:
+          type: string
+        customer_name:
+          type: string
+        expected_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        remitted_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        discrepancy_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        match_status:
+          $ref: "#/components/schemas/CODLineMatchStatus"
+    CODDiscrepancy:
+      type: object
+      required:
+        - id
+        - line_id
+        - receivable_id
+        - type
+        - status
+        - amount
+        - reason
+        - owner_id
+        - recorded_by
+        - recorded_at
+      properties:
+        id:
+          type: string
+        line_id:
+          type: string
+        receivable_id:
+          type: string
+        type:
+          $ref: "#/components/schemas/CODDiscrepancyType"
+        status:
+          $ref: "#/components/schemas/CODDiscrepancyStatus"
+        amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        reason:
+          type: string
+        owner_id:
+          type: string
+        recorded_by:
+          type: string
+        recorded_at:
+          type: string
+          format: date-time
+        resolved_by:
+          type: string
+        resolved_at:
+          type: string
+          format: date-time
+        resolution:
+          type: string
+    CreateCODRemittanceRequest:
+      type: object
+      required:
+        - carrier_id
+        - carrier_name
+        - business_date
+        - expected_amount
+        - remitted_amount
+        - currency_code
+        - lines
+      properties:
+        id:
+          type: string
+        remittance_no:
+          type: string
+        carrier_id:
+          type: string
+        carrier_code:
+          type: string
+        carrier_name:
+          type: string
+        business_date:
+          type: string
+          format: date
+        expected_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        remitted_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateCODRemittanceLineRequest"
+    CreateCODRemittanceLineRequest:
+      type: object
+      required:
+        - id
+        - receivable_id
+        - receivable_no
+        - tracking_no
+        - expected_amount
+        - remitted_amount
+      properties:
+        id:
+          type: string
+        receivable_id:
+          type: string
+        receivable_no:
+          type: string
+        shipment_id:
+          type: string
+        tracking_no:
+          type: string
+        customer_name:
+          type: string
+        expected_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        remitted_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    CODRemittanceDiscrepancyRequest:
+      type: object
+      required:
+        - line_id
+        - reason
+        - owner_id
+      properties:
+        id:
+          type: string
+        line_id:
+          type: string
+        type:
+          $ref: "#/components/schemas/CODDiscrepancyType"
+        status:
+          $ref: "#/components/schemas/CODDiscrepancyStatus"
+        reason:
+          type: string
+        owner_id:
+          type: string
+    CODRemittanceActionResult:
+      type: object
+      required:
+        - cod_remittance
+        - previous_status
+        - current_status
+      properties:
+        cod_remittance:
+          $ref: "#/components/schemas/CODRemittance"
+        previous_status:
+          $ref: "#/components/schemas/CODRemittanceStatus"
+        current_status:
+          $ref: "#/components/schemas/CODRemittanceStatus"
         audit_log_id:
           type: string
     ReturnReceiptStatus:
