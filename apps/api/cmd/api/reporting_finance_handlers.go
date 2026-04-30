@@ -3,9 +3,11 @@ package main
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	financeapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/finance/application"
 	reportingdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/reporting/domain"
+	reportinghandler "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/reporting/handler"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
@@ -68,6 +70,17 @@ type financeSummaryDiscrepancyBucketResponse struct {
 	Amount string `json:"amount"`
 }
 
+var financeSummaryCSVHeaders = []string{
+	"section",
+	"metric",
+	"bucket",
+	"type",
+	"status",
+	"count",
+	"amount",
+	"currency_code",
+}
+
 func financeSummaryReportHandler(
 	receivables financeapp.CustomerReceivableStore,
 	payables financeapp.SupplierPayableStore,
@@ -94,48 +107,117 @@ func financeSummaryReportHandler(
 			return
 		}
 
-		filters, err := reportingdomain.NewReportFilters(reportFilterInputFromRequest(r))
-		if err != nil {
-			writeFinanceSummaryValidationError(w, r, "Invalid finance summary filters", "date")
-			return
-		}
-
-		receivableRows, err := receivables.List(r.Context(), financeapp.CustomerReceivableFilter{})
-		if err != nil {
-			writeFinanceSummaryStoreError(w, r)
-			return
-		}
-		payableRows, err := payables.List(r.Context(), financeapp.SupplierPayableFilter{})
-		if err != nil {
-			writeFinanceSummaryStoreError(w, r)
-			return
-		}
-		remittanceRows, err := remittances.List(r.Context(), financeapp.CODRemittanceFilter{})
-		if err != nil {
-			writeFinanceSummaryStoreError(w, r)
-			return
-		}
-		cashRows, err := cashTransactions.List(r.Context(), financeapp.CashTransactionFilter{})
-		if err != nil {
-			writeFinanceSummaryStoreError(w, r)
-			return
-		}
-
-		report, err := reportingdomain.NewFinanceSummaryReport(
-			filters,
-			receivableRows,
-			payableRows,
-			remittanceRows,
-			cashRows,
-			reportingdomain.FinanceSummaryOptions{},
-		)
-		if err != nil {
-			writeFinanceSummaryReportError(w, r, err)
+		report, ok := financeSummaryReportFromRequest(w, r, receivables, payables, remittances, cashTransactions)
+		if !ok {
 			return
 		}
 
 		response.WriteSuccess(w, r, http.StatusOK, newFinanceSummaryReportResponse(report))
 	}
+}
+
+func financeSummaryCSVExportHandler(
+	receivables financeapp.CustomerReceivableStore,
+	payables financeapp.SupplierPayableStore,
+	remittances financeapp.CODRemittanceStore,
+	cashTransactions financeapp.CashTransactionStore,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionReportsView) {
+			writePermissionDenied(w, r, auth.PermissionReportsView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionFinanceReportsView) {
+			writePermissionDenied(w, r, auth.PermissionFinanceReportsView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionReportsExport) {
+			writePermissionDenied(w, r, auth.PermissionReportsExport)
+			return
+		}
+
+		report, ok := financeSummaryReportFromRequest(w, r, receivables, payables, remittances, cashTransactions)
+		if !ok {
+			return
+		}
+
+		err := reportinghandler.WriteCSV(w, r, reportinghandler.CSVExport{
+			Filename: financeSummaryCSVFilename(report),
+			Headers:  financeSummaryCSVHeaders,
+			Rows:     newFinanceSummaryCSVRows(report),
+		})
+		if err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusConflict,
+				response.ErrorCodeConflict,
+				"Finance summary CSV could not be exported",
+				nil,
+			)
+		}
+	}
+}
+
+func financeSummaryReportFromRequest(
+	w http.ResponseWriter,
+	r *http.Request,
+	receivables financeapp.CustomerReceivableStore,
+	payables financeapp.SupplierPayableStore,
+	remittances financeapp.CODRemittanceStore,
+	cashTransactions financeapp.CashTransactionStore,
+) (reportingdomain.FinanceSummaryReport, bool) {
+	filters, err := reportingdomain.NewReportFilters(reportFilterInputFromRequest(r))
+	if err != nil {
+		writeFinanceSummaryValidationError(w, r, "Invalid finance summary filters", "date")
+		return reportingdomain.FinanceSummaryReport{}, false
+	}
+
+	receivableRows, err := receivables.List(r.Context(), financeapp.CustomerReceivableFilter{})
+	if err != nil {
+		writeFinanceSummaryStoreError(w, r)
+		return reportingdomain.FinanceSummaryReport{}, false
+	}
+	payableRows, err := payables.List(r.Context(), financeapp.SupplierPayableFilter{})
+	if err != nil {
+		writeFinanceSummaryStoreError(w, r)
+		return reportingdomain.FinanceSummaryReport{}, false
+	}
+	remittanceRows, err := remittances.List(r.Context(), financeapp.CODRemittanceFilter{})
+	if err != nil {
+		writeFinanceSummaryStoreError(w, r)
+		return reportingdomain.FinanceSummaryReport{}, false
+	}
+	cashRows, err := cashTransactions.List(r.Context(), financeapp.CashTransactionFilter{})
+	if err != nil {
+		writeFinanceSummaryStoreError(w, r)
+		return reportingdomain.FinanceSummaryReport{}, false
+	}
+
+	report, err := reportingdomain.NewFinanceSummaryReport(
+		filters,
+		receivableRows,
+		payableRows,
+		remittanceRows,
+		cashRows,
+		reportingdomain.FinanceSummaryOptions{},
+	)
+	if err != nil {
+		writeFinanceSummaryReportError(w, r, err)
+		return reportingdomain.FinanceSummaryReport{}, false
+	}
+
+	return report, true
 }
 
 func newFinanceSummaryReportResponse(report reportingdomain.FinanceSummaryReport) financeSummaryReportResponse {
@@ -206,6 +288,73 @@ func newFinanceSummaryDiscrepancyBucketResponses(
 	}
 
 	return rows
+}
+
+func financeSummaryCSVFilename(report reportingdomain.FinanceSummaryReport) string {
+	filters := report.Metadata.Filters
+	return "finance-summary-" + filters.FromDateString() + "-to-" + filters.ToDateString() + ".csv"
+}
+
+func newFinanceSummaryCSVRows(report reportingdomain.FinanceSummaryReport) [][]string {
+	rows := [][]string{
+		newFinanceSummaryCSVRow("ar", "open", "", "", "", report.AR.OpenCount, report.AR.OpenAmount, report.CurrencyCode),
+		newFinanceSummaryCSVRow("ar", "overdue", "", "", "", report.AR.OverdueCount, report.AR.OverdueAmount, report.CurrencyCode),
+		newFinanceSummaryCSVRow("ar", "disputed", "", "", "", report.AR.DisputedCount, "0.00", report.CurrencyCode),
+		newFinanceSummaryCSVRow("ar", "outstanding", "", "", "", 0, report.AR.OutstandingAmount, report.CurrencyCode),
+		newFinanceSummaryCSVRow("ap", "open", "", "", "", report.AP.OpenCount, report.AP.OpenAmount, report.CurrencyCode),
+		newFinanceSummaryCSVRow("ap", "due", "", "", "", report.AP.DueCount, report.AP.DueAmount, report.CurrencyCode),
+		newFinanceSummaryCSVRow("ap", "payment_requested", "", "", "", report.AP.PaymentRequestedCount, "0.00", report.CurrencyCode),
+		newFinanceSummaryCSVRow("ap", "payment_approved", "", "", "", report.AP.PaymentApprovedCount, "0.00", report.CurrencyCode),
+		newFinanceSummaryCSVRow("ap", "outstanding", "", "", "", 0, report.AP.OutstandingAmount, report.CurrencyCode),
+		newFinanceSummaryCSVRow("cod", "pending", "", "", "", report.COD.PendingCount, report.COD.PendingAmount, report.CurrencyCode),
+		newFinanceSummaryCSVRow("cod", "discrepancy", "", "", "", report.COD.DiscrepancyCount, report.COD.DiscrepancyAmount, report.CurrencyCode),
+		newFinanceSummaryCSVRow("cash", "cash_in", "", "", "", report.Cash.TransactionCount, report.Cash.CashInAmount, report.CurrencyCode),
+		newFinanceSummaryCSVRow("cash", "cash_out", "", "", "", report.Cash.TransactionCount, report.Cash.CashOutAmount, report.CurrencyCode),
+		newFinanceSummaryCSVRow("cash", "net_cash", "", "", "", report.Cash.TransactionCount, report.Cash.NetCashAmount, report.CurrencyCode),
+	}
+
+	for _, bucket := range report.AR.AgingBuckets {
+		rows = append(rows, newFinanceSummaryCSVRow("ar_aging", "aging", bucket.Bucket, "", "", bucket.Count, bucket.Amount, report.CurrencyCode))
+	}
+	for _, bucket := range report.AP.AgingBuckets {
+		rows = append(rows, newFinanceSummaryCSVRow("ap_aging", "aging", bucket.Bucket, "", "", bucket.Count, bucket.Amount, report.CurrencyCode))
+	}
+	for _, bucket := range report.COD.DiscrepancyBuckets {
+		rows = append(rows, newFinanceSummaryCSVRow(
+			"cod_discrepancy",
+			"discrepancy",
+			"",
+			bucket.Type,
+			bucket.Status,
+			bucket.Count,
+			bucket.Amount,
+			report.CurrencyCode,
+		))
+	}
+
+	return rows
+}
+
+func newFinanceSummaryCSVRow(
+	section string,
+	metric string,
+	bucket string,
+	discrepancyType string,
+	status string,
+	count int,
+	amount string,
+	currencyCode string,
+) []string {
+	return []string{
+		section,
+		metric,
+		bucket,
+		discrepancyType,
+		status,
+		strconv.Itoa(count),
+		amount,
+		currencyCode,
+	}
 }
 
 func writeFinanceSummaryReportError(w http.ResponseWriter, r *http.Request, err error) {

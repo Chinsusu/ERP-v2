@@ -1,4 +1,4 @@
-import { ApiError, apiGetRaw } from "../../../shared/api/client";
+import { ApiError, apiGetBlob, apiGetRaw } from "../../../shared/api/client";
 import type {
   FinanceSummaryAgingBucket,
   FinanceSummaryCOD,
@@ -98,6 +98,19 @@ export async function getFinanceSummaryReport(query: FinanceSummaryQuery = {}): 
   }
 }
 
+export async function downloadFinanceSummaryCSV(
+  query: FinanceSummaryQuery = {}
+): Promise<{ blob: Blob; filename: string }> {
+  const result = await apiGetBlob(`/reports/finance-summary/export.csv${financeSummaryQueryString(query)}`, {
+    accessToken: defaultAccessToken
+  });
+
+  return {
+    blob: result.blob,
+    filename: result.filename ?? financeSummaryCSVFilename(query)
+  };
+}
+
 export function createPrototypeFinanceSummaryReport(query: FinanceSummaryQuery = {}): FinanceSummaryReport {
   const businessDate = query.businessDate || query.toDate || todayString();
   const fromDate = query.fromDate || businessDate;
@@ -161,6 +174,12 @@ export function financeSummaryQueryString(query: FinanceSummaryQuery) {
 
   const value = params.toString();
   return value ? `?${value}` : "";
+}
+
+function financeSummaryCSVFilename(query: FinanceSummaryQuery) {
+  const toDate = query.toDate || query.businessDate || todayString();
+  const fromDate = query.fromDate || toDate;
+  return `finance-summary-${fromDate}-to-${toDate}.csv`;
 }
 
 function fromApiFinanceSummaryReport(report: FinanceSummaryReportApi): FinanceSummaryReport {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createPrototypeFinanceSummaryReport,
+  downloadFinanceSummaryCSV,
   financeSummaryQueryString,
   getFinanceSummaryReport
 } from "./financeSummaryReportService";
@@ -121,6 +122,36 @@ describe("financeSummaryReportService", () => {
     );
     expect(report.ar.agingBuckets[0]).toMatchObject({ bucket: "1_7", count: 1 });
     expect(report.cash.transactionCount).toBe(2);
+  });
+
+  it("downloads finance CSV with current filters", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("section,metric,count,amount,currency_code\nar,open,1,1250000.00,VND\n", {
+        status: 200,
+        headers: {
+          "Content-Disposition": `attachment; filename="finance-summary-2026-04-30-to-2026-05-08.csv"`,
+          "Content-Type": "text/csv; charset=utf-8"
+        }
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const download = await downloadFinanceSummaryCSV({
+      fromDate: "2026-04-30",
+      toDate: "2026-05-08",
+      businessDate: "2026-05-08"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/reports/finance-summary/export.csv?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08",
+      {
+        headers: {
+          Authorization: "Bearer local-dev-access-token"
+        }
+      }
+    );
+    await expect(download.blob.text()).resolves.toContain("1250000.00");
+    expect(download.filename).toBe("finance-summary-2026-04-30-to-2026-05-08.csv");
   });
 
   it("does not hide API permission errors behind prototype fallback", async () => {
