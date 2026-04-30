@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   DataTable,
@@ -12,6 +12,7 @@ import {
 } from "@/shared/design-system/components";
 import { formatDateTimeVI, formatDateVI } from "@/shared/format/numberFormat";
 import { useOperationsDailyReport } from "../hooks/useOperationsDailyReport";
+import { urlDateParam, urlOptionParam, urlParam, useReportUrlState } from "../hooks/useReportUrlState";
 import { downloadOperationsDailyCSV, operationsDailyStatusOptions } from "../services/operationsDailyReportService";
 import type {
   OperationsDailyAreaSummary,
@@ -163,10 +164,19 @@ type OperationsDailyReportPanelProps = {
 };
 
 export function OperationsDailyReportPanel({ controls }: OperationsDailyReportPanelProps = {}) {
-  const [fromDate, setFromDate] = useState(defaultBusinessDate());
-  const [toDate, setToDate] = useState(defaultBusinessDate());
-  const [warehouseId, setWarehouseId] = useState("wh-hcm");
-  const [status, setStatus] = useState<OperationsDailyQuery["status"]>("");
+  const { searchParams, replaceReportUrlParams } = useReportUrlState();
+  const defaultDate = defaultBusinessDate();
+  const [fromDate, setFromDate] = useState(() => urlDateParam(searchParams, "from_date", defaultDate));
+  const [toDate, setToDate] = useState(() => urlDateParam(searchParams, "to_date", defaultDate));
+  const [warehouseId, setWarehouseId] = useState(() => urlParam(searchParams, "warehouse_id") || "wh-hcm");
+  const [status, setStatus] = useState<OperationsDailyQuery["status"]>(() =>
+    urlOptionParam(
+      searchParams,
+      "status",
+      operationsDailyStatusOptions.map((option) => option.value),
+      ""
+    )
+  );
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<Error | null>(null);
 
@@ -182,6 +192,16 @@ export function OperationsDailyReportPanel({ controls }: OperationsDailyReportPa
   );
   const { report, loading, error } = useOperationsDailyReport(query);
   const data = report ?? emptyOperationsDailyReport(fromDate, toDate);
+
+  useEffect(() => {
+    replaceReportUrlParams("operations", {
+      from_date: fromDate,
+      to_date: toDate,
+      business_date: toDate,
+      warehouse_id: warehouseId,
+      status
+    });
+  }, [fromDate, replaceReportUrlParams, status, toDate, warehouseId]);
 
   async function handleExportCSV() {
     setExporting(true);

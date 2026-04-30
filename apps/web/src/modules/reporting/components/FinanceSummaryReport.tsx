@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   DataTable,
@@ -11,6 +11,7 @@ import {
 } from "@/shared/design-system/components";
 import { formatDateTimeVI, formatMoney } from "@/shared/format/numberFormat";
 import { useFinanceSummaryReport } from "../hooks/useFinanceSummaryReport";
+import { urlDateParam, useReportUrlState } from "../hooks/useReportUrlState";
 import { downloadFinanceSummaryCSV } from "../services/financeSummaryReportService";
 import type {
   FinanceSummaryAgingBucket,
@@ -100,9 +101,12 @@ type FinanceSummaryReportPanelProps = {
 };
 
 export function FinanceSummaryReportPanel({ controls }: FinanceSummaryReportPanelProps = {}) {
-  const [fromDate, setFromDate] = useState(defaultBusinessDate());
-  const [toDate, setToDate] = useState(defaultBusinessDate());
-  const [businessDate, setBusinessDate] = useState(defaultBusinessDate());
+  const { searchParams, replaceReportUrlParams } = useReportUrlState();
+  const defaultDate = defaultBusinessDate();
+  const initialToDate = urlDateParam(searchParams, "to_date", defaultDate);
+  const [fromDate, setFromDate] = useState(() => urlDateParam(searchParams, "from_date", initialToDate));
+  const [toDate, setToDate] = useState(() => initialToDate);
+  const [businessDate, setBusinessDate] = useState(() => urlDateParam(searchParams, "business_date", initialToDate));
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<Error | null>(null);
 
@@ -116,6 +120,14 @@ export function FinanceSummaryReportPanel({ controls }: FinanceSummaryReportPane
   );
   const { report, loading, error } = useFinanceSummaryReport(query);
   const data = report ?? emptyFinanceSummaryReport(fromDate, toDate, businessDate);
+
+  useEffect(() => {
+    replaceReportUrlParams("finance", {
+      from_date: fromDate,
+      to_date: toDate,
+      business_date: businessDate
+    });
+  }, [businessDate, fromDate, replaceReportUrlParams, toDate]);
 
   async function handleExportCSV() {
     setExporting(true);
