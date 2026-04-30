@@ -13,6 +13,7 @@ import { formatDateTimeVI, formatMoney } from "@/shared/format/numberFormat";
 import { useFinanceSummaryReport } from "../hooks/useFinanceSummaryReport";
 import { urlDateParam, useReportUrlState } from "../hooks/useReportUrlState";
 import { downloadFinanceSummaryCSV } from "../services/financeSummaryReportService";
+import { ReportSourceReferenceLink, ReportStateBanner } from "./ReportSharedStates";
 import type {
   FinanceSummaryAgingBucket,
   FinanceSummaryDiscrepancyBucket,
@@ -25,9 +26,9 @@ const agingColumns: DataTableColumn<FinanceSummaryAgingBucket>[] = [
     key: "bucket",
     header: "Bucket",
     render: (row) => (
-      <FinanceSourceReferenceLink reference={row.sourceReference}>
+      <ReportSourceReferenceLink reference={row.sourceReference}>
         <StatusChip tone={agingTone(row.bucket)}>{agingLabel(row.bucket)}</StatusChip>
-      </FinanceSourceReferenceLink>
+      </ReportSourceReferenceLink>
     ),
     width: "150px"
   },
@@ -51,9 +52,9 @@ const discrepancyColumns: DataTableColumn<FinanceSummaryDiscrepancyBucket>[] = [
     key: "type",
     header: "Type",
     render: (row) => (
-      <FinanceSourceReferenceLink reference={row.sourceReference}>
+      <ReportSourceReferenceLink reference={row.sourceReference}>
         {discrepancyTypeLabel(row.type)}
-      </FinanceSourceReferenceLink>
+      </ReportSourceReferenceLink>
     ),
     width: "180px"
   },
@@ -77,24 +78,6 @@ const discrepancyColumns: DataTableColumn<FinanceSummaryDiscrepancyBucket>[] = [
     width: "170px"
   }
 ];
-
-function FinanceSourceReferenceLink({
-  reference,
-  children
-}: {
-  reference: FinanceSummaryAgingBucket["sourceReference"];
-  children: ReactNode;
-}) {
-  if (!reference.unavailable && reference.href) {
-    return (
-      <a className="erp-reporting-source-link" href={reference.href} aria-label={`Open ${reference.label}`}>
-        {children}
-      </a>
-    );
-  }
-
-  return <>{children}</>;
-}
 
 type FinanceSummaryReportPanelProps = {
   controls?: ReactNode;
@@ -192,6 +175,14 @@ export function FinanceSummaryReportPanel({ controls }: FinanceSummaryReportPane
           />
         </label>
       </section>
+
+      <ReportStateBanner
+        loading={loading}
+        error={error}
+        empty={isFinanceSummaryEmpty(data)}
+        liveLabel="Finance summary loaded"
+        emptyLabel="No finance records match current filters"
+      />
 
       <section className="erp-kpi-grid erp-reporting-kpis">
         <FinanceSummaryKPI label="AR open" value={formatMoney(data.ar.openAmount, data.currencyCode)} tone="info" />
@@ -363,6 +354,15 @@ function discrepancyTypeLabel(value: string) {
 
 function statusLabel(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function isFinanceSummaryEmpty(report: FinanceSummaryReport) {
+  return (
+    report.ar.openCount === 0 &&
+    report.ap.openCount === 0 &&
+    report.cod.pendingCount === 0 &&
+    report.cash.transactionCount === 0
+  );
 }
 
 function emptyFinanceSummaryReport(fromDate: string, toDate: string, businessDate: string): FinanceSummaryReport {

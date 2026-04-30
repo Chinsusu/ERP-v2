@@ -14,6 +14,7 @@ import { formatDateTimeVI, formatDateVI } from "@/shared/format/numberFormat";
 import { useOperationsDailyReport } from "../hooks/useOperationsDailyReport";
 import { urlDateParam, urlOptionParam, urlParam, useReportUrlState } from "../hooks/useReportUrlState";
 import { downloadOperationsDailyCSV, operationsDailyStatusOptions } from "../services/operationsDailyReportService";
+import { ReportSourceReferenceLink, ReportStateBanner } from "./ReportSharedStates";
 import type {
   OperationsDailyAreaSummary,
   OperationsDailyQuery,
@@ -148,15 +149,11 @@ const rowColumns: DataTableColumn<OperationsDailyRow>[] = [
 ];
 
 function OperationsSourceReference({ row }: { row: OperationsDailyRow }) {
-  if (!row.sourceReference.unavailable && row.sourceReference.href) {
-    return (
-      <a className="erp-reporting-source-link" href={row.sourceReference.href} aria-label={`Open ${row.refNo}`}>
-        {row.refNo}
-      </a>
-    );
-  }
-
-  return <strong>{row.refNo}</strong>;
+  return (
+    <ReportSourceReferenceLink reference={row.sourceReference} label={row.refNo}>
+      {row.refNo}
+    </ReportSourceReferenceLink>
+  );
 }
 
 type OperationsDailyReportPanelProps = {
@@ -273,6 +270,14 @@ export function OperationsDailyReportPanel({ controls }: OperationsDailyReportPa
           </select>
         </label>
       </section>
+
+      <ReportStateBanner
+        loading={loading}
+        error={error}
+        empty={data.summary.signalCount === 0}
+        liveLabel={`${data.summary.signalCount} operations signals`}
+        emptyLabel="No operations signals match current filters"
+      />
 
       <section className="erp-kpi-grid erp-reporting-kpis">
         <OperationsDailyKPI label="Signals" value={String(data.summary.signalCount)} tone="info" />
