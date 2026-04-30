@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { DataTable, EmptyState, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
 import { useFinanceDashboard } from "../hooks/useFinanceDashboard";
 import { formatFinanceDate, formatFinanceMoney } from "../services/customerReceivableService";
+import { buildFinanceSummaryReportHref } from "../services/financeDashboardService";
 import type { FinanceDashboard } from "../types";
 
 type DashboardActionRow = {
@@ -12,7 +13,8 @@ type DashboardActionRow = {
   metric: string;
   amount: string;
   tone: StatusTone;
-  href: string;
+  sectionHref: string;
+  reportHref: string;
 };
 
 const actionColumns: DataTableColumn<DashboardActionRow>[] = [
@@ -43,11 +45,16 @@ const actionColumns: DataTableColumn<DashboardActionRow>[] = [
     key: "action",
     header: "Action",
     render: (row) => (
-      <a className="erp-button erp-button--secondary" href={row.href}>
-        Open
-      </a>
+      <span className="erp-finance-action-links">
+        <a className="erp-button erp-button--secondary" href={row.sectionHref}>
+          Open
+        </a>
+        <a className="erp-button erp-button--secondary" href={row.reportHref}>
+          Report
+        </a>
+      </span>
     ),
-    width: "96px",
+    width: "180px",
     sticky: true
   }
 ];
@@ -57,7 +64,8 @@ export function FinanceDashboardPanel() {
   const query = useMemo(() => ({ businessDate }), [businessDate]);
   const { dashboard, loading, error } = useFinanceDashboard(query);
   const metrics = dashboard ?? emptyFinanceDashboard(businessDate);
-  const actionRows = useMemo(() => createActionRows(metrics), [metrics]);
+  const financeReportHref = buildFinanceSummaryReportHref(query);
+  const actionRows = useMemo(() => createActionRows(metrics, financeReportHref), [financeReportHref, metrics]);
 
   return (
     <section className="erp-finance-section" id="finance-dashboard">
@@ -66,7 +74,12 @@ export function FinanceDashboardPanel() {
           <h2 className="erp-section-title">Finance dashboard</h2>
           <p className="erp-section-description">AR, AP, COD, and cash position for the selected business date</p>
         </div>
-        <StatusChip tone={loading ? "warning" : "info"}>{formatFinanceDate(metrics.generatedAt)}</StatusChip>
+        <div className="erp-finance-action-links">
+          <StatusChip tone={loading ? "warning" : "info"}>{formatFinanceDate(metrics.generatedAt)}</StatusChip>
+          <a className="erp-button erp-button--secondary" href={financeReportHref}>
+            Finance report
+          </a>
+        </div>
       </div>
 
       <section className="erp-finance-toolbar" aria-label="Finance dashboard filters">
@@ -142,7 +155,7 @@ function FinanceDashboardKPI({
   );
 }
 
-function createActionRows(metrics: FinanceDashboard): DashboardActionRow[] {
+function createActionRows(metrics: FinanceDashboard, reportHref: string): DashboardActionRow[] {
   return [
     {
       id: "ar-overdue",
@@ -150,7 +163,8 @@ function createActionRows(metrics: FinanceDashboard): DashboardActionRow[] {
       metric: `${metrics.ar.overdueCount} overdue`,
       amount: metrics.ar.overdueAmount,
       tone: metrics.ar.overdueCount > 0 ? "warning" : "success",
-      href: "#customer-receivables"
+      sectionHref: "#customer-receivables",
+      reportHref
     },
     {
       id: "ap-due",
@@ -158,7 +172,8 @@ function createActionRows(metrics: FinanceDashboard): DashboardActionRow[] {
       metric: `${metrics.ap.dueCount} due`,
       amount: metrics.ap.dueAmount,
       tone: metrics.ap.dueCount > 0 ? "warning" : "success",
-      href: "#supplier-payables"
+      sectionHref: "#supplier-payables",
+      reportHref
     },
     {
       id: "cod-discrepancy",
@@ -166,7 +181,8 @@ function createActionRows(metrics: FinanceDashboard): DashboardActionRow[] {
       metric: `${metrics.cod.discrepancyCount} discrepancy`,
       amount: metrics.cod.discrepancyAmount,
       tone: metrics.cod.discrepancyCount > 0 ? "danger" : "success",
-      href: "#cod-reconciliation"
+      sectionHref: "#cod-reconciliation",
+      reportHref
     },
     {
       id: "cash-today",
@@ -174,7 +190,8 @@ function createActionRows(metrics: FinanceDashboard): DashboardActionRow[] {
       metric: `${metrics.cash.transactionCount} posted`,
       amount: metrics.cash.netCashToday,
       tone: Number(metrics.cash.netCashToday) >= 0 ? "success" : "danger",
-      href: "#cash-transactions"
+      sectionHref: "#cash-transactions",
+      reportHref
     }
   ];
 }

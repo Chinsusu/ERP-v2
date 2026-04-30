@@ -7,6 +7,19 @@ type FinanceDashboardApiQuery = operations["getFinanceDashboard"]["parameters"][
 
 const defaultAccessToken = "local-dev-access-token";
 
+export function buildFinanceSummaryReportHref(query: FinanceDashboardQuery = {}) {
+  const businessDate = query.businessDate;
+  const params = new URLSearchParams();
+  params.set("report", "finance");
+  if (businessDate) {
+    params.set("from_date", businessDate);
+    params.set("to_date", businessDate);
+    params.set("business_date", businessDate);
+  }
+
+  return `/reports?${params.toString()}`;
+}
+
 export async function getFinanceDashboard(query: FinanceDashboardQuery = {}): Promise<FinanceDashboard> {
   try {
     const dashboard = await apiGet("/finance/dashboard", {
