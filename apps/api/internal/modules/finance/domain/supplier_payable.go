@@ -247,6 +247,9 @@ func (p SupplierPayable) RequestPayment(actorID string, requestedAt time.Time) (
 	updated.Status = PayableStatusPaymentRequested
 	updated.PaymentRequestedBy = actorID
 	updated.PaymentRequestedAt = requestedAt.UTC()
+	updated.PaymentRejectedBy = ""
+	updated.PaymentRejectedAt = time.Time{}
+	updated.PaymentRejectReason = ""
 	updated.UpdatedBy = actorID
 	updated.UpdatedAt = requestedAt.UTC()
 	updated.Version++

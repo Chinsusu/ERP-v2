@@ -166,6 +166,16 @@ func TestSupplierPayableRejectPaymentReturnsToOpenWithReason(t *testing.T) {
 		t.Fatalf("requested audit fields changed after rejection: %+v", rejected)
 	}
 
+	rerequested, err := rejected.RequestPayment("finance-user", rejectedAt.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("request payment again: %v", err)
+	}
+	if rerequested.PaymentRejectedBy != "" ||
+		rerequested.PaymentRejectReason != "" ||
+		!rerequested.PaymentRejectedAt.IsZero() {
+		t.Fatalf("re-requested payable kept stale rejection fields: %+v", rerequested)
+	}
+
 	_, err = requested.RejectPayment("finance-lead", "", rejectedAt)
 	if !errors.Is(err, ErrSupplierPayableRequiredField) {
 		t.Fatalf("error = %v, want %v", err, ErrSupplierPayableRequiredField)
