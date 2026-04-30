@@ -334,7 +334,7 @@ function transitionPrototypeSupplierPayable(
       paymentRejectReason: reason
     };
   } else if (action === "record-payment") {
-    const amount = normalizeDecimalInput(body.amount, decimalScales.money);
+    const amount = normalizeDecimalInput("amount" in body ? body.amount : undefined, decimalScales.money);
     const amountValue = Number(amount);
     if (!canRecordSupplierPayablePayment(next) || amountValue <= 0 || amountValue > Number(next.outstandingAmount)) {
       throw new Error("Payment amount is invalid for this AP");
