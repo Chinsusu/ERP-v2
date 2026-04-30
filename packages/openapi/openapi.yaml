@@ -3703,11 +3703,18 @@ paths:
             minimum: 1
       responses:
         "200":
-          description: Inventory snapshot CSV with stable headers and decimal quantity strings
+          description: |
+            Inventory snapshot CSV with stable headers and decimal quantity strings.
+            Source column: source_stock_state. Detailed item, batch, warehouse, and stock state drilldown sources are available in the JSON source_references array.
           content:
             text/csv:
               schema:
                 type: string
+                description: |
+                  Stable header:
+                  warehouse_id,warehouse_code,location_id,location_code,item_id,sku,batch_id,batch_no,batch_expiry,base_uom_code,physical_qty,reserved_qty,quarantine_qty,blocked_qty,available_qty,low_stock,expiry_warning,expired,batch_qc_status,batch_status,source_stock_state
+                example: |
+                  warehouse_id,warehouse_code,location_id,location_code,item_id,sku,batch_id,batch_no,batch_expiry,base_uom_code,physical_qty,reserved_qty,quarantine_qty,blocked_qty,available_qty,low_stock,expiry_warning,expired,batch_qc_status,batch_status,source_stock_state
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -3755,11 +3762,18 @@ paths:
         - $ref: "#/components/parameters/ReportStatusParam"
       responses:
         "200":
-          description: Operations daily CSV with stable headers and decimal quantity strings
+          description: |
+            Operations daily CSV with stable headers and decimal quantity strings.
+            Source columns: source_type and source_id. Detailed source labels, hrefs, and unavailable flags are available in the JSON source_reference object.
           content:
             text/csv:
               schema:
                 type: string
+                description: |
+                  Stable header:
+                  id,area,source_type,source_id,ref_no,title,warehouse_id,warehouse_code,business_date,status,severity,quantity,uom_code,exception_code,owner
+                example: |
+                  id,area,source_type,source_id,ref_no,title,warehouse_id,warehouse_code,business_date,status,severity,quantity,uom_code,exception_code,owner
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -3805,11 +3819,18 @@ paths:
         - $ref: "#/components/parameters/ReportBusinessDateParam"
       responses:
         "200":
-          description: Finance summary CSV with stable headers and decimal money strings
+          description: |
+            Finance summary CSV with stable headers and decimal money strings.
+            Source context columns: section, metric, bucket, type, and status. Detailed AR, AP, COD, cash, and approval source references are available in the JSON source_references and source_reference fields.
           content:
             text/csv:
               schema:
                 type: string
+                description: |
+                  Stable header:
+                  section,metric,bucket,type,status,count,amount,currency_code
+                example: |
+                  section,metric,bucket,type,status,count,amount,currency_code
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -10569,6 +10590,8 @@ components:
           type: string
     ReportSourceReference:
       type: object
+      description: |
+        Read-only drilldown source reference shared by reporting rows. entity_type, id, and label identify the source record or source work queue. href is present only when a safe ERP route exists. unavailable is true when the source can be named but cannot be linked.
       required:
         - entity_type
         - id
@@ -10727,6 +10750,7 @@ components:
           type: string
         source_references:
           type: array
+          description: Item, batch, warehouse, stock state, or warning sources that explain this inventory report row.
           items:
             $ref: "#/components/schemas/ReportSourceReference"
     OperationsDailyReportSuccessResponse:
@@ -10816,9 +10840,12 @@ components:
           type: string
         source_type:
           type: string
+          description: Machine-readable source category for the operations signal.
         source_id:
           type: string
+          description: Source record identifier for the operations signal.
         source_reference:
+          description: Drilldown reference for the source operational record or filtered work queue.
           $ref: "#/components/schemas/ReportSourceReference"
         ref_no:
           type: string
@@ -10907,6 +10934,7 @@ components:
             $ref: "#/components/schemas/FinanceSummaryAgingBucket"
         source_references:
           type: array
+          description: AR source records that explain the receivable summary metrics.
           items:
             $ref: "#/components/schemas/ReportSourceReference"
     FinanceSummaryPayable:
@@ -10946,6 +10974,7 @@ components:
             $ref: "#/components/schemas/FinanceSummaryAgingBucket"
         source_references:
           type: array
+          description: AP source records that explain the payable summary metrics.
           items:
             $ref: "#/components/schemas/ReportSourceReference"
     FinanceSummaryAgingBucket:
@@ -10964,6 +10993,7 @@ components:
         amount:
           $ref: "#/components/schemas/MoneyAmount"
         source_reference:
+          description: Source reference for the finance aging bucket.
           $ref: "#/components/schemas/ReportSourceReference"
     FinanceSummaryCOD:
       type: object
@@ -10991,6 +11021,7 @@ components:
             $ref: "#/components/schemas/FinanceSummaryDiscrepancyBucket"
         source_references:
           type: array
+          description: COD source records that explain pending and discrepancy summary metrics.
           items:
             $ref: "#/components/schemas/ReportSourceReference"
     FinanceSummaryDiscrepancyBucket:
@@ -11012,6 +11043,7 @@ components:
         amount:
           $ref: "#/components/schemas/MoneyAmount"
         source_reference:
+          description: Source reference for the COD discrepancy bucket.
           $ref: "#/components/schemas/ReportSourceReference"
     FinanceSummaryCash:
       type: object
@@ -11033,6 +11065,7 @@ components:
           $ref: "#/components/schemas/MoneyAmount"
         source_references:
           type: array
+          description: Cash transaction source records that explain the cash summary metrics.
           items:
             $ref: "#/components/schemas/ReportSourceReference"
     CODRemittanceStatus:
