@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
@@ -61,12 +62,70 @@ func TestInventorySnapshotReportHandlerReturnsFilteredReport(t *testing.T) {
 	}
 }
 
+func TestInventorySnapshotCSVExportHandlerReturnsCSV(t *testing.T) {
+	service := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
+	req := cashTransactionRequest(
+		http.MethodGet,
+		"/api/v1/reports/inventory-snapshot/export.csv?business_date=2026-04-30&warehouse_id=wh-hcm&item_id=item-serum-30ml&status=quarantine&low_stock_threshold=10&expiry_warning_days=45",
+		nil,
+		auth.RoleWarehouseLead,
+	)
+	req.Header.Set(response.HeaderRequestID, "req-report-inventory-csv")
+	rec := httptest.NewRecorder()
+
+	inventorySnapshotCSVExportHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); got != "text/csv; charset=utf-8" {
+		t.Fatalf("content type = %q, want text/csv", got)
+	}
+	if got := rec.Header().Get("Content-Disposition"); got != `attachment; filename="inventory-snapshot-2026-04-30.csv"` {
+		t.Fatalf("content disposition = %q", got)
+	}
+	if got := rec.Header().Get(response.HeaderRequestID); got != "req-report-inventory-csv" {
+		t.Fatalf("request id = %q, want req-report-inventory-csv", got)
+	}
+
+	lines := strings.Split(strings.TrimSpace(rec.Body.String()), "\n")
+	const header = "warehouse_id,warehouse_code,location_id,location_code,item_id,sku,batch_id,batch_no,batch_expiry,base_uom_code,physical_qty,reserved_qty,quarantine_qty,blocked_qty,available_qty,low_stock,expiry_warning,expired,batch_qc_status,batch_status,source_stock_state"
+	if len(lines) != 2 || lines[0] != header {
+		t.Fatalf("csv lines = %q, want header and one row", lines)
+	}
+	row := lines[1]
+	for _, want := range []string{
+		"wh-hcm",
+		"SERUM-30ML",
+		"LOT-2604A",
+		"110.000000",
+		"false,false,false",
+		"quarantine",
+	} {
+		if !strings.Contains(row, want) {
+			t.Fatalf("csv row = %q, want %q", row, want)
+		}
+	}
+}
+
 func TestInventorySnapshotReportHandlerRequiresReportsPermission(t *testing.T) {
 	service := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
 	req := cashTransactionRequest(http.MethodGet, "/api/v1/reports/inventory-snapshot", nil, auth.RoleWarehouseStaff)
 	rec := httptest.NewRecorder()
 
 	inventorySnapshotReportHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+func TestInventorySnapshotCSVExportHandlerRequiresExportPermission(t *testing.T) {
+	service := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
+	req := cashTransactionRequest(http.MethodGet, "/api/v1/reports/inventory-snapshot/export.csv", nil, auth.RoleQA)
+	rec := httptest.NewRecorder()
+
+	inventorySnapshotCSVExportHandler(service).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
@@ -94,12 +153,41 @@ func TestInventorySnapshotReportHandlerRejectsInvalidFilters(t *testing.T) {
 	}
 }
 
+func TestInventorySnapshotCSVExportHandlerRejectsInvalidFilters(t *testing.T) {
+	service := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
+	req := cashTransactionRequest(
+		http.MethodGet,
+		"/api/v1/reports/inventory-snapshot/export.csv?business_date=not-a-date",
+		nil,
+		auth.RoleWarehouseLead,
+	)
+	rec := httptest.NewRecorder()
+
+	inventorySnapshotCSVExportHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
 func TestInventorySnapshotReportHandlerRejectsUnsupportedMethod(t *testing.T) {
 	service := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
 	req := cashTransactionRequest(http.MethodPost, "/api/v1/reports/inventory-snapshot", nil, auth.RoleWarehouseLead)
 	rec := httptest.NewRecorder()
 
 	inventorySnapshotReportHandler(service).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestInventorySnapshotCSVExportHandlerRejectsUnsupportedMethod(t *testing.T) {
+	service := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
+	req := cashTransactionRequest(http.MethodPost, "/api/v1/reports/inventory-snapshot/export.csv", nil, auth.RoleWarehouseLead)
+	rec := httptest.NewRecorder()
+
+	inventorySnapshotCSVExportHandler(service).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)

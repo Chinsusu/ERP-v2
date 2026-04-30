@@ -9,6 +9,7 @@ import (
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	reportingdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/reporting/domain"
+	reportinghandler "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/reporting/handler"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
@@ -77,6 +78,30 @@ type inventorySnapshotRowResponse struct {
 	SourceStockState string `json:"source_stock_state"`
 }
 
+var inventorySnapshotCSVHeaders = []string{
+	"warehouse_id",
+	"warehouse_code",
+	"location_id",
+	"location_code",
+	"item_id",
+	"sku",
+	"batch_id",
+	"batch_no",
+	"batch_expiry",
+	"base_uom_code",
+	"physical_qty",
+	"reserved_qty",
+	"quarantine_qty",
+	"blocked_qty",
+	"available_qty",
+	"low_stock",
+	"expiry_warning",
+	"expired",
+	"batch_qc_status",
+	"batch_status",
+	"source_stock_state",
+}
+
 func inventorySnapshotReportHandler(service inventoryapp.ListAvailableStock) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -94,55 +119,113 @@ func inventorySnapshotReportHandler(service inventoryapp.ListAvailableStock) htt
 			return
 		}
 
-		filters, err := reportingdomain.NewReportFilters(reportFilterInputFromRequest(r))
-		if err != nil {
-			writeInventorySnapshotValidationError(w, r, "Invalid inventory snapshot filters", "date")
-			return
-		}
-		expiryWarningDays, err := parseInventorySnapshotPositiveInt(r.URL.Query().Get("expiry_warning_days"))
-		if err != nil {
-			writeInventorySnapshotValidationError(w, r, "Invalid inventory snapshot filters", "expiry_warning_days")
+		report, ok := inventorySnapshotReportFromRequest(w, r, service)
+		if !ok {
 			return
 		}
 
-		stockFilter := inventorydomain.NewAvailableStockFilter(
-			filters.WarehouseID,
-			r.URL.Query().Get("location_id"),
-			r.URL.Query().Get("sku"),
-			r.URL.Query().Get("batch_id"),
-		)
-		stockFilter.ItemID = filters.ItemID
+		response.WriteSuccess(w, r, http.StatusOK, newInventorySnapshotReportResponse(report))
+	}
+}
 
-		snapshots, err := service.Execute(r.Context(), stockFilter)
+func inventorySnapshotCSVExportHandler(service inventoryapp.ListAvailableStock) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionReportsView) {
+			writePermissionDenied(w, r, auth.PermissionReportsView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionReportsExport) {
+			writePermissionDenied(w, r, auth.PermissionReportsExport)
+			return
+		}
+
+		report, ok := inventorySnapshotReportFromRequest(w, r, service)
+		if !ok {
+			return
+		}
+
+		err := reportinghandler.WriteCSV(w, r, reportinghandler.CSVExport{
+			Filename: "inventory-snapshot-" + report.Metadata.Filters.BusinessDateString() + ".csv",
+			Headers:  inventorySnapshotCSVHeaders,
+			Rows:     newInventorySnapshotCSVRows(report),
+		})
 		if err != nil {
 			response.WriteError(
 				w,
 				r,
 				http.StatusConflict,
 				response.ErrorCodeConflict,
-				"Inventory snapshot report could not be calculated",
+				"Inventory snapshot CSV could not be exported",
 				nil,
 			)
 			return
 		}
-
-		snapshots, ok = filterInventorySnapshotStatus(snapshots, filters.Status)
-		if !ok {
-			writeInventorySnapshotValidationError(w, r, "Invalid inventory snapshot filters", "status")
-			return
-		}
-
-		report, err := reportingdomain.NewInventorySnapshotReport(filters, snapshots, reportingdomain.InventorySnapshotOptions{
-			LowStockThreshold: r.URL.Query().Get("low_stock_threshold"),
-			ExpiryWarningDays: expiryWarningDays,
-		})
-		if err != nil {
-			writeInventorySnapshotReportError(w, r, err)
-			return
-		}
-
-		response.WriteSuccess(w, r, http.StatusOK, newInventorySnapshotReportResponse(report))
 	}
+}
+
+func inventorySnapshotReportFromRequest(
+	w http.ResponseWriter,
+	r *http.Request,
+	service inventoryapp.ListAvailableStock,
+) (reportingdomain.InventorySnapshotReport, bool) {
+	filters, err := reportingdomain.NewReportFilters(reportFilterInputFromRequest(r))
+	if err != nil {
+		writeInventorySnapshotValidationError(w, r, "Invalid inventory snapshot filters", "date")
+		return reportingdomain.InventorySnapshotReport{}, false
+	}
+	expiryWarningDays, err := parseInventorySnapshotPositiveInt(r.URL.Query().Get("expiry_warning_days"))
+	if err != nil {
+		writeInventorySnapshotValidationError(w, r, "Invalid inventory snapshot filters", "expiry_warning_days")
+		return reportingdomain.InventorySnapshotReport{}, false
+	}
+
+	stockFilter := inventorydomain.NewAvailableStockFilter(
+		filters.WarehouseID,
+		r.URL.Query().Get("location_id"),
+		r.URL.Query().Get("sku"),
+		r.URL.Query().Get("batch_id"),
+	)
+	stockFilter.ItemID = filters.ItemID
+
+	snapshots, err := service.Execute(r.Context(), stockFilter)
+	if err != nil {
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Inventory snapshot report could not be calculated",
+			nil,
+		)
+		return reportingdomain.InventorySnapshotReport{}, false
+	}
+
+	snapshots, ok := filterInventorySnapshotStatus(snapshots, filters.Status)
+	if !ok {
+		writeInventorySnapshotValidationError(w, r, "Invalid inventory snapshot filters", "status")
+		return reportingdomain.InventorySnapshotReport{}, false
+	}
+
+	report, err := reportingdomain.NewInventorySnapshotReport(filters, snapshots, reportingdomain.InventorySnapshotOptions{
+		LowStockThreshold: r.URL.Query().Get("low_stock_threshold"),
+		ExpiryWarningDays: expiryWarningDays,
+	})
+	if err != nil {
+		writeInventorySnapshotReportError(w, r, err)
+		return reportingdomain.InventorySnapshotReport{}, false
+	}
+
+	return report, true
 }
 
 func reportFilterInputFromRequest(r *http.Request) reportingdomain.ReportFilterInput {
@@ -283,6 +366,37 @@ func newInventorySnapshotRowResponse(row reportingdomain.InventorySnapshotRow) i
 		BatchStatus:      row.BatchStatus,
 		SourceStockState: row.SourceStockState,
 	}
+}
+
+func newInventorySnapshotCSVRows(report reportingdomain.InventorySnapshotReport) [][]string {
+	rows := make([][]string, 0, len(report.Rows))
+	for _, row := range report.Rows {
+		rows = append(rows, []string{
+			row.WarehouseID,
+			row.WarehouseCode,
+			row.LocationID,
+			row.LocationCode,
+			row.ItemID,
+			row.SKU,
+			row.BatchID,
+			row.BatchNo,
+			row.BatchExpiry,
+			row.BaseUOMCode,
+			row.PhysicalQty,
+			row.ReservedQty,
+			row.QuarantineQty,
+			row.BlockedQty,
+			row.AvailableQty,
+			strconv.FormatBool(row.LowStock),
+			strconv.FormatBool(row.ExpiryWarning),
+			strconv.FormatBool(row.Expired),
+			row.BatchQCStatus,
+			row.BatchStatus,
+			row.SourceStockState,
+		})
+	}
+
+	return rows
 }
 
 func writeInventorySnapshotReportError(w http.ResponseWriter, r *http.Request, err error) {

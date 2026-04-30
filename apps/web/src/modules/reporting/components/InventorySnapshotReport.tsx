@@ -12,7 +12,7 @@ import {
 } from "@/shared/design-system/components";
 import { formatDateTimeVI, formatDateVI, formatQuantity } from "@/shared/format/numberFormat";
 import { useInventorySnapshotReport } from "../hooks/useInventorySnapshotReport";
-import { inventorySnapshotStatusOptions } from "../services/inventorySnapshotReportService";
+import { downloadInventorySnapshotCSV, inventorySnapshotStatusOptions } from "../services/inventorySnapshotReportService";
 import type {
   InventorySnapshotQuery,
   InventorySnapshotReport,
@@ -163,6 +163,8 @@ export function InventorySnapshotReportPanel({ controls }: InventorySnapshotRepo
   const [sku, setSKU] = useState("");
   const [lowStockThreshold, setLowStockThreshold] = useState("10");
   const [expiryWarningDays, setExpiryWarningDays] = useState("30");
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<Error | null>(null);
 
   const query = useMemo<InventorySnapshotQuery>(
     () => ({
@@ -179,6 +181,19 @@ export function InventorySnapshotReportPanel({ controls }: InventorySnapshotRepo
   const { report, loading, error } = useInventorySnapshotReport(query);
   const data = report ?? emptyInventorySnapshotReport(businessDate);
 
+  async function handleExportCSV() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const download = await downloadInventorySnapshotCSV(query);
+      saveBlob(download.blob, download.filename);
+    } catch (reason) {
+      setExportError(reason instanceof Error ? reason : new Error("Inventory CSV could not be exported"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <section className="erp-module-page erp-reporting-page">
       <header className="erp-page-header">
@@ -189,8 +204,15 @@ export function InventorySnapshotReportPanel({ controls }: InventorySnapshotRepo
         </div>
         <div className="erp-page-actions">
           {controls}
-          <button className="erp-button erp-button--secondary" type="button" disabled title="S7-05-02">
-            Export CSV
+          {exportError ? <StatusChip tone="danger">Export failed</StatusChip> : null}
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={loading || exporting}
+            title={exportError?.message ?? "Export inventory snapshot CSV"}
+            onClick={handleExportCSV}
+          >
+            {exporting ? "Exporting" : "Export CSV"}
           </button>
         </div>
       </header>
@@ -409,4 +431,16 @@ function emptyInventorySnapshotReport(businessDate: string): InventorySnapshotRe
 
 function defaultBusinessDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function saveBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = "noreferrer";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
 }

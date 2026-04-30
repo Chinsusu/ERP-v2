@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createPrototypeInventorySnapshotReport,
+  downloadInventorySnapshotCSV,
   getInventorySnapshotReport,
   inventorySnapshotQueryString
 } from "./inventorySnapshotReportService";
@@ -135,6 +136,39 @@ describe("inventorySnapshotReportService", () => {
       itemId: "item-serum-30ml",
       expiryWarning: true
     });
+  });
+
+  it("downloads inventory CSV with current filters", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("warehouse_id,sku,available_qty\nwh-hcm,SERUM-30ML,110.000000\n", {
+        status: 200,
+        headers: {
+          "Content-Disposition": `attachment; filename="inventory-snapshot-2026-04-30.csv"`,
+          "Content-Type": "text/csv; charset=utf-8"
+        }
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const download = await downloadInventorySnapshotCSV({
+      businessDate: "2026-04-30",
+      warehouseId: "wh-hcm",
+      status: "quarantine",
+      itemId: "item-serum-30ml",
+      lowStockThreshold: "10",
+      expiryWarningDays: "45"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/reports/inventory-snapshot/export.csv?business_date=2026-04-30&warehouse_id=wh-hcm&status=quarantine&item_id=item-serum-30ml&low_stock_threshold=10&expiry_warning_days=45",
+      {
+        headers: {
+          Authorization: "Bearer local-dev-access-token"
+        }
+      }
+    );
+    await expect(download.blob.text()).resolves.toContain("SERUM-30ML");
+    expect(download.filename).toBe("inventory-snapshot-2026-04-30.csv");
   });
 
   it("does not hide API permission errors behind prototype fallback", async () => {

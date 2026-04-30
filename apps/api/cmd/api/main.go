@@ -1764,6 +1764,13 @@ func main() {
 		),
 	)
 	mux.Handle(
+		"/api/v1/reports/inventory-snapshot/export.csv",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(inventorySnapshotCSVExportHandler(availableStockService)),
+		),
+	)
+	mux.Handle(
 		"/api/v1/reports/operations-daily",
 		auth.RequireSessionToken(
 			authSessions,

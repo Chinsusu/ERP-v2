@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiDelete, apiGet } from "./client";
+import { ApiError, apiDelete, apiGet, apiGetBlob } from "./client";
 
 describe("apiGet", () => {
   afterEach(() => {
@@ -131,5 +131,30 @@ describe("apiGet", () => {
         }
       }
     );
+  });
+
+  it("downloads raw files and captures attachment filenames", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("sku,available_qty\nSERUM-30ML,110.000000\n", {
+        status: 200,
+        headers: {
+          "Content-Disposition": `attachment; filename="inventory-snapshot-2026-04-30.csv"`,
+          "Content-Type": "text/csv; charset=utf-8"
+        }
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await apiGetBlob("/reports/inventory-snapshot/export.csv", {
+      accessToken: "local-dev-access-token"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/reports/inventory-snapshot/export.csv", {
+      headers: {
+        Authorization: "Bearer local-dev-access-token"
+      }
+    });
+    await expect(result.blob.text()).resolves.toContain("SERUM-30ML");
+    expect(result.filename).toBe("inventory-snapshot-2026-04-30.csv");
   });
 });

@@ -1,4 +1,4 @@
-import { ApiError, apiGetRaw } from "../../../shared/api/client";
+import { ApiError, apiGetBlob, apiGetRaw } from "../../../shared/api/client";
 import type {
   InventorySnapshotQuery,
   InventorySnapshotReport,
@@ -160,6 +160,19 @@ export async function getInventorySnapshotReport(
   }
 }
 
+export async function downloadInventorySnapshotCSV(
+  query: InventorySnapshotQuery = {}
+): Promise<{ blob: Blob; filename: string }> {
+  const result = await apiGetBlob(`/reports/inventory-snapshot/export.csv${inventorySnapshotQueryString(query)}`, {
+    accessToken: defaultAccessToken
+  });
+
+  return {
+    blob: result.blob,
+    filename: result.filename ?? inventorySnapshotCSVFilename(query)
+  };
+}
+
 export function createPrototypeInventorySnapshotReport(
   query: InventorySnapshotQuery = {}
 ): InventorySnapshotReport {
@@ -203,6 +216,10 @@ export function inventorySnapshotQueryString(query: InventorySnapshotQuery) {
 
   const value = params.toString();
   return value ? `?${value}` : "";
+}
+
+function inventorySnapshotCSVFilename(query: InventorySnapshotQuery) {
+  return `inventory-snapshot-${query.businessDate || todayString()}.csv`;
 }
 
 function fromApiInventorySnapshotReport(report: InventorySnapshotReportApi): InventorySnapshotReport {
