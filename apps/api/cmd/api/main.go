@@ -1757,6 +1757,13 @@ func main() {
 		),
 	)
 	mux.Handle(
+		"/api/v1/reports/inventory-snapshot",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(inventorySnapshotReportHandler(availableStockService)),
+		),
+	)
+	mux.Handle(
 		"/api/v1/stock-adjustments",
 		auth.RequireSessionToken(
 			authSessions,

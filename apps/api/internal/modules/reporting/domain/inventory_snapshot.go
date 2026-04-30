@@ -50,6 +50,7 @@ type InventorySnapshotRow struct {
 	WarehouseCode    string
 	LocationID       string
 	LocationCode     string
+	ItemID           string
 	SKU              string
 	BatchID          string
 	BatchNo          string
@@ -148,6 +149,7 @@ func inventorySnapshotRow(
 		WarehouseCode:    strings.TrimSpace(snapshot.WarehouseCode),
 		LocationID:       strings.TrimSpace(snapshot.LocationID),
 		LocationCode:     strings.TrimSpace(snapshot.LocationCode),
+		ItemID:           strings.TrimSpace(snapshot.ItemID),
 		SKU:              strings.ToUpper(strings.TrimSpace(snapshot.SKU)),
 		BatchID:          strings.TrimSpace(snapshot.BatchID),
 		BatchNo:          strings.TrimSpace(snapshot.BatchNo),

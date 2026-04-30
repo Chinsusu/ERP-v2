@@ -58,6 +58,9 @@ func (s PrototypeStockAvailabilityStore) ListBalances(
 		if filter.LocationID != "" && row.LocationID != filter.LocationID {
 			continue
 		}
+		if filter.ItemID != "" && row.ItemID != filter.ItemID {
+			continue
+		}
 		if filterSKU != "" && strings.ToUpper(row.SKU) != filterSKU {
 			continue
 		}
