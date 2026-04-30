@@ -21,7 +21,7 @@ func TestOperationsDailyReportHandlerReturnsFilteredReport(t *testing.T) {
 	req.Header.Set(response.HeaderRequestID, "req-report-operations")
 	rec := httptest.NewRecorder()
 
-	operationsDailyReportHandler().ServeHTTP(rec, req)
+	operationsDailyReportHandler(prototypeOperationsDailySignalSource{}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
@@ -83,7 +83,7 @@ func TestOperationsDailyCSVExportHandlerReturnsCSV(t *testing.T) {
 	req.Header.Set(response.HeaderRequestID, "req-report-operations-csv")
 	rec := httptest.NewRecorder()
 
-	operationsDailyCSVExportHandler().ServeHTTP(rec, req)
+	operationsDailyCSVExportHandler(prototypeOperationsDailySignalSource{}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
@@ -121,7 +121,7 @@ func TestOperationsDailyReportHandlerRequiresReportsPermission(t *testing.T) {
 	req := cashTransactionRequest(http.MethodGet, "/api/v1/reports/operations-daily", nil, auth.RoleWarehouseStaff)
 	rec := httptest.NewRecorder()
 
-	operationsDailyReportHandler().ServeHTTP(rec, req)
+	operationsDailyReportHandler(prototypeOperationsDailySignalSource{}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
@@ -132,7 +132,7 @@ func TestOperationsDailyCSVExportHandlerRequiresExportPermission(t *testing.T) {
 	req := cashTransactionRequest(http.MethodGet, "/api/v1/reports/operations-daily/export.csv", nil, auth.RoleQA)
 	rec := httptest.NewRecorder()
 
-	operationsDailyCSVExportHandler().ServeHTTP(rec, req)
+	operationsDailyCSVExportHandler(prototypeOperationsDailySignalSource{}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
@@ -149,7 +149,7 @@ func TestOperationsDailyReportHandlerRejectsInvalidFilters(t *testing.T) {
 		req := cashTransactionRequest(http.MethodGet, target, nil, auth.RoleWarehouseLead)
 		rec := httptest.NewRecorder()
 
-		operationsDailyReportHandler().ServeHTTP(rec, req)
+		operationsDailyReportHandler(prototypeOperationsDailySignalSource{}).ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("%s status = %d, want %d", target, rec.Code, http.StatusBadRequest)
@@ -166,7 +166,7 @@ func TestOperationsDailyCSVExportHandlerRejectsInvalidFilters(t *testing.T) {
 	)
 	rec := httptest.NewRecorder()
 
-	operationsDailyCSVExportHandler().ServeHTTP(rec, req)
+	operationsDailyCSVExportHandler(prototypeOperationsDailySignalSource{}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
@@ -177,7 +177,7 @@ func TestOperationsDailyReportHandlerRejectsUnsupportedMethod(t *testing.T) {
 	req := cashTransactionRequest(http.MethodPost, "/api/v1/reports/operations-daily", nil, auth.RoleWarehouseLead)
 	rec := httptest.NewRecorder()
 
-	operationsDailyReportHandler().ServeHTTP(rec, req)
+	operationsDailyReportHandler(prototypeOperationsDailySignalSource{}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
@@ -188,7 +188,7 @@ func TestOperationsDailyCSVExportHandlerRejectsUnsupportedMethod(t *testing.T) {
 	req := cashTransactionRequest(http.MethodPost, "/api/v1/reports/operations-daily/export.csv", nil, auth.RoleWarehouseLead)
 	rec := httptest.NewRecorder()
 
-	operationsDailyCSVExportHandler().ServeHTTP(rec, req)
+	operationsDailyCSVExportHandler(prototypeOperationsDailySignalSource{}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
