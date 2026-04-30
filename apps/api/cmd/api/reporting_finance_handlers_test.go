@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	financeapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/finance/application"
@@ -69,6 +70,49 @@ func TestFinanceSummaryReportHandlerReturnsReport(t *testing.T) {
 	}
 }
 
+func TestFinanceSummaryCSVExportHandlerReturnsCSV(t *testing.T) {
+	req := cashTransactionRequest(
+		http.MethodGet,
+		"/api/v1/reports/finance-summary/export.csv?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08",
+		nil,
+		auth.RoleFinanceOps,
+	)
+	req.Header.Set(response.HeaderRequestID, "req-report-finance-csv")
+	rec := httptest.NewRecorder()
+
+	newTestFinanceSummaryCSVExportHandler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); got != "text/csv; charset=utf-8" {
+		t.Fatalf("content type = %q, want text/csv", got)
+	}
+	if got := rec.Header().Get("Content-Disposition"); got != `attachment; filename="finance-summary-2026-04-30-to-2026-05-08.csv"` {
+		t.Fatalf("content disposition = %q", got)
+	}
+	if got := rec.Header().Get(response.HeaderRequestID); got != "req-report-finance-csv" {
+		t.Fatalf("request id = %q, want req-report-finance-csv", got)
+	}
+
+	lines := strings.Split(strings.TrimSpace(rec.Body.String()), "\n")
+	const header = "section,metric,bucket,type,status,count,amount,currency_code"
+	if len(lines) < 10 || lines[0] != header {
+		t.Fatalf("csv lines = %q, want header and finance rows", lines)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		"ar,open,,,,1,1250000.00,VND",
+		"ap,due,,,,1,4250000.00,VND",
+		"cod,discrepancy,,,,1,-50000.00,VND",
+		"cash,net_cash,,,,2,-3000000.00,VND",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("csv body = %q, want %q", body, want)
+		}
+	}
+}
+
 func TestFinanceSummaryReportHandlerRequiresFinanceReportPermission(t *testing.T) {
 	req := cashTransactionRequest(
 		http.MethodGet,
@@ -79,6 +123,32 @@ func TestFinanceSummaryReportHandlerRequiresFinanceReportPermission(t *testing.T
 	rec := httptest.NewRecorder()
 
 	newTestFinanceSummaryReportHandler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+func TestFinanceSummaryCSVExportHandlerRequiresExportPermission(t *testing.T) {
+	req := cashTransactionRequest(
+		http.MethodGet,
+		"/api/v1/reports/finance-summary/export.csv?business_date=2026-04-30",
+		nil,
+		auth.RoleFinanceOps,
+	)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{
+		UserID: "finance-report-viewer",
+		Email:  "finance-report-viewer@example.local",
+		Name:   "Finance Report Viewer",
+		Role:   auth.RoleFinanceOps,
+		Permissions: []auth.PermissionKey{
+			auth.PermissionReportsView,
+			auth.PermissionFinanceReportsView,
+		},
+	}))
+	rec := httptest.NewRecorder()
+
+	newTestFinanceSummaryCSVExportHandler().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
@@ -101,6 +171,22 @@ func TestFinanceSummaryReportHandlerRejectsInvalidFilters(t *testing.T) {
 	}
 }
 
+func TestFinanceSummaryCSVExportHandlerRejectsInvalidFilters(t *testing.T) {
+	req := cashTransactionRequest(
+		http.MethodGet,
+		"/api/v1/reports/finance-summary/export.csv?from_date=2026-05-01&to_date=2026-04-30",
+		nil,
+		auth.RoleFinanceOps,
+	)
+	rec := httptest.NewRecorder()
+
+	newTestFinanceSummaryCSVExportHandler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
 func TestFinanceSummaryReportHandlerRejectsUnsupportedMethod(t *testing.T) {
 	req := cashTransactionRequest(http.MethodPost, "/api/v1/reports/finance-summary", nil, auth.RoleFinanceOps)
 	rec := httptest.NewRecorder()
@@ -112,8 +198,28 @@ func TestFinanceSummaryReportHandlerRejectsUnsupportedMethod(t *testing.T) {
 	}
 }
 
+func TestFinanceSummaryCSVExportHandlerRejectsUnsupportedMethod(t *testing.T) {
+	req := cashTransactionRequest(http.MethodPost, "/api/v1/reports/finance-summary/export.csv", nil, auth.RoleFinanceOps)
+	rec := httptest.NewRecorder()
+
+	newTestFinanceSummaryCSVExportHandler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+}
+
 func newTestFinanceSummaryReportHandler() http.HandlerFunc {
 	return financeSummaryReportHandler(
+		financeapp.NewPrototypeCustomerReceivableStore(),
+		financeapp.NewPrototypeSupplierPayableStore(),
+		financeapp.NewPrototypeCODRemittanceStore(),
+		financeapp.NewPrototypeCashTransactionStore(),
+	)
+}
+
+func newTestFinanceSummaryCSVExportHandler() http.HandlerFunc {
+	return financeSummaryCSVExportHandler(
 		financeapp.NewPrototypeCustomerReceivableStore(),
 		financeapp.NewPrototypeSupplierPayableStore(),
 		financeapp.NewPrototypeCODRemittanceStore(),

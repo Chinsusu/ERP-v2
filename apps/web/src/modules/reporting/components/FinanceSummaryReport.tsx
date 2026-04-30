@@ -11,6 +11,7 @@ import {
 } from "@/shared/design-system/components";
 import { formatDateTimeVI, formatMoney } from "@/shared/format/numberFormat";
 import { useFinanceSummaryReport } from "../hooks/useFinanceSummaryReport";
+import { downloadFinanceSummaryCSV } from "../services/financeSummaryReportService";
 import type {
   FinanceSummaryAgingBucket,
   FinanceSummaryDiscrepancyBucket,
@@ -76,6 +77,8 @@ export function FinanceSummaryReportPanel({ controls }: FinanceSummaryReportPane
   const [fromDate, setFromDate] = useState(defaultBusinessDate());
   const [toDate, setToDate] = useState(defaultBusinessDate());
   const [businessDate, setBusinessDate] = useState(defaultBusinessDate());
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<Error | null>(null);
 
   const query = useMemo<FinanceSummaryQuery>(
     () => ({
@@ -88,6 +91,19 @@ export function FinanceSummaryReportPanel({ controls }: FinanceSummaryReportPane
   const { report, loading, error } = useFinanceSummaryReport(query);
   const data = report ?? emptyFinanceSummaryReport(fromDate, toDate, businessDate);
 
+  async function handleExportCSV() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const download = await downloadFinanceSummaryCSV(query);
+      saveBlob(download.blob, download.filename);
+    } catch (reason) {
+      setExportError(reason instanceof Error ? reason : new Error("Finance CSV could not be exported"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <section className="erp-module-page erp-reporting-page">
       <header className="erp-page-header">
@@ -98,8 +114,15 @@ export function FinanceSummaryReportPanel({ controls }: FinanceSummaryReportPane
         </div>
         <div className="erp-page-actions">
           {controls}
-          <button className="erp-button erp-button--secondary" type="button" disabled title="S7-05-04">
-            Export CSV
+          {exportError ? <StatusChip tone="danger">Export failed</StatusChip> : null}
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={loading || exporting}
+            title={exportError?.message ?? "Export finance summary CSV"}
+            onClick={handleExportCSV}
+          >
+            {exporting ? "Exporting" : "Export CSV"}
           </button>
         </div>
       </header>
@@ -354,4 +377,16 @@ function emptyFinanceSummaryReport(fromDate: string, toDate: string, businessDat
 
 function defaultBusinessDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function saveBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = "noreferrer";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
 }
