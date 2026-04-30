@@ -23,7 +23,11 @@ const agingColumns: DataTableColumn<FinanceSummaryAgingBucket>[] = [
   {
     key: "bucket",
     header: "Bucket",
-    render: (row) => <StatusChip tone={agingTone(row.bucket)}>{agingLabel(row.bucket)}</StatusChip>,
+    render: (row) => (
+      <FinanceSourceReferenceLink reference={row.sourceReference}>
+        <StatusChip tone={agingTone(row.bucket)}>{agingLabel(row.bucket)}</StatusChip>
+      </FinanceSourceReferenceLink>
+    ),
     width: "150px"
   },
   {
@@ -45,7 +49,11 @@ const discrepancyColumns: DataTableColumn<FinanceSummaryDiscrepancyBucket>[] = [
   {
     key: "type",
     header: "Type",
-    render: (row) => discrepancyTypeLabel(row.type),
+    render: (row) => (
+      <FinanceSourceReferenceLink reference={row.sourceReference}>
+        {discrepancyTypeLabel(row.type)}
+      </FinanceSourceReferenceLink>
+    ),
     width: "180px"
   },
   {
@@ -68,6 +76,24 @@ const discrepancyColumns: DataTableColumn<FinanceSummaryDiscrepancyBucket>[] = [
     width: "170px"
   }
 ];
+
+function FinanceSourceReferenceLink({
+  reference,
+  children
+}: {
+  reference: FinanceSummaryAgingBucket["sourceReference"];
+  children: ReactNode;
+}) {
+  if (!reference.unavailable && reference.href) {
+    return (
+      <a className="erp-reporting-source-link" href={reference.href} aria-label={`Open ${reference.label}`}>
+        {children}
+      </a>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 type FinanceSummaryReportPanelProps = {
   controls?: ReactNode;
@@ -347,7 +373,8 @@ function emptyFinanceSummaryReport(fromDate: string, toDate: string, businessDat
       openAmount: "0.00",
       overdueAmount: "0.00",
       outstandingAmount: "0.00",
-      agingBuckets: []
+      agingBuckets: [],
+      sourceReferences: []
     },
     ap: {
       openCount: 0,
@@ -357,20 +384,23 @@ function emptyFinanceSummaryReport(fromDate: string, toDate: string, businessDat
       openAmount: "0.00",
       dueAmount: "0.00",
       outstandingAmount: "0.00",
-      agingBuckets: []
+      agingBuckets: [],
+      sourceReferences: []
     },
     cod: {
       pendingCount: 0,
       discrepancyCount: 0,
       pendingAmount: "0.00",
       discrepancyAmount: "0.00",
-      discrepancyBuckets: []
+      discrepancyBuckets: [],
+      sourceReferences: []
     },
     cash: {
       transactionCount: 0,
       cashInAmount: "0.00",
       cashOutAmount: "0.00",
-      netCashAmount: "0.00"
+      netCashAmount: "0.00",
+      sourceReferences: []
     }
   };
 }

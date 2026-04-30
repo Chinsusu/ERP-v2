@@ -29,6 +29,7 @@ type financeSummaryARResponse struct {
 	OverdueAmount     string                              `json:"overdue_amount"`
 	OutstandingAmount string                              `json:"outstanding_amount"`
 	AgingBuckets      []financeSummaryAgingBucketResponse `json:"aging_buckets"`
+	SourceReferences  []reportSourceReferenceResponse     `json:"source_references"`
 }
 
 type financeSummaryAPResponse struct {
@@ -40,6 +41,7 @@ type financeSummaryAPResponse struct {
 	DueAmount             string                              `json:"due_amount"`
 	OutstandingAmount     string                              `json:"outstanding_amount"`
 	AgingBuckets          []financeSummaryAgingBucketResponse `json:"aging_buckets"`
+	SourceReferences      []reportSourceReferenceResponse     `json:"source_references"`
 }
 
 type financeSummaryCODResponse struct {
@@ -48,26 +50,30 @@ type financeSummaryCODResponse struct {
 	PendingAmount      string                                    `json:"pending_amount"`
 	DiscrepancyAmount  string                                    `json:"discrepancy_amount"`
 	DiscrepancyBuckets []financeSummaryDiscrepancyBucketResponse `json:"discrepancy_buckets"`
+	SourceReferences   []reportSourceReferenceResponse           `json:"source_references"`
 }
 
 type financeSummaryCashResponse struct {
-	TransactionCount int    `json:"transaction_count"`
-	CashInAmount     string `json:"cash_in_amount"`
-	CashOutAmount    string `json:"cash_out_amount"`
-	NetCashAmount    string `json:"net_cash_amount"`
+	TransactionCount int                             `json:"transaction_count"`
+	CashInAmount     string                          `json:"cash_in_amount"`
+	CashOutAmount    string                          `json:"cash_out_amount"`
+	NetCashAmount    string                          `json:"net_cash_amount"`
+	SourceReferences []reportSourceReferenceResponse `json:"source_references"`
 }
 
 type financeSummaryAgingBucketResponse struct {
-	Bucket string `json:"bucket"`
-	Count  int    `json:"count"`
-	Amount string `json:"amount"`
+	Bucket          string                        `json:"bucket"`
+	Count           int                           `json:"count"`
+	Amount          string                        `json:"amount"`
+	SourceReference reportSourceReferenceResponse `json:"source_reference"`
 }
 
 type financeSummaryDiscrepancyBucketResponse struct {
-	Type   string `json:"type"`
-	Status string `json:"status"`
-	Count  int    `json:"count"`
-	Amount string `json:"amount"`
+	Type            string                        `json:"type"`
+	Status          string                        `json:"status"`
+	Count           int                           `json:"count"`
+	Amount          string                        `json:"amount"`
+	SourceReference reportSourceReferenceResponse `json:"source_reference"`
 }
 
 var financeSummaryCSVHeaders = []string{
@@ -232,6 +238,7 @@ func newFinanceSummaryReportResponse(report reportingdomain.FinanceSummaryReport
 			OverdueAmount:     report.AR.OverdueAmount,
 			OutstandingAmount: report.AR.OutstandingAmount,
 			AgingBuckets:      newFinanceSummaryAgingBucketResponses(report.AR.AgingBuckets),
+			SourceReferences:  newReportSourceReferenceResponses(report.AR.SourceReferences),
 		},
 		AP: financeSummaryAPResponse{
 			OpenCount:             report.AP.OpenCount,
@@ -242,6 +249,7 @@ func newFinanceSummaryReportResponse(report reportingdomain.FinanceSummaryReport
 			DueAmount:             report.AP.DueAmount,
 			OutstandingAmount:     report.AP.OutstandingAmount,
 			AgingBuckets:          newFinanceSummaryAgingBucketResponses(report.AP.AgingBuckets),
+			SourceReferences:      newReportSourceReferenceResponses(report.AP.SourceReferences),
 		},
 		COD: financeSummaryCODResponse{
 			PendingCount:       report.COD.PendingCount,
@@ -249,12 +257,14 @@ func newFinanceSummaryReportResponse(report reportingdomain.FinanceSummaryReport
 			PendingAmount:      report.COD.PendingAmount,
 			DiscrepancyAmount:  report.COD.DiscrepancyAmount,
 			DiscrepancyBuckets: newFinanceSummaryDiscrepancyBucketResponses(report.COD.DiscrepancyBuckets),
+			SourceReferences:   newReportSourceReferenceResponses(report.COD.SourceReferences),
 		},
 		Cash: financeSummaryCashResponse{
 			TransactionCount: report.Cash.TransactionCount,
 			CashInAmount:     report.Cash.CashInAmount,
 			CashOutAmount:    report.Cash.CashOutAmount,
 			NetCashAmount:    report.Cash.NetCashAmount,
+			SourceReferences: newReportSourceReferenceResponses(report.Cash.SourceReferences),
 		},
 	}
 }
@@ -265,9 +275,10 @@ func newFinanceSummaryAgingBucketResponses(
 	rows := make([]financeSummaryAgingBucketResponse, 0, len(buckets))
 	for _, bucket := range buckets {
 		rows = append(rows, financeSummaryAgingBucketResponse{
-			Bucket: bucket.Bucket,
-			Count:  bucket.Count,
-			Amount: bucket.Amount,
+			Bucket:          bucket.Bucket,
+			Count:           bucket.Count,
+			Amount:          bucket.Amount,
+			SourceReference: newReportSourceReferenceResponse(bucket.SourceReference),
 		})
 	}
 
@@ -280,10 +291,11 @@ func newFinanceSummaryDiscrepancyBucketResponses(
 	rows := make([]financeSummaryDiscrepancyBucketResponse, 0, len(buckets))
 	for _, bucket := range buckets {
 		rows = append(rows, financeSummaryDiscrepancyBucketResponse{
-			Type:   bucket.Type,
-			Status: bucket.Status,
-			Count:  bucket.Count,
-			Amount: bucket.Amount,
+			Type:            bucket.Type,
+			Status:          bucket.Status,
+			Count:           bucket.Count,
+			Amount:          bucket.Amount,
+			SourceReference: newReportSourceReferenceResponse(bucket.SourceReference),
 		})
 	}
 

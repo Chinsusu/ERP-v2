@@ -160,6 +160,7 @@ export type FinanceSummaryReceivable = {
   overdueAmount: string;
   outstandingAmount: string;
   agingBuckets: FinanceSummaryAgingBucket[];
+  sourceReferences: ReportSourceReference[];
 };
 
 export type FinanceSummaryPayable = {
@@ -171,6 +172,7 @@ export type FinanceSummaryPayable = {
   dueAmount: string;
   outstandingAmount: string;
   agingBuckets: FinanceSummaryAgingBucket[];
+  sourceReferences: ReportSourceReference[];
 };
 
 export type FinanceSummaryCOD = {
@@ -179,6 +181,7 @@ export type FinanceSummaryCOD = {
   pendingAmount: string;
   discrepancyAmount: string;
   discrepancyBuckets: FinanceSummaryDiscrepancyBucket[];
+  sourceReferences: ReportSourceReference[];
 };
 
 export type FinanceSummaryCash = {
@@ -186,12 +189,14 @@ export type FinanceSummaryCash = {
   cashInAmount: string;
   cashOutAmount: string;
   netCashAmount: string;
+  sourceReferences: ReportSourceReference[];
 };
 
 export type FinanceSummaryAgingBucket = {
   bucket: string;
   count: number;
   amount: string;
+  sourceReference: ReportSourceReference;
 };
 
 export type FinanceSummaryDiscrepancyBucket = {
@@ -199,4 +204,5 @@ export type FinanceSummaryDiscrepancyBucket = {
   status: string;
   count: number;
   amount: string;
+  sourceReference: ReportSourceReference;
 };

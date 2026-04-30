@@ -50,6 +50,11 @@ func TestFinanceSummaryReportHandlerReturnsReport(t *testing.T) {
 		payload.Data.AR.OutstandingAmount != "1250000.00" {
 		t.Fatalf("ar = %+v", payload.Data.AR)
 	}
+	if len(payload.Data.AR.SourceReferences) != 1 ||
+		payload.Data.AR.SourceReferences[0].EntityType != "customer_receivable" ||
+		payload.Data.AR.SourceReferences[0].Href == "" {
+		t.Fatalf("ar source references = %+v", payload.Data.AR.SourceReferences)
+	}
 	if payload.Data.AP.OpenCount != 1 ||
 		payload.Data.AP.DueCount != 1 ||
 		payload.Data.AP.OpenAmount != "4250000.00" ||
@@ -61,6 +66,10 @@ func TestFinanceSummaryReportHandlerReturnsReport(t *testing.T) {
 		payload.Data.COD.PendingAmount != "2000000.00" ||
 		payload.Data.COD.DiscrepancyAmount != "-50000.00" {
 		t.Fatalf("cod = %+v", payload.Data.COD)
+	}
+	if len(payload.Data.COD.SourceReferences) != 2 ||
+		payload.Data.COD.SourceReferences[1].EntityType != "cod_discrepancy" {
+		t.Fatalf("cod source references = %+v", payload.Data.COD.SourceReferences)
 	}
 	if payload.Data.Cash.TransactionCount != 2 ||
 		payload.Data.Cash.CashInAmount != "1250000.00" ||

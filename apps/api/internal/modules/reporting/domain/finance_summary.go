@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"math/big"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -34,6 +35,7 @@ type FinanceSummaryReceivable struct {
 	OverdueAmount     string
 	OutstandingAmount string
 	AgingBuckets      []FinanceSummaryAgingBucket
+	SourceReferences  []ReportSourceReference
 }
 
 type FinanceSummaryPayable struct {
@@ -45,6 +47,7 @@ type FinanceSummaryPayable struct {
 	DueAmount             string
 	OutstandingAmount     string
 	AgingBuckets          []FinanceSummaryAgingBucket
+	SourceReferences      []ReportSourceReference
 }
 
 type FinanceSummaryCOD struct {
@@ -53,6 +56,7 @@ type FinanceSummaryCOD struct {
 	PendingAmount      string
 	DiscrepancyAmount  string
 	DiscrepancyBuckets []FinanceSummaryDiscrepancyBucket
+	SourceReferences   []ReportSourceReference
 }
 
 type FinanceSummaryCash struct {
@@ -60,19 +64,22 @@ type FinanceSummaryCash struct {
 	CashInAmount     string
 	CashOutAmount    string
 	NetCashAmount    string
+	SourceReferences []ReportSourceReference
 }
 
 type FinanceSummaryAgingBucket struct {
-	Bucket string
-	Count  int
-	Amount string
+	Bucket          string
+	Count           int
+	Amount          string
+	SourceReference ReportSourceReference
 }
 
 type FinanceSummaryDiscrepancyBucket struct {
-	Type   string
-	Status string
-	Count  int
-	Amount string
+	Type            string
+	Status          string
+	Count           int
+	Amount          string
+	SourceReference ReportSourceReference
 }
 
 func NewFinanceSummaryReport(
@@ -159,7 +166,10 @@ func summarizeFinanceSummaryReceivables(
 	summary.OpenAmount = openAmount.String()
 	summary.OverdueAmount = overdueAmount.String()
 	summary.OutstandingAmount = outstandingAmount.String()
-	summary.AgingBuckets = aging.Rows()
+	summary.AgingBuckets = financeSummaryAgingBucketReferences("customer_receivable", filters, aging.Rows())
+	summary.SourceReferences = financeSummarySectionReferences(filters, []financeSummaryReferenceSeed{
+		{entityType: "customer_receivable", label: "customer_receivables"},
+	})
 
 	return summary, nil
 }
@@ -211,7 +221,11 @@ func summarizeFinanceSummaryPayables(
 	summary.OpenAmount = openAmount.String()
 	summary.DueAmount = dueAmount.String()
 	summary.OutstandingAmount = outstandingAmount.String()
-	summary.AgingBuckets = aging.Rows()
+	summary.AgingBuckets = financeSummaryAgingBucketReferences("supplier_payable", filters, aging.Rows())
+	summary.SourceReferences = financeSummarySectionReferences(filters, []financeSummaryReferenceSeed{
+		{entityType: "supplier_payable", label: "supplier_payables"},
+		{entityType: "payment_approval", label: "payment_approvals"},
+	})
 
 	return summary, nil
 }
@@ -254,7 +268,11 @@ func summarizeFinanceSummaryCOD(
 
 	summary.PendingAmount = pendingAmount.String()
 	summary.DiscrepancyAmount = discrepancyAmount.String()
-	summary.DiscrepancyBuckets = discrepancies.Rows()
+	summary.DiscrepancyBuckets = financeSummaryDiscrepancyBucketReferences(filters, discrepancies.Rows())
+	summary.SourceReferences = financeSummarySectionReferences(filters, []financeSummaryReferenceSeed{
+		{entityType: "cod_remittance", label: "cod_remittances"},
+		{entityType: "cod_discrepancy", label: "cod_discrepancies"},
+	})
 
 	return summary, nil
 }
@@ -300,8 +318,94 @@ func summarizeFinanceSummaryCash(
 	summary.CashInAmount = cashIn.String()
 	summary.CashOutAmount = cashOut.String()
 	summary.NetCashAmount = net.String()
+	summary.SourceReferences = financeSummarySectionReferences(filters, []financeSummaryReferenceSeed{
+		{entityType: "cash_transaction", label: "cash_transactions"},
+	})
 
 	return summary, nil
+}
+
+type financeSummaryReferenceSeed struct {
+	entityType string
+	label      string
+}
+
+func financeSummarySectionReferences(filters ReportFilters, seeds []financeSummaryReferenceSeed) []ReportSourceReference {
+	references := make([]ReportSourceReference, 0, len(seeds))
+	for _, seed := range seeds {
+		references = append(references, financeSummarySourceReference(
+			seed.entityType,
+			seed.entityType+":"+filters.FromDateString()+":"+filters.ToDateString()+":"+filters.BusinessDateString(),
+			seed.label,
+			financeSummarySourceHref(seed.entityType, filters, nil),
+		))
+	}
+
+	return references
+}
+
+func financeSummaryAgingBucketReferences(
+	entityType string,
+	filters ReportFilters,
+	buckets []FinanceSummaryAgingBucket,
+) []FinanceSummaryAgingBucket {
+	rows := make([]FinanceSummaryAgingBucket, 0, len(buckets))
+	for _, bucket := range buckets {
+		bucket.SourceReference = financeSummarySourceReference(
+			entityType,
+			entityType+":"+bucket.Bucket+":"+filters.FromDateString()+":"+filters.ToDateString()+":"+filters.BusinessDateString(),
+			bucket.Bucket,
+			financeSummarySourceHref(entityType, filters, map[string]string{"bucket": bucket.Bucket}),
+		)
+		rows = append(rows, bucket)
+	}
+
+	return rows
+}
+
+func financeSummaryDiscrepancyBucketReferences(
+	filters ReportFilters,
+	buckets []FinanceSummaryDiscrepancyBucket,
+) []FinanceSummaryDiscrepancyBucket {
+	rows := make([]FinanceSummaryDiscrepancyBucket, 0, len(buckets))
+	for _, bucket := range buckets {
+		bucket.SourceReference = financeSummarySourceReference(
+			"cod_discrepancy",
+			"cod_discrepancy:"+bucket.Type+":"+bucket.Status+":"+filters.FromDateString()+":"+filters.ToDateString(),
+			bucket.Type+":"+bucket.Status,
+			financeSummarySourceHref("cod_discrepancy", filters, map[string]string{"type": bucket.Type, "status": bucket.Status}),
+		)
+		rows = append(rows, bucket)
+	}
+
+	return rows
+}
+
+func financeSummarySourceReference(entityType string, id string, label string, href string) ReportSourceReference {
+	reference, err := NewReportSourceReference(ReportSourceReferenceInput{
+		EntityType: entityType,
+		ID:         id,
+		Label:      label,
+		Href:       href,
+	})
+	if err != nil {
+		panic(ErrInvalidFinanceSummaryReport)
+	}
+
+	return reference
+}
+
+func financeSummarySourceHref(entityType string, filters ReportFilters, extra map[string]string) string {
+	params := url.Values{}
+	params.Set("source_type", entityType)
+	params.Set("from_date", filters.FromDateString())
+	params.Set("to_date", filters.ToDateString())
+	params.Set("business_date", filters.BusinessDateString())
+	for key, value := range extra {
+		params.Set(key, value)
+	}
+
+	return "/finance?" + params.Encode()
 }
 
 func isFinanceSummaryOpenPayableStatus(status financedomain.PayableStatus) bool {
