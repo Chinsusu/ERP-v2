@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { FinanceSummaryReportPanel } from "./FinanceSummaryReport";
 import { InventorySnapshotReportPanel } from "./InventorySnapshotReport";
 import { OperationsDailyReportPanel } from "./OperationsDailyReport";
+import { urlOptionParam, useReportUrlState } from "../hooks/useReportUrlState";
 
 type ReportingTab = "inventory" | "operations" | "finance";
 
@@ -14,7 +14,13 @@ const tabs: Array<{ id: ReportingTab; label: string }> = [
 ];
 
 export function ReportingDashboard() {
-  const [activeTab, setActiveTab] = useState<ReportingTab>("inventory");
+  const { searchParams, replaceReportUrlParams } = useReportUrlState();
+  const activeTab = urlOptionParam(
+    searchParams,
+    "report",
+    tabs.map((tab) => tab.id),
+    "inventory"
+  );
   const controls = (
     <div className="erp-reporting-tabs" role="tablist" aria-label="Reporting views">
       {tabs.map((tab) => (
@@ -24,7 +30,7 @@ export function ReportingDashboard() {
           type="button"
           role="tab"
           aria-selected={activeTab === tab.id}
-          onClick={() => setActiveTab(tab.id)}
+          onClick={() => replaceReportUrlParams(tab.id, {})}
         >
           {tab.label}
         </button>

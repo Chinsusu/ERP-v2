@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   DataTable,
@@ -12,6 +12,7 @@ import {
 } from "@/shared/design-system/components";
 import { formatDateTimeVI, formatDateVI, formatQuantity } from "@/shared/format/numberFormat";
 import { useInventorySnapshotReport } from "../hooks/useInventorySnapshotReport";
+import { urlDateParam, urlOptionParam, urlParam, useReportUrlState } from "../hooks/useReportUrlState";
 import { downloadInventorySnapshotCSV, inventorySnapshotStatusOptions } from "../services/inventorySnapshotReportService";
 import type {
   InventorySnapshotQuery,
@@ -156,13 +157,22 @@ type InventorySnapshotReportPanelProps = {
 };
 
 export function InventorySnapshotReportPanel({ controls }: InventorySnapshotReportPanelProps = {}) {
-  const [businessDate, setBusinessDate] = useState(defaultBusinessDate());
-  const [warehouseId, setWarehouseId] = useState("");
-  const [status, setStatus] = useState<InventorySnapshotQuery["status"]>("");
-  const [itemId, setItemId] = useState("");
-  const [sku, setSKU] = useState("");
-  const [lowStockThreshold, setLowStockThreshold] = useState("10");
-  const [expiryWarningDays, setExpiryWarningDays] = useState("30");
+  const { searchParams, replaceReportUrlParams } = useReportUrlState();
+  const defaultDate = defaultBusinessDate();
+  const [businessDate, setBusinessDate] = useState(() => urlDateParam(searchParams, "business_date", defaultDate));
+  const [warehouseId, setWarehouseId] = useState(() => urlParam(searchParams, "warehouse_id"));
+  const [status, setStatus] = useState<InventorySnapshotQuery["status"]>(() =>
+    urlOptionParam(
+      searchParams,
+      "status",
+      inventorySnapshotStatusOptions.map((option) => option.value),
+      ""
+    )
+  );
+  const [itemId, setItemId] = useState(() => urlParam(searchParams, "item_id"));
+  const [sku, setSKU] = useState(() => urlParam(searchParams, "sku").toUpperCase());
+  const [lowStockThreshold, setLowStockThreshold] = useState(() => urlParam(searchParams, "low_stock_threshold") || "10");
+  const [expiryWarningDays, setExpiryWarningDays] = useState(() => urlParam(searchParams, "expiry_warning_days") || "30");
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<Error | null>(null);
 
@@ -180,6 +190,18 @@ export function InventorySnapshotReportPanel({ controls }: InventorySnapshotRepo
   );
   const { report, loading, error } = useInventorySnapshotReport(query);
   const data = report ?? emptyInventorySnapshotReport(businessDate);
+
+  useEffect(() => {
+    replaceReportUrlParams("inventory", {
+      business_date: businessDate,
+      warehouse_id: warehouseId,
+      status,
+      item_id: itemId,
+      sku,
+      low_stock_threshold: lowStockThreshold,
+      expiry_warning_days: expiryWarningDays
+    });
+  }, [businessDate, expiryWarningDays, itemId, lowStockThreshold, replaceReportUrlParams, sku, status, warehouseId]);
 
   async function handleExportCSV() {
     setExporting(true);
