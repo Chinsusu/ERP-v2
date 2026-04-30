@@ -86,6 +86,23 @@ export async function apiGetRaw<TData>(path: string, options: ApiWriteOptions = 
   return payload.data;
 }
 
+export async function apiGetBlob(
+  path: string,
+  options: ApiWriteOptions = {}
+): Promise<{ blob: Blob; filename?: string }> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    headers: authHeaders(options)
+  });
+  if (!response.ok) {
+    throw await createApiError(response);
+  }
+
+  return {
+    blob: await response.blob(),
+    filename: filenameFromContentDisposition(response.headers.get("Content-Disposition"))
+  };
+}
+
 export async function apiPost<TData, TBody>(
   path: string,
   body: TBody,
@@ -179,6 +196,15 @@ function queryString(query: unknown) {
 
   const value = params.toString();
   return value ? `?${value}` : "";
+}
+
+function filenameFromContentDisposition(value: string | null) {
+  if (!value) {
+    return undefined;
+  }
+
+  const match = /filename="([^"]+)"/.exec(value);
+  return match?.[1];
 }
 
 async function createApiError(response: Response): Promise<Error> {
