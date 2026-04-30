@@ -3827,6 +3827,9 @@ components:
         - inventory:view
         - purchase:view
         - finance:view
+        - finance:manage
+        - cod:reconcile
+        - payment:approve
         - qc:view
         - production:view
         - subcontract:view
