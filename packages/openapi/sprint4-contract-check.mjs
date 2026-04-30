@@ -340,6 +340,39 @@ const sprint6Routes = [
   }
 ];
 
+const sprint7Routes = [
+  {
+    path: "/reports/inventory-snapshot",
+    apiRoute: "/api/v1/reports/inventory-snapshot",
+    operationIds: ["getInventorySnapshotReport"]
+  },
+  {
+    path: "/reports/inventory-snapshot/export.csv",
+    apiRoute: "/api/v1/reports/inventory-snapshot/export.csv",
+    operationIds: ["exportInventorySnapshotReportCSV"]
+  },
+  {
+    path: "/reports/operations-daily",
+    apiRoute: "/api/v1/reports/operations-daily",
+    operationIds: ["getOperationsDailyReport"]
+  },
+  {
+    path: "/reports/operations-daily/export.csv",
+    apiRoute: "/api/v1/reports/operations-daily/export.csv",
+    operationIds: ["exportOperationsDailyReportCSV"]
+  },
+  {
+    path: "/reports/finance-summary",
+    apiRoute: "/api/v1/reports/finance-summary",
+    operationIds: ["getFinanceSummaryReport"]
+  },
+  {
+    path: "/reports/finance-summary/export.csv",
+    apiRoute: "/api/v1/reports/finance-summary/export.csv",
+    operationIds: ["exportFinanceSummaryReportCSV"]
+  }
+];
+
 const requiredSuccessSchemas = [
   "PurchaseOrderListSuccessResponse",
   "PurchaseOrderSuccessResponse",
@@ -375,12 +408,15 @@ const requiredSuccessSchemas = [
   "FinanceDashboardSuccessResponse",
   "CODRemittanceListSuccessResponse",
   "CODRemittanceSuccessResponse",
-  "CODRemittanceActionSuccessResponse"
+  "CODRemittanceActionSuccessResponse",
+  "InventorySnapshotReportSuccessResponse",
+  "OperationsDailyReportSuccessResponse",
+  "FinanceSummaryReportSuccessResponse"
 ];
 
 const failures = [];
 
-const routes = [...sprint4Routes, ...sprint5Routes, ...sprint6Routes];
+const routes = [...sprint4Routes, ...sprint5Routes, ...sprint6Routes, ...sprint7Routes];
 
 for (const route of routes) {
   requireContains(openapi, `  ${route.path}:`, `OpenAPI path missing: ${route.path}`);
@@ -402,20 +438,20 @@ for (const schemaName of requiredSuccessSchemas) {
 }
 
 const colonActionPattern =
-  /^  \/(purchase-orders|goods-receipts|inbound-qc-inspections|supplier-rejections|subcontract-orders|customer-receivables|supplier-payables|cash-transactions|finance\/dashboard|cod-remittances|warehouse\/daily-board\/(inbound|subcontract)-metrics)[^\n]*:[A-Za-z0-9_-]+:/m;
+  /^  \/(purchase-orders|goods-receipts|inbound-qc-inspections|supplier-rejections|subcontract-orders|customer-receivables|supplier-payables|cash-transactions|finance\/dashboard|cod-remittances|reports\/(inventory-snapshot|operations-daily|finance-summary)|warehouse\/daily-board\/(inbound|subcontract)-metrics)[^\n]*:[A-Za-z0-9_-]+:/m;
 if (colonActionPattern.test(openapi)) {
-  failures.push("Sprint 4/5/6 OpenAPI paths must use slash action style, not colon action style.");
+  failures.push("Sprint 4/5/6/7 OpenAPI paths must use slash action style, not colon action style.");
 }
 
 if (failures.length > 0) {
-  console.error("Sprint 4/5/6 OpenAPI contract check failed:");
+  console.error("Sprint 4/5/6/7 OpenAPI contract check failed:");
   for (const failure of failures) {
     console.error(`- ${failure}`);
   }
   process.exit(1);
 }
 
-console.log(`Sprint 4/5/6 OpenAPI contract check passed: ${routes.length} routes and ${requiredSuccessSchemas.length} envelopes.`);
+console.log(`Sprint 4/5/6/7 OpenAPI contract check passed: ${routes.length} routes and ${requiredSuccessSchemas.length} envelopes.`);
 
 function requireContains(haystack, needle, message) {
   if (!haystack.includes(needle)) {
