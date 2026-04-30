@@ -7,26 +7,34 @@ import {
   ScanInput,
   StatusChip,
   type DataTableColumn,
+  type StatusTone,
   type ToastMessage
 } from "@/shared/design-system/components";
 import { carrierOptions } from "../../shipping/services/carrierManifestService";
 import { useWarehouseDailyBoard } from "../hooks/useWarehouseDailyBoard";
 import { ShiftClosingPanel } from "./ShiftClosingPanel";
 import {
+  buildWarehouseFinanceReportHref,
   buildWarehouseFulfillmentDrillDownHref,
   buildWarehouseInboundDrillDownHref,
+  buildWarehouseInventoryReportHref,
+  buildWarehouseOperationsReportHref,
   buildWarehouseSubcontractDrillDownHref,
   buildWarehouseQueueDrillDownHref,
   buildWarehouseShiftClosingDrillDownHref,
   defaultWarehouseDailyBoardShiftCode,
   defaultWarehouseDailyBoardDate,
   warehouseShiftOptions,
+  warehouseInventoryReportStatusFromQueue,
+  warehouseOperationsReportStatusFromQueue,
   warehouseOptions,
   warehouseTaskTone
 } from "../services/warehouseDailyBoardService";
 import type {
   WarehouseFulfillmentDrillDownKey,
   WarehouseInboundDrillDownKey,
+  WarehouseInventoryReportStatus,
+  WarehouseOperationsReportStatus,
   WarehouseSubcontractDrillDownKey
 } from "../services/warehouseDailyBoardService";
 import type {
@@ -142,6 +150,46 @@ export default function WarehouseDailyBoard() {
     warehouseOptions.find((option) => option.value === warehouseId)?.label ?? board?.warehouseCode ?? "All warehouses";
   const selectedCarrierLabel = carrierOptions.find((option) => option.value === carrierCode)?.label ?? "All carriers";
   const activeQueueLabel = queueLabel(queueFilter);
+  const inventoryReportStatus = warehouseInventoryReportStatusFromQueue(queueFilter);
+  const operationsReportStatus = warehouseOperationsReportStatusFromQueue(queueFilter);
+  const boardDateLabel = formatBoardDate(date);
+  const reportCards: {
+    key: "inventory" | "operations" | "finance";
+    label: string;
+    value: string;
+    helper: string;
+    chip: string;
+    tone: StatusTone;
+    href: string;
+  }[] = [
+    {
+      key: "inventory",
+      label: "Inventory report",
+      value: inventoryReportStatusLabel(inventoryReportStatus),
+      helper: `${boardDateLabel} / ${selectedWarehouseLabel}`,
+      chip: "Inventory",
+      tone: inventoryReportTone(inventoryReportStatus),
+      href: buildWarehouseInventoryReportHref(query, inventoryReportStatus)
+    },
+    {
+      key: "operations",
+      label: "Operations report",
+      value: operationsReportStatus ? operationsReportStatusLabel(operationsReportStatus) : "All statuses",
+      helper: `${boardDateLabel} / ${activeQueueLabel}`,
+      chip: "Operations",
+      tone: operationsReportStatus ? operationsReportTone(operationsReportStatus) : "info",
+      href: buildWarehouseOperationsReportHref(query, operationsReportStatus)
+    },
+    {
+      key: "finance",
+      label: "Finance report",
+      value: "AR / AP / COD",
+      helper: boardDateLabel,
+      chip: "Finance",
+      tone: "info",
+      href: buildWarehouseFinanceReportHref(query)
+    }
+  ];
   const fulfillment = board?.fulfillment;
   const inbound = board?.inbound;
   const subcontract = board?.subcontract;
@@ -552,6 +600,17 @@ export default function WarehouseDailyBoard() {
         </label>
       </section>
 
+      <section className="erp-warehouse-report-grid" aria-label="Dashboard report entry points">
+        {reportCards.map((card) => (
+          <a className="erp-warehouse-report-card" href={card.href} key={card.key}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+            <small>{card.helper}</small>
+            <StatusChip tone={card.tone}>{card.chip}</StatusChip>
+          </a>
+        ))}
+      </section>
+
       <section className="erp-kpi-grid erp-warehouse-kpis">
         {queueCards.map((card) => (
           <WarehouseKPI
@@ -822,6 +881,65 @@ function scrollTaskBoardIntoView() {
 
 function queueLabel(queueFilter: QueueFilter) {
   return queueOptions.find((option) => option.value === queueFilter)?.label ?? "All active queues";
+}
+
+function inventoryReportStatusLabel(status: WarehouseInventoryReportStatus) {
+  switch (status) {
+    case "reserved":
+      return "Reserved stock";
+    case "quarantine":
+      return "Quarantine stock";
+    case "blocked":
+      return "Blocked stock";
+    case "available":
+    default:
+      return "Available stock";
+  }
+}
+
+function inventoryReportTone(status: WarehouseInventoryReportStatus): StatusTone {
+  switch (status) {
+    case "reserved":
+      return "info";
+    case "quarantine":
+      return "warning";
+    case "blocked":
+      return "danger";
+    case "available":
+    default:
+      return "success";
+  }
+}
+
+function operationsReportStatusLabel(status: WarehouseOperationsReportStatus) {
+  switch (status) {
+    case "in_progress":
+      return "In progress";
+    case "completed":
+      return "Completed";
+    case "blocked":
+      return "Blocked";
+    case "exception":
+      return "Exception";
+    case "pending":
+    default:
+      return "Pending";
+  }
+}
+
+function operationsReportTone(status: WarehouseOperationsReportStatus): StatusTone {
+  switch (status) {
+    case "completed":
+      return "success";
+    case "blocked":
+    case "exception":
+      return "danger";
+    case "in_progress":
+      return "warning";
+    case "pending":
+    default:
+      return "info";
+  }
 }
 
 function sourceLabel(source: WarehouseDailyTask["source"]) {

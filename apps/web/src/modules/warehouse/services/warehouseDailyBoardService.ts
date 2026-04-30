@@ -84,6 +84,8 @@ export type WarehouseSubcontractDrillDownKey =
   | "factory_claims"
   | "final_payment_ready_orders";
 export type WarehouseDailyBoardDrillDownQueue = WarehouseDailyTaskStatus | "overdue";
+export type WarehouseInventoryReportStatus = "available" | "reserved" | "quarantine" | "blocked";
+export type WarehouseOperationsReportStatus = "pending" | "in_progress" | "completed" | "blocked" | "exception";
 
 export const warehouseDailyBoardCounterSources: WarehouseDailyBoardCounterSource[] = [
   {
@@ -569,6 +571,87 @@ export function buildWarehouseShiftClosingDrillDownHref(query: WarehouseDailyBoa
     },
     "shift-closing"
   );
+}
+
+export function buildWarehouseInventoryReportHref(
+  query: WarehouseDailyBoardQuery = {},
+  status: WarehouseInventoryReportStatus = "available"
+) {
+  return reportHref({
+    report: "inventory",
+    business_date: query.date,
+    warehouse_id: query.warehouseId,
+    status
+  });
+}
+
+export function buildWarehouseOperationsReportHref(
+  query: WarehouseDailyBoardQuery = {},
+  status?: WarehouseOperationsReportStatus
+) {
+  const businessDate = query.date;
+  return reportHref({
+    report: "operations",
+    from_date: businessDate,
+    to_date: businessDate,
+    business_date: businessDate,
+    warehouse_id: query.warehouseId,
+    status
+  });
+}
+
+export function buildWarehouseFinanceReportHref(query: WarehouseDailyBoardQuery = {}) {
+  const businessDate = query.date;
+  return reportHref({
+    report: "finance",
+    from_date: businessDate,
+    to_date: businessDate,
+    business_date: businessDate
+  });
+}
+
+export function warehouseInventoryReportStatusFromQueue(
+  queue: WarehouseDailyBoardDrillDownQueue | "" | undefined
+): WarehouseInventoryReportStatus {
+  switch (queue) {
+    case "picking":
+    case "packed":
+    case "handover":
+      return "reserved";
+    case "qa_hold":
+      return "quarantine";
+    case "adjustment":
+    case "mismatch":
+    case "closing":
+    case "overdue":
+      return "blocked";
+    case "waiting":
+    case "returns":
+    default:
+      return "available";
+  }
+}
+
+export function warehouseOperationsReportStatusFromQueue(
+  queue: WarehouseDailyBoardDrillDownQueue | "" | undefined
+): WarehouseOperationsReportStatus | undefined {
+  switch (queue) {
+    case "picking":
+    case "packed":
+    case "handover":
+      return "in_progress";
+    case "mismatch":
+    case "closing":
+    case "overdue":
+      return "blocked";
+    case "waiting":
+    case "returns":
+    case "qa_hold":
+    case "adjustment":
+      return "pending";
+    default:
+      return undefined;
+  }
 }
 
 export function composeWarehouseDailyBoard(
@@ -1329,6 +1412,14 @@ function carrierManifestDrillDownHref(query: WarehouseDailyBoardQuery, status: s
 }
 
 function drillDownHref(path: string, query: Record<string, string | undefined>, hash: string) {
+  return `${queryHref(path, query)}#${hash}`;
+}
+
+function reportHref(query: Record<string, string | undefined>) {
+  return queryHref("/reports", query);
+}
+
+function queryHref(path: string, query: Record<string, string | undefined>) {
   const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
     if (value) {
@@ -1337,7 +1428,7 @@ function drillDownHref(path: string, query: Record<string, string | undefined>, 
   });
   const queryString = params.toString();
 
-  return `${path}${queryString ? `?${queryString}` : ""}#${hash}`;
+  return `${path}${queryString ? `?${queryString}` : ""}`;
 }
 
 function salesWarehouseIdForDrillDown(warehouseId?: string) {

@@ -16,6 +16,9 @@ import { resetPrototypeStockAdjustmentsForTest } from "../../inventory/services/
 import {
   buildWarehouseFulfillmentDrillDownHref,
   buildWarehouseInboundDrillDownHref,
+  buildWarehouseFinanceReportHref,
+  buildWarehouseInventoryReportHref,
+  buildWarehouseOperationsReportHref,
   buildWarehouseSubcontractDrillDownHref,
   buildWarehouseQueueDrillDownHref,
   buildWarehouseShiftClosingDrillDownHref,
@@ -33,6 +36,8 @@ import {
   summarizeReconciliationLines,
   reconciliationStatusTone,
   summarizeWarehouseDailyBoard,
+  warehouseInventoryReportStatusFromQueue,
+  warehouseOperationsReportStatusFromQueue,
   warehouseTaskTone
 } from "./warehouseDailyBoardService";
 
@@ -609,6 +614,29 @@ describe("warehouseDailyBoardService", () => {
     expect(buildWarehouseSubcontractDrillDownHref("final_payment_ready_orders", { date: "2026-04-29" })).toBe(
       "/subcontract?date=2026-04-29&view=final_payment_ready#subcontract-orders"
     );
+  });
+
+  it("builds dashboard report entry links with selected filters", () => {
+    const query = {
+      warehouseId: "wh-hcm",
+      date: "2026-04-26",
+      shiftCode: "day" as const,
+      carrierCode: "ghn"
+    };
+
+    expect(buildWarehouseInventoryReportHref(query, "blocked")).toBe(
+      "/reports?report=inventory&business_date=2026-04-26&warehouse_id=wh-hcm&status=blocked"
+    );
+    expect(buildWarehouseOperationsReportHref(query, "in_progress")).toBe(
+      "/reports?report=operations&from_date=2026-04-26&to_date=2026-04-26&business_date=2026-04-26&warehouse_id=wh-hcm&status=in_progress"
+    );
+    expect(buildWarehouseFinanceReportHref(query)).toBe(
+      "/reports?report=finance&from_date=2026-04-26&to_date=2026-04-26&business_date=2026-04-26"
+    );
+    expect(warehouseInventoryReportStatusFromQueue("qa_hold")).toBe("quarantine");
+    expect(warehouseInventoryReportStatusFromQueue("mismatch")).toBe("blocked");
+    expect(warehouseOperationsReportStatusFromQueue("picking")).toBe("in_progress");
+    expect(warehouseOperationsReportStatusFromQueue("overdue")).toBe("blocked");
   });
 
   it("builds drill-down links for daily board queue alerts", () => {
