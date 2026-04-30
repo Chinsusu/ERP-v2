@@ -1154,6 +1154,8 @@ func main() {
 		WithStockReserver(salesOrderReservationStore)
 	customerReceivableStore := financeapp.NewPrototypeCustomerReceivableStore()
 	customerReceivableService := financeapp.NewCustomerReceivableService(customerReceivableStore, auditLogStore)
+	supplierPayableStore := financeapp.NewPrototypeSupplierPayableStore()
+	supplierPayableService := financeapp.NewSupplierPayableService(supplierPayableStore, auditLogStore)
 	codRemittanceStore := financeapp.NewPrototypeCODRemittanceStore()
 	codRemittanceService := financeapp.NewCODRemittanceService(codRemittanceStore, auditLogStore)
 	warehouseReceivingStore := inventoryapp.NewPrototypeWarehouseReceivingStore()
@@ -1416,6 +1418,41 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(customerReceivableVoidHandler(customerReceivableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/supplier-payables",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(supplierPayablesHandler(supplierPayableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/supplier-payables/{supplier_payable_id}",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(supplierPayableDetailHandler(supplierPayableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/supplier-payables/{supplier_payable_id}/approve-payment",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(supplierPayableApprovePaymentHandler(supplierPayableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/supplier-payables/{supplier_payable_id}/record-payment",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(supplierPayableRecordPaymentHandler(supplierPayableService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/supplier-payables/{supplier_payable_id}/void",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(supplierPayableVoidHandler(supplierPayableService)),
 		),
 	)
 	mux.Handle(

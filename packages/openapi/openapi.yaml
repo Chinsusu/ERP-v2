@@ -3220,6 +3220,192 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /supplier-payables:
+    get:
+      summary: List supplier payables
+      operationId: listSupplierPayables
+      tags:
+        - finance
+      parameters:
+        - $ref: "#/components/parameters/SearchParam"
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated supplier payable statuses.
+        - name: supplier_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier payable rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPayableListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create a supplier payable
+      operationId: createSupplierPayable
+      tags:
+        - finance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierPayableRequest"
+      responses:
+        "201":
+          description: Supplier payable created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPayableSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /supplier-payables/{supplier_payable_id}:
+    get:
+      summary: Get supplier payable detail
+      operationId: getSupplierPayable
+      tags:
+        - finance
+      parameters:
+        - name: supplier_payable_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier payable detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPayableSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /supplier-payables/{supplier_payable_id}/approve-payment:
+    post:
+      summary: Approve payment for a supplier payable
+      operationId: approveSupplierPayablePayment
+      tags:
+        - finance
+      parameters:
+        - name: supplier_payable_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierPayableActionRequest"
+      responses:
+        "200":
+          description: Supplier payable payment approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPayableActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /supplier-payables/{supplier_payable_id}/record-payment:
+    post:
+      summary: Record a payment against a supplier payable
+      operationId: recordSupplierPayablePayment
+      tags:
+        - finance
+      parameters:
+        - name: supplier_payable_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierPayableActionRequest"
+      responses:
+        "200":
+          description: Supplier payable payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPayableActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /supplier-payables/{supplier_payable_id}/void:
+    post:
+      summary: Void a supplier payable
+      operationId: voidSupplierPayable
+      tags:
+        - finance
+      parameters:
+        - name: supplier_payable_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierPayableActionRequest"
+      responses:
+        "200":
+          description: Supplier payable voided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPayableActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /cod-remittances:
     get:
       summary: List COD remittances
@@ -9249,6 +9435,259 @@ components:
           $ref: "#/components/schemas/CustomerReceivableStatus"
         current_status:
           $ref: "#/components/schemas/CustomerReceivableStatus"
+        audit_log_id:
+          type: string
+    SupplierPayableStatus:
+      type: string
+      enum:
+        - draft
+        - open
+        - payment_requested
+        - payment_approved
+        - partially_paid
+        - paid
+        - disputed
+        - void
+    SupplierPayableListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/SupplierPayableListItem"
+    SupplierPayableSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SupplierPayable"
+    SupplierPayableActionSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SupplierPayableActionResult"
+    SupplierPayableListItem:
+      type: object
+      required:
+        - id
+        - payable_no
+        - supplier_id
+        - supplier_name
+        - status
+        - total_amount
+        - paid_amount
+        - outstanding_amount
+        - currency_code
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        payable_no:
+          type: string
+        supplier_id:
+          type: string
+        supplier_code:
+          type: string
+        supplier_name:
+          type: string
+        status:
+          $ref: "#/components/schemas/SupplierPayableStatus"
+        total_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        paid_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        outstanding_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        due_date:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+    SupplierPayable:
+      type: object
+      required:
+        - id
+        - org_id
+        - payable_no
+        - supplier_id
+        - supplier_name
+        - status
+        - source_document
+        - lines
+        - total_amount
+        - paid_amount
+        - outstanding_amount
+        - currency_code
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        payable_no:
+          type: string
+        supplier_id:
+          type: string
+        supplier_code:
+          type: string
+        supplier_name:
+          type: string
+        status:
+          $ref: "#/components/schemas/SupplierPayableStatus"
+        source_document:
+          $ref: "#/components/schemas/FinanceSourceDocument"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupplierPayableLine"
+        total_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        paid_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        outstanding_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        due_date:
+          type: string
+          format: date
+        payment_requested_by:
+          type: string
+        payment_requested_at:
+          type: string
+          format: date-time
+        payment_approved_by:
+          type: string
+        payment_approved_at:
+          type: string
+          format: date-time
+        dispute_reason:
+          type: string
+        void_reason:
+          type: string
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+    SupplierPayableLine:
+      type: object
+      required:
+        - id
+        - description
+        - source_document
+        - amount
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        source_document:
+          $ref: "#/components/schemas/FinanceSourceDocument"
+        amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    CreateSupplierPayableRequest:
+      type: object
+      required:
+        - supplier_id
+        - supplier_name
+        - source_document
+        - lines
+        - total_amount
+        - currency_code
+      properties:
+        id:
+          type: string
+        payable_no:
+          type: string
+        supplier_id:
+          type: string
+        supplier_code:
+          type: string
+        supplier_name:
+          type: string
+        status:
+          $ref: "#/components/schemas/SupplierPayableStatus"
+        source_document:
+          $ref: "#/components/schemas/FinanceSourceDocument"
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateSupplierPayableLineRequest"
+        total_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        due_date:
+          type: string
+          format: date
+    CreateSupplierPayableLineRequest:
+      type: object
+      required:
+        - id
+        - description
+        - source_document
+        - amount
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        source_document:
+          $ref: "#/components/schemas/FinanceSourceDocument"
+        amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    SupplierPayableActionRequest:
+      type: object
+      properties:
+        amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        reason:
+          type: string
+    SupplierPayableActionResult:
+      type: object
+      required:
+        - supplier_payable
+        - previous_status
+        - current_status
+      properties:
+        supplier_payable:
+          $ref: "#/components/schemas/SupplierPayable"
+        previous_status:
+          $ref: "#/components/schemas/SupplierPayableStatus"
+        current_status:
+          $ref: "#/components/schemas/SupplierPayableStatus"
         audit_log_id:
           type: string
     CODRemittanceStatus:

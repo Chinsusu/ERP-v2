@@ -1436,6 +1436,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/supplier-payables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List supplier payables */
+        get: operations["listSupplierPayables"];
+        put?: never;
+        /** Create a supplier payable */
+        post: operations["createSupplierPayable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-payables/{supplier_payable_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get supplier payable detail */
+        get: operations["getSupplierPayable"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-payables/{supplier_payable_id}/approve-payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve payment for a supplier payable */
+        post: operations["approveSupplierPayablePayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-payables/{supplier_payable_id}/record-payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a payment against a supplier payable */
+        post: operations["recordSupplierPayablePayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-payables/{supplier_payable_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a supplier payable */
+        post: operations["voidSupplierPayable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cod-remittances": {
         parameters: {
             query?: never;
@@ -3870,6 +3956,103 @@ export interface components {
             customer_receivable: components["schemas"]["CustomerReceivable"];
             previous_status: components["schemas"]["CustomerReceivableStatus"];
             current_status: components["schemas"]["CustomerReceivableStatus"];
+            audit_log_id?: string;
+        };
+        /** @enum {string} */
+        SupplierPayableStatus: "draft" | "open" | "payment_requested" | "payment_approved" | "partially_paid" | "paid" | "disputed" | "void";
+        SupplierPayableListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SupplierPayableListItem"][];
+        };
+        SupplierPayableSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SupplierPayable"];
+        };
+        SupplierPayableActionSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SupplierPayableActionResult"];
+        };
+        SupplierPayableListItem: {
+            id: string;
+            payable_no: string;
+            supplier_id: string;
+            supplier_code?: string;
+            supplier_name: string;
+            status: components["schemas"]["SupplierPayableStatus"];
+            total_amount: components["schemas"]["MoneyAmount"];
+            paid_amount: components["schemas"]["MoneyAmount"];
+            outstanding_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            /** Format: date */
+            due_date?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        SupplierPayable: {
+            id: string;
+            org_id: string;
+            payable_no: string;
+            supplier_id: string;
+            supplier_code?: string;
+            supplier_name: string;
+            status: components["schemas"]["SupplierPayableStatus"];
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            lines: components["schemas"]["SupplierPayableLine"][];
+            total_amount: components["schemas"]["MoneyAmount"];
+            paid_amount: components["schemas"]["MoneyAmount"];
+            outstanding_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            /** Format: date */
+            due_date?: string;
+            payment_requested_by?: string;
+            /** Format: date-time */
+            payment_requested_at?: string;
+            payment_approved_by?: string;
+            /** Format: date-time */
+            payment_approved_at?: string;
+            dispute_reason?: string;
+            void_reason?: string;
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        SupplierPayableLine: {
+            id: string;
+            description: string;
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            amount: components["schemas"]["MoneyAmount"];
+        };
+        CreateSupplierPayableRequest: {
+            id?: string;
+            payable_no?: string;
+            supplier_id: string;
+            supplier_code?: string;
+            supplier_name: string;
+            status?: components["schemas"]["SupplierPayableStatus"];
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            lines: components["schemas"]["CreateSupplierPayableLineRequest"][];
+            total_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            /** Format: date */
+            due_date?: string;
+        };
+        CreateSupplierPayableLineRequest: {
+            id: string;
+            description: string;
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            amount: components["schemas"]["MoneyAmount"];
+        };
+        SupplierPayableActionRequest: {
+            amount?: components["schemas"]["MoneyAmount"];
+            reason?: string;
+        };
+        SupplierPayableActionResult: {
+            supplier_payable: components["schemas"]["SupplierPayable"];
+            previous_status: components["schemas"]["SupplierPayableStatus"];
+            current_status: components["schemas"]["SupplierPayableStatus"];
             audit_log_id?: string;
         };
         /** @enum {string} */
@@ -7367,6 +7550,180 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerReceivableActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listSupplierPayables: {
+        parameters: {
+            query?: {
+                /** @description Quick search term for code, name, phone, or other whitelisted fields. */
+                q?: components["parameters"]["SearchParam"];
+                /** @description Comma-separated supplier payable statuses. */
+                status?: string;
+                supplier_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supplier payable rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierPayableListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createSupplierPayable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupplierPayableRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier payable created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierPayableSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getSupplierPayable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_payable_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supplier payable detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierPayableSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    approveSupplierPayablePayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_payable_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SupplierPayableActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier payable payment approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierPayableActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    recordSupplierPayablePayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_payable_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplierPayableActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier payable payment recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierPayableActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    voidSupplierPayable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_payable_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplierPayableActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier payable voided */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierPayableActionSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];
