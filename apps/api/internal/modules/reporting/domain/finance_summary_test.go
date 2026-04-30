@@ -137,6 +137,50 @@ func TestNewFinanceSummaryReportFiltersCODAndCashByDateRange(t *testing.T) {
 	}
 }
 
+func TestNewFinanceSummaryReportBuildsCODDiscrepancyBucketsFromUntracedLines(t *testing.T) {
+	filters := mustFinanceSummaryFilters(t, "2026-04-30", "2026-04-30", "2026-04-30")
+	remittance := financeSummaryCODRemittance(
+		"cod-untraced",
+		financedomain.CODRemittanceStatusDraft,
+		"2026-04-30",
+		"2000000.00",
+		"1950000.00",
+		"-50000.00",
+		nil,
+	)
+	remittance.Lines = []financedomain.CODRemittanceLine{
+		{
+			ID:                "cod-untraced-line-1",
+			ReceivableID:      "ar-cod-untraced",
+			ReceivableNo:      "AR-COD-UNTRACED",
+			TrackingNo:        "GHN-UNTRACED",
+			ExpectedAmount:    decimal.MustMoneyAmount("2000000.00"),
+			RemittedAmount:    decimal.MustMoneyAmount("1950000.00"),
+			DiscrepancyAmount: decimal.MustMoneyAmount("-50000.00"),
+			MatchStatus:       financedomain.CODLineMatchStatusShortPaid,
+		},
+	}
+
+	report, err := NewFinanceSummaryReport(filters, nil, nil, []financedomain.CODRemittance{remittance}, nil, FinanceSummaryOptions{})
+	if err != nil {
+		t.Fatalf("NewFinanceSummaryReport returned error: %v", err)
+	}
+
+	if len(report.COD.DiscrepancyBuckets) != 1 {
+		t.Fatalf("cod discrepancy buckets = %+v, want one untraced line bucket", report.COD.DiscrepancyBuckets)
+	}
+	bucket := report.COD.DiscrepancyBuckets[0]
+	if bucket.Type != "short_paid" || bucket.Status != "open" || bucket.Count != 1 || bucket.Amount != "-50000.00" {
+		t.Fatalf("bucket = %+v, want short paid open discrepancy", bucket)
+	}
+	if bucket.SourceReference.EntityType != "cod_discrepancy" ||
+		!strings.Contains(bucket.SourceReference.ID, "cod-untraced:cod-untraced-line-1") ||
+		!strings.Contains(bucket.SourceReference.Href, "source_ids=") ||
+		!strings.Contains(bucket.SourceReference.Href, "cod-untraced") {
+		t.Fatalf("source reference = %+v, want auditable remittance line source", bucket.SourceReference)
+	}
+}
+
 func TestNewFinanceSummaryReportRejectsNonVNDRecords(t *testing.T) {
 	filters := mustFinanceSummaryFilters(t, "2026-04-30", "2026-04-30", "2026-04-30")
 	receivable := financeSummaryReceivable("ar-usd", financedomain.ReceivableStatusOpen, "100.00", "0.00", "100.00", "2026-04-30")

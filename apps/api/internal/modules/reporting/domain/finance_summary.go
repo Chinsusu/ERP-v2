@@ -80,6 +80,7 @@ type FinanceSummaryDiscrepancyBucket struct {
 	Count           int
 	Amount          string
 	SourceReference ReportSourceReference
+	sourceIDs       []string
 }
 
 func NewFinanceSummaryReport(
@@ -259,8 +260,21 @@ func summarizeFinanceSummaryCOD(
 				return FinanceSummaryCOD{}, ErrInvalidFinanceSummaryReport
 			}
 		}
+		tracedLineIDs := make(map[string]struct{}, len(remittance.Discrepancies))
 		for _, discrepancy := range remittance.Discrepancies {
 			if err := discrepancies.Add(discrepancy); err != nil {
+				return FinanceSummaryCOD{}, ErrInvalidFinanceSummaryReport
+			}
+			tracedLineIDs[strings.TrimSpace(discrepancy.LineID)] = struct{}{}
+		}
+		for _, line := range remittance.Lines {
+			if line.DiscrepancyAmount.IsZero() {
+				continue
+			}
+			if _, ok := tracedLineIDs[strings.TrimSpace(line.ID)]; ok {
+				continue
+			}
+			if err := discrepancies.AddUntracedLine(remittance, line); err != nil {
 				return FinanceSummaryCOD{}, ErrInvalidFinanceSummaryReport
 			}
 		}
@@ -371,9 +385,13 @@ func financeSummaryDiscrepancyBucketReferences(
 	for _, bucket := range buckets {
 		bucket.SourceReference = financeSummarySourceReference(
 			"cod_discrepancy",
-			"cod_discrepancy:"+bucket.Type+":"+bucket.Status+":"+filters.FromDateString()+":"+filters.ToDateString(),
+			"cod_discrepancy:"+bucket.Type+":"+bucket.Status+":"+bucket.sourceKey()+":"+filters.FromDateString()+":"+filters.ToDateString(),
 			bucket.Type+":"+bucket.Status,
-			financeSummarySourceHref("cod_discrepancy", filters, map[string]string{"type": bucket.Type, "status": bucket.Status}),
+			financeSummarySourceHref("cod_discrepancy", filters, map[string]string{
+				"type":       bucket.Type,
+				"status":     bucket.Status,
+				"source_ids": bucket.sourceKey(),
+			}),
 		)
 		rows = append(rows, bucket)
 	}
@@ -578,6 +596,7 @@ type financeSummaryDiscrepancyBucketTotal struct {
 	status          string
 	count           int
 	amount          financeSummaryMoneyTotal
+	sourceIDs       map[string]struct{}
 }
 
 func newFinanceSummaryDiscrepancyBuckets() financeSummaryDiscrepancyBuckets {
@@ -590,6 +609,33 @@ func (b financeSummaryDiscrepancyBuckets) Add(discrepancy financedomain.CODDiscr
 	if discrepancyType == "" || status == "" {
 		return ErrInvalidFinanceSummaryReport
 	}
+
+	return b.add(discrepancyType, status, discrepancy.Amount, discrepancy.ID)
+}
+
+func (b financeSummaryDiscrepancyBuckets) AddUntracedLine(
+	remittance financedomain.CODRemittance,
+	line financedomain.CODRemittanceLine,
+) error {
+	discrepancyType := financeSummaryCODLineDiscrepancyType(line)
+	if discrepancyType == "" || line.DiscrepancyAmount.IsZero() {
+		return nil
+	}
+
+	return b.add(
+		discrepancyType,
+		string(financedomain.CODDiscrepancyStatusOpen),
+		line.DiscrepancyAmount,
+		strings.TrimSpace(remittance.ID)+":"+strings.TrimSpace(line.ID),
+	)
+}
+
+func (b financeSummaryDiscrepancyBuckets) add(
+	discrepancyType string,
+	status string,
+	amount decimal.Decimal,
+	sourceID string,
+) error {
 	key := discrepancyType + ":" + status
 	total := b.values[key]
 	if total == nil {
@@ -597,12 +643,16 @@ func (b financeSummaryDiscrepancyBuckets) Add(discrepancy financedomain.CODDiscr
 			discrepancyType: discrepancyType,
 			status:          status,
 			amount:          newFinanceSummaryMoneyTotal(),
+			sourceIDs:       make(map[string]struct{}),
 		}
 		b.values[key] = total
 	}
 	total.count++
+	if normalizedSourceID := strings.TrimSpace(sourceID); normalizedSourceID != "" {
+		total.sourceIDs[normalizedSourceID] = struct{}{}
+	}
 
-	return total.amount.Add(discrepancy.Amount)
+	return total.amount.Add(amount)
 }
 
 func (b financeSummaryDiscrepancyBuckets) Rows() []FinanceSummaryDiscrepancyBucket {
@@ -613,6 +663,10 @@ func (b financeSummaryDiscrepancyBuckets) Rows() []FinanceSummaryDiscrepancyBuck
 			Status: total.status,
 			Count:  total.count,
 			Amount: total.amount.String(),
+			sourceIDs: financeSummarySortedSourceIDs(
+				total.sourceIDs,
+				total.discrepancyType+":"+total.status,
+			),
 		})
 	}
 	sort.Slice(rows, func(i int, j int) bool {
@@ -624,4 +678,38 @@ func (b financeSummaryDiscrepancyBuckets) Rows() []FinanceSummaryDiscrepancyBuck
 	})
 
 	return rows
+}
+
+func financeSummaryCODLineDiscrepancyType(line financedomain.CODRemittanceLine) string {
+	switch financedomain.NormalizeCODLineMatchStatus(line.MatchStatus) {
+	case financedomain.CODLineMatchStatusShortPaid:
+		return string(financedomain.CODDiscrepancyTypeShortPaid)
+	case financedomain.CODLineMatchStatusOverPaid:
+		return string(financedomain.CODDiscrepancyTypeOverPaid)
+	}
+	if line.DiscrepancyAmount.IsNegative() {
+		return string(financedomain.CODDiscrepancyTypeShortPaid)
+	}
+	if !line.DiscrepancyAmount.IsZero() {
+		return string(financedomain.CODDiscrepancyTypeOverPaid)
+	}
+
+	return ""
+}
+
+func financeSummarySortedSourceIDs(values map[string]struct{}, fallback string) []string {
+	sourceIDs := make([]string, 0, len(values))
+	for sourceID := range values {
+		sourceIDs = append(sourceIDs, sourceID)
+	}
+	sort.Strings(sourceIDs)
+	if len(sourceIDs) == 0 {
+		sourceIDs = append(sourceIDs, fallback)
+	}
+
+	return sourceIDs
+}
+
+func (bucket FinanceSummaryDiscrepancyBucket) sourceKey() string {
+	return strings.Join(bucket.sourceIDs, ",")
 }

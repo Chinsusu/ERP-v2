@@ -60,6 +60,7 @@ export function createPrototypeFinanceSummaryReport(query: FinanceSummaryQuery =
   const fromDate = query.fromDate || businessDate;
   const toDate = query.toDate || businessDate;
   const includesPrototypeCash = includesDate({ fromDate, toDate }, "2026-04-30");
+  const prototypeCODDiscrepancySourceID = "cod-remit-260430-0001:cod-remit-260430-0001-line-1";
 
   return {
     metadata: {
@@ -106,13 +107,19 @@ export function createPrototypeFinanceSummaryReport(query: FinanceSummaryQuery =
               status: "open",
               count: 1,
               amount: "-50000.00",
-              sourceReference: financeSourceReference("cod_discrepancy", "short_paid:open", "short_paid:open", {
-                fromDate,
-                toDate,
-                businessDate,
-                type: "short_paid",
-                status: "open"
-              })
+              sourceReference: financeSourceReference(
+                "cod_discrepancy",
+                `cod_discrepancy:short_paid:open:${prototypeCODDiscrepancySourceID}:${fromDate}:${toDate}`,
+                "short_paid:open",
+                {
+                  fromDate,
+                  toDate,
+                  businessDate,
+                  type: "short_paid",
+                  status: "open",
+                  sourceIds: prototypeCODDiscrepancySourceID
+                }
+              )
             }
           ]
         : [],
@@ -303,7 +310,15 @@ function financeSourceReference(
   entityType: string,
   id: string,
   label: string,
-  filters: { fromDate: string; toDate: string; businessDate: string; bucket?: string; type?: string; status?: string }
+  filters: {
+    fromDate: string;
+    toDate: string;
+    businessDate: string;
+    bucket?: string;
+    type?: string;
+    status?: string;
+    sourceIds?: string;
+  }
 ): ReportSourceReference {
   const params = new URLSearchParams();
   params.set("source_type", entityType);
@@ -318,6 +333,9 @@ function financeSourceReference(
   }
   if (filters.status) {
     params.set("status", filters.status);
+  }
+  if (filters.sourceIds) {
+    params.set("source_ids", filters.sourceIds);
   }
 
   return {

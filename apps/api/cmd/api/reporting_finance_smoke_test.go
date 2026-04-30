@@ -49,6 +49,11 @@ func TestFinanceSummaryReportSmoke(t *testing.T) {
 			payload.Data.COD.DiscrepancyAmount != "-50000.00" {
 			t.Fatalf("cod = %+v, want pending COD discrepancy", payload.Data.COD)
 		}
+		if len(payload.Data.COD.DiscrepancyBuckets) != 1 ||
+			payload.Data.COD.DiscrepancyBuckets[0].SourceReference.EntityType != "cod_discrepancy" ||
+			!strings.Contains(payload.Data.COD.DiscrepancyBuckets[0].SourceReference.ID, "cod-remit-260430-0001-line-1") {
+			t.Fatalf("cod discrepancy buckets = %+v, want auditable source reference", payload.Data.COD.DiscrepancyBuckets)
+		}
 		if payload.Data.Cash.TransactionCount != 2 || payload.Data.Cash.NetCashAmount != "-3000000.00" {
 			t.Fatalf("cash = %+v, want net cash summary", payload.Data.Cash)
 		}
