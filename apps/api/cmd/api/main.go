@@ -1778,6 +1778,13 @@ func main() {
 		),
 	)
 	mux.Handle(
+		"/api/v1/reports/operations-daily/export.csv",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(operationsDailyCSVExportHandler()),
+		),
+	)
+	mux.Handle(
 		"/api/v1/reports/finance-summary",
 		auth.RequireSessionToken(
 			authSessions,

@@ -12,7 +12,7 @@ import {
 } from "@/shared/design-system/components";
 import { formatDateTimeVI, formatDateVI } from "@/shared/format/numberFormat";
 import { useOperationsDailyReport } from "../hooks/useOperationsDailyReport";
-import { operationsDailyStatusOptions } from "../services/operationsDailyReportService";
+import { downloadOperationsDailyCSV, operationsDailyStatusOptions } from "../services/operationsDailyReportService";
 import type {
   OperationsDailyAreaSummary,
   OperationsDailyQuery,
@@ -155,6 +155,8 @@ export function OperationsDailyReportPanel({ controls }: OperationsDailyReportPa
   const [toDate, setToDate] = useState(defaultBusinessDate());
   const [warehouseId, setWarehouseId] = useState("wh-hcm");
   const [status, setStatus] = useState<OperationsDailyQuery["status"]>("");
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<Error | null>(null);
 
   const query = useMemo<OperationsDailyQuery>(
     () => ({
@@ -169,6 +171,19 @@ export function OperationsDailyReportPanel({ controls }: OperationsDailyReportPa
   const { report, loading, error } = useOperationsDailyReport(query);
   const data = report ?? emptyOperationsDailyReport(fromDate, toDate);
 
+  async function handleExportCSV() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const download = await downloadOperationsDailyCSV(query);
+      saveBlob(download.blob, download.filename);
+    } catch (reason) {
+      setExportError(reason instanceof Error ? reason : new Error("Operations CSV could not be exported"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <section className="erp-module-page erp-reporting-page">
       <header className="erp-page-header">
@@ -179,8 +194,15 @@ export function OperationsDailyReportPanel({ controls }: OperationsDailyReportPa
         </div>
         <div className="erp-page-actions">
           {controls}
-          <button className="erp-button erp-button--secondary" type="button" disabled title="S7-05-03">
-            Export CSV
+          {exportError ? <StatusChip tone="danger">Export failed</StatusChip> : null}
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={loading || exporting}
+            title={exportError?.message ?? "Export operations daily CSV"}
+            onClick={handleExportCSV}
+          >
+            {exporting ? "Exporting" : "Export CSV"}
           </button>
         </div>
       </header>
@@ -405,4 +427,16 @@ function emptyOperationsDailyReport(fromDate: string, toDate: string): Operation
 
 function defaultBusinessDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function saveBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = "noreferrer";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
 }

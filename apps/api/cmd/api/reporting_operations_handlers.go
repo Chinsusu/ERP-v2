@@ -7,6 +7,7 @@ import (
 	"time"
 
 	reportingdomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/reporting/domain"
+	reportinghandler "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/reporting/handler"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/response"
 )
@@ -55,6 +56,24 @@ type operationsDailyReportRowResponse struct {
 	Owner         string `json:"owner,omitempty"`
 }
 
+var operationsDailyCSVHeaders = []string{
+	"id",
+	"area",
+	"source_type",
+	"source_id",
+	"ref_no",
+	"title",
+	"warehouse_id",
+	"warehouse_code",
+	"business_date",
+	"status",
+	"severity",
+	"quantity",
+	"uom_code",
+	"exception_code",
+	"owner",
+}
+
 func operationsDailyReportHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -72,30 +91,83 @@ func operationsDailyReportHandler() http.HandlerFunc {
 			return
 		}
 
-		filters, err := reportingdomain.NewReportFilters(reportFilterInputFromRequest(r))
-		if err != nil {
-			writeOperationsDailyValidationError(w, r, "Invalid operations daily filters", "date")
-			return
-		}
-		status, ok := normalizeOperationsDailyStatusFilter(filters.Status)
+		report, ok := operationsDailyReportFromRequest(w, r)
 		if !ok {
-			writeOperationsDailyValidationError(w, r, "Invalid operations daily filters", "status")
-			return
-		}
-		filters.Status = status
-
-		report, err := reportingdomain.NewOperationsDailyReport(
-			filters,
-			prototypeOperationsDailySignals(),
-			reportingdomain.OperationsDailyOptions{},
-		)
-		if err != nil {
-			writeOperationsDailyReportError(w, r, err)
 			return
 		}
 
 		response.WriteSuccess(w, r, http.StatusOK, newOperationsDailyReportResponse(report))
 	}
+}
+
+func operationsDailyCSVExportHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionReportsView) {
+			writePermissionDenied(w, r, auth.PermissionReportsView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionReportsExport) {
+			writePermissionDenied(w, r, auth.PermissionReportsExport)
+			return
+		}
+
+		report, ok := operationsDailyReportFromRequest(w, r)
+		if !ok {
+			return
+		}
+
+		err := reportinghandler.WriteCSV(w, r, reportinghandler.CSVExport{
+			Filename: operationsDailyCSVFilename(report),
+			Headers:  operationsDailyCSVHeaders,
+			Rows:     newOperationsDailyCSVRows(report),
+		})
+		if err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusConflict,
+				response.ErrorCodeConflict,
+				"Operations daily CSV could not be exported",
+				nil,
+			)
+		}
+	}
+}
+
+func operationsDailyReportFromRequest(w http.ResponseWriter, r *http.Request) (reportingdomain.OperationsDailyReport, bool) {
+	filters, err := reportingdomain.NewReportFilters(reportFilterInputFromRequest(r))
+	if err != nil {
+		writeOperationsDailyValidationError(w, r, "Invalid operations daily filters", "date")
+		return reportingdomain.OperationsDailyReport{}, false
+	}
+	status, ok := normalizeOperationsDailyStatusFilter(filters.Status)
+	if !ok {
+		writeOperationsDailyValidationError(w, r, "Invalid operations daily filters", "status")
+		return reportingdomain.OperationsDailyReport{}, false
+	}
+	filters.Status = status
+
+	report, err := reportingdomain.NewOperationsDailyReport(
+		filters,
+		prototypeOperationsDailySignals(),
+		reportingdomain.OperationsDailyOptions{},
+	)
+	if err != nil {
+		writeOperationsDailyReportError(w, r, err)
+		return reportingdomain.OperationsDailyReport{}, false
+	}
+
+	return report, true
 }
 
 func normalizeOperationsDailyStatusFilter(status string) (string, bool) {
@@ -289,6 +361,36 @@ func newOperationsDailyReportResponse(report reportingdomain.OperationsDailyRepo
 		Areas: areas,
 		Rows:  rows,
 	}
+}
+
+func operationsDailyCSVFilename(report reportingdomain.OperationsDailyReport) string {
+	filters := report.Metadata.Filters
+	return "operations-daily-" + filters.FromDateString() + "-to-" + filters.ToDateString() + ".csv"
+}
+
+func newOperationsDailyCSVRows(report reportingdomain.OperationsDailyReport) [][]string {
+	rows := make([][]string, 0, len(report.Rows))
+	for _, row := range report.Rows {
+		rows = append(rows, []string{
+			row.ID,
+			row.Area,
+			row.SourceType,
+			row.SourceID,
+			row.RefNo,
+			row.Title,
+			row.WarehouseID,
+			row.WarehouseCode,
+			row.BusinessDate,
+			row.Status,
+			row.Severity,
+			row.Quantity,
+			row.UOMCode,
+			row.ExceptionCode,
+			row.Owner,
+		})
+	}
+
+	return rows
 }
 
 func writeOperationsDailyReportError(w http.ResponseWriter, r *http.Request, err error) {
