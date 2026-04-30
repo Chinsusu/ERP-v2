@@ -47,6 +47,14 @@ func TestOperationsDailyReportSmoke(t *testing.T) {
 			payload.Data.Rows[1].ExceptionCode != "VARIANCE_REVIEW" {
 			t.Fatalf("rows = %+v, want handover and cycle-count exceptions", payload.Data.Rows)
 		}
+		for _, row := range payload.Data.Rows {
+			if row.SourceReference.EntityType != row.SourceType ||
+				row.SourceReference.ID != row.SourceID ||
+				row.SourceReference.Href == "" ||
+				row.SourceReference.Unavailable {
+				t.Fatalf("row source reference = %+v, want linked %s/%s", row.SourceReference, row.SourceType, row.SourceID)
+			}
+		}
 	})
 
 	t.Run("CSV export returns stable operations daily file", func(t *testing.T) {
@@ -79,11 +87,33 @@ func TestOperationsDailyReportSmoke(t *testing.T) {
 		if len(lines) != 3 || lines[0] != header {
 			t.Fatalf("csv lines = %q, want stable header and two pending rows", lines)
 		}
+		if !strings.Contains(lines[0], "source_type,source_id") {
+			t.Fatalf("csv header = %q, want source_type and source_id source columns", lines[0])
+		}
 		body := rec.Body.String()
 		for _, want := range []string{"GR-260430-0001", "RET-260430-0001", "12.000000", "3.000000", "pending"} {
 			if !strings.Contains(body, want) {
 				t.Fatalf("csv body = %q, want %q", body, want)
 			}
+		}
+	})
+
+	t.Run("report endpoint remains read only", func(t *testing.T) {
+		req := smokeRequestAsRole(
+			httptest.NewRequest(
+				http.MethodPost,
+				"/api/v1/reports/operations-daily?business_date=2026-04-30&warehouse_id=wh-hcm&status=blocked",
+				nil,
+			),
+			authConfig,
+			auth.RoleWarehouseLead,
+		)
+		rec := httptest.NewRecorder()
+
+		operationsDailyReportHandler(prototypeOperationsDailySignalSource{}).ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusMethodNotAllowed {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
 		}
 	})
 }
