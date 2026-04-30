@@ -281,6 +281,10 @@ function fromApiSourceReferences(
     sku: row.sku,
     batchId: row.batch_id,
     batchNo: row.batch_no,
+    reservedQty: row.reserved_qty,
+    quarantineQty: row.quarantine_qty,
+    blockedQty: row.blocked_qty,
+    availableQty: row.available_qty,
     sourceStockState: row.source_stock_state,
     lowStock: row.low_stock,
     expiryWarning: row.expiry_warning,
@@ -307,6 +311,10 @@ function buildInventorySourceReferences(
     | "sku"
     | "batchId"
     | "batchNo"
+    | "reservedQty"
+    | "quarantineQty"
+    | "blockedQty"
+    | "availableQty"
     | "sourceStockState"
     | "lowStock"
     | "expiryWarning"
@@ -336,17 +344,65 @@ function buildInventorySourceReferences(
     );
   }
 
-  const contextId = inventoryContextId(row);
-  references.push(
-    availableReference("stock_state", contextId, row.sourceStockState, inventoryContextHref(row))
-  );
-  for (const warning of inventoryWarnings(row)) {
+  for (const stockState of inventoryStockContextStates(row)) {
+    const contextRow = { ...row, sourceStockState: stockState };
     references.push(
-      availableReference("inventory_warning", `${contextId}:${warning}`, warning, inventoryWarningHref(row, warning))
+      availableReference("stock_state", inventoryContextId(contextRow), stockState, inventoryContextHref(contextRow))
+    );
+  }
+  for (const warning of inventoryWarnings(row)) {
+    const warningRow = { ...row, sourceStockState: inventoryWarningStockState(row, warning) };
+    references.push(
+      availableReference(
+        "inventory_warning",
+        `${inventoryContextId(warningRow)}:${warning}`,
+        warning,
+        inventoryWarningHref(warningRow, warning)
+      )
     );
   }
 
   return references;
+}
+
+function inventoryStockContextStates(
+  row: Pick<
+    InventorySnapshotRow,
+    "sourceStockState" | "availableQty" | "reservedQty" | "quarantineQty" | "blockedQty"
+  >
+) {
+  const states: string[] = [];
+  appendInventoryStockContextState(states, row.sourceStockState);
+  if (hasPositiveQuantity(row.availableQty)) {
+    appendInventoryStockContextState(states, "available");
+  }
+  if (hasPositiveQuantity(row.reservedQty)) {
+    appendInventoryStockContextState(states, "reserved");
+  }
+  if (hasPositiveQuantity(row.quarantineQty)) {
+    appendInventoryStockContextState(states, "quarantine");
+  }
+  if (hasPositiveQuantity(row.blockedQty)) {
+    appendInventoryStockContextState(states, "blocked");
+  }
+  return states;
+}
+
+function appendInventoryStockContextState(states: string[], state: string) {
+  const normalized = state.trim();
+  if (normalized && !states.includes(normalized)) {
+    states.push(normalized);
+  }
+}
+
+function inventoryWarningStockState(
+  row: Pick<InventorySnapshotRow, "sourceStockState">,
+  warning: string
+) {
+  if (warning === "low_stock") {
+    return "available";
+  }
+  return row.sourceStockState || "available";
 }
 
 function availableReference(entityType: string, id: string, label: string, href: string): ReportSourceReference {
@@ -473,11 +529,28 @@ function matchesPrototypeFilter(row: InventorySnapshotRow, query: InventorySnaps
   if (query.batchId && row.batchId !== query.batchId) {
     return false;
   }
-  if (query.status && row.sourceStockState !== query.status) {
+  if (query.status && !matchesInventoryStatus(row, query.status)) {
     return false;
   }
 
   return true;
+}
+
+function matchesInventoryStatus(row: InventorySnapshotRow, status: InventorySnapshotStatusFilter) {
+  switch (status) {
+    case "":
+      return true;
+    case "available":
+      return hasPositiveQuantity(row.availableQty);
+    case "reserved":
+      return hasPositiveQuantity(row.reservedQty);
+    case "quarantine":
+      return hasPositiveQuantity(row.quarantineQty);
+    case "blocked":
+      return hasPositiveQuantity(row.blockedQty);
+  }
+
+  return false;
 }
 
 function setQueryParam(params: URLSearchParams, key: string, value: string | undefined) {
@@ -539,6 +612,10 @@ function normalizeQuantity(value: string) {
 
   const [integerPart, fractionalPart = ""] = raw.split(".");
   return `${integerPart}.${fractionalPart.padEnd(quantityScale, "0").slice(0, quantityScale)}`;
+}
+
+function hasPositiveQuantity(value: string) {
+  return quantityToScaled(value) > BigInt(0);
 }
 
 export const inventorySnapshotStatusOptions: Array<{ label: string; value: InventorySnapshotStatusFilter }> = [

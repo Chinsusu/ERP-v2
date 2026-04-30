@@ -212,24 +212,81 @@ func inventorySnapshotSourceReferences(
 	}
 
 	if warehouseID != "" && strings.TrimSpace(snapshot.SKU) != "" {
-		refs = appendInventorySnapshotReference(refs, ReportSourceReferenceInput{
-			EntityType: "stock_state",
-			ID:         inventorySnapshotStockContextID(snapshot, stockState),
-			Label:      stockState,
-			Href:       inventorySnapshotStockContextHref(snapshot, stockState),
-		})
+		for _, state := range inventorySnapshotStockContextStates(snapshot, stockState) {
+			refs = appendInventorySnapshotReference(refs, ReportSourceReferenceInput{
+				EntityType: "stock_state",
+				ID:         inventorySnapshotStockContextID(snapshot, state),
+				Label:      state,
+				Href:       inventorySnapshotStockContextHref(snapshot, state),
+			})
+		}
 	}
 
 	for _, warning := range inventorySnapshotWarnings(lowStock, expiryWarning, expired) {
+		warningState := inventorySnapshotWarningStockState(snapshot, stockState, warning)
 		refs = appendInventorySnapshotReference(refs, ReportSourceReferenceInput{
 			EntityType: "inventory_warning",
-			ID:         inventorySnapshotStockContextID(snapshot, stockState) + ":" + warning,
+			ID:         inventorySnapshotStockContextID(snapshot, warningState) + ":" + warning,
 			Label:      warning,
-			Href:       inventorySnapshotWarningHref(snapshot, stockState, warning),
+			Href:       inventorySnapshotWarningHref(snapshot, warningState, warning),
 		})
 	}
 
 	return refs
+}
+
+func inventorySnapshotStockContextStates(
+	snapshot inventorydomain.AvailableStockSnapshot,
+	primaryState string,
+) []string {
+	states := make([]string, 0, 4)
+	states = appendInventorySnapshotStockContextState(states, primaryState)
+	if !snapshot.AvailableQty.IsZero() {
+		states = appendInventorySnapshotStockContextState(states, "available")
+	}
+	if !snapshot.ReservedQty.IsZero() {
+		states = appendInventorySnapshotStockContextState(states, "reserved")
+	}
+	if !snapshot.QCHoldQty.IsZero() {
+		states = appendInventorySnapshotStockContextState(states, "quarantine")
+	}
+	if !snapshot.BlockedQty.IsZero() {
+		states = appendInventorySnapshotStockContextState(states, "blocked")
+	}
+
+	return states
+}
+
+func appendInventorySnapshotStockContextState(states []string, state string) []string {
+	normalized := strings.TrimSpace(state)
+	if normalized == "" {
+		return states
+	}
+	for _, current := range states {
+		if current == normalized {
+			return states
+		}
+	}
+
+	return append(states, normalized)
+}
+
+func inventorySnapshotWarningStockState(
+	snapshot inventorydomain.AvailableStockSnapshot,
+	primaryState string,
+	warning string,
+) string {
+	if warning == "low_stock" {
+		return "available"
+	}
+	if primaryState != "" {
+		return primaryState
+	}
+	if !snapshot.AvailableQty.IsZero() {
+		return "available"
+	}
+
+	return sourceStockState(snapshot)
 }
 
 func appendInventorySnapshotReference(

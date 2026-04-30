@@ -100,6 +100,52 @@ func TestNewInventorySnapshotReportBuildsRowsAndUOMTotals(t *testing.T) {
 	}
 }
 
+func TestNewInventorySnapshotReportLinksEveryQuantityBucketContext(t *testing.T) {
+	report, err := NewInventorySnapshotReport(
+		mustReportFilters(t, "2026-04-30"),
+		[]inventorydomain.AvailableStockSnapshot{
+			{
+				WarehouseID:   "wh-hcm",
+				WarehouseCode: "HCM",
+				LocationID:    "bin-a",
+				LocationCode:  "A-01",
+				ItemID:        "item-mixed",
+				SKU:           "mixed-sku",
+				BatchID:       "batch-mixed",
+				BatchNo:       "LOT-MIX",
+				BatchQCStatus: inventorydomain.QCStatusPass,
+				BatchStatus:   inventorydomain.BatchStatusActive,
+				BatchExpiry:   time.Date(2026, 5, 10, 0, 0, 0, 0, time.UTC),
+				BaseUOMCode:   decimal.MustUOMCode("PCS"),
+				PhysicalQty:   decimal.MustQuantity("14"),
+				ReservedQty:   decimal.MustQuantity("2"),
+				QCHoldQty:     decimal.MustQuantity("3"),
+				BlockedQty:    decimal.MustQuantity("4"),
+				AvailableQty:  decimal.MustQuantity("5"),
+			},
+		},
+		InventorySnapshotOptions{
+			LowStockThreshold: "10",
+			ExpiryWarningDays: 30,
+			GeneratedAt:       time.Date(2026, 4, 30, 8, 0, 0, 0, time.UTC),
+		},
+	)
+	if err != nil {
+		t.Fatalf("NewInventorySnapshotReport returned error: %v", err)
+	}
+
+	row := report.Rows[0]
+	if row.SourceStockState != "quarantine" || !row.LowStock || !row.ExpiryWarning {
+		t.Fatalf("row = %+v, want quarantine primary state with low stock and expiry warning", row)
+	}
+	assertInventorySourceReference(t, row.SourceReferences, "stock_state", "wh-hcm:bin-a:MIXED-SKU:batch-mixed:quarantine", "quarantine")
+	assertInventorySourceReference(t, row.SourceReferences, "stock_state", "wh-hcm:bin-a:MIXED-SKU:batch-mixed:available", "available")
+	assertInventorySourceReference(t, row.SourceReferences, "stock_state", "wh-hcm:bin-a:MIXED-SKU:batch-mixed:reserved", "reserved")
+	assertInventorySourceReference(t, row.SourceReferences, "stock_state", "wh-hcm:bin-a:MIXED-SKU:batch-mixed:blocked", "blocked")
+	assertInventorySourceReference(t, row.SourceReferences, "inventory_warning", "wh-hcm:bin-a:MIXED-SKU:batch-mixed:available:low_stock", "low_stock")
+	assertInventorySourceReference(t, row.SourceReferences, "inventory_warning", "wh-hcm:bin-a:MIXED-SKU:batch-mixed:quarantine:expiry_warning", "expiry_warning")
+}
+
 func assertInventorySourceReference(
 	t *testing.T,
 	references []ReportSourceReference,

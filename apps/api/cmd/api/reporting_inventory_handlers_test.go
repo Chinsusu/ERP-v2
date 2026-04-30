@@ -70,6 +70,92 @@ func TestInventorySnapshotReportHandlerReturnsFilteredReport(t *testing.T) {
 	}
 }
 
+func TestInventorySnapshotReportHandlerFiltersStatusByQuantityBucket(t *testing.T) {
+	service := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
+	tests := []struct {
+		name         string
+		status       string
+		itemID       string
+		wantSKU      string
+		wantStateRef string
+	}{
+		{
+			name:         "available stock context",
+			status:       "available",
+			itemID:       "item-serum-30ml",
+			wantSKU:      "SERUM-30ML",
+			wantStateRef: "wh-hcm:bin-hcm-a01:SERUM-30ML:batch-serum-2604a:available",
+		},
+		{
+			name:         "reserved stock context",
+			status:       "reserved",
+			itemID:       "item-serum-30ml",
+			wantSKU:      "SERUM-30ML",
+			wantStateRef: "wh-hcm:bin-hcm-a01:SERUM-30ML:batch-serum-2604a:reserved",
+		},
+		{
+			name:         "quarantine stock context",
+			status:       "quarantine",
+			itemID:       "item-serum-30ml",
+			wantSKU:      "SERUM-30ML",
+			wantStateRef: "wh-hcm:bin-hcm-a01:SERUM-30ML:batch-serum-2604a:quarantine",
+		},
+		{
+			name:         "blocked stock context",
+			status:       "blocked",
+			itemID:       "item-cream-50g",
+			wantSKU:      "CREAM-50G",
+			wantStateRef: "wh-hcm:bin-hcm-a01:CREAM-50G:batch-cream-2603b:blocked",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := cashTransactionRequest(
+				http.MethodGet,
+				"/api/v1/reports/inventory-snapshot?business_date=2026-04-30&warehouse_id=wh-hcm&item_id="+tt.itemID+"&status="+tt.status,
+				nil,
+				auth.RoleWarehouseLead,
+			)
+			rec := httptest.NewRecorder()
+
+			inventorySnapshotReportHandler(service).ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+			}
+			var payload response.SuccessEnvelope[inventorySnapshotReportResponse]
+			if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if payload.Data.Summary.RowCount != 1 || len(payload.Data.Rows) != 1 {
+				t.Fatalf("row count = %d rows = %d, want one row", payload.Data.Summary.RowCount, len(payload.Data.Rows))
+			}
+			row := payload.Data.Rows[0]
+			if row.SKU != tt.wantSKU {
+				t.Fatalf("row = %+v, want sku %s", row, tt.wantSKU)
+			}
+			if !hasInventorySnapshotSourceReference(row.SourceReferences, "stock_state", tt.wantStateRef) {
+				t.Fatalf("source references = %+v, missing stock state %s", row.SourceReferences, tt.wantStateRef)
+			}
+		})
+	}
+}
+
+func hasInventorySnapshotSourceReference(
+	references []reportSourceReferenceResponse,
+	entityType string,
+	id string,
+) bool {
+	for _, reference := range references {
+		if reference.EntityType == entityType && reference.ID == id && reference.Href != "" && !reference.Unavailable {
+			return true
+		}
+	}
+
+	return false
+}
+
 func TestInventorySnapshotCSVExportHandlerReturnsCSV(t *testing.T) {
 	service := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
 	req := cashTransactionRequest(

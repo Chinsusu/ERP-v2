@@ -43,6 +43,24 @@ describe("inventorySnapshotReportService", () => {
     });
   });
 
+  it("filters prototype inventory by quantity bucket states", () => {
+    const available = createPrototypeInventorySnapshotReport({ warehouseId: "wh-hcm", status: "available" });
+    const reserved = createPrototypeInventorySnapshotReport({ warehouseId: "wh-hcm", status: "reserved" });
+    const quarantine = createPrototypeInventorySnapshotReport({ warehouseId: "wh-hcm", status: "quarantine" });
+    const blocked = createPrototypeInventorySnapshotReport({ warehouseId: "wh-hcm", status: "blocked" });
+
+    expect(available.rows.map((row) => row.sku)).toEqual(["SERUM-30ML", "CREAM-50G"]);
+    expect(reserved.rows.map((row) => row.sku)).toEqual(["SERUM-30ML", "CREAM-50G"]);
+    expect(quarantine.rows.map((row) => row.sku)).toEqual(["SERUM-30ML"]);
+    expect(blocked.rows.map((row) => row.sku)).toEqual(["CREAM-50G"]);
+    expect(available.rows[0].sourceReferences.map((reference) => reference.id)).toContain(
+      "wh-hcm:bin-hcm-a01:SERUM-30ML:batch-serum-2604a:available"
+    );
+    expect(reserved.rows[0].sourceReferences.map((reference) => reference.id)).toContain(
+      "wh-hcm:bin-hcm-a01:SERUM-30ML:batch-serum-2604a:reserved"
+    );
+  });
+
   it("maps API report and sends inventory report filters", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -251,7 +269,16 @@ describe("inventorySnapshotReportService", () => {
       "item",
       "inventory_batch",
       "stock_state",
+      "stock_state",
+      "stock_state",
       "inventory_warning"
     ]);
+    expect(report.rows[0].sourceReferences.map((reference) => reference.id)).toEqual(
+      expect.arrayContaining([
+        "wh-hcm:bin-hcm-a01:SERUM-30ML:batch-serum-2604a:quarantine",
+        "wh-hcm:bin-hcm-a01:SERUM-30ML:batch-serum-2604a:available",
+        "wh-hcm:bin-hcm-a01:SERUM-30ML:batch-serum-2604a:reserved"
+      ])
+    );
   });
 });
