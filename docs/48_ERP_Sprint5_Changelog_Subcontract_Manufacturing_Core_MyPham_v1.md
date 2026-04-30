@@ -202,3 +202,39 @@ After CI is green: tag v0.5.0-subcontract-manufacturing-core.
 ```
 
 No Sprint 6 coding should be treated as production-ready until the Sprint 5 release gate is cleared.
+
+## 7. Release Gate Attempt - 2026-04-30
+
+Release gate was rechecked on `main` commit:
+
+```text
+d108fafc74c3e8613f99b6d304669d790c1e9d72
+```
+
+GitHub Actions rerun:
+
+```text
+Workflow run: required-ci
+Run ID: 25128437655
+Result: failure
+Jobs: required-api, required-web, required-openapi, required-migration
+Observed behavior: jobs failed in a few seconds with no step logs.
+Log fetch result: gh run view --log-failed returned log not found.
+Direct job log fetch result: GitHub Actions log blob returned BlobNotFound.
+```
+
+Migration runtime gate was rechecked on an isolated PostgreSQL 16 container on the dev server:
+
+```text
+All up migrations applied successfully.
+All down migrations rolled back successfully.
+Result: migration-apply-rollback-pass
+```
+
+Gate decision:
+
+```text
+Sprint 5 release gate remains blocked.
+Production tag v0.5.0-subcontract-manufacturing-core was not created.
+Reason: cloud CI is not green because GitHub Actions is still blocked before job steps can run.
+```
