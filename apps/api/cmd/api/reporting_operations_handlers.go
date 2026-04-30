@@ -39,21 +39,22 @@ type operationsDailyAreaSummaryResponse struct {
 }
 
 type operationsDailyReportRowResponse struct {
-	ID            string `json:"id"`
-	Area          string `json:"area"`
-	SourceType    string `json:"source_type"`
-	SourceID      string `json:"source_id"`
-	RefNo         string `json:"ref_no"`
-	Title         string `json:"title"`
-	WarehouseID   string `json:"warehouse_id"`
-	WarehouseCode string `json:"warehouse_code,omitempty"`
-	BusinessDate  string `json:"business_date"`
-	Status        string `json:"status"`
-	Severity      string `json:"severity"`
-	Quantity      string `json:"quantity,omitempty"`
-	UOMCode       string `json:"uom_code,omitempty"`
-	ExceptionCode string `json:"exception_code,omitempty"`
-	Owner         string `json:"owner,omitempty"`
+	ID              string                        `json:"id"`
+	Area            string                        `json:"area"`
+	SourceType      string                        `json:"source_type"`
+	SourceID        string                        `json:"source_id"`
+	SourceReference reportSourceReferenceResponse `json:"source_reference"`
+	RefNo           string                        `json:"ref_no"`
+	Title           string                        `json:"title"`
+	WarehouseID     string                        `json:"warehouse_id"`
+	WarehouseCode   string                        `json:"warehouse_code,omitempty"`
+	BusinessDate    string                        `json:"business_date"`
+	Status          string                        `json:"status"`
+	Severity        string                        `json:"severity"`
+	Quantity        string                        `json:"quantity,omitempty"`
+	UOMCode         string                        `json:"uom_code,omitempty"`
+	ExceptionCode   string                        `json:"exception_code,omitempty"`
+	Owner           string                        `json:"owner,omitempty"`
 }
 
 var operationsDailyCSVHeaders = []string{
@@ -330,21 +331,22 @@ func newOperationsDailyReportResponse(report reportingdomain.OperationsDailyRepo
 	rows := make([]operationsDailyReportRowResponse, 0, len(report.Rows))
 	for _, row := range report.Rows {
 		rows = append(rows, operationsDailyReportRowResponse{
-			ID:            row.ID,
-			Area:          row.Area,
-			SourceType:    row.SourceType,
-			SourceID:      row.SourceID,
-			RefNo:         row.RefNo,
-			Title:         row.Title,
-			WarehouseID:   row.WarehouseID,
-			WarehouseCode: row.WarehouseCode,
-			BusinessDate:  row.BusinessDate,
-			Status:        row.Status,
-			Severity:      row.Severity,
-			Quantity:      row.Quantity,
-			UOMCode:       row.UOMCode,
-			ExceptionCode: row.ExceptionCode,
-			Owner:         row.Owner,
+			ID:              row.ID,
+			Area:            row.Area,
+			SourceType:      row.SourceType,
+			SourceID:        row.SourceID,
+			SourceReference: newReportSourceReferenceResponse(row.SourceReference),
+			RefNo:           row.RefNo,
+			Title:           row.Title,
+			WarehouseID:     row.WarehouseID,
+			WarehouseCode:   row.WarehouseCode,
+			BusinessDate:    row.BusinessDate,
+			Status:          row.Status,
+			Severity:        row.Severity,
+			Quantity:        row.Quantity,
+			UOMCode:         row.UOMCode,
+			ExceptionCode:   row.ExceptionCode,
+			Owner:           row.Owner,
 		})
 	}
 

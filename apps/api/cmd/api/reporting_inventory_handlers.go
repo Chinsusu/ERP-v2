@@ -31,6 +31,14 @@ type reportFiltersResponse struct {
 	Category     string `json:"category,omitempty"`
 }
 
+type reportSourceReferenceResponse struct {
+	EntityType  string `json:"entity_type"`
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Href        string `json:"href,omitempty"`
+	Unavailable bool   `json:"unavailable"`
+}
+
 type inventorySnapshotReportResponse struct {
 	Metadata reportMetadataResponse           `json:"metadata"`
 	Summary  inventorySnapshotSummaryResponse `json:"summary"`
@@ -339,6 +347,16 @@ func newReportMetadataResponse(metadata reportingdomain.ReportMetadata) reportMe
 			ItemID:       metadata.Filters.ItemID,
 			Category:     metadata.Filters.Category,
 		},
+	}
+}
+
+func newReportSourceReferenceResponse(reference reportingdomain.ReportSourceReference) reportSourceReferenceResponse {
+	return reportSourceReferenceResponse{
+		EntityType:  reference.EntityType,
+		ID:          reference.ID,
+		Label:       reference.Label,
+		Href:        reference.Href,
+		Unavailable: reference.Unavailable,
 	}
 }
 

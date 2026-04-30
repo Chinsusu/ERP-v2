@@ -64,6 +64,13 @@ func TestOperationsDailyReportHandlerReturnsFilteredReport(t *testing.T) {
 		payload.Data.Rows[1].ExceptionCode != "VARIANCE_REVIEW" {
 		t.Fatalf("rows = %+v, want blocked exception codes sorted by area", payload.Data.Rows)
 	}
+	if payload.Data.Rows[0].SourceReference.EntityType != "carrier_manifest" ||
+		payload.Data.Rows[0].SourceReference.ID != "manifest-260430-ghn" ||
+		payload.Data.Rows[0].SourceReference.Label != "MAN-260430-GHN" ||
+		payload.Data.Rows[0].SourceReference.Href != "/shipping?source_id=manifest-260430-ghn&source_type=carrier_manifest" ||
+		payload.Data.Rows[0].SourceReference.Unavailable {
+		t.Fatalf("source reference = %+v, want shipping manifest reference", payload.Data.Rows[0].SourceReference)
+	}
 }
 
 func TestOperationsDailyCSVExportHandlerReturnsCSV(t *testing.T) {

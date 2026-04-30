@@ -100,6 +100,13 @@ func TestNewOperationsDailyReportBuildsSummaryAreasAndRows(t *testing.T) {
 		first.UOMCode != "PCS" {
 		t.Fatalf("first row = %+v, want normalized inbound row", first)
 	}
+	if first.SourceReference.EntityType != "goods_receipt" ||
+		first.SourceReference.ID != "gr-1" ||
+		first.SourceReference.Label != "GR-001" ||
+		first.SourceReference.Href != "/receiving?source_id=gr-1&source_type=goods_receipt" ||
+		first.SourceReference.Unavailable {
+		t.Fatalf("source reference = %+v, want available goods receipt reference", first.SourceReference)
+	}
 }
 
 func TestNewOperationsDailyReportFiltersByStatusAndDateRange(t *testing.T) {
@@ -143,6 +150,36 @@ func TestNewOperationsDailyReportRejectsInvalidSignals(t *testing.T) {
 		if !errors.Is(err, ErrInvalidOperationsDailyReport) {
 			t.Fatalf("signal %+v error = %v, want ErrInvalidOperationsDailyReport", signal, err)
 		}
+	}
+}
+
+func TestNewOperationsDailyReportMarksUnknownSourceReferenceUnavailable(t *testing.T) {
+	signal := operationsDailyTestSignal(
+		"external-1",
+		OperationsDailyAreaInbound,
+		"2026-04-30",
+		OperationsDailyStatusPending,
+	)
+	signal.SourceType = "external_note"
+	signal.SourceID = "note-1"
+	signal.RefNo = "NOTE-001"
+
+	report, err := NewOperationsDailyReport(
+		mustReportFiltersWithRange(t, "2026-04-30", "2026-04-30", "2026-04-30"),
+		[]OperationsDailySignal{signal},
+		OperationsDailyOptions{},
+	)
+	if err != nil {
+		t.Fatalf("NewOperationsDailyReport returned error: %v", err)
+	}
+
+	reference := report.Rows[0].SourceReference
+	if reference.EntityType != "external_note" ||
+		reference.ID != "note-1" ||
+		reference.Label != "NOTE-001" ||
+		reference.Href != "" ||
+		!reference.Unavailable {
+		t.Fatalf("source reference = %+v, want unavailable external reference", reference)
 	}
 }
 
