@@ -153,7 +153,7 @@ function financeSummaryApiQuery(query: FinanceSummaryQuery): FinanceSummaryQuery
   };
 }
 
-function financeSummaryCSVFilename(query: FinanceSummaryQuery) {
+export function financeSummaryCSVFilename(query: FinanceSummaryQuery) {
   const toDate = query.toDate || query.businessDate || todayString();
   const fromDate = query.fromDate || toDate;
   return `finance-summary-${fromDate}-to-${toDate}.csv`;

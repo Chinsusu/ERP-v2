@@ -12,8 +12,12 @@ import {
 import { formatDateTimeVI, formatMoney } from "@/shared/format/numberFormat";
 import { useFinanceSummaryReport } from "../hooks/useFinanceSummaryReport";
 import { urlDateParam, useReportUrlState } from "../hooks/useReportUrlState";
-import { downloadFinanceSummaryCSV } from "../services/financeSummaryReportService";
-import { ReportSourceReferenceLink, ReportStateBanner } from "./ReportSharedStates";
+import {
+  downloadFinanceSummaryCSV,
+  financeSummaryCSVFilename,
+  financeSummaryQueryString
+} from "../services/financeSummaryReportService";
+import { ReportExportAction, ReportSourceReferenceLink, ReportStateBanner } from "./ReportSharedStates";
 import type {
   FinanceSummaryAgingBucket,
   FinanceSummaryDiscrepancyBucket,
@@ -92,6 +96,7 @@ export function FinanceSummaryReportPanel({ controls }: FinanceSummaryReportPane
   const [businessDate, setBusinessDate] = useState(() => urlDateParam(searchParams, "business_date", initialToDate));
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<Error | null>(null);
+  const [exportedFilename, setExportedFilename] = useState("");
 
   const query = useMemo<FinanceSummaryQuery>(
     () => ({
@@ -103,6 +108,8 @@ export function FinanceSummaryReportPanel({ controls }: FinanceSummaryReportPane
   );
   const { report, loading, error } = useFinanceSummaryReport(query);
   const data = report ?? emptyFinanceSummaryReport(fromDate, toDate, businessDate);
+  const exportFilename = financeSummaryCSVFilename(query);
+  const exportQueryKey = financeSummaryQueryString(query);
 
   useEffect(() => {
     replaceReportUrlParams("finance", {
@@ -112,14 +119,21 @@ export function FinanceSummaryReportPanel({ controls }: FinanceSummaryReportPane
     });
   }, [businessDate, fromDate, replaceReportUrlParams, toDate]);
 
+  useEffect(() => {
+    setExportedFilename("");
+    setExportError(null);
+  }, [exportQueryKey]);
+
   async function handleExportCSV() {
     setExporting(true);
     setExportError(null);
     try {
       const download = await downloadFinanceSummaryCSV(query);
       saveBlob(download.blob, download.filename);
+      setExportedFilename(download.filename);
     } catch (reason) {
       setExportError(reason instanceof Error ? reason : new Error("Finance CSV could not be exported"));
+      setExportedFilename("");
     } finally {
       setExporting(false);
     }
@@ -135,16 +149,15 @@ export function FinanceSummaryReportPanel({ controls }: FinanceSummaryReportPane
         </div>
         <div className="erp-page-actions">
           {controls}
-          {exportError ? <StatusChip tone="danger">Export failed</StatusChip> : null}
-          <button
-            className="erp-button erp-button--secondary"
-            type="button"
-            disabled={loading || exporting}
-            title={exportError?.message ?? "Export finance summary CSV"}
-            onClick={handleExportCSV}
-          >
-            {exporting ? "Exporting" : "Export CSV"}
-          </button>
+          <ReportExportAction
+            disabled={loading}
+            exporting={exporting}
+            error={exportError}
+            filename={exportFilename}
+            exportedFilename={exportedFilename}
+            reportLabel="finance summary"
+            onExport={handleExportCSV}
+          />
         </div>
       </header>
 
