@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"math/big"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -67,6 +68,7 @@ type InventorySnapshotRow struct {
 	BatchQCStatus    string
 	BatchStatus      string
 	SourceStockState string
+	SourceReferences []ReportSourceReference
 }
 
 func NewInventorySnapshotReport(
@@ -143,6 +145,7 @@ func inventorySnapshotRow(
 	expired := isExpired(snapshot.BatchExpiry, asOf)
 	expiryWarning := isExpiryWarning(snapshot.BatchExpiry, asOf, warningDays)
 	lowStock := compareQuantity(snapshot.AvailableQty, threshold) <= 0
+	stockState := sourceStockState(snapshot)
 
 	return InventorySnapshotRow{
 		WarehouseID:      strings.TrimSpace(snapshot.WarehouseID),
@@ -165,8 +168,168 @@ func inventorySnapshotRow(
 		Expired:          expired,
 		BatchQCStatus:    string(snapshot.BatchQCStatus),
 		BatchStatus:      string(snapshot.BatchStatus),
-		SourceStockState: sourceStockState(snapshot),
+		SourceStockState: stockState,
+		SourceReferences: inventorySnapshotSourceReferences(snapshot, stockState, lowStock, expiryWarning, expired),
 	}
+}
+
+func inventorySnapshotSourceReferences(
+	snapshot inventorydomain.AvailableStockSnapshot,
+	stockState string,
+	lowStock bool,
+	expiryWarning bool,
+	expired bool,
+) []ReportSourceReference {
+	refs := make([]ReportSourceReference, 0, 6)
+	warehouseID := strings.TrimSpace(snapshot.WarehouseID)
+	if warehouseID != "" {
+		refs = appendInventorySnapshotReference(refs, ReportSourceReferenceInput{
+			EntityType: "warehouse",
+			ID:         warehouseID,
+			Label:      firstNonEmpty(snapshot.WarehouseCode, warehouseID),
+			Href:       inventorySnapshotEntityHref("master-data", "warehouse", warehouseID),
+		})
+	}
+
+	itemID := strings.TrimSpace(snapshot.ItemID)
+	if itemID != "" {
+		refs = appendInventorySnapshotReference(refs, ReportSourceReferenceInput{
+			EntityType: "item",
+			ID:         itemID,
+			Label:      strings.ToUpper(strings.TrimSpace(snapshot.SKU)),
+			Href:       inventorySnapshotEntityHref("master-data", "item", itemID),
+		})
+	}
+
+	batchID := strings.TrimSpace(snapshot.BatchID)
+	if batchID != "" {
+		refs = appendInventorySnapshotReference(refs, ReportSourceReferenceInput{
+			EntityType: "inventory_batch",
+			ID:         batchID,
+			Label:      firstNonEmpty(snapshot.BatchNo, batchID),
+			Href:       inventorySnapshotEntityHref("inventory", "inventory_batch", batchID),
+		})
+	}
+
+	if warehouseID != "" && strings.TrimSpace(snapshot.SKU) != "" {
+		refs = appendInventorySnapshotReference(refs, ReportSourceReferenceInput{
+			EntityType: "stock_state",
+			ID:         inventorySnapshotStockContextID(snapshot, stockState),
+			Label:      stockState,
+			Href:       inventorySnapshotStockContextHref(snapshot, stockState),
+		})
+	}
+
+	for _, warning := range inventorySnapshotWarnings(lowStock, expiryWarning, expired) {
+		refs = appendInventorySnapshotReference(refs, ReportSourceReferenceInput{
+			EntityType: "inventory_warning",
+			ID:         inventorySnapshotStockContextID(snapshot, stockState) + ":" + warning,
+			Label:      warning,
+			Href:       inventorySnapshotWarningHref(snapshot, stockState, warning),
+		})
+	}
+
+	return refs
+}
+
+func appendInventorySnapshotReference(
+	refs []ReportSourceReference,
+	input ReportSourceReferenceInput,
+) []ReportSourceReference {
+	reference, err := NewReportSourceReference(input)
+	if err != nil {
+		panic(ErrInvalidInventorySnapshotReport)
+	}
+
+	return append(refs, reference)
+}
+
+func inventorySnapshotEntityHref(module string, entityType string, id string) string {
+	params := url.Values{}
+	params.Set("source_type", entityType)
+	params.Set("source_id", id)
+
+	return "/" + module + "?" + params.Encode()
+}
+
+func inventorySnapshotStockContextHref(snapshot inventorydomain.AvailableStockSnapshot, stockState string) string {
+	params := inventorySnapshotStockContextParams(snapshot, stockState)
+
+	return "/inventory?" + params.Encode()
+}
+
+func inventorySnapshotWarningHref(
+	snapshot inventorydomain.AvailableStockSnapshot,
+	stockState string,
+	warning string,
+) string {
+	params := inventorySnapshotStockContextParams(snapshot, stockState)
+	params.Set("warning", warning)
+
+	return "/reports?report=inventory-snapshot&" + params.Encode()
+}
+
+func inventorySnapshotStockContextParams(
+	snapshot inventorydomain.AvailableStockSnapshot,
+	stockState string,
+) url.Values {
+	params := url.Values{}
+	params.Set("warehouse_id", strings.TrimSpace(snapshot.WarehouseID))
+	params.Set("sku", strings.ToUpper(strings.TrimSpace(snapshot.SKU)))
+	if strings.TrimSpace(snapshot.ItemID) != "" {
+		params.Set("item_id", strings.TrimSpace(snapshot.ItemID))
+	}
+	if strings.TrimSpace(snapshot.BatchID) != "" {
+		params.Set("batch_id", strings.TrimSpace(snapshot.BatchID))
+	}
+	if stockState != "" {
+		params.Set("status", stockState)
+	}
+
+	return params
+}
+
+func inventorySnapshotStockContextID(snapshot inventorydomain.AvailableStockSnapshot, stockState string) string {
+	parts := []string{
+		strings.TrimSpace(snapshot.WarehouseID),
+		strings.TrimSpace(snapshot.LocationID),
+		strings.ToUpper(strings.TrimSpace(snapshot.SKU)),
+		strings.TrimSpace(snapshot.BatchID),
+		stockState,
+	}
+	for index, part := range parts {
+		if part == "" {
+			parts[index] = "-"
+		}
+	}
+
+	return strings.Join(parts, ":")
+}
+
+func inventorySnapshotWarnings(lowStock bool, expiryWarning bool, expired bool) []string {
+	warnings := make([]string, 0, 3)
+	if lowStock {
+		warnings = append(warnings, "low_stock")
+	}
+	if expiryWarning {
+		warnings = append(warnings, "expiry_warning")
+	}
+	if expired {
+		warnings = append(warnings, "expired")
+	}
+
+	return warnings
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		normalized := strings.TrimSpace(value)
+		if normalized != "" {
+			return normalized
+		}
+	}
+
+	return ""
 }
 
 type inventorySnapshotQuantityTotal struct {

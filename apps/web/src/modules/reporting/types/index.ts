@@ -85,6 +85,7 @@ export type InventorySnapshotRow = {
   batchQcStatus?: string;
   batchStatus?: string;
   sourceStockState: string;
+  sourceReferences: ReportSourceReference[];
 };
 
 export type OperationsDailyQuery = {

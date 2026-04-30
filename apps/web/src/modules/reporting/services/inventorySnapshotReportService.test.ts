@@ -100,7 +100,23 @@ describe("inventorySnapshotReportService", () => {
                 expired: false,
                 batch_qc_status: "pass",
                 batch_status: "active",
-                source_stock_state: "quarantine"
+                source_stock_state: "quarantine",
+                source_references: [
+                  {
+                    entity_type: "warehouse",
+                    id: "wh-hcm",
+                    label: "HCM",
+                    href: "/master-data?source_id=wh-hcm&source_type=warehouse",
+                    unavailable: false
+                  },
+                  {
+                    entity_type: "item",
+                    id: "item-serum-30ml",
+                    label: "SERUM-30ML",
+                    href: "/master-data?source_id=item-serum-30ml&source_type=item",
+                    unavailable: false
+                  }
+                ]
               }
             ]
           },
@@ -135,6 +151,18 @@ describe("inventorySnapshotReportService", () => {
     expect(report.rows[0]).toMatchObject({
       itemId: "item-serum-30ml",
       expiryWarning: true
+    });
+    expect(report.rows[0].sourceReferences[0]).toMatchObject({
+      entityType: "warehouse",
+      id: "wh-hcm",
+      href: "/master-data?source_id=wh-hcm&source_type=warehouse",
+      unavailable: false
+    });
+    expect(report.rows[0].sourceReferences[1]).toMatchObject({
+      entityType: "item",
+      id: "item-serum-30ml",
+      href: "/master-data?source_id=item-serum-30ml&source_type=item",
+      unavailable: false
     });
   });
 
@@ -218,5 +246,12 @@ describe("inventorySnapshotReportService", () => {
       physicalQty: "174.000000",
       availableQty: "142.000000"
     });
+    expect(report.rows[0].sourceReferences.map((reference) => reference.entityType)).toEqual([
+      "warehouse",
+      "item",
+      "inventory_batch",
+      "stock_state",
+      "inventory_warning"
+    ]);
   });
 });
