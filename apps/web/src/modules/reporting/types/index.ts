@@ -126,3 +126,67 @@ export type OperationsDailyRow = {
   exceptionCode?: string;
   owner?: string;
 };
+
+export type FinanceSummaryQuery = {
+  fromDate?: string;
+  toDate?: string;
+  businessDate?: string;
+};
+
+export type FinanceSummaryReport = {
+  metadata: ReportMetadata;
+  currencyCode: string;
+  ar: FinanceSummaryReceivable;
+  ap: FinanceSummaryPayable;
+  cod: FinanceSummaryCOD;
+  cash: FinanceSummaryCash;
+};
+
+export type FinanceSummaryReceivable = {
+  openCount: number;
+  overdueCount: number;
+  disputedCount: number;
+  openAmount: string;
+  overdueAmount: string;
+  outstandingAmount: string;
+  agingBuckets: FinanceSummaryAgingBucket[];
+};
+
+export type FinanceSummaryPayable = {
+  openCount: number;
+  dueCount: number;
+  paymentRequestedCount: number;
+  paymentApprovedCount: number;
+  openAmount: string;
+  dueAmount: string;
+  outstandingAmount: string;
+  agingBuckets: FinanceSummaryAgingBucket[];
+};
+
+export type FinanceSummaryCOD = {
+  pendingCount: number;
+  discrepancyCount: number;
+  pendingAmount: string;
+  discrepancyAmount: string;
+  discrepancyBuckets: FinanceSummaryDiscrepancyBucket[];
+};
+
+export type FinanceSummaryCash = {
+  transactionCount: number;
+  cashInAmount: string;
+  cashOutAmount: string;
+  netCashAmount: string;
+};
+
+export type FinanceSummaryAgingBucket = {
+  bucket: string;
+  count: number;
+  amount: string;
+};
+
+export type FinanceSummaryDiscrepancyBucket = {
+  type: string;
+  status: string;
+  count: number;
+  amount: string;
+};

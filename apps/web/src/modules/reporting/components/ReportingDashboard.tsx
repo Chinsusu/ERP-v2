@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { FinanceSummaryReportPanel } from "./FinanceSummaryReport";
 import { InventorySnapshotReportPanel } from "./InventorySnapshotReport";
 import { OperationsDailyReportPanel } from "./OperationsDailyReport";
 
-type ReportingTab = "inventory" | "operations";
+type ReportingTab = "inventory" | "operations" | "finance";
 
 const tabs: Array<{ id: ReportingTab; label: string }> = [
   { id: "inventory", label: "Inventory" },
-  { id: "operations", label: "Operations" }
+  { id: "operations", label: "Operations" },
+  { id: "finance", label: "Finance" }
 ];
 
 export function ReportingDashboard() {
@@ -32,6 +34,9 @@ export function ReportingDashboard() {
 
   if (activeTab === "operations") {
     return <OperationsDailyReportPanel controls={controls} />;
+  }
+  if (activeTab === "finance") {
+    return <FinanceSummaryReportPanel controls={controls} />;
   }
 
   return <InventorySnapshotReportPanel controls={controls} />;

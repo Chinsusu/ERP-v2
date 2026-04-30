@@ -655,6 +655,10 @@ textarea {
   grid-template-columns: minmax(160px, 200px) minmax(160px, 200px) minmax(170px, 220px) minmax(170px, 220px);
 }
 
+.erp-reporting-toolbar--finance {
+  grid-template-columns: repeat(3, minmax(160px, 200px));
+}
+
 .erp-reporting-tabs {
   display: inline-flex;
   gap: 4px;
@@ -720,6 +724,41 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.erp-reporting-bucket-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.erp-reporting-cash-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.erp-reporting-fact {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  padding: 12px;
+  background: var(--erp-neutral-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-reporting-fact span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-table);
+  line-height: var(--erp-line-height-table);
+}
+
+.erp-reporting-fact strong {
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-body);
+  line-height: var(--erp-line-height-body);
+  overflow-wrap: anywhere;
 }
 
 .erp-audit-page {
@@ -4297,7 +4336,9 @@ textarea {
   .erp-finance-kpis,
   .erp-finance-toolbar,
   .erp-finance-layout,
-  .erp-finance-detail-list {
+  .erp-finance-detail-list,
+  .erp-reporting-bucket-grid,
+  .erp-reporting-cash-grid {
     grid-template-columns: 1fr;
   }
 
