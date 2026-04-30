@@ -144,6 +144,39 @@ func TestSupplierPayableRecordPaymentRejectsUnapprovedAndOverpayment(t *testing.
 	}
 }
 
+func TestSupplierPayableRejectPaymentReturnsToOpenWithReason(t *testing.T) {
+	requestedAt := time.Date(2026, 4, 30, 10, 0, 0, 0, time.UTC)
+	rejectedAt := requestedAt.Add(time.Hour)
+	requested, err := mustSupplierPayable(t).RequestPayment("finance-user", requestedAt)
+	if err != nil {
+		t.Fatalf("request payment: %v", err)
+	}
+
+	rejected, err := requested.RejectPayment("finance-lead", "supplier invoice mismatch", rejectedAt)
+	if err != nil {
+		t.Fatalf("reject payment: %v", err)
+	}
+	if rejected.Status != PayableStatusOpen ||
+		rejected.PaymentRejectedBy != "finance-lead" ||
+		rejected.PaymentRejectReason != "supplier invoice mismatch" ||
+		!rejected.PaymentRejectedAt.Equal(rejectedAt) {
+		t.Fatalf("rejected payable = %+v", rejected)
+	}
+	if rejected.PaymentRequestedBy != "finance-user" || !rejected.PaymentRequestedAt.Equal(requestedAt) {
+		t.Fatalf("requested audit fields changed after rejection: %+v", rejected)
+	}
+
+	_, err = requested.RejectPayment("finance-lead", "", rejectedAt)
+	if !errors.Is(err, ErrSupplierPayableRequiredField) {
+		t.Fatalf("error = %v, want %v", err, ErrSupplierPayableRequiredField)
+	}
+
+	_, err = mustSupplierPayable(t).RejectPayment("finance-lead", "not requested", rejectedAt)
+	if !errors.Is(err, ErrSupplierPayableInvalidTransition) {
+		t.Fatalf("error = %v, want %v", err, ErrSupplierPayableInvalidTransition)
+	}
+}
+
 func TestSupplierPayableDisputeAndVoidRequireReason(t *testing.T) {
 	payable := mustSupplierPayable(t)
 	disputedAt := time.Date(2026, 4, 30, 13, 0, 0, 0, time.UTC)

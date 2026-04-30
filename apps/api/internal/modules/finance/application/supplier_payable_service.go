@@ -222,6 +222,20 @@ func (s SupplierPayableService) ApproveSupplierPayablePayment(
 	return s.applySupplierPayableAction(ctx, input, "approve-payment")
 }
 
+func (s SupplierPayableService) RequestSupplierPayablePayment(
+	ctx context.Context,
+	input SupplierPayableActionInput,
+) (SupplierPayableActionResult, error) {
+	return s.applySupplierPayableAction(ctx, input, "request-payment")
+}
+
+func (s SupplierPayableService) RejectSupplierPayablePayment(
+	ctx context.Context,
+	input SupplierPayableActionInput,
+) (SupplierPayableActionResult, error) {
+	return s.applySupplierPayableAction(ctx, input, "reject-payment")
+}
+
 func (s SupplierPayableService) RecordSupplierPayablePayment(
 	ctx context.Context,
 	input SupplierPayableActionInput,
@@ -263,10 +277,18 @@ func (s SupplierPayableService) applySupplierPayableAction(
 		metadata    map[string]any
 	)
 	switch action {
+	case "request-payment":
+		updated, err = current.RequestPayment(input.ActorID, now)
+		auditAction = financedomain.FinanceAuditActionPayablePaymentRequested
+		metadata = map[string]any{"requested_amount": current.OutstandingAmount.String()}
 	case "approve-payment":
 		updated, err = approveSupplierPayableFromCurrent(current, input.ActorID, now)
 		auditAction = financedomain.FinanceAuditActionPayablePaymentApproved
 		metadata = map[string]any{"approved_amount": current.OutstandingAmount.String()}
+	case "reject-payment":
+		updated, err = current.RejectPayment(input.ActorID, input.Reason, now)
+		auditAction = financedomain.FinanceAuditActionPayablePaymentRejected
+		metadata = map[string]any{"reason": strings.TrimSpace(input.Reason)}
 	case "record-payment":
 		updated, err = current.RecordPayment(input.Amount, input.ActorID, now)
 		auditAction = financedomain.FinanceAuditActionPayablePaymentRecorded
