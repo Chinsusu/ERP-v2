@@ -1657,7 +1657,7 @@ export interface components {
         /** @enum {string} */
         RoleKey: "CEO" | "ERP_ADMIN" | "WAREHOUSE_STAFF" | "WAREHOUSE_LEAD" | "QA" | "PURCHASE_OPS" | "FINANCE_OPS" | "SALES_OPS" | "PRODUCTION_OPS";
         /** @enum {string} */
-        PermissionKey: "dashboard:view" | "warehouse:view" | "inventory:view" | "purchase:view" | "finance:view" | "qc:view" | "production:view" | "subcontract:view" | "sales:view" | "shipping:view" | "returns:view" | "master-data:view" | "approvals:view" | "audit-log:view" | "reports:view" | "settings:view" | "qc:decision" | "record:create" | "record:export";
+        PermissionKey: "dashboard:view" | "warehouse:view" | "inventory:view" | "purchase:view" | "finance:view" | "finance:manage" | "cod:reconcile" | "payment:approve" | "qc:view" | "production:view" | "subcontract:view" | "sales:view" | "shipping:view" | "returns:view" | "master-data:view" | "approvals:view" | "audit-log:view" | "reports:view" | "settings:view" | "qc:decision" | "record:create" | "record:export";
         Pagination: {
             /** @example 1 */
             page: number;

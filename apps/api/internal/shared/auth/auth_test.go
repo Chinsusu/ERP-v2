@@ -119,6 +119,9 @@ func TestPermissionCatalogIncludesPhaseOneModuleKeys(t *testing.T) {
 		PermissionInventoryView,
 		PermissionQCDecision,
 		PermissionFinanceView,
+		PermissionFinanceManage,
+		PermissionCODReconcile,
+		PermissionPaymentApprove,
 		PermissionSubcontractView,
 		PermissionMasterDataView,
 		PermissionSettingsView,
@@ -157,6 +160,9 @@ func TestSprint4PurchaseAndFinanceRoleScopes(t *testing.T) {
 	finance := MockPrincipalForRole(testConfig, RoleFinanceOps)
 	for _, permission := range []PermissionKey{
 		PermissionFinanceView,
+		PermissionFinanceManage,
+		PermissionCODReconcile,
+		PermissionPaymentApprove,
 		PermissionPurchaseView,
 		PermissionAuditLogView,
 		PermissionRecordExport,

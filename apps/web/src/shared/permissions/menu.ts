@@ -17,6 +17,9 @@ export type PermissionKey =
   | "inventory:view"
   | "purchase:view"
   | "finance:view"
+  | "finance:manage"
+  | "cod:reconcile"
+  | "payment:approve"
   | "qc:view"
   | "qc:decision"
   | "production:view"
@@ -74,6 +77,9 @@ export const permissionCatalog: PermissionDefinition[] = [
   { key: "inventory:view", label: "Inventory", group: "operations" },
   { key: "purchase:view", label: "Purchase", group: "operations" },
   { key: "finance:view", label: "Finance", group: "control" },
+  { key: "finance:manage", label: "Finance Manage", group: "control" },
+  { key: "cod:reconcile", label: "COD Reconcile", group: "action" },
+  { key: "payment:approve", label: "Payment Approve", group: "action" },
   { key: "qc:view", label: "QC", group: "operations" },
   { key: "qc:decision", label: "QC Decision", group: "action" },
   { key: "production:view", label: "Production", group: "operations" },
@@ -104,6 +110,9 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "inventory:view",
     "purchase:view",
     "finance:view",
+    "finance:manage",
+    "cod:reconcile",
+    "payment:approve",
     "qc:view",
     "qc:decision",
     "production:view",
@@ -160,6 +169,9 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
     "dashboard:view",
     "purchase:view",
     "finance:view",
+    "finance:manage",
+    "cod:reconcile",
+    "payment:approve",
     "reports:view",
     "audit-log:view",
     "record:export"

@@ -25,6 +25,9 @@ const PermissionWarehouseView PermissionKey = "warehouse:view"
 const PermissionInventoryView PermissionKey = "inventory:view"
 const PermissionPurchaseView PermissionKey = "purchase:view"
 const PermissionFinanceView PermissionKey = "finance:view"
+const PermissionFinanceManage PermissionKey = "finance:manage"
+const PermissionCODReconcile PermissionKey = "cod:reconcile"
+const PermissionPaymentApprove PermissionKey = "payment:approve"
 const PermissionQCView PermissionKey = "qc:view"
 const PermissionQCDecision PermissionKey = "qc:decision"
 const PermissionProductionView PermissionKey = "production:view"
@@ -70,6 +73,9 @@ var permissionCatalog = []PermissionDefinition{
 	{Key: PermissionInventoryView, Name: "Inventory", Group: "operations"},
 	{Key: PermissionPurchaseView, Name: "Purchase", Group: "operations"},
 	{Key: PermissionFinanceView, Name: "Finance", Group: "control"},
+	{Key: PermissionFinanceManage, Name: "Finance Manage", Group: "control"},
+	{Key: PermissionCODReconcile, Name: "COD Reconcile", Group: "action"},
+	{Key: PermissionPaymentApprove, Name: "Payment Approve", Group: "action"},
 	{Key: PermissionQCView, Name: "QC", Group: "operations"},
 	{Key: PermissionQCDecision, Name: "QC Decision", Group: "action"},
 	{Key: PermissionProductionView, Name: "Production", Group: "operations"},
@@ -112,6 +118,9 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionInventoryView,
 		PermissionPurchaseView,
 		PermissionFinanceView,
+		PermissionFinanceManage,
+		PermissionCODReconcile,
+		PermissionPaymentApprove,
 		PermissionQCView,
 		PermissionQCDecision,
 		PermissionProductionView,
@@ -168,6 +177,9 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 		PermissionDashboardView,
 		PermissionPurchaseView,
 		PermissionFinanceView,
+		PermissionFinanceManage,
+		PermissionCODReconcile,
+		PermissionPaymentApprove,
 		PermissionReportsView,
 		PermissionAuditLogView,
 		PermissionRecordExport,

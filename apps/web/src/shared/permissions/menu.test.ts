@@ -44,6 +44,9 @@ describe("permission menu", () => {
     expect(rolePermissions.PURCHASE_OPS).toContain("purchase:view");
     expect(rolePermissions.PURCHASE_OPS).not.toContain("qc:decision");
     expect(rolePermissions.FINANCE_OPS).toContain("finance:view");
+    expect(rolePermissions.FINANCE_OPS).toContain("finance:manage");
+    expect(rolePermissions.FINANCE_OPS).toContain("cod:reconcile");
+    expect(rolePermissions.FINANCE_OPS).toContain("payment:approve");
     expect(rolePermissions.FINANCE_OPS).not.toContain("record:create");
     expect(rolePermissions.WAREHOUSE_LEAD).not.toContain("qc:decision");
     expect(rolePermissions.WAREHOUSE_STAFF).not.toContain("settings:view");
@@ -85,6 +88,21 @@ describe("permission menu", () => {
       key: "finance:view",
       label: "Finance",
       group: "control"
+    });
+    expect(permissionCatalog).toContainEqual({
+      key: "finance:manage",
+      label: "Finance Manage",
+      group: "control"
+    });
+    expect(permissionCatalog).toContainEqual({
+      key: "cod:reconcile",
+      label: "COD Reconcile",
+      group: "action"
+    });
+    expect(permissionCatalog).toContainEqual({
+      key: "payment:approve",
+      label: "Payment Approve",
+      group: "action"
     });
   });
 
