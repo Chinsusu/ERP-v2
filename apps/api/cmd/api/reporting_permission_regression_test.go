@@ -112,6 +112,20 @@ func TestReportingPermissionRegression(t *testing.T) {
 	}
 }
 
+func TestFinanceReportPermissionRegressionAllowsFinanceDrilldownAccess(t *testing.T) {
+	req := reportingPermissionRequest(
+		"/api/v1/reports/finance-summary?business_date=2026-04-30",
+		reportingPermissionPrincipal(auth.PermissionReportsView, auth.PermissionFinanceReportsView),
+	)
+	rec := httptest.NewRecorder()
+
+	newTestFinanceSummaryReportHandler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+}
+
 func reportingPermissionRequest(target string, principal auth.Principal) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, target, nil)
 	req.Header.Set(response.HeaderRequestID, "req-reporting-permission-regression")
