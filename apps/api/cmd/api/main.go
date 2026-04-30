@@ -1137,6 +1137,8 @@ func main() {
 	subcontractFinishedGoodsReceiptStore := productionapp.NewPrototypeSubcontractFinishedGoodsReceiptStore()
 	subcontractFactoryClaimStore := productionapp.NewPrototypeSubcontractFactoryClaimStore()
 	subcontractPaymentMilestoneStore := productionapp.NewPrototypeSubcontractPaymentMilestoneStore()
+	supplierPayableStore := financeapp.NewPrototypeSupplierPayableStore()
+	supplierPayableService := financeapp.NewSupplierPayableService(supplierPayableStore, auditLogStore)
 	subcontractOrderService := productionapp.NewSubcontractOrderService(
 		subcontractOrderStore,
 		partyCatalog,
@@ -1147,15 +1149,14 @@ func main() {
 		WithSampleApprovalStore(subcontractSampleApprovalStore).
 		WithFinishedGoodsReceiptStores(subcontractFinishedGoodsReceiptStore, stockMovementStore).
 		WithFactoryClaimStore(subcontractFactoryClaimStore).
-		WithPaymentMilestoneStore(subcontractPaymentMilestoneStore)
+		WithPaymentMilestoneStore(subcontractPaymentMilestoneStore).
+		WithSubcontractPayableCreator(subcontractSupplierPayableAdapter{service: supplierPayableService})
 	salesOrderStore := salesapp.NewPrototypeSalesOrderStore(auditLogStore)
 	salesOrderReservationStore := inventoryapp.NewPrototypeSalesOrderReservationStore(auditLogStore)
 	salesOrderService := salesapp.NewSalesOrderService(salesOrderStore, partyCatalog, itemCatalog, warehouseCatalog).
 		WithStockReserver(salesOrderReservationStore)
 	customerReceivableStore := financeapp.NewPrototypeCustomerReceivableStore()
 	customerReceivableService := financeapp.NewCustomerReceivableService(customerReceivableStore, auditLogStore)
-	supplierPayableStore := financeapp.NewPrototypeSupplierPayableStore()
-	supplierPayableService := financeapp.NewSupplierPayableService(supplierPayableStore, auditLogStore)
 	codRemittanceStore := financeapp.NewPrototypeCODRemittanceStore()
 	codRemittanceService := financeapp.NewCODRemittanceService(codRemittanceStore, auditLogStore)
 	warehouseReceivingStore := inventoryapp.NewPrototypeWarehouseReceivingStore()

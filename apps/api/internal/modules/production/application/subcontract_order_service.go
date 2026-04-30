@@ -73,6 +73,13 @@ type SubcontractFinishedGoodsReceiptMovementRecorder interface {
 	Record(ctx context.Context, movement inventorydomain.StockMovement) error
 }
 
+type SubcontractPayableCreator interface {
+	CreateSubcontractPayable(
+		ctx context.Context,
+		input CreateSubcontractPayableInput,
+	) (SubcontractPayableCreationResult, error)
+}
+
 type SubcontractSampleApprovalStore interface {
 	Save(ctx context.Context, sampleApproval productiondomain.SubcontractSampleApproval) error
 	Get(ctx context.Context, id string) (productiondomain.SubcontractSampleApproval, error)
@@ -112,6 +119,7 @@ type SubcontractOrderService struct {
 	factoryClaimBuild     SubcontractFactoryClaimService
 	paymentMilestoneStore SubcontractPaymentMilestoneStore
 	paymentMilestoneBuild SubcontractPaymentMilestoneService
+	payableCreator        SubcontractPayableCreator
 	clock                 func() time.Time
 }
 
@@ -401,6 +409,19 @@ type MarkSubcontractFinalPaymentReadyInput struct {
 	RequestID           string
 }
 
+type CreateSubcontractPayableInput struct {
+	SubcontractOrder productiondomain.SubcontractOrder
+	Milestone        productiondomain.SubcontractPaymentMilestone
+	ActorID          string
+	RequestID        string
+}
+
+type SubcontractPayableCreationResult struct {
+	PayableID  string
+	PayableNo  string
+	AuditLogID string
+}
+
 type SubcontractOrderResult struct {
 	SubcontractOrder productiondomain.SubcontractOrder
 	AuditLogID       string
@@ -467,6 +488,7 @@ type SubcontractPaymentMilestoneResult struct {
 	PreviousStatus   productiondomain.SubcontractOrderStatus
 	CurrentStatus    productiondomain.SubcontractOrderStatus
 	AuditLogID       string
+	SupplierPayable  SubcontractPayableCreationResult
 }
 
 type PrototypeSubcontractOrderStore struct {
@@ -546,6 +568,14 @@ func (s SubcontractOrderService) WithPaymentMilestoneStore(
 	paymentMilestoneStore SubcontractPaymentMilestoneStore,
 ) SubcontractOrderService {
 	s.paymentMilestoneStore = paymentMilestoneStore
+
+	return s
+}
+
+func (s SubcontractOrderService) WithSubcontractPayableCreator(
+	payableCreator SubcontractPayableCreator,
+) SubcontractOrderService {
+	s.payableCreator = payableCreator
 
 	return s
 }
@@ -1635,9 +1665,21 @@ func (s SubcontractOrderService) MarkSubcontractFinalPaymentReady(
 		if err := tx.Save(txCtx, buildResult.UpdatedOrder); err != nil {
 			return err
 		}
+		payableResult, err := s.createSubcontractPayableForFinalPayment(txCtx, buildResult.UpdatedOrder, buildResult.Milestone, input)
+		if err != nil {
+			return MapSubcontractOrderError(err, map[string]any{
+				"subcontract_order_id":   current.ID,
+				"payment_milestone_id":   buildResult.Milestone.ID,
+				"payment_milestone_kind": string(buildResult.Milestone.Kind),
+			})
+		}
 		afterData := subcontractOrderAuditData(buildResult.UpdatedOrder)
 		for key, value := range subcontractPaymentMilestoneAuditData(buildResult.Milestone) {
 			afterData[key] = value
+		}
+		if payableResult.PayableID != "" {
+			afterData["supplier_payable_id"] = payableResult.PayableID
+			afterData["supplier_payable_no"] = payableResult.PayableNo
 		}
 		afterData["blocking_claim_count"] = countBlockingSubcontractFactoryClaims(claims)
 		log, err := newSubcontractOrderAuditLog(
@@ -1661,6 +1703,7 @@ func (s SubcontractOrderService) MarkSubcontractFinalPaymentReady(
 			PreviousStatus:   buildResult.PreviousStatus,
 			CurrentStatus:    buildResult.CurrentStatus,
 			AuditLogID:       log.ID,
+			SupplierPayable:  payableResult,
 		}
 
 		return nil
@@ -1670,6 +1713,24 @@ func (s SubcontractOrderService) MarkSubcontractFinalPaymentReady(
 	}
 
 	return result, nil
+}
+
+func (s SubcontractOrderService) createSubcontractPayableForFinalPayment(
+	ctx context.Context,
+	order productiondomain.SubcontractOrder,
+	milestone productiondomain.SubcontractPaymentMilestone,
+	input MarkSubcontractFinalPaymentReadyInput,
+) (SubcontractPayableCreationResult, error) {
+	if s.payableCreator == nil {
+		return SubcontractPayableCreationResult{}, nil
+	}
+
+	return s.payableCreator.CreateSubcontractPayable(ctx, CreateSubcontractPayableInput{
+		SubcontractOrder: order,
+		Milestone:        milestone,
+		ActorID:          input.ActorID,
+		RequestID:        input.RequestID,
+	})
 }
 
 func (s SubcontractOrderService) decideSubcontractSample(

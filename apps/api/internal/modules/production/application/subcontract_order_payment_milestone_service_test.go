@@ -122,6 +122,72 @@ func TestSubcontractOrderServiceMarkFinalPaymentReadyPersistsMilestoneOrderAndAu
 	}
 }
 
+func TestSubcontractOrderServiceMarkFinalPaymentReadyCreatesSupplierPayable(t *testing.T) {
+	ctx := context.Background()
+	auditStore := audit.NewInMemoryLogStore()
+	orderStore := NewPrototypeSubcontractOrderStore(auditStore)
+	milestoneStore := NewPrototypeSubcontractPaymentMilestoneStore()
+	claimStore := NewPrototypeSubcontractFactoryClaimStore()
+	payableCreator := &recordingSubcontractPayableCreator{
+		result: SubcontractPayableCreationResult{
+			PayableID:  "ap-spm-service-final-002",
+			PayableNo:  "AP-SPM-SERVICE-FINAL-002",
+			AuditLogID: "audit-ap-spm-service-final-002",
+		},
+	}
+	service := SubcontractOrderService{
+		store:                 orderStore,
+		factoryClaimStore:     claimStore,
+		paymentMilestoneStore: milestoneStore,
+		paymentMilestoneBuild: NewSubcontractPaymentMilestoneService(),
+		payableCreator:        payableCreator,
+	}
+	order := subcontractPaymentAcceptedOrder(t)
+	if err := orderStore.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		return tx.Save(txCtx, order)
+	}); err != nil {
+		t.Fatalf("seed order: %v", err)
+	}
+
+	result, err := service.MarkSubcontractFinalPaymentReady(ctx, MarkSubcontractFinalPaymentReadyInput{
+		ID:              order.ID,
+		ExpectedVersion: order.Version,
+		MilestoneID:     "spm_service_final_002",
+		MilestoneNo:     "SPM-SERVICE-FINAL-002",
+		ReadyBy:         "finance-user",
+		ActorID:         "finance-user",
+		RequestID:       "req-final-payment-payable",
+	})
+	if err != nil {
+		t.Fatalf("mark final payment ready: %v", err)
+	}
+
+	if payableCreator.count != 1 {
+		t.Fatalf("payable creator count = %d, want 1", payableCreator.count)
+	}
+	input := payableCreator.input
+	if input.SubcontractOrder.ID != order.ID ||
+		input.Milestone.ID != "spm_service_final_002" ||
+		input.Milestone.Amount.String() != order.EstimatedCostAmount.String() ||
+		input.ActorID != "finance-user" ||
+		input.RequestID != "req-final-payment-payable" {
+		t.Fatalf("payable input = %+v, want subcontract final payment milestone source", input)
+	}
+	if result.SupplierPayable.PayableID != "ap-spm-service-final-002" ||
+		result.SupplierPayable.AuditLogID != "audit-ap-spm-service-final-002" {
+		t.Fatalf("supplier payable result = %+v, want payable creation details", result.SupplierPayable)
+	}
+	logs, err := auditStore.List(ctx, audit.Query{Action: subcontractFinalPaymentAction})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 1 ||
+		logs[0].AfterData["supplier_payable_id"] != "ap-spm-service-final-002" ||
+		logs[0].AfterData["supplier_payable_no"] != "AP-SPM-SERVICE-FINAL-002" {
+		t.Fatalf("audit logs = %+v, want final payment audit linked to supplier payable", logs)
+	}
+}
+
 func TestSubcontractOrderServiceBlocksFinalPaymentWithOpenClaim(t *testing.T) {
 	ctx := context.Background()
 	auditStore := audit.NewInMemoryLogStore()
@@ -164,6 +230,22 @@ func TestSubcontractOrderServiceBlocksFinalPaymentWithOpenClaim(t *testing.T) {
 	if len(logs) != 0 {
 		t.Fatalf("final payment audit logs = %+v, want none", logs)
 	}
+}
+
+type recordingSubcontractPayableCreator struct {
+	input  CreateSubcontractPayableInput
+	result SubcontractPayableCreationResult
+	count  int
+}
+
+func (c *recordingSubcontractPayableCreator) CreateSubcontractPayable(
+	_ context.Context,
+	input CreateSubcontractPayableInput,
+) (SubcontractPayableCreationResult, error) {
+	c.input = input
+	c.count++
+
+	return c.result, nil
 }
 
 func subcontractPaymentBlockingClaim(
