@@ -4407,6 +4407,7 @@ export interface components {
             item_id?: string;
             category?: string;
         };
+        /** @description Read-only drilldown source reference shared by reporting rows. entity_type, id, and label identify the source record or source work queue. href is present only when a safe ERP route exists. unavailable is true when the source can be named but cannot be linked. */
         ReportSourceReference: {
             /**
              * @description Source entity type used by the report row.
@@ -4477,6 +4478,7 @@ export interface components {
             batch_qc_status?: string;
             batch_status?: string;
             source_stock_state: string;
+            /** @description Item, batch, warehouse, stock state, or warning sources that explain this inventory report row. */
             source_references: components["schemas"]["ReportSourceReference"][];
         };
         OperationsDailyReportSuccessResponse: components["schemas"]["SuccessResponse"] & {
@@ -4502,8 +4504,11 @@ export interface components {
         OperationsDailyRow: {
             id: string;
             area: string;
+            /** @description Machine-readable source category for the operations signal. */
             source_type: string;
+            /** @description Source record identifier for the operations signal. */
             source_id: string;
+            /** @description Drilldown reference for the source operational record or filtered work queue. */
             source_reference: components["schemas"]["ReportSourceReference"];
             ref_no: string;
             title: string;
@@ -4537,6 +4542,7 @@ export interface components {
             overdue_amount: components["schemas"]["MoneyAmount"];
             outstanding_amount: components["schemas"]["MoneyAmount"];
             aging_buckets: components["schemas"]["FinanceSummaryAgingBucket"][];
+            /** @description AR source records that explain the receivable summary metrics. */
             source_references: components["schemas"]["ReportSourceReference"][];
         };
         FinanceSummaryPayable: {
@@ -4548,12 +4554,14 @@ export interface components {
             due_amount: components["schemas"]["MoneyAmount"];
             outstanding_amount: components["schemas"]["MoneyAmount"];
             aging_buckets: components["schemas"]["FinanceSummaryAgingBucket"][];
+            /** @description AP source records that explain the payable summary metrics. */
             source_references: components["schemas"]["ReportSourceReference"][];
         };
         FinanceSummaryAgingBucket: {
             bucket: string;
             count: number;
             amount: components["schemas"]["MoneyAmount"];
+            /** @description Source reference for the finance aging bucket. */
             source_reference: components["schemas"]["ReportSourceReference"];
         };
         FinanceSummaryCOD: {
@@ -4562,6 +4570,7 @@ export interface components {
             pending_amount: components["schemas"]["MoneyAmount"];
             discrepancy_amount: components["schemas"]["MoneyAmount"];
             discrepancy_buckets: components["schemas"]["FinanceSummaryDiscrepancyBucket"][];
+            /** @description COD source records that explain pending and discrepancy summary metrics. */
             source_references: components["schemas"]["ReportSourceReference"][];
         };
         FinanceSummaryDiscrepancyBucket: {
@@ -4569,6 +4578,7 @@ export interface components {
             status: string;
             count: number;
             amount: components["schemas"]["MoneyAmount"];
+            /** @description Source reference for the COD discrepancy bucket. */
             source_reference: components["schemas"]["ReportSourceReference"];
         };
         FinanceSummaryCash: {
@@ -4576,6 +4586,7 @@ export interface components {
             cash_in_amount: components["schemas"]["MoneyAmount"];
             cash_out_amount: components["schemas"]["MoneyAmount"];
             net_cash_amount: components["schemas"]["MoneyAmount"];
+            /** @description Cash transaction source records that explain the cash summary metrics. */
             source_references: components["schemas"]["ReportSourceReference"][];
         };
         /** @enum {string} */
@@ -8506,7 +8517,10 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Inventory snapshot CSV with stable headers and decimal quantity strings */
+            /**
+             * @description Inventory snapshot CSV with stable headers and decimal quantity strings.
+             *     Source column: source_stock_state. Detailed item, batch, warehouse, and stock state drilldown sources are available in the JSON source_references array.
+             */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -8575,7 +8589,10 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Operations daily CSV with stable headers and decimal quantity strings */
+            /**
+             * @description Operations daily CSV with stable headers and decimal quantity strings.
+             *     Source columns: source_type and source_id. Detailed source labels, hrefs, and unavailable flags are available in the JSON source_reference object.
+             */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -8637,7 +8654,10 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Finance summary CSV with stable headers and decimal money strings */
+            /**
+             * @description Finance summary CSV with stable headers and decimal money strings.
+             *     Source context columns: section, metric, bucket, type, and status. Detailed AR, AP, COD, cash, and approval source references are available in the JSON source_references and source_reference fields.
+             */
             200: {
                 headers: {
                     [name: string]: unknown;
