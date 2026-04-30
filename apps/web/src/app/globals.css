@@ -4061,6 +4061,11 @@ textarea {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.erp-finance-section {
+  display: grid;
+  gap: var(--erp-section-gap);
+}
+
 .erp-finance-toolbar {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px);
@@ -4159,6 +4164,16 @@ textarea {
 
 .erp-finance-action-form .erp-button {
   justify-self: end;
+}
+
+.erp-finance-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-field-gap);
+  justify-content: flex-end;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--erp-border-soft);
 }
 
 .erp-finance-feedback {
