@@ -1764,6 +1764,13 @@ func main() {
 		),
 	)
 	mux.Handle(
+		"/api/v1/reports/operations-daily",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(operationsDailyReportHandler()),
+		),
+	)
+	mux.Handle(
 		"/api/v1/stock-adjustments",
 		auth.RequireSessionToken(
 			authSessions,
