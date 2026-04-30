@@ -78,3 +78,51 @@ export type InventorySnapshotRow = {
   batchStatus?: string;
   sourceStockState: string;
 };
+
+export type OperationsDailyQuery = {
+  fromDate?: string;
+  toDate?: string;
+  businessDate?: string;
+  warehouseId?: string;
+  status?: OperationsDailyStatusFilter;
+};
+
+export type OperationsDailyStatusFilter = "" | "pending" | "in_progress" | "completed" | "blocked" | "exception";
+
+export type OperationsDailyReport = {
+  metadata: ReportMetadata;
+  summary: OperationsDailySummary;
+  areas: OperationsDailyAreaSummary[];
+  rows: OperationsDailyRow[];
+};
+
+export type OperationsDailySummary = {
+  signalCount: number;
+  pendingCount: number;
+  inProgressCount: number;
+  completedCount: number;
+  blockedCount: number;
+  exceptionCount: number;
+};
+
+export type OperationsDailyAreaSummary = OperationsDailySummary & {
+  area: string;
+};
+
+export type OperationsDailyRow = {
+  id: string;
+  area: string;
+  sourceType: string;
+  sourceId: string;
+  refNo: string;
+  title: string;
+  warehouseId: string;
+  warehouseCode?: string;
+  businessDate: string;
+  status: string;
+  severity: string;
+  quantity?: string;
+  uomCode?: string;
+  exceptionCode?: string;
+  owner?: string;
+};
