@@ -3563,6 +3563,33 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /finance/dashboard:
+    get:
+      summary: Get Finance Lite dashboard metrics
+      operationId: getFinanceDashboard
+      tags:
+        - finance
+      parameters:
+        - name: business_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Business date in Asia/Ho_Chi_Minh. Defaults to today's business date.
+      responses:
+        "200":
+          description: Finance dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinanceDashboardSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /cod-remittances:
     get:
       summary: List COD remittances
@@ -10103,6 +10130,131 @@ components:
         target_no:
           type: string
         amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    FinanceDashboardSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/FinanceDashboard"
+    FinanceDashboard:
+      type: object
+      required:
+        - business_date
+        - generated_at
+        - currency_code
+        - ar
+        - ap
+        - cod
+        - cash
+      properties:
+        business_date:
+          type: string
+          format: date
+        generated_at:
+          type: string
+          format: date-time
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        ar:
+          $ref: "#/components/schemas/FinanceDashboardReceivableMetrics"
+        ap:
+          $ref: "#/components/schemas/FinanceDashboardPayableMetrics"
+        cod:
+          $ref: "#/components/schemas/FinanceDashboardCODMetrics"
+        cash:
+          $ref: "#/components/schemas/FinanceDashboardCashMetrics"
+    FinanceDashboardReceivableMetrics:
+      type: object
+      required:
+        - open_count
+        - overdue_count
+        - disputed_count
+        - open_amount
+        - overdue_amount
+        - outstanding_amount
+      properties:
+        open_count:
+          type: integer
+          minimum: 0
+        overdue_count:
+          type: integer
+          minimum: 0
+        disputed_count:
+          type: integer
+          minimum: 0
+        open_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        overdue_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        outstanding_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    FinanceDashboardPayableMetrics:
+      type: object
+      required:
+        - open_count
+        - due_count
+        - payment_requested_count
+        - payment_approved_count
+        - open_amount
+        - due_amount
+        - outstanding_amount
+      properties:
+        open_count:
+          type: integer
+          minimum: 0
+        due_count:
+          type: integer
+          minimum: 0
+        payment_requested_count:
+          type: integer
+          minimum: 0
+        payment_approved_count:
+          type: integer
+          minimum: 0
+        open_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        due_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        outstanding_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    FinanceDashboardCODMetrics:
+      type: object
+      required:
+        - pending_count
+        - discrepancy_count
+        - pending_amount
+        - discrepancy_amount
+      properties:
+        pending_count:
+          type: integer
+          minimum: 0
+        discrepancy_count:
+          type: integer
+          minimum: 0
+        pending_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        discrepancy_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    FinanceDashboardCashMetrics:
+      type: object
+      required:
+        - transaction_count
+        - cash_in_today
+        - cash_out_today
+        - net_cash_today
+      properties:
+        transaction_count:
+          type: integer
+          minimum: 0
+        cash_in_today:
+          $ref: "#/components/schemas/MoneyAmount"
+        cash_out_today:
+          $ref: "#/components/schemas/MoneyAmount"
+        net_cash_today:
           $ref: "#/components/schemas/MoneyAmount"
     CODRemittanceStatus:
       type: string

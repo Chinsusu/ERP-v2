@@ -1161,6 +1161,12 @@ func main() {
 	codRemittanceService := financeapp.NewCODRemittanceService(codRemittanceStore, auditLogStore)
 	cashTransactionStore := financeapp.NewPrototypeCashTransactionStore()
 	cashTransactionService := financeapp.NewCashTransactionService(cashTransactionStore, auditLogStore)
+	financeDashboardService := financeapp.NewFinanceDashboardService(
+		customerReceivableStore,
+		supplierPayableStore,
+		codRemittanceStore,
+		cashTransactionStore,
+	)
 	warehouseReceivingStore := inventoryapp.NewPrototypeWarehouseReceivingStore()
 	warehouseReceiving := inventoryapp.NewWarehouseReceivingService(
 		warehouseReceivingStore,
@@ -1484,6 +1490,13 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(cashTransactionDetailHandler(cashTransactionService)),
+		),
+	)
+	mux.Handle(
+		"/api/v1/finance/dashboard",
+		auth.RequireSessionToken(
+			authSessions,
+			http.HandlerFunc(financeDashboardHandler(financeDashboardService)),
 		),
 	)
 	mux.Handle(

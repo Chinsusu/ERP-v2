@@ -1591,6 +1591,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/finance/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Finance Lite dashboard metrics */
+        get: operations["getFinanceDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cod-remittances": {
         parameters: {
             query?: never;
@@ -4223,6 +4240,49 @@ export interface components {
             target_id: string;
             target_no: string;
             amount: components["schemas"]["MoneyAmount"];
+        };
+        FinanceDashboardSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["FinanceDashboard"];
+        };
+        FinanceDashboard: {
+            /** Format: date */
+            business_date: string;
+            /** Format: date-time */
+            generated_at: string;
+            currency_code: components["schemas"]["CurrencyCode"];
+            ar: components["schemas"]["FinanceDashboardReceivableMetrics"];
+            ap: components["schemas"]["FinanceDashboardPayableMetrics"];
+            cod: components["schemas"]["FinanceDashboardCODMetrics"];
+            cash: components["schemas"]["FinanceDashboardCashMetrics"];
+        };
+        FinanceDashboardReceivableMetrics: {
+            open_count: number;
+            overdue_count: number;
+            disputed_count: number;
+            open_amount: components["schemas"]["MoneyAmount"];
+            overdue_amount: components["schemas"]["MoneyAmount"];
+            outstanding_amount: components["schemas"]["MoneyAmount"];
+        };
+        FinanceDashboardPayableMetrics: {
+            open_count: number;
+            due_count: number;
+            payment_requested_count: number;
+            payment_approved_count: number;
+            open_amount: components["schemas"]["MoneyAmount"];
+            due_amount: components["schemas"]["MoneyAmount"];
+            outstanding_amount: components["schemas"]["MoneyAmount"];
+        };
+        FinanceDashboardCODMetrics: {
+            pending_count: number;
+            discrepancy_count: number;
+            pending_amount: components["schemas"]["MoneyAmount"];
+            discrepancy_amount: components["schemas"]["MoneyAmount"];
+        };
+        FinanceDashboardCashMetrics: {
+            transaction_count: number;
+            cash_in_today: components["schemas"]["MoneyAmount"];
+            cash_out_today: components["schemas"]["MoneyAmount"];
+            net_cash_today: components["schemas"]["MoneyAmount"];
         };
         /** @enum {string} */
         CODRemittanceStatus: "draft" | "matching" | "submitted" | "approved" | "discrepancy" | "closed" | "void";
@@ -8045,6 +8105,32 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getFinanceDashboard: {
+        parameters: {
+            query?: {
+                /** @description Business date in Asia/Ho_Chi_Minh. Defaults to today's business date. */
+                business_date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Finance dashboard metrics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceDashboardSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listCODRemittances: {
