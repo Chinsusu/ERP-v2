@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { DataTable, EmptyState, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
 import { CODReconciliationPanel } from "./CODReconciliationPanel";
+import { SupplierPayablesPanel } from "./SupplierPayablesPanel";
 import { useCustomerReceivables } from "../hooks/useCustomerReceivables";
 import {
   canRecordCustomerReceipt,
@@ -255,11 +256,14 @@ export function FinanceReceivablesPrototype() {
         <div>
           <p className="erp-module-eyebrow">FI</p>
           <h1 className="erp-page-title">Finance</h1>
-          <p className="erp-page-description">COD reconciliation, customer receivables, outstanding collection, and receipt tracking</p>
+          <p className="erp-page-description">COD reconciliation, customer receivables, supplier payables, collection, and payment tracking</p>
         </div>
         <div className="erp-page-actions">
           <a className="erp-button erp-button--primary" href="#cod-reconciliation">
             COD reconciliation
+          </a>
+          <a className="erp-button erp-button--secondary" href="#supplier-payables">
+            AP list
           </a>
           <a className="erp-button erp-button--secondary" href="#customer-receivables">
             AR list
@@ -271,6 +275,8 @@ export function FinanceReceivablesPrototype() {
       </header>
 
       <CODReconciliationPanel />
+
+      <SupplierPayablesPanel />
 
       <section className="erp-kpi-grid erp-finance-kpis">
         <FinanceKPI label="Open AR" value={totals.openCount} tone={totals.openCount > 0 ? "warning" : "normal"} />

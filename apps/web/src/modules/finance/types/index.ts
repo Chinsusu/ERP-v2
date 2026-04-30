@@ -1,4 +1,13 @@
 export type CustomerReceivableStatus = "draft" | "open" | "partially_paid" | "paid" | "disputed" | "void";
+export type SupplierPayableStatus =
+  | "draft"
+  | "open"
+  | "payment_requested"
+  | "payment_approved"
+  | "partially_paid"
+  | "paid"
+  | "disputed"
+  | "void";
 export type CODRemittanceStatus = "draft" | "matching" | "submitted" | "approved" | "discrepancy" | "closed" | "void";
 export type CODLineMatchStatus = "matched" | "short_paid" | "over_paid";
 export type CODDiscrepancyType = "short_paid" | "over_paid" | "carrier_fee" | "return_claim" | "other";
@@ -83,6 +92,53 @@ export type CustomerReceivableActionResult = {
   customerReceivable: CustomerReceivable;
   previousStatus: CustomerReceivableStatus;
   currentStatus: CustomerReceivableStatus;
+  auditLogId?: string;
+};
+
+export type SupplierPayableLine = {
+  id: string;
+  description: string;
+  sourceDocument: FinanceSourceDocument;
+  amount: string;
+};
+
+export type SupplierPayable = {
+  id: string;
+  orgId?: string;
+  payableNo: string;
+  supplierId: string;
+  supplierCode?: string;
+  supplierName: string;
+  status: SupplierPayableStatus;
+  sourceDocument?: FinanceSourceDocument;
+  lines: SupplierPayableLine[];
+  totalAmount: string;
+  paidAmount: string;
+  outstandingAmount: string;
+  currencyCode: string;
+  dueDate?: string;
+  paymentRequestedBy?: string;
+  paymentRequestedAt?: string;
+  paymentApprovedBy?: string;
+  paymentApprovedAt?: string;
+  disputeReason?: string;
+  voidReason?: string;
+  auditLogId?: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
+export type SupplierPayableQuery = {
+  search?: string;
+  status?: SupplierPayableStatus;
+  supplierId?: string;
+};
+
+export type SupplierPayableActionResult = {
+  supplierPayable: SupplierPayable;
+  previousStatus: SupplierPayableStatus;
+  currentStatus: SupplierPayableStatus;
   auditLogId?: string;
 };
 
