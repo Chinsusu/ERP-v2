@@ -19,6 +19,7 @@ import {
   buildWarehouseInboundDrillDownHref,
   buildWarehouseInventoryReportHref,
   buildWarehouseOperationsReportHref,
+  buildWarehouseOperationsSignalReportHref,
   buildWarehouseSubcontractDrillDownHref,
   buildWarehouseQueueDrillDownHref,
   buildWarehouseShiftClosingDrillDownHref,
@@ -26,6 +27,7 @@ import {
   defaultWarehouseDailyBoardDate,
   warehouseShiftOptions,
   warehouseInventoryReportStatusFromQueue,
+  warehouseOperationsReportStatusFromSignal,
   warehouseOperationsReportStatusFromQueue,
   warehouseOptions,
   warehouseTaskTone
@@ -34,6 +36,7 @@ import type {
   WarehouseFulfillmentDrillDownKey,
   WarehouseInboundDrillDownKey,
   WarehouseInventoryReportStatus,
+  WarehouseOperationsReportSignal,
   WarehouseOperationsReportStatus,
   WarehouseSubcontractDrillDownKey
 } from "../services/warehouseDailyBoardService";
@@ -193,6 +196,86 @@ export default function WarehouseDailyBoard() {
   const fulfillment = board?.fulfillment;
   const inbound = board?.inbound;
   const subcontract = board?.subcontract;
+  const inboundSignalCount = inbound?.receivingPending ?? 0;
+  const outboundSignalCount =
+    (fulfillment?.pickingOrders ?? 0) +
+    (fulfillment?.packedOrders ?? 0) +
+    (fulfillment?.waitingHandoverOrders ?? 0) +
+    (fulfillment?.missingOrders ?? 0);
+  const returnSignalCount = (board?.summary.returnPending ?? 0) + (board?.summary.qaHold ?? 0);
+  const stockCountSignalCount = board?.summary.stockCountVariance ?? 0;
+  const qcSignalCount = (inbound?.qcHold ?? 0) + (inbound?.qcFail ?? 0) + (inbound?.qcPartial ?? 0);
+  const subcontractSignalCount = (subcontract?.openOrders ?? 0) + (subcontract?.factoryClaims ?? 0);
+  const outboundHasException = (fulfillment?.missingOrders ?? 0) > 0;
+  const qcHasException = (inbound?.qcFail ?? 0) > 0;
+  const subcontractHasException = (subcontract?.factoryClaims ?? 0) > 0;
+  const inboundSignalStatus = warehouseOperationsReportStatusFromSignal("inbound");
+  const outboundSignalStatus = warehouseOperationsReportStatusFromSignal("outbound", {
+    hasException: outboundHasException
+  });
+  const returnSignalStatus = warehouseOperationsReportStatusFromSignal("returns");
+  const stockCountSignalStatus = warehouseOperationsReportStatusFromSignal("stock_count");
+  const qcSignalStatus = warehouseOperationsReportStatusFromSignal("qc", { hasException: qcHasException });
+  const subcontractSignalStatus = warehouseOperationsReportStatusFromSignal("subcontract", {
+    hasException: subcontractHasException
+  });
+  const signalReportCards: {
+    key: WarehouseOperationsReportSignal;
+    label: string;
+    value: number;
+    status: WarehouseOperationsReportStatus;
+    tone: StatusTone;
+    href: string;
+  }[] = [
+    {
+      key: "inbound",
+      label: "Inbound",
+      value: inboundSignalCount,
+      status: inboundSignalStatus,
+      tone: operationsSignalTone(inboundSignalStatus, inboundSignalCount),
+      href: buildWarehouseOperationsSignalReportHref("inbound", query)
+    },
+    {
+      key: "outbound",
+      label: "Outbound",
+      value: outboundSignalCount,
+      status: outboundSignalStatus,
+      tone: operationsSignalTone(outboundSignalStatus, outboundSignalCount),
+      href: buildWarehouseOperationsSignalReportHref("outbound", query, { hasException: outboundHasException })
+    },
+    {
+      key: "returns",
+      label: "Returns",
+      value: returnSignalCount,
+      status: returnSignalStatus,
+      tone: operationsSignalTone(returnSignalStatus, returnSignalCount),
+      href: buildWarehouseOperationsSignalReportHref("returns", query)
+    },
+    {
+      key: "stock_count",
+      label: "Stock count",
+      value: stockCountSignalCount,
+      status: stockCountSignalStatus,
+      tone: operationsSignalTone(stockCountSignalStatus, stockCountSignalCount),
+      href: buildWarehouseOperationsSignalReportHref("stock_count", query)
+    },
+    {
+      key: "qc",
+      label: "QC",
+      value: qcSignalCount,
+      status: qcSignalStatus,
+      tone: operationsSignalTone(qcSignalStatus, qcSignalCount),
+      href: buildWarehouseOperationsSignalReportHref("qc", query, { hasException: qcHasException })
+    },
+    {
+      key: "subcontract",
+      label: "Subcontract",
+      value: subcontractSignalCount,
+      status: subcontractSignalStatus,
+      tone: operationsSignalTone(subcontractSignalStatus, subcontractSignalCount),
+      href: buildWarehouseOperationsSignalReportHref("subcontract", query, { hasException: subcontractHasException })
+    }
+  ];
   const fulfillmentCards: {
     key: WarehouseFulfillmentDrillDownKey;
     label: string;
@@ -611,6 +694,17 @@ export default function WarehouseDailyBoard() {
         ))}
       </section>
 
+      <section className="erp-warehouse-signal-report-grid" aria-label="Warehouse signal report drilldowns">
+        {signalReportCards.map((card) => (
+          <a className="erp-warehouse-signal-report-card" href={card.href} key={card.key}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+            <small>{operationsReportStatusLabel(card.status)}</small>
+            <StatusChip tone={card.tone}>Report</StatusChip>
+          </a>
+        ))}
+      </section>
+
       <section className="erp-kpi-grid erp-warehouse-kpis">
         {queueCards.map((card) => (
           <WarehouseKPI
@@ -940,6 +1034,14 @@ function operationsReportTone(status: WarehouseOperationsReportStatus): StatusTo
     default:
       return "info";
   }
+}
+
+function operationsSignalTone(status: WarehouseOperationsReportStatus, value: number): StatusTone {
+  if (value === 0) {
+    return "normal";
+  }
+
+  return operationsReportTone(status);
 }
 
 function sourceLabel(source: WarehouseDailyTask["source"]) {

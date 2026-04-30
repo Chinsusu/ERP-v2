@@ -1112,7 +1112,14 @@ textarea {
   gap: 12px;
 }
 
-.erp-warehouse-report-card {
+.erp-warehouse-signal-report-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(104px, 1fr));
+  gap: 12px;
+}
+
+.erp-warehouse-report-card,
+.erp-warehouse-signal-report-card {
   display: grid;
   gap: 4px;
   min-width: 0;
@@ -1125,21 +1132,26 @@ textarea {
 }
 
 .erp-warehouse-report-card:hover,
-.erp-warehouse-report-card:focus-visible {
+.erp-warehouse-report-card:focus-visible,
+.erp-warehouse-signal-report-card:hover,
+.erp-warehouse-signal-report-card:focus-visible {
   border-color: var(--erp-info);
   outline: 2px solid rgba(31, 111, 235, 0.16);
   outline-offset: 2px;
 }
 
 .erp-warehouse-report-card span,
-.erp-warehouse-report-card small {
+.erp-warehouse-report-card small,
+.erp-warehouse-signal-report-card span,
+.erp-warehouse-signal-report-card small {
   overflow-wrap: anywhere;
   color: var(--erp-text-secondary);
   font-size: var(--erp-font-size-helper);
   line-height: var(--erp-line-height-helper);
 }
 
-.erp-warehouse-report-card strong {
+.erp-warehouse-report-card strong,
+.erp-warehouse-signal-report-card strong {
   overflow-wrap: anywhere;
   color: var(--erp-text);
   font-size: var(--erp-font-size-card-title);
@@ -4581,6 +4593,7 @@ textarea {
   .erp-warehouse-context,
   .erp-warehouse-toolbar,
   .erp-warehouse-report-grid,
+  .erp-warehouse-signal-report-grid,
   .erp-warehouse-fulfillment-grid,
   .erp-warehouse-kpis,
   .erp-warehouse-source-strip,
