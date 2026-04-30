@@ -82,6 +82,50 @@ func TestSupplierPayableServiceApprovesAndRecordsPayment(t *testing.T) {
 	}
 }
 
+func TestSupplierPayableServiceRequestsAndRejectsPayment(t *testing.T) {
+	service, auditStore := newTestSupplierPayableService()
+	created, err := service.CreateSupplierPayable(context.Background(), baseCreateSupplierPayableInput())
+	if err != nil {
+		t.Fatalf("create payable: %v", err)
+	}
+
+	requested, err := service.RequestSupplierPayablePayment(context.Background(), SupplierPayableActionInput{
+		ID:        created.SupplierPayable.ID,
+		ActorID:   "finance-user",
+		RequestID: "req-ap-request-payment",
+	})
+	if err != nil {
+		t.Fatalf("request payment: %v", err)
+	}
+	if requested.PreviousStatus != financedomain.PayableStatusOpen ||
+		requested.CurrentStatus != financedomain.PayableStatusPaymentRequested {
+		t.Fatalf("status transition = %q -> %q", requested.PreviousStatus, requested.CurrentStatus)
+	}
+
+	rejected, err := service.RejectSupplierPayablePayment(context.Background(), SupplierPayableActionInput{
+		ID:        created.SupplierPayable.ID,
+		Reason:    "supplier invoice mismatch",
+		ActorID:   "finance-lead",
+		RequestID: "req-ap-reject-payment",
+	})
+	if err != nil {
+		t.Fatalf("reject payment: %v", err)
+	}
+	if rejected.PreviousStatus != financedomain.PayableStatusPaymentRequested ||
+		rejected.CurrentStatus != financedomain.PayableStatusOpen ||
+		rejected.SupplierPayable.PaymentRejectReason != "supplier invoice mismatch" {
+		t.Fatalf("rejected result = %+v", rejected)
+	}
+
+	logs, err := auditStore.List(context.Background(), audit.Query{Action: string(financedomain.FinanceAuditActionPayablePaymentRejected)})
+	if err != nil {
+		t.Fatalf("list audit: %v", err)
+	}
+	if len(logs) != 1 || logs[0].Metadata["reason"] != "supplier invoice mismatch" {
+		t.Fatalf("audit logs = %+v, want rejection reason metadata", logs)
+	}
+}
+
 func TestSupplierPayableServiceMapsValidationErrors(t *testing.T) {
 	service, _ := newTestSupplierPayableService()
 	input := baseCreateSupplierPayableInput()

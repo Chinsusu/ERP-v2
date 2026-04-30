@@ -14,6 +14,7 @@ func TestFinanceAuditActionsNormalizeAndValidate(t *testing.T) {
 	validActions := []FinanceAuditAction{
 		FinanceAuditActionReceivableReceiptRecorded,
 		FinanceAuditActionPayablePaymentApproved,
+		FinanceAuditActionPayablePaymentRejected,
 		FinanceAuditActionCODRemittanceDiscrepancyRecorded,
 		FinanceAuditActionCashTransactionPosted,
 	}

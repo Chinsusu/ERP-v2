@@ -20,6 +20,7 @@ const (
 	FinanceAuditActionPayableCreated          FinanceAuditAction = "finance.supplier_payable.created"
 	FinanceAuditActionPayablePaymentRequested FinanceAuditAction = "finance.supplier_payable.payment_requested"
 	FinanceAuditActionPayablePaymentApproved  FinanceAuditAction = "finance.supplier_payable.payment_approved"
+	FinanceAuditActionPayablePaymentRejected  FinanceAuditAction = "finance.supplier_payable.payment_rejected"
 	FinanceAuditActionPayablePaymentRecorded  FinanceAuditAction = "finance.supplier_payable.payment_recorded"
 	FinanceAuditActionPayableVoided           FinanceAuditAction = "finance.supplier_payable.voided"
 
@@ -106,6 +107,7 @@ func IsValidFinanceAuditAction(action FinanceAuditAction) bool {
 		FinanceAuditActionPayableCreated,
 		FinanceAuditActionPayablePaymentRequested,
 		FinanceAuditActionPayablePaymentApproved,
+		FinanceAuditActionPayablePaymentRejected,
 		FinanceAuditActionPayablePaymentRecorded,
 		FinanceAuditActionPayableVoided,
 		FinanceAuditActionCODRemittanceCreated,

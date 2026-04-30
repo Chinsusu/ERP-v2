@@ -15,37 +15,40 @@ var ErrSupplierPayableInvalidSource = errors.New("supplier payable source docume
 var ErrSupplierPayableInvalidTransition = errors.New("supplier payable status transition is invalid")
 
 type SupplierPayable struct {
-	ID                 string
-	OrgID              string
-	PayableNo          string
-	SupplierID         string
-	SupplierCode       string
-	SupplierName       string
-	Status             PayableStatus
-	SourceDocument     SourceDocumentRef
-	Lines              []SupplierPayableLine
-	TotalAmount        decimal.Decimal
-	PaidAmount         decimal.Decimal
-	OutstandingAmount  decimal.Decimal
-	CurrencyCode       decimal.CurrencyCode
-	DueDate            time.Time
-	PaymentRequestedBy string
-	PaymentRequestedAt time.Time
-	PaymentApprovedBy  string
-	PaymentApprovedAt  time.Time
-	DisputeReason      string
-	DisputedBy         string
-	DisputedAt         time.Time
-	VoidReason         string
-	VoidedBy           string
-	VoidedAt           time.Time
-	LastPaymentBy      string
-	LastPaymentAt      time.Time
-	CreatedAt          time.Time
-	CreatedBy          string
-	UpdatedAt          time.Time
-	UpdatedBy          string
-	Version            int
+	ID                  string
+	OrgID               string
+	PayableNo           string
+	SupplierID          string
+	SupplierCode        string
+	SupplierName        string
+	Status              PayableStatus
+	SourceDocument      SourceDocumentRef
+	Lines               []SupplierPayableLine
+	TotalAmount         decimal.Decimal
+	PaidAmount          decimal.Decimal
+	OutstandingAmount   decimal.Decimal
+	CurrencyCode        decimal.CurrencyCode
+	DueDate             time.Time
+	PaymentRequestedBy  string
+	PaymentRequestedAt  time.Time
+	PaymentApprovedBy   string
+	PaymentApprovedAt   time.Time
+	PaymentRejectedBy   string
+	PaymentRejectedAt   time.Time
+	PaymentRejectReason string
+	DisputeReason       string
+	DisputedBy          string
+	DisputedAt          time.Time
+	VoidReason          string
+	VoidedBy            string
+	VoidedAt            time.Time
+	LastPaymentBy       string
+	LastPaymentAt       time.Time
+	CreatedAt           time.Time
+	CreatedBy           string
+	UpdatedAt           time.Time
+	UpdatedBy           string
+	Version             int
 }
 
 type SupplierPayableLine struct {
@@ -244,6 +247,9 @@ func (p SupplierPayable) RequestPayment(actorID string, requestedAt time.Time) (
 	updated.Status = PayableStatusPaymentRequested
 	updated.PaymentRequestedBy = actorID
 	updated.PaymentRequestedAt = requestedAt.UTC()
+	updated.PaymentRejectedBy = ""
+	updated.PaymentRejectedAt = time.Time{}
+	updated.PaymentRejectReason = ""
 	updated.UpdatedBy = actorID
 	updated.UpdatedAt = requestedAt.UTC()
 	updated.Version++
@@ -269,6 +275,33 @@ func (p SupplierPayable) ApprovePayment(actorID string, approvedAt time.Time) (S
 	updated.PaymentApprovedAt = approvedAt.UTC()
 	updated.UpdatedBy = actorID
 	updated.UpdatedAt = approvedAt.UTC()
+	updated.Version++
+
+	return updated, updated.Validate()
+}
+
+func (p SupplierPayable) RejectPayment(actorID string, reason string, rejectedAt time.Time) (SupplierPayable, error) {
+	if NormalizePayableStatus(p.Status) != PayableStatusPaymentRequested {
+		return SupplierPayable{}, ErrSupplierPayableInvalidTransition
+	}
+	actorID = strings.TrimSpace(actorID)
+	reason = strings.TrimSpace(reason)
+	if actorID == "" || reason == "" {
+		return SupplierPayable{}, ErrSupplierPayableRequiredField
+	}
+	if rejectedAt.IsZero() {
+		rejectedAt = time.Now().UTC()
+	}
+
+	updated := p.Clone()
+	updated.Status = PayableStatusOpen
+	updated.PaymentApprovedBy = ""
+	updated.PaymentApprovedAt = time.Time{}
+	updated.PaymentRejectedBy = actorID
+	updated.PaymentRejectedAt = rejectedAt.UTC()
+	updated.PaymentRejectReason = reason
+	updated.UpdatedBy = actorID
+	updated.UpdatedAt = rejectedAt.UTC()
 	updated.Version++
 
 	return updated, updated.Validate()
