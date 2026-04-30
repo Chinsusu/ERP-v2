@@ -19,6 +19,7 @@ import {
   buildWarehouseFinanceReportHref,
   buildWarehouseInventoryReportHref,
   buildWarehouseOperationsReportHref,
+  buildWarehouseOperationsSignalReportHref,
   buildWarehouseSubcontractDrillDownHref,
   buildWarehouseQueueDrillDownHref,
   buildWarehouseShiftClosingDrillDownHref,
@@ -37,6 +38,7 @@ import {
   reconciliationStatusTone,
   summarizeWarehouseDailyBoard,
   warehouseInventoryReportStatusFromQueue,
+  warehouseOperationsReportStatusFromSignal,
   warehouseOperationsReportStatusFromQueue,
   warehouseTaskTone
 } from "./warehouseDailyBoardService";
@@ -637,6 +639,25 @@ describe("warehouseDailyBoardService", () => {
     expect(warehouseInventoryReportStatusFromQueue("mismatch")).toBe("blocked");
     expect(warehouseOperationsReportStatusFromQueue("picking")).toBe("in_progress");
     expect(warehouseOperationsReportStatusFromQueue("overdue")).toBe("blocked");
+  });
+
+  it("builds warehouse signal report links for operations drilldowns", () => {
+    const query = {
+      warehouseId: "wh-hcm",
+      date: "2026-04-26",
+      shiftCode: "day" as const
+    };
+
+    expect(warehouseOperationsReportStatusFromSignal("outbound")).toBe("in_progress");
+    expect(warehouseOperationsReportStatusFromSignal("outbound", { hasException: true })).toBe("blocked");
+    expect(warehouseOperationsReportStatusFromSignal("qc", { hasException: true })).toBe("exception");
+    expect(warehouseOperationsReportStatusFromSignal("stock_count")).toBe("blocked");
+    expect(buildWarehouseOperationsSignalReportHref("stock_count", query)).toBe(
+      "/reports?report=operations&from_date=2026-04-26&to_date=2026-04-26&business_date=2026-04-26&warehouse_id=wh-hcm&status=blocked"
+    );
+    expect(buildWarehouseOperationsSignalReportHref("subcontract", query, { hasException: true })).toBe(
+      "/reports?report=operations&from_date=2026-04-26&to_date=2026-04-26&business_date=2026-04-26&warehouse_id=wh-hcm&status=exception"
+    );
   });
 
   it("builds drill-down links for daily board queue alerts", () => {

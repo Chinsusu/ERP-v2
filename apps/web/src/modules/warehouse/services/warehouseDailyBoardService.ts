@@ -86,6 +86,16 @@ export type WarehouseSubcontractDrillDownKey =
 export type WarehouseDailyBoardDrillDownQueue = WarehouseDailyTaskStatus | "overdue";
 export type WarehouseInventoryReportStatus = "available" | "reserved" | "quarantine" | "blocked";
 export type WarehouseOperationsReportStatus = "pending" | "in_progress" | "completed" | "blocked" | "exception";
+export type WarehouseOperationsReportSignal =
+  | "inbound"
+  | "outbound"
+  | "returns"
+  | "stock_count"
+  | "qc"
+  | "subcontract";
+export type WarehouseOperationsReportSignalOptions = {
+  hasException?: boolean;
+};
 
 export const warehouseDailyBoardCounterSources: WarehouseDailyBoardCounterSource[] = [
   {
@@ -610,6 +620,14 @@ export function buildWarehouseFinanceReportHref(query: WarehouseDailyBoardQuery 
   });
 }
 
+export function buildWarehouseOperationsSignalReportHref(
+  signal: WarehouseOperationsReportSignal,
+  query: WarehouseDailyBoardQuery = {},
+  options: WarehouseOperationsReportSignalOptions = {}
+) {
+  return buildWarehouseOperationsReportHref(query, warehouseOperationsReportStatusFromSignal(signal, options));
+}
+
 export function warehouseInventoryReportStatusFromQueue(
   queue: WarehouseDailyBoardDrillDownQueue | "" | undefined
 ): WarehouseInventoryReportStatus {
@@ -629,6 +647,25 @@ export function warehouseInventoryReportStatusFromQueue(
     case "returns":
     default:
       return "available";
+  }
+}
+
+export function warehouseOperationsReportStatusFromSignal(
+  signal: WarehouseOperationsReportSignal,
+  options: WarehouseOperationsReportSignalOptions = {}
+): WarehouseOperationsReportStatus {
+  switch (signal) {
+    case "outbound":
+      return options.hasException ? "blocked" : "in_progress";
+    case "stock_count":
+      return "blocked";
+    case "qc":
+    case "subcontract":
+      return options.hasException ? "exception" : "pending";
+    case "inbound":
+    case "returns":
+    default:
+      return "pending";
   }
 }
 
