@@ -4052,7 +4052,148 @@ textarea {
   justify-items: start;
 }
 
+.erp-finance-page {
+  display: grid;
+  gap: var(--erp-section-gap);
+}
+
+.erp-finance-kpis {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.erp-finance-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px);
+  gap: var(--erp-field-gap);
+  align-items: end;
+}
+
+.erp-finance-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.75fr);
+  gap: var(--erp-section-gap);
+  align-items: start;
+}
+
+.erp-finance-side {
+  display: grid;
+  gap: var(--erp-section-gap);
+}
+
+.erp-finance-receivable-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.erp-finance-receivable-cell strong,
+.erp-finance-detail > strong {
+  color: var(--erp-text);
+  font-weight: var(--erp-font-weight-semibold);
+}
+
+.erp-finance-receivable-cell small,
+.erp-finance-detail > span {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-finance-detail {
+  display: grid;
+  gap: 10px;
+}
+
+.erp-finance-detail-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.erp-finance-detail-list div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+  background: var(--erp-section-bg);
+}
+
+.erp-finance-detail-list dt {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-finance-detail-list dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--erp-text);
+  font-weight: var(--erp-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-finance-note {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--erp-warning);
+  border-radius: var(--erp-radius);
+  background: var(--erp-warning-bg);
+  color: var(--erp-warning);
+}
+
+.erp-finance-action-form {
+  display: grid;
+  gap: 10px;
+}
+
+.erp-finance-action-form + .erp-finance-action-form {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--erp-border-soft);
+}
+
+.erp-finance-action-form .erp-field {
+  margin: 0;
+}
+
+.erp-finance-action-form .erp-button {
+  justify-self: end;
+}
+
+.erp-finance-feedback {
+  padding: 10px 12px;
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius);
+  background: var(--erp-surface);
+}
+
+.erp-finance-feedback--success {
+  border-color: var(--erp-success);
+  background: var(--erp-success-bg);
+  color: var(--erp-success);
+}
+
+.erp-finance-feedback--warning {
+  border-color: var(--erp-warning);
+  background: var(--erp-warning-bg);
+  color: var(--erp-warning);
+}
+
+.erp-finance-feedback--danger {
+  border-color: var(--erp-danger);
+  background: var(--erp-danger-bg);
+  color: var(--erp-danger);
+}
+
 @media (max-width: 1024px) {
+  .erp-finance-kpis,
+  .erp-finance-toolbar,
+  .erp-finance-layout,
+  .erp-finance-detail-list {
+    grid-template-columns: 1fr;
+  }
+
   .erp-returns-toolbar,
   .erp-returns-receiving-grid,
   .erp-returns-inspection-grid,

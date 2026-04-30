@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { AuditLogPrototype } from "@/modules/audit/components/AuditLogPrototype";
+import { FinanceReceivablesPrototype } from "@/modules/finance/components/FinanceReceivablesPrototype";
 import { AvailableStockPrototype } from "@/modules/inventory/components/AvailableStockPrototype";
 import { MasterDataPrototype } from "@/modules/masterdata/components/MasterDataPrototype";
 import { PurchaseOrderPrototype } from "@/modules/purchase/components/PurchaseOrderPrototype";
@@ -69,6 +70,10 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
 
   if (module === "sales") {
     return <SalesOrderPrototype />;
+  }
+
+  if (module === "finance") {
+    return <FinanceReceivablesPrototype />;
   }
 
   if (module === "audit-log") {
