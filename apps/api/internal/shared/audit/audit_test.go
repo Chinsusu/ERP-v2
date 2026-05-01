@@ -80,3 +80,30 @@ func TestInMemoryLogStoreReturnsDefensiveCopies(t *testing.T) {
 		t.Fatalf("metadata scope = %v, want warehouse", logs[0].Metadata["scope"])
 	}
 }
+
+func TestNewLogGeneratesUniqueIDsForSameTimestamp(t *testing.T) {
+	createdAt := time.Date(2026, 5, 1, 7, 0, 0, 0, time.UTC)
+	first, err := NewLog(NewLogInput{
+		ActorID:    "user-erp-admin",
+		Action:     "qc.inbound_inspection.partial",
+		EntityType: "qc.inbound_inspection",
+		EntityID:   "inspection-1",
+		CreatedAt:  createdAt,
+	})
+	if err != nil {
+		t.Fatalf("new first log: %v", err)
+	}
+	second, err := NewLog(NewLogInput{
+		ActorID:    "user-erp-admin",
+		Action:     "inventory.batch.qc_status_changed",
+		EntityType: "inventory.batch",
+		EntityID:   "batch-1",
+		CreatedAt:  createdAt,
+	})
+	if err != nil {
+		t.Fatalf("new second log: %v", err)
+	}
+	if first.ID == second.ID {
+		t.Fatalf("generated audit IDs are identical: %s", first.ID)
+	}
+}

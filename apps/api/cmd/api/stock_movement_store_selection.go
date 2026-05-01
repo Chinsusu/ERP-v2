@@ -45,15 +45,7 @@ func postgresCompatibleStockMovement(movement inventorydomain.StockMovement) boo
 	return isUUID(movement.OrgID) &&
 		isUUID(movement.ItemID) &&
 		isUUID(movement.WarehouseID) &&
-		isUUID(movement.SourceDocID) &&
-		optionalUUID(movement.BatchID) &&
-		optionalUUID(movement.BinID) &&
-		optionalUUID(movement.UnitID) &&
-		optionalUUID(movement.SourceDocLineID)
-}
-
-func optionalUUID(value string) bool {
-	return strings.TrimSpace(value) == "" || isUUID(value)
+		isUUID(movement.SourceDocID)
 }
 
 func isUUID(value string) bool {
