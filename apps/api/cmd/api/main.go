@@ -1192,9 +1192,37 @@ func main() {
 		WithFactoryClaimStore(subcontractFactoryClaimStore).
 		WithPaymentMilestoneStore(subcontractPaymentMilestoneStore).
 		WithSubcontractPayableCreator(subcontractSupplierPayableAdapter{service: supplierPayableService})
-	salesOrderStore := salesapp.NewPrototypeSalesOrderStore(auditLogStore)
+	salesOrderStore, closeSalesOrderStore, err := newRuntimeSalesOrderStore(cfg, auditLogStore)
+	if err != nil {
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeStockCountStore != nil {
+			if closeErr := closeStockCountStore(); closeErr != nil {
+				log.Printf("close stock count store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		log.Fatalf("configure sales order store: %v", err)
+	}
 	salesOrderReservationStore, closeSalesOrderReservationStore, err := newRuntimeSalesOrderReservationStore(cfg, auditLogStore)
 	if err != nil {
+		if closeSalesOrderStore != nil {
+			if closeErr := closeSalesOrderStore(); closeErr != nil {
+				log.Printf("close sales order store: %v", closeErr)
+			}
+		}
 		if closeStockMovementStore != nil {
 			if closeErr := closeStockMovementStore(); closeErr != nil {
 				log.Printf("close stock movement store: %v", closeErr)
@@ -1238,6 +1266,11 @@ func main() {
 				log.Printf("close sales order reservation store: %v", closeErr)
 			}
 		}
+		if closeSalesOrderStore != nil {
+			if closeErr := closeSalesOrderStore(); closeErr != nil {
+				log.Printf("close sales order store: %v", closeErr)
+			}
+		}
 		if closeStockMovementStore != nil {
 			if closeErr := closeStockMovementStore(); closeErr != nil {
 				log.Printf("close stock movement store: %v", closeErr)
@@ -1277,6 +1310,11 @@ func main() {
 		if closeSalesOrderReservationStore != nil {
 			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
 				log.Printf("close sales order reservation store: %v", closeErr)
+			}
+		}
+		if closeSalesOrderStore != nil {
+			if closeErr := closeSalesOrderStore(); closeErr != nil {
+				log.Printf("close sales order store: %v", closeErr)
 			}
 		}
 		if closeStockMovementStore != nil {
@@ -1319,6 +1357,11 @@ func main() {
 		if closeSalesOrderReservationStore != nil {
 			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
 				log.Printf("close sales order reservation store: %v", closeErr)
+			}
+		}
+		if closeSalesOrderStore != nil {
+			if closeErr := closeSalesOrderStore(); closeErr != nil {
+				log.Printf("close sales order store: %v", closeErr)
 			}
 		}
 		if closeStockMovementStore != nil {
@@ -2430,6 +2473,11 @@ func main() {
 		if closeSalesOrderReservationStore != nil {
 			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
 				log.Printf("close sales order reservation store: %v", closeErr)
+			}
+		}
+		if closeSalesOrderStore != nil {
+			if closeErr := closeSalesOrderStore(); closeErr != nil {
+				log.Printf("close sales order store: %v", closeErr)
 			}
 		}
 		if closeInboundQCInspectionStore != nil {
