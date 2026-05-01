@@ -161,6 +161,45 @@ persisted_audit_login_check() {
   printf '%-28s %s %s->%s\n' "persisted_audit_login" "ok" "$before_count" "$after_count"
 }
 
+persisted_sales_reservation_check() {
+  smoke_index="$(postgres_scalar "select count(*) + 1 from inventory.stock_reservations where reservation_ref like 'rsv-so-s10-02-03-smoke-%'")"
+  case "$smoke_index" in
+    ''|*[!0-9]*)
+      echo "persisted_sales_reservation failed: invalid smoke index '$smoke_index'" >&2
+      exit 1
+      ;;
+  esac
+
+  suffix="$(printf '%04d' "$smoke_index")"
+  order_id="so-s10-02-03-smoke-$suffix"
+  line_id="line-s10-02-03-smoke-$suffix"
+  order_no="SO-S10-02-03-SMOKE-$suffix"
+  reservation_ref="rsv-$order_id-$line_id"
+  before_count="$(postgres_scalar "select count(*) from inventory.stock_reservations where org_id = '00000000-0000-4000-8000-000000000001'::uuid and reservation_ref = '$reservation_ref'")"
+
+  body="$(printf '{"id":"%s","order_no":"%s","customer_id":"cus-dl-minh-anh","channel":"B2B","warehouse_id":"wh-hcm-fg","order_date":"2026-05-01","currency_code":"VND","lines":[{"id":"%s","line_no":1,"item_id":"item-serum-30ml","ordered_qty":"1","uom_code":"EA","unit_price":"125000"}]}' "$order_id" "$order_no" "$line_id")"
+
+  curl_check "sales_order_create" POST "$api_base/sales-orders" 201 "$body" auth
+  curl_check "sales_order_confirm" POST "$api_base/sales-orders/$order_id/confirm" 200 '{"expected_version":1}' auth
+
+  active_count="$(postgres_scalar "select count(*) from inventory.stock_reservations where org_id = '00000000-0000-4000-8000-000000000001'::uuid and reservation_ref = '$reservation_ref' and sales_order_ref = '$order_id' and sales_order_line_ref = '$line_id' and status = 'active' and created_by_ref = 'user-erp-admin' and base_uom_code = 'EA'")"
+  if [ "$before_count" != "0" ] || [ "$active_count" != "1" ]; then
+    echo "persisted_sales_reservation failed: reservation count before=$before_count active=$active_count" >&2
+    exit 1
+  fi
+
+  curl_check "sales_order_cancel" POST "$api_base/sales-orders/$order_id/cancel" 200 '{"expected_version":3,"reason":"S10-02-03 reservation persistence smoke cleanup"}' auth
+
+  released_count="$(postgres_scalar "select count(*) from inventory.stock_reservations where org_id = '00000000-0000-4000-8000-000000000001'::uuid and reservation_ref = '$reservation_ref' and status = 'released' and released_by_ref = 'user-erp-admin'")"
+  audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '00000000-0000-4000-8000-000000000001'::uuid and entity_ref = '$reservation_ref' and action in ('inventory.stock_reservation.reserved', 'inventory.stock_reservation.released')")"
+  if [ "$released_count" != "1" ] || [ "$audit_count" != "2" ]; then
+    echo "persisted_sales_reservation failed: released=$released_count audit=$audit_count" >&2
+    exit 1
+  fi
+
+  printf '%-28s %s %s\n' "persisted_sales_reservation" "ok" "$order_no"
+}
+
 login_body="$(printf '{"email":"%s","password":"%s"}' "$(json_escape "$login_email")" "$(json_escape "$login_password")")"
 audit_login_before_count="$(persisted_audit_login_count)"
 
@@ -189,6 +228,7 @@ csv_check "operations_report_csv" "$api_base/reports/operations-daily/export.csv
 json_check "finance_report_json" "$api_base/reports/finance-summary?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08"
 csv_check "finance_report_csv" "$api_base/reports/finance-summary/export.csv?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08"
 
+persisted_sales_reservation_check
 persisted_stock_movement_check
 
 echo "Full ERP dev smoke passed"
