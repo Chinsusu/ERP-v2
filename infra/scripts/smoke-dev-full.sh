@@ -90,7 +90,7 @@ postgres_scalar() {
   sql="$1"
 
   if ! command -v docker >/dev/null 2>&1; then
-    echo "docker is required for persisted stock movement smoke" >&2
+    echo "docker is required for persisted runtime smoke" >&2
     exit 1
   fi
   if [ ! -f "$compose_file" ]; then
@@ -126,12 +126,44 @@ persisted_stock_movement_check() {
   curl_check "stock_adjustment_post" POST "$api_base/stock-adjustments/$adjustment_id/post" 200 "" auth
 
   after_count="$(postgres_scalar "select count(*) from inventory.stock_ledger where source_doc_id = '$adjustment_id'::uuid")"
-  if [ "$before_count" != "0" ] || [ "$after_count" != "1" ]; then
-    echo "persisted_stock_movement failed: ledger count before=$before_count after=$after_count" >&2
+  document_count="$(postgres_scalar "select count(*) from inventory.stock_adjustments a join inventory.stock_adjustment_lines l on l.adjustment_id = a.id where a.org_id = '00000000-0000-4000-8000-000000000001'::uuid and a.adjustment_ref = '$adjustment_id' and a.status = 'posted' and a.posted_by_ref = 'user-erp-admin' and l.line_ref = '$line_id' and l.delta_qty = 1.000000")"
+  if [ "$before_count" != "0" ] || [ "$after_count" != "1" ] || [ "$document_count" != "1" ]; then
+    echo "persisted_stock_movement failed: ledger before=$before_count after=$after_count document=$document_count" >&2
     exit 1
   fi
 
+  printf '%-28s %s %s\n' "persisted_stock_adjustment" "ok" "$adjustment_no"
   printf '%-28s %s %s\n' "persisted_stock_movement" "ok" "$adjustment_no"
+}
+
+persisted_stock_count_check() {
+  smoke_index="$(postgres_scalar "select count(*) + 1 from inventory.stock_count_sessions where count_ref like 'count-s10-03-03-smoke-%'")"
+  case "$smoke_index" in
+    ''|*[!0-9]*)
+      echo "persisted_stock_count failed: invalid smoke index '$smoke_index'" >&2
+      exit 1
+      ;;
+  esac
+
+  suffix="$(printf '%04d' "$smoke_index")"
+  count_id="count-s10-03-03-smoke-$suffix"
+  line_id="count-line-s10-03-03-smoke-$suffix"
+  count_no="CNT-S10-03-03-SMOKE-$suffix"
+  before_count="$(postgres_scalar "select count(*) from inventory.stock_count_sessions where count_ref = '$count_id'")"
+
+  body="$(printf '{"id":"%s","count_no":"%s","org_id":"00000000-0000-4000-8000-000000000001","warehouse_id":"00000000-0000-4000-8000-000000000801","warehouse_code":"warehouse_main","scope":"cycle_count","lines":[{"id":"%s","item_id":"00000000-0000-4000-8000-000000001101","sku":"FG-LIP-001","location_id":"00000000-0000-4000-8000-000000001001","expected_qty":"20","base_uom_code":"PCS"}]}' "$count_id" "$count_no" "$line_id")"
+
+  curl_check "stock_count_create" POST "$api_base/stock-counts" 201 "$body" auth
+  curl_check "stock_count_submit" POST "$api_base/stock-counts/$count_id/submit" 200 "$(printf '{"lines":[{"id":"%s","counted_qty":"18","note":"S10-03-03 persisted stock count smoke"}]}' "$line_id")" auth
+
+  document_count="$(postgres_scalar "select count(*) from inventory.stock_count_sessions s join inventory.stock_count_session_lines l on l.session_id = s.id where s.org_id = '00000000-0000-4000-8000-000000000001'::uuid and s.count_ref = '$count_id' and s.status = 'variance_review' and s.submitted_by_ref = 'user-erp-admin' and l.line_ref = '$line_id' and l.counted = true and l.delta_qty = -2.000000")"
+  audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '00000000-0000-4000-8000-000000000001'::uuid and entity_ref = '$count_id' and action in ('inventory.stock_count.created', 'inventory.stock_count.submitted')")"
+  if [ "$before_count" != "0" ] || [ "$document_count" != "1" ] || [ "$audit_count" != "2" ]; then
+    echo "persisted_stock_count failed: before=$before_count document=$document_count audit=$audit_count" >&2
+    exit 1
+  fi
+
+  printf '%-28s %s %s\n' "persisted_stock_count" "ok" "$count_no"
 }
 
 persisted_audit_login_count() {
@@ -230,5 +262,6 @@ csv_check "finance_report_csv" "$api_base/reports/finance-summary/export.csv?fro
 
 persisted_sales_reservation_check
 persisted_stock_movement_check
+persisted_stock_count_check
 
 echo "Full ERP dev smoke passed"
