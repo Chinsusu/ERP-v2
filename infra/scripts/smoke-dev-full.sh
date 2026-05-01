@@ -299,7 +299,16 @@ persisted_sales_reservation_check() {
     exit 1
   fi
 
+  owner_count="$(postgres_scalar "select count(*) from sales.sales_orders where org_id = '00000000-0000-4000-8000-000000000001'::uuid and order_ref = '$order_id' and order_no = '$order_no' and status = 'cancelled' and created_by_ref = 'user-erp-admin' and cancelled_by_ref = 'user-erp-admin' and cancel_reason = 'S10-02-03 reservation persistence smoke cleanup'")"
+  line_count="$(postgres_scalar "select count(*) from sales.sales_order_lines as line join sales.sales_orders as order_header on order_header.id = line.sales_order_id where order_header.org_id = '00000000-0000-4000-8000-000000000001'::uuid and order_header.order_ref = '$order_id' and line.line_ref = '$line_id' and line.item_ref = 'item-serum-30ml' and line.sku_code = 'SERUM-30ML' and line.ordered_qty = 1 and line.reserved_qty = 1 and line.uom_code = 'EA'")"
+  order_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '00000000-0000-4000-8000-000000000001'::uuid and entity_ref = '$order_id' and action in ('sales.order.created', 'sales.order.reserved', 'sales.order.cancelled')")"
+  if [ "$owner_count" != "1" ] || [ "$line_count" != "1" ] || [ "$order_audit_count" != "3" ]; then
+    echo "persisted_sales_order failed: owner=$owner_count line=$line_count audit=$order_audit_count" >&2
+    exit 1
+  fi
+
   printf '%-28s %s %s\n' "persisted_sales_reservation" "ok" "$order_no"
+  printf '%-28s %s %s\n' "persisted_sales_order" "ok" "$order_no"
 }
 
 login_body="$(printf '{"email":"%s","password":"%s"}' "$(json_escape "$login_email")" "$(json_escape "$login_password")")"
