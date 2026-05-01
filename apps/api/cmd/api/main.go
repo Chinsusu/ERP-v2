@@ -1164,7 +1164,30 @@ func main() {
 	uomCatalog := masterdataapp.NewPrototypeUOMCatalog()
 	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
 	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditLogStore)
-	purchaseOrderStore := purchaseapp.NewPrototypePurchaseOrderStore(auditLogStore)
+	purchaseOrderStore, closePurchaseOrderStore, err := newRuntimePurchaseOrderStore(cfg, auditLogStore)
+	if err != nil {
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeStockCountStore != nil {
+			if closeErr := closeStockCountStore(); closeErr != nil {
+				log.Printf("close stock count store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		log.Fatalf("configure purchase order store: %v", err)
+	}
 	purchaseOrderService := purchaseapp.NewPurchaseOrderService(
 		purchaseOrderStore,
 		partyCatalog,
@@ -1194,6 +1217,11 @@ func main() {
 		WithSubcontractPayableCreator(subcontractSupplierPayableAdapter{service: supplierPayableService})
 	salesOrderStore, closeSalesOrderStore, err := newRuntimeSalesOrderStore(cfg, auditLogStore)
 	if err != nil {
+		if closePurchaseOrderStore != nil {
+			if closeErr := closePurchaseOrderStore(); closeErr != nil {
+				log.Printf("close purchase order store: %v", closeErr)
+			}
+		}
 		if closeStockMovementStore != nil {
 			if closeErr := closeStockMovementStore(); closeErr != nil {
 				log.Printf("close stock movement store: %v", closeErr)
@@ -1221,6 +1249,11 @@ func main() {
 		if closeSalesOrderStore != nil {
 			if closeErr := closeSalesOrderStore(); closeErr != nil {
 				log.Printf("close sales order store: %v", closeErr)
+			}
+		}
+		if closePurchaseOrderStore != nil {
+			if closeErr := closePurchaseOrderStore(); closeErr != nil {
+				log.Printf("close purchase order store: %v", closeErr)
 			}
 		}
 		if closeStockMovementStore != nil {
@@ -1271,6 +1304,11 @@ func main() {
 				log.Printf("close sales order store: %v", closeErr)
 			}
 		}
+		if closePurchaseOrderStore != nil {
+			if closeErr := closePurchaseOrderStore(); closeErr != nil {
+				log.Printf("close purchase order store: %v", closeErr)
+			}
+		}
 		if closeStockMovementStore != nil {
 			if closeErr := closeStockMovementStore(); closeErr != nil {
 				log.Printf("close stock movement store: %v", closeErr)
@@ -1315,6 +1353,11 @@ func main() {
 		if closeSalesOrderStore != nil {
 			if closeErr := closeSalesOrderStore(); closeErr != nil {
 				log.Printf("close sales order store: %v", closeErr)
+			}
+		}
+		if closePurchaseOrderStore != nil {
+			if closeErr := closePurchaseOrderStore(); closeErr != nil {
+				log.Printf("close purchase order store: %v", closeErr)
 			}
 		}
 		if closeStockMovementStore != nil {
@@ -1362,6 +1405,11 @@ func main() {
 		if closeSalesOrderStore != nil {
 			if closeErr := closeSalesOrderStore(); closeErr != nil {
 				log.Printf("close sales order store: %v", closeErr)
+			}
+		}
+		if closePurchaseOrderStore != nil {
+			if closeErr := closePurchaseOrderStore(); closeErr != nil {
+				log.Printf("close purchase order store: %v", closeErr)
 			}
 		}
 		if closeStockMovementStore != nil {
@@ -2478,6 +2526,11 @@ func main() {
 		if closeSalesOrderStore != nil {
 			if closeErr := closeSalesOrderStore(); closeErr != nil {
 				log.Printf("close sales order store: %v", closeErr)
+			}
+		}
+		if closePurchaseOrderStore != nil {
+			if closeErr := closePurchaseOrderStore(); closeErr != nil {
+				log.Printf("close purchase order store: %v", closeErr)
 			}
 		}
 		if closeInboundQCInspectionStore != nil {
