@@ -1107,7 +1107,6 @@ func main() {
 		AccessToken: cfg.StaticAuthAccessToken(),
 	}
 	authSessions := auth.NewSessionManager(authConfig, time.Now)
-	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
 	stockAdjustmentStore, closeStockAdjustmentStore, err := newRuntimeStockAdjustmentStore(cfg)
 	if err != nil {
 		log.Fatalf("configure stock adjustment store: %v", err)
@@ -1305,6 +1304,46 @@ func main() {
 	inboundQCInspections := qcapp.NewInboundQCInspectionService(inboundQCStore, warehouseReceivingStore, auditLogStore).
 		WithStockMovementRecorder(stockMovementStore).
 		WithBatchQCStatusUpdater(inboundQCBatchQCStatusAdapter{catalog: batchCatalog})
+	stockAvailabilityStore, closeStockAvailabilityStore, err := newRuntimeStockAvailabilityStore(cfg)
+	if err != nil {
+		if closeInboundQCInspectionStore != nil {
+			if closeErr := closeInboundQCInspectionStore(); closeErr != nil {
+				log.Printf("close inbound qc inspection store: %v", closeErr)
+			}
+		}
+		if closeWarehouseReceivingStore != nil {
+			if closeErr := closeWarehouseReceivingStore(); closeErr != nil {
+				log.Printf("close warehouse receiving store: %v", closeErr)
+			}
+		}
+		if closeSalesOrderReservationStore != nil {
+			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
+				log.Printf("close sales order reservation store: %v", closeErr)
+			}
+		}
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeStockCountStore != nil {
+			if closeErr := closeStockCountStore(); closeErr != nil {
+				log.Printf("close stock count store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		log.Fatalf("configure stock availability store: %v", err)
+	}
+	availableStockService := inventoryapp.NewListAvailableStock(stockAvailabilityStore)
 	supplierRejectionStore := inventoryapp.NewPrototypeSupplierRejectionStore()
 	listSupplierRejections := inventoryapp.NewListSupplierRejections(supplierRejectionStore)
 	createSupplierRejection := inventoryapp.NewCreateSupplierRejection(supplierRejectionStore, auditLogStore)
@@ -2383,6 +2422,11 @@ func main() {
 
 	log.Printf("api listening on :%s", cfg.AppPort)
 	if err := server.ListenAndServe(); err != nil {
+		if closeStockAvailabilityStore != nil {
+			if closeErr := closeStockAvailabilityStore(); closeErr != nil {
+				log.Printf("close stock availability store: %v", closeErr)
+			}
+		}
 		if closeSalesOrderReservationStore != nil {
 			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
 				log.Printf("close sales order reservation store: %v", closeErr)
