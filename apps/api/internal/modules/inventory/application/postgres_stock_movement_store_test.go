@@ -140,6 +140,10 @@ func TestPostgresStockMovementStoreAllowsNonUUIDMockActor(t *testing.T) {
 	if ledgerArgs[20] != nil {
 		t.Fatalf("ledger created_by = %v, want nil for non-UUID mock actor", ledgerArgs[20])
 	}
+	balanceArgs := runner.calls[2].args
+	if balanceArgs[10] != nil {
+		t.Fatalf("balance updated_by = %v, want nil for non-UUID mock actor", balanceArgs[10])
+	}
 	auditArgs := runner.calls[3].args
 	if auditArgs[1] != nil {
 		t.Fatalf("audit actor_id = %v, want nil for non-UUID mock actor", auditArgs[1])
