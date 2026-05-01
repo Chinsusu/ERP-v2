@@ -134,7 +134,35 @@ persisted_stock_movement_check() {
   printf '%-28s %s %s\n' "persisted_stock_movement" "ok" "$adjustment_no"
 }
 
+persisted_audit_login_count() {
+  postgres_scalar "select count(*) from audit.audit_logs where actor_ref = 'user-erp-admin' and entity_type = 'auth.session' and action = 'auth.login_succeeded'"
+}
+
+persisted_audit_login_check() {
+  before_count="$1"
+  after_count="$(persisted_audit_login_count)"
+  case "$before_count" in
+    ''|*[!0-9]*)
+      echo "persisted_audit_login failed: invalid before count '$before_count'" >&2
+      exit 1
+      ;;
+  esac
+  case "$after_count" in
+    ''|*[!0-9]*)
+      echo "persisted_audit_login failed: invalid after count '$after_count'" >&2
+      exit 1
+      ;;
+  esac
+  if [ "$after_count" -le "$before_count" ]; then
+    echo "persisted_audit_login failed: count did not increase before=$before_count after=$after_count" >&2
+    exit 1
+  fi
+
+  printf '%-28s %s %s->%s\n' "persisted_audit_login" "ok" "$before_count" "$after_count"
+}
+
 login_body="$(printf '{"email":"%s","password":"%s"}' "$(json_escape "$login_email")" "$(json_escape "$login_password")")"
+audit_login_before_count="$(persisted_audit_login_count)"
 
 echo "Running full ERP dev smoke against $base_url"
 curl_check "healthz" GET "$base_url/healthz" 200 "" noauth
@@ -145,6 +173,7 @@ if ! grep -q '"access_token"[[:space:]]*:' "$tmp_body"; then
   sed -n '1,20p' "$tmp_body" >&2
   exit 1
 fi
+persisted_audit_login_check "$audit_login_before_count"
 
 json_check "warehouse_fulfillment" "$api_base/warehouse/daily-board/fulfillment-metrics?business_date=2026-04-30&warehouse_id=wh-hcm"
 json_check "warehouse_inbound" "$api_base/warehouse/daily-board/inbound-metrics?business_date=2026-04-30&warehouse_id=wh-hcm"
