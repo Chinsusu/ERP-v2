@@ -187,24 +187,24 @@ INSERT INTO audit.audit_logs (
   'inventory.stock_movement',
   $4,
   jsonb_build_object(
-    'movement_no', $5,
-    'movement_type', $6,
-    'direction', $7,
-    'movement_qty', $8,
-    'base_uom_code', $9,
-    'source_qty', $10,
-    'source_uom_code', $11,
-    'conversion_factor', $12,
-    'stock_status', $13,
-    'delta_on_hand', $14,
-    'delta_reserved', $15,
-    'delta_available', $16
+    'movement_no', $5::text,
+    'movement_type', $6::text,
+    'direction', $7::text,
+    'movement_qty', $8::text,
+    'base_uom_code', $9::text,
+    'source_qty', $10::text,
+    'source_uom_code', $11::text,
+    'conversion_factor', $12::text,
+    'stock_status', $13::text,
+    'delta_on_hand', $14::text,
+    'delta_reserved', $15::text,
+    'delta_available', $16::text
   ),
   jsonb_build_object(
-    'source_doc_type', $17,
-    'source_doc_id', $18,
-    'source_doc_line_id', $19,
-    'reason', $20
+    'source_doc_type', $17::text,
+    'source_doc_id', $18::text,
+    'source_doc_line_id', $19::text,
+    'reason', $20::text
   )
 )`
 

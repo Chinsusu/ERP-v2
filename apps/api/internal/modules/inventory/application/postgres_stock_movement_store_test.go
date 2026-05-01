@@ -34,6 +34,7 @@ func TestPostgresStockMovementStoreRecordsLedgerBalanceAndAdjustmentAudit(t *tes
 	assertQueryContains(t, runner.calls[2].query, "INSERT INTO inventory.stock_balances")
 	assertQueryContains(t, runner.calls[2].query, "ON CONFLICT")
 	assertQueryContains(t, runner.calls[3].query, "INSERT INTO audit.audit_logs")
+	assertQueryContains(t, runner.calls[3].query, "$5::text")
 
 	ledgerQuery := strings.ToLower(runner.calls[0].query)
 	if strings.Contains(ledgerQuery, "update inventory.stock_ledger") ||
