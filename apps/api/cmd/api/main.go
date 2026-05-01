@@ -1159,7 +1159,30 @@ func main() {
 	listStockCounts := inventoryapp.NewListStockCounts(stockCountStore)
 	createStockCount := inventoryapp.NewCreateStockCount(stockCountStore, auditLogStore)
 	submitStockCount := inventoryapp.NewSubmitStockCount(stockCountStore, auditLogStore)
-	batchCatalog := inventoryapp.NewPrototypeBatchCatalog(auditLogStore)
+	batchCatalog, _, err := newRuntimeBatchCatalogStore(cfg, auditLogStore)
+	if err != nil {
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeStockCountStore != nil {
+			if closeErr := closeStockCountStore(); closeErr != nil {
+				log.Printf("close stock count store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		log.Fatalf("configure batch catalog store: %v", err)
+	}
 	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
 	uomCatalog := masterdataapp.NewPrototypeUOMCatalog()
 	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
@@ -4472,7 +4495,7 @@ func stockCountSubmitHandler(submitService inventoryapp.SubmitStockCount) http.H
 	}
 }
 
-func batchesHandler(catalog *inventoryapp.BatchCatalog) http.HandlerFunc {
+func batchesHandler(catalog inventoryapp.BatchCatalogStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
@@ -4499,7 +4522,7 @@ func batchesHandler(catalog *inventoryapp.BatchCatalog) http.HandlerFunc {
 	}
 }
 
-func batchDetailHandler(catalog *inventoryapp.BatchCatalog) http.HandlerFunc {
+func batchDetailHandler(catalog inventoryapp.BatchCatalogStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
@@ -4520,7 +4543,7 @@ func batchDetailHandler(catalog *inventoryapp.BatchCatalog) http.HandlerFunc {
 	}
 }
 
-func batchQCTransitionsHandler(catalog *inventoryapp.BatchCatalog) http.HandlerFunc {
+func batchQCTransitionsHandler(catalog inventoryapp.BatchCatalogStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {

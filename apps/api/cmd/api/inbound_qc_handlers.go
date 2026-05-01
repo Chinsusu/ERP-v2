@@ -16,7 +16,7 @@ import (
 )
 
 type inboundQCBatchQCStatusAdapter struct {
-	catalog *inventoryapp.BatchCatalog
+	catalog inventoryapp.BatchCatalogStore
 }
 
 type inboundQCChecklistItemRequest struct {
