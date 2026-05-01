@@ -1,15 +1,28 @@
 package main
 
 import (
+	"database/sql"
+	"strings"
+
 	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/config"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func newRuntimeBatchCatalogStore(
-	_ config.Config,
+	cfg config.Config,
 	auditLogStore audit.LogStore,
 ) (inventoryapp.BatchCatalogStore, func() error, error) {
-	// S12-01-02 centralizes the runtime boundary; S12-01-03 promotes the DB path.
-	return inventoryapp.NewPrototypeBatchCatalog(auditLogStore), nil, nil
+	if strings.TrimSpace(cfg.DatabaseURL) == "" {
+		return inventoryapp.NewPrototypeBatchCatalog(auditLogStore), nil, nil
+	}
+
+	db, err := sql.Open("pgx", cfg.DatabaseURL)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return inventoryapp.NewPostgresBatchCatalogStore(db, auditLogStore), db.Close, nil
 }
