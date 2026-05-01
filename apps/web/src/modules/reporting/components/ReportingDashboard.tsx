@@ -3,27 +3,26 @@
 import { FinanceSummaryReportPanel } from "./FinanceSummaryReport";
 import { InventorySnapshotReportPanel } from "./InventorySnapshotReport";
 import { OperationsDailyReportPanel } from "./OperationsDailyReport";
+import type { MockUser } from "../../../shared/auth/mockSession";
+import { getVisibleReportingTabs } from "../services/reportingAccess";
 import { urlOptionParam, useReportUrlState } from "../hooks/useReportUrlState";
 
-type ReportingTab = "inventory" | "operations" | "finance";
+type ReportingDashboardProps = {
+  user: MockUser;
+};
 
-const tabs: Array<{ id: ReportingTab; label: string }> = [
-  { id: "inventory", label: "Inventory" },
-  { id: "operations", label: "Operations" },
-  { id: "finance", label: "Finance" }
-];
-
-export function ReportingDashboard() {
+export function ReportingDashboard({ user }: ReportingDashboardProps) {
   const { searchParams, replaceReportUrlParams } = useReportUrlState();
+  const visibleTabs = getVisibleReportingTabs(user);
   const activeTab = urlOptionParam(
     searchParams,
     "report",
-    tabs.map((tab) => tab.id),
+    visibleTabs.map((tab) => tab.id),
     "inventory"
   );
   const controls = (
     <div className="erp-reporting-tabs" role="tablist" aria-label="Reporting views">
-      {tabs.map((tab) => (
+      {visibleTabs.map((tab) => (
         <button
           key={tab.id}
           className={`erp-reporting-tab${activeTab === tab.id ? " is-active" : ""}`}

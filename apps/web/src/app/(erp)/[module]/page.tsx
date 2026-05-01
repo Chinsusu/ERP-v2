@@ -82,7 +82,7 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
   }
 
   if (module === "reports") {
-    return <ReportingDashboard />;
+    return <ReportingDashboard user={session.user} />;
   }
 
   return <ModulePlaceholder item={item} user={session.user} />;
