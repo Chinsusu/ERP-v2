@@ -4,7 +4,7 @@ Project: Web ERP for cosmetics operations
 Sprint: Sprint 10 - Persist operational runtime stores v1
 Task: S10-05-01 Remaining prototype store ledger
 Date: 2026-05-01
-Status: Inventory complete; S10-06-01 release evidence can use this ledger
+Status: Superseded after Sprint 11 by `docs/qa/S11-05-01_remaining_prototype_store_ledger.md`
 
 ---
 
@@ -13,6 +13,8 @@ Status: Inventory complete; S10-06-01 release evidence can use this ledger
 This ledger updates `docs/qa/S9-03-01_prototype_store_inventory.md` after the Sprint 10 persistence work.
 
 Sprint 10 has reduced the highest restart-risk stores, but the application still contains prototype stores that reset on API restart. The next persistence work should be selected by operational correctness risk, not by implementation convenience.
+
+Sprint 11 closed the P0 targets listed in this ledger. Use `docs/qa/S11-05-01_remaining_prototype_store_ledger.md` as the current remaining-store ledger.
 
 ---
 
