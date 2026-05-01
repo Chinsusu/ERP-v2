@@ -122,6 +122,30 @@ func TestPostgresStockMovementStoreRecordsOutboundNegativeBalanceDelta(t *testin
 	}
 }
 
+func TestPostgresStockMovementStoreAllowsNonUUIDMockActor(t *testing.T) {
+	runner := &capturingTransactionRunner{}
+	store := newPostgresStockMovementStoreWithRunner(runner)
+	movement, err := newTestMovement(domain.MovementPurchaseReceipt, func(input *domain.NewStockMovementInput) {
+		input.CreatedBy = "user-erp-admin"
+	})
+	if err != nil {
+		t.Fatalf("new movement: %v", err)
+	}
+
+	if err := store.Record(context.Background(), movement); err != nil {
+		t.Fatalf("record: %v", err)
+	}
+
+	ledgerArgs := runner.calls[0].args
+	if ledgerArgs[20] != nil {
+		t.Fatalf("ledger created_by = %v, want nil for non-UUID mock actor", ledgerArgs[20])
+	}
+	auditArgs := runner.calls[3].args
+	if auditArgs[1] != nil {
+		t.Fatalf("audit actor_id = %v, want nil for non-UUID mock actor", auditArgs[1])
+	}
+}
+
 func TestPostgresStockMovementStoreRollsBackWhenBalanceWriteFails(t *testing.T) {
 	runner := &capturingTransactionRunner{failAt: 2}
 	store := newPostgresStockMovementStoreWithRunner(runner)
