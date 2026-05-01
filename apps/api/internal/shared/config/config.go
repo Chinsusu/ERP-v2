@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
 type Config struct {
 	AppEnv              string
@@ -29,6 +32,23 @@ func FromEnv() Config {
 		S3SecretKey:         envOrDefault("S3_SECRET_KEY", "minio123"),
 		S3UseSSL:            envBoolOrDefault("S3_USE_SSL", false),
 		S3UsePathStyle:      envBoolOrDefault("S3_USE_PATH_STYLE", true),
+	}
+}
+
+func (c Config) StaticAuthAccessToken() string {
+	if !AllowsStaticAuthAccessToken(c.AppEnv) {
+		return ""
+	}
+
+	return c.AuthMockAccessToken
+}
+
+func AllowsStaticAuthAccessToken(appEnv string) bool {
+	switch strings.ToLower(strings.TrimSpace(appEnv)) {
+	case "", "local", "dev", "development", "test":
+		return true
+	default:
+		return false
 	}
 }
 

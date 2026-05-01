@@ -1104,7 +1104,7 @@ func main() {
 	authConfig := auth.MockConfig{
 		Email:       cfg.AuthMockEmail,
 		Password:    cfg.AuthMockPassword,
-		AccessToken: cfg.AuthMockAccessToken,
+		AccessToken: cfg.StaticAuthAccessToken(),
 	}
 	authSessions := auth.NewSessionManager(authConfig, time.Now)
 	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
