@@ -9,6 +9,7 @@ Deployment and environment automation scripts belong here.
 - `smoke-dev-staging.sh dev|staging` verifies the reverse proxy health endpoint, API health endpoint, and web shell.
 - `smoke-dev-full.sh` verifies dev health, login, warehouse dashboards, finance dashboard, report JSON, report CSV endpoints, and the persisted stock movement path.
 - `dev-deploy-evidence.sh dev` prints a compact Markdown-friendly evidence block with commit, health, container status, and full dev smoke output.
+- `dev-release-gate.sh dev` runs the dev release gate: backend checks, OpenAPI checks, frontend checks, dev deploy, smoke, and evidence capture.
 - `dev-verification-preflight.sh report|cleanup|preflight` reports disk state and safely cleans only task-local verification temp paths before expensive dev verification runs.
 
 Copy `infra/env/dev.env.example` or `infra/env/staging.env.example` to a non-committed `.env` file before real deployment.
@@ -86,4 +87,36 @@ Optional environment variables:
 SMOKE_BASE_URL=http://10.1.1.120:8088
 SMOKE_API_BASE_URL=http://10.1.1.120:8088/api/v1
 SMOKE_ACCESS_TOKEN=local-dev-access-token
+```
+
+## Dev Release Gate
+
+Run this before Sprint release evidence is finalized:
+
+```sh
+./infra/scripts/dev-release-gate.sh dev
+```
+
+The release gate runs on a clean git snapshot of the current commit for backend, OpenAPI, and frontend checks. That avoids writing dependency folders or generated files into the live repository checkout.
+
+Checks included:
+
+```text
+- Disk preflight.
+- Backend gofmt check, go vet, go test, and API/worker build.
+- OpenAPI lint, route/envelope contract check, and generated client dry run.
+- Frontend typecheck, test, and production build.
+- Dev deploy and smoke.
+- Dev deploy evidence capture.
+```
+
+Optional environment variables:
+
+```text
+ERP_RELEASE_GATE_SKIP_DEPLOY=1
+ERP_RELEASE_GATE_ALLOW_DIRTY=1
+ERP_RELEASE_GATE_TMP_ROOT=/tmp
+ERP_RELEASE_GATE_GO_IMAGE=golang:1.23
+ERP_RELEASE_GATE_NODE_IMAGE=node:22
+ERP_RELEASE_GATE_PNPM_VERSION=9.15.4
 ```

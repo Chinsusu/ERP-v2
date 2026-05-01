@@ -1,7 +1,7 @@
 COMPOSE = docker compose -f infra/compose/docker-compose.local.yml
 MIGRATE_DSN = postgres://erp:erp@postgres:5432/erp?sslmode=disable
 
-.PHONY: help local-up local-down local-reset local-logs deploy-dev deploy-staging dev-verify-preflight dev-deploy-evidence smoke-dev smoke-dev-full smoke-staging smoke-test audit-permission-regression logs-dev logs-staging api-dev worker-dev web-dev api-test web-test api-lint web-lint migrate-up migrate-down seed-local openapi-generate openapi-validate openapi-contract ci-check
+.PHONY: help local-up local-down local-reset local-logs deploy-dev deploy-staging dev-verify-preflight dev-deploy-evidence dev-release-gate smoke-dev smoke-dev-full smoke-staging smoke-test audit-permission-regression logs-dev logs-staging api-dev worker-dev web-dev api-test web-test api-lint web-lint migrate-up migrate-down seed-local openapi-generate openapi-validate openapi-contract ci-check
 
 help:
 	@echo "ERP Platform commands"
@@ -13,6 +13,7 @@ help:
 	@echo "  deploy-staging     Deploy the staging skeleton"
 	@echo "  dev-verify-preflight  Clean task-local temp paths and check disk space"
 	@echo "  dev-deploy-evidence  Print compact dev deploy evidence for changelogs"
+	@echo "  dev-release-gate  Run backend, OpenAPI, frontend, deploy, smoke, and evidence checks"
 	@echo "  smoke-dev          Run shared dev smoke checks"
 	@echo "  smoke-dev-full     Run full shared dev endpoint smoke checks"
 	@echo "  smoke-staging      Run staging smoke checks"
@@ -62,6 +63,9 @@ dev-verify-preflight:
 
 dev-deploy-evidence:
 	./infra/scripts/dev-deploy-evidence.sh dev
+
+dev-release-gate:
+	./infra/scripts/dev-release-gate.sh dev
 
 smoke-dev:
 	./infra/scripts/smoke-dev-staging.sh dev
