@@ -440,18 +440,18 @@ for (const schemaName of requiredSuccessSchemas) {
 const colonActionPattern =
   /^  \/(purchase-orders|goods-receipts|inbound-qc-inspections|supplier-rejections|subcontract-orders|customer-receivables|supplier-payables|cash-transactions|finance\/dashboard|cod-remittances|reports\/(inventory-snapshot|operations-daily|finance-summary)|warehouse\/daily-board\/(inbound|subcontract)-metrics)[^\n]*:[A-Za-z0-9_-]+:/m;
 if (colonActionPattern.test(openapi)) {
-  failures.push("Sprint 4/5/6/7 OpenAPI paths must use slash action style, not colon action style.");
+  failures.push("Tracked OpenAPI paths must use slash action style, not colon action style.");
 }
 
 if (failures.length > 0) {
-  console.error("Sprint 4/5/6/7 OpenAPI contract check failed:");
+  console.error("OpenAPI route/envelope contract check failed:");
   for (const failure of failures) {
     console.error(`- ${failure}`);
   }
   process.exit(1);
 }
 
-console.log(`Sprint 4/5/6/7 OpenAPI contract check passed: ${routes.length} routes and ${requiredSuccessSchemas.length} envelopes.`);
+console.log(`OpenAPI route/envelope contract check passed: ${routes.length} routes and ${requiredSuccessSchemas.length} envelopes.`);
 
 function requireContains(haystack, needle, message) {
   if (!haystack.includes(needle)) {
