@@ -8,6 +8,7 @@ import (
 type Config struct {
 	AppEnv              string
 	AppPort             string
+	DatabaseURL         string
 	AuthMockEmail       string
 	AuthMockPassword    string
 	AuthMockAccessToken string
@@ -23,6 +24,7 @@ func FromEnv() Config {
 	return Config{
 		AppEnv:              envOrDefault("APP_ENV", "local"),
 		AppPort:             envOrDefault("APP_PORT", "8080"),
+		DatabaseURL:         envOrDefault("DATABASE_URL", ""),
 		AuthMockEmail:       envOrDefault("AUTH_MOCK_EMAIL", "admin@example.local"),
 		AuthMockPassword:    envOrDefault("AUTH_MOCK_PASSWORD", "local-only-mock-password"),
 		AuthMockAccessToken: envOrDefault("AUTH_MOCK_ACCESS_TOKEN", "local-dev-access-token"),

@@ -1111,7 +1111,10 @@ func main() {
 	stockAdjustmentStore := inventoryapp.NewPrototypeStockAdjustmentStore()
 	stockCountStore := inventoryapp.NewPrototypeStockCountStore()
 	auditLogStore := audit.NewPrototypeLogStore()
-	stockMovementStore := inventoryapp.NewInMemoryStockMovementStore()
+	stockMovementStore, closeStockMovementStore, err := newRuntimeStockMovementStore(cfg)
+	if err != nil {
+		log.Fatalf("configure stock movement store: %v", err)
+	}
 	listStockAdjustments := inventoryapp.NewListStockAdjustments(stockAdjustmentStore)
 	createStockAdjustment := inventoryapp.NewCreateStockAdjustment(stockAdjustmentStore, auditLogStore)
 	transitionStockAdjustment := inventoryapp.NewTransitionStockAdjustment(stockAdjustmentStore, stockMovementStore, auditLogStore)
@@ -2256,7 +2259,14 @@ func main() {
 	}
 
 	log.Printf("api listening on :%s", cfg.AppPort)
-	log.Fatal(server.ListenAndServe())
+	if err := server.ListenAndServe(); err != nil {
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		log.Fatal(err)
+	}
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
