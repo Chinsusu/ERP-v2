@@ -48,6 +48,10 @@ if command -v curl >/dev/null 2>&1; then
   curl -fsS "$base_url/healthz" >/dev/null
   curl -fsS "$api_url" >/dev/null
   curl -fsS "$web_url" >/dev/null
+
+  if [ "$environment" = "dev" ]; then
+    "$root_dir/infra/scripts/smoke-dev-full.sh"
+  fi
 else
   echo "curl not found on host; internal smoke already passed"
 fi

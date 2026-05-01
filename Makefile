@@ -1,7 +1,7 @@
 COMPOSE = docker compose -f infra/compose/docker-compose.local.yml
 MIGRATE_DSN = postgres://erp:erp@postgres:5432/erp?sslmode=disable
 
-.PHONY: help local-up local-down local-reset local-logs deploy-dev deploy-staging dev-verify-preflight smoke-dev smoke-staging smoke-test logs-dev logs-staging api-dev worker-dev web-dev api-test web-test api-lint web-lint migrate-up migrate-down seed-local openapi-generate openapi-validate openapi-contract ci-check
+.PHONY: help local-up local-down local-reset local-logs deploy-dev deploy-staging dev-verify-preflight smoke-dev smoke-dev-full smoke-staging smoke-test logs-dev logs-staging api-dev worker-dev web-dev api-test web-test api-lint web-lint migrate-up migrate-down seed-local openapi-generate openapi-validate openapi-contract ci-check
 
 help:
 	@echo "ERP Platform commands"
@@ -13,6 +13,7 @@ help:
 	@echo "  deploy-staging     Deploy the staging skeleton"
 	@echo "  dev-verify-preflight  Clean task-local temp paths and check disk space"
 	@echo "  smoke-dev          Run shared dev smoke checks"
+	@echo "  smoke-dev-full     Run full shared dev endpoint smoke checks"
 	@echo "  smoke-staging      Run staging smoke checks"
 	@echo "  smoke-test         Run Sprint 0 API and frontend smoke tests"
 	@echo "  logs-dev           Tail shared dev deploy logs"
@@ -59,6 +60,9 @@ dev-verify-preflight:
 
 smoke-dev:
 	./infra/scripts/smoke-dev-staging.sh dev
+
+smoke-dev-full:
+	./infra/scripts/smoke-dev-full.sh
 
 smoke-staging:
 	./infra/scripts/smoke-dev-staging.sh staging
