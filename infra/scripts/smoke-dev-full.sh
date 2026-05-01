@@ -149,8 +149,21 @@ persisted_stock_movement_check() {
     exit 1
   fi
 
+  expected_on_hand="$(postgres_scalar "select to_char(coalesce(sum(qty_on_hand), 0), 'FM999999999999990.000000') from inventory.stock_balances where org_id = '00000000-0000-4000-8000-000000000001'::uuid and warehouse_id = '00000000-0000-4000-8000-000000000801'::uuid and bin_id = '00000000-0000-4000-8000-000000001001'::uuid and item_id = '00000000-0000-4000-8000-000000001101'::uuid and batch_id is null")"
+  expected_available="$(postgres_scalar "select to_char(coalesce(sum(qty_available), 0), 'FM999999999999990.000000') from inventory.stock_balances where org_id = '00000000-0000-4000-8000-000000000001'::uuid and warehouse_id = '00000000-0000-4000-8000-000000000801'::uuid and bin_id = '00000000-0000-4000-8000-000000001001'::uuid and item_id = '00000000-0000-4000-8000-000000001101'::uuid and batch_id is null")"
+  curl_check "available_stock_read" GET "$api_base/inventory/available-stock?warehouse_id=00000000-0000-4000-8000-000000000801&location_id=00000000-0000-4000-8000-000000001001&sku=FG-LIP-001" 200 "" auth
+  if ! grep -q '"success"[[:space:]]*:[[:space:]]*true' "$tmp_body" ||
+    ! grep -q '"sku":"FG-LIP-001"' "$tmp_body" ||
+    ! grep -q "\"physical_qty\":\"$expected_on_hand\"" "$tmp_body" ||
+    ! grep -q "\"available_qty\":\"$expected_available\"" "$tmp_body"; then
+    echo "persisted_available_stock failed: expected physical=$expected_on_hand available=$expected_available" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
   printf '%-28s %s %s\n' "persisted_stock_adjustment" "ok" "$adjustment_no"
   printf '%-28s %s %s\n' "persisted_stock_movement" "ok" "$adjustment_no"
+  printf '%-28s %s %s/%s\n' "persisted_available_stock" "ok" "$expected_on_hand" "$expected_available"
 }
 
 persisted_stock_count_check() {
