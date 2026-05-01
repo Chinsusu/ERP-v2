@@ -4,7 +4,7 @@ Project: Web ERP for cosmetics operations
 Sprint: Sprint 11 - Persist inventory read model and owner documents v1
 Task: S11-05-01 Remaining prototype store ledger update
 Date: 2026-05-01
-Status: Inventory complete; S11-06-01 release evidence can use this ledger
+Status: Superseded after Sprint 12 by `docs/qa/S12-04-01_remaining_prototype_store_ledger.md`
 
 ---
 
