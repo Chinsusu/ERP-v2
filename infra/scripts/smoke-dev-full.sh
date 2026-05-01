@@ -197,7 +197,7 @@ persisted_stock_count_check() {
 }
 
 persisted_inbound_qc_check() {
-  smoke_index="$(postgres_scalar "select count(*) + 1 from qc.inbound_qc_inspections where goods_receipt_ref like '00000000-0000-4000-8000-00000018%'")"
+  smoke_index="$(postgres_scalar "select greatest((select count(*) from qc.inbound_qc_inspections where goods_receipt_ref like '00000000-0000-4000-8000-00000018%'), (select count(*) from purchase.purchase_orders where po_ref like 'po-s11-03-03-smoke-%')) + 1")"
   case "$smoke_index" in
     ''|*[!0-9]*)
       echo "persisted_inbound_qc failed: invalid smoke index '$smoke_index'" >&2
@@ -210,12 +210,35 @@ persisted_inbound_qc_check() {
   warehouse_id="00000000-0000-4000-8000-000000000801"
   location_id="00000000-0000-4000-8000-000000001001"
   item_id="00000000-0000-4000-8000-000000001102"
+  purchase_order_id="po-s11-03-03-smoke-$suffix"
+  purchase_order_line_id="po-line-s11-03-03-smoke-$suffix"
+  purchase_order_no="PO-S11-03-03-SMOKE-$suffix"
   receipt_id="00000000-0000-4000-8000-00000018$suffix"
   line_id="00000000-0000-4000-8000-00000020$suffix"
   inspection_id="00000000-0000-4000-8000-00000019$suffix"
   receipt_no="GRN-S10-04-03-SMOKE-$suffix"
 
-  postgres_exec "INSERT INTO inventory.warehouse_receivings (id, org_id, receipt_ref, receipt_no, org_ref, warehouse_id, warehouse_ref, warehouse_code, location_id, location_ref, location_code, reference_doc_type, reference_doc_ref, supplier_ref, delivery_note_no, status, created_by_ref, submitted_at, submitted_by_ref, inspect_ready_at, inspect_ready_by_ref, created_at, updated_at) VALUES ('$receipt_id'::uuid, '$org_id'::uuid, '$receipt_id', '$receipt_no', '$org_id', '$warehouse_id'::uuid, '$warehouse_id', 'warehouse_main', '$location_id'::uuid, '$location_id', 'A-01', 'manual_receiving', 'manual-s10-04-03-$suffix', 'supplier-local', 'DN-S10-04-03-$suffix', 'inspect_ready', 'user-erp-admin', now(), 'user-erp-admin', now(), 'user-qa', now(), now()) ON CONFLICT ON CONSTRAINT uq_warehouse_receivings_org_ref DO NOTHING; INSERT INTO inventory.warehouse_receiving_lines (id, org_id, receipt_id, line_ref, line_no, item_id, item_ref, sku_code, item_name, batch_ref, batch_no, lot_no, expiry_date, warehouse_id, warehouse_ref, location_id, location_ref, quantity, uom_code, base_uom_code, packaging_status, qc_status, created_at, updated_at) VALUES ('$line_id'::uuid, '$org_id'::uuid, '$receipt_id'::uuid, '$line_id', 1, '$item_id'::uuid, '$item_id', 'FG-SER-001', 'Vitamin C Serum', 'batch-serum-2604a', 'LOT-2604A', 'LOT-2604A', '2027-04-01', '$warehouse_id'::uuid, '$warehouse_id', '$location_id'::uuid, '$location_id', 12.000000, 'PCS', 'PCS', 'intact', 'hold', now(), now()) ON CONFLICT ON CONSTRAINT uq_warehouse_receiving_lines_ref DO NOTHING;"
+  purchase_body="$(printf '{"id":"%s","po_no":"%s","supplier_id":"sup-rm-bioactive","warehouse_id":"wh-hcm-rm","expected_date":"2026-05-08","currency_code":"VND","lines":[{"id":"%s","line_no":1,"item_id":"item-serum-30ml","ordered_qty":"12","uom_code":"EA","unit_price":"125000"}]}' "$purchase_order_id" "$purchase_order_no" "$purchase_order_line_id")"
+  curl_check "purchase_order_create" POST "$api_base/purchase-orders" 201 "$purchase_body" auth
+  curl_check "purchase_order_submit" POST "$api_base/purchase-orders/$purchase_order_id/submit" 200 '{"expected_version":1}' auth
+  curl_check "purchase_order_approve" POST "$api_base/purchase-orders/$purchase_order_id/approve" 200 '{"expected_version":2}' auth
+  curl_check "purchase_order_read" GET "$api_base/purchase-orders/$purchase_order_id" 200 "" auth
+  if ! grep -q '"success"[[:space:]]*:[[:space:]]*true' "$tmp_body" ||
+    ! grep -q "\"id\":\"$purchase_order_id\"" "$tmp_body" ||
+    ! grep -q '"status":"approved"' "$tmp_body"; then
+    echo "persisted_purchase_order failed: approved purchase order response mismatch" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  purchase_order_count="$(postgres_scalar "select count(*) from purchase.purchase_orders p join purchase.purchase_order_lines l on l.purchase_order_id = p.id where p.org_id = '$org_id'::uuid and p.po_ref = '$purchase_order_id' and p.po_no = '$purchase_order_no' and p.status = 'approved' and p.submitted_by_ref = 'user-erp-admin' and p.approved_by_ref = 'user-erp-admin' and l.line_ref = '$purchase_order_line_id' and l.item_ref = 'item-serum-30ml' and l.ordered_qty = 12.000000 and l.uom_code = 'EA'")"
+  purchase_order_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$purchase_order_id' and action in ('purchase.order.created', 'purchase.order.submitted', 'purchase.order.approved')")"
+  if [ "$purchase_order_count" != "1" ] || [ "$purchase_order_audit_count" != "3" ]; then
+    echo "persisted_purchase_order failed: document=$purchase_order_count audit=$purchase_order_audit_count" >&2
+    exit 1
+  fi
+
+  postgres_exec "INSERT INTO inventory.warehouse_receivings (id, org_id, receipt_ref, receipt_no, org_ref, warehouse_id, warehouse_ref, warehouse_code, location_id, location_ref, location_code, reference_doc_type, reference_doc_ref, supplier_ref, delivery_note_no, status, created_by_ref, submitted_at, submitted_by_ref, inspect_ready_at, inspect_ready_by_ref, created_at, updated_at) VALUES ('$receipt_id'::uuid, '$org_id'::uuid, '$receipt_id', '$receipt_no', '$org_id', '$warehouse_id'::uuid, '$warehouse_id', 'warehouse_main', '$location_id'::uuid, '$location_id', 'A-01', 'purchase_order', '$purchase_order_id', 'sup-rm-bioactive', 'DN-S10-04-03-$suffix', 'inspect_ready', 'user-erp-admin', now(), 'user-erp-admin', now(), 'user-qa', now(), now()) ON CONFLICT ON CONSTRAINT uq_warehouse_receivings_org_ref DO NOTHING; INSERT INTO inventory.warehouse_receiving_lines (id, org_id, receipt_id, line_ref, line_no, purchase_order_line_ref, item_id, item_ref, sku_code, item_name, batch_ref, batch_no, lot_no, expiry_date, warehouse_id, warehouse_ref, location_id, location_ref, quantity, uom_code, base_uom_code, packaging_status, qc_status, created_at, updated_at) VALUES ('$line_id'::uuid, '$org_id'::uuid, '$receipt_id'::uuid, '$line_id', 1, '$purchase_order_line_id', '$item_id'::uuid, '$item_id', 'FG-SER-001', 'Vitamin C Serum', 'batch-serum-2604a', 'LOT-2604A', 'LOT-2604A', '2027-04-01', '$warehouse_id'::uuid, '$warehouse_id', '$location_id'::uuid, '$location_id', 12.000000, 'PCS', 'PCS', 'intact', 'hold', now(), now()) ON CONFLICT ON CONSTRAINT uq_warehouse_receiving_lines_ref DO NOTHING;"
 
   create_body="$(printf '{"id":"%s","goods_receipt_id":"%s","goods_receipt_line_id":"%s","inspector_id":"user-qa","note":"S10-04-03 inbound QC persistence smoke"}' "$inspection_id" "$receipt_id" "$line_id")"
   curl_check "inbound_qc_create" POST "$api_base/inbound-qc-inspections" 201 "$create_body" auth
@@ -228,11 +251,13 @@ persisted_inbound_qc_check() {
   checklist_count="$(postgres_scalar "select count(*) from qc.inbound_qc_inspections i join qc.inbound_qc_checklist_items c on c.inspection_id = i.id where i.org_id = '$org_id'::uuid and i.inspection_ref = '$inspection_id' and c.status in ('pass', 'not_applicable')")"
   ledger_count="$(postgres_scalar "select count(*) from inventory.stock_ledger where org_id = '$org_id'::uuid and source_doc_type = 'inbound_qc_inspection' and source_doc_id = '$inspection_id'::uuid and ((stock_status = 'available' and movement_qty = 7.000000) or (stock_status = 'qc_hold' and movement_qty = 5.000000))")"
   audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$inspection_id' and action in ('qc.inbound_inspection.created', 'qc.inbound_inspection.started', 'qc.inbound_inspection.partial')")"
-  if [ "$document_count" != "1" ] || [ "$checklist_count" != "3" ] || [ "$ledger_count" != "2" ] || [ "$audit_count" != "3" ]; then
-    echo "persisted_inbound_qc failed: document=$document_count checklist=$checklist_count ledger=$ledger_count audit=$audit_count" >&2
+  trace_count="$(postgres_scalar "select count(*) from purchase.purchase_orders p join purchase.purchase_order_lines pol on pol.purchase_order_id = p.id join inventory.warehouse_receivings r on r.reference_doc_ref = p.po_ref join inventory.warehouse_receiving_lines rl on rl.receipt_id = r.id and rl.purchase_order_line_ref = pol.line_ref join qc.inbound_qc_inspections i on i.goods_receipt_ref = r.receipt_ref and i.goods_receipt_line_ref = rl.line_ref and i.purchase_order_ref = p.po_ref and i.purchase_order_line_ref = pol.line_ref where p.org_id = '$org_id'::uuid and p.po_ref = '$purchase_order_id' and r.receipt_ref = '$receipt_id' and i.inspection_ref = '$inspection_id'")"
+  if [ "$document_count" != "1" ] || [ "$checklist_count" != "3" ] || [ "$ledger_count" != "2" ] || [ "$audit_count" != "3" ] || [ "$trace_count" != "1" ]; then
+    echo "persisted_inbound_qc failed: document=$document_count checklist=$checklist_count ledger=$ledger_count audit=$audit_count trace=$trace_count" >&2
     exit 1
   fi
 
+  printf '%-28s %s %s\n' "persisted_purchase_order" "ok" "$purchase_order_no"
   printf '%-28s %s %s\n' "persisted_inbound_qc" "ok" "$receipt_no"
 }
 
