@@ -1110,9 +1110,17 @@ func main() {
 	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
 	stockAdjustmentStore := inventoryapp.NewPrototypeStockAdjustmentStore()
 	stockCountStore := inventoryapp.NewPrototypeStockCountStore()
-	auditLogStore := audit.NewPrototypeLogStore()
+	auditLogStore, closeAuditLogStore, err := newRuntimeAuditLogStore(cfg)
+	if err != nil {
+		log.Fatalf("configure audit log store: %v", err)
+	}
 	stockMovementStore, closeStockMovementStore, err := newRuntimeStockMovementStore(cfg)
 	if err != nil {
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
 		log.Fatalf("configure stock movement store: %v", err)
 	}
 	listStockAdjustments := inventoryapp.NewListStockAdjustments(stockAdjustmentStore)
@@ -2260,6 +2268,11 @@ func main() {
 
 	log.Printf("api listening on :%s", cfg.AppPort)
 	if err := server.ListenAndServe(); err != nil {
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
 		if closeStockMovementStore != nil {
 			if closeErr := closeStockMovementStore(); closeErr != nil {
 				log.Printf("close stock movement store: %v", closeErr)
