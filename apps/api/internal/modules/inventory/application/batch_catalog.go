@@ -34,6 +34,13 @@ type ChangeBatchQCStatusResult struct {
 	AuditLogID string
 }
 
+type BatchCatalogStore interface {
+	ListBatches(ctx context.Context, filter domain.BatchFilter) ([]domain.Batch, error)
+	GetBatch(ctx context.Context, id string) (domain.Batch, error)
+	ChangeQCStatus(ctx context.Context, input ChangeBatchQCStatusInput) (ChangeBatchQCStatusResult, error)
+	ListQCTransitions(ctx context.Context, batchID string) ([]domain.BatchQCTransition, error)
+}
+
 type BatchCatalog struct {
 	mu       sync.RWMutex
 	batches  map[string]domain.Batch
