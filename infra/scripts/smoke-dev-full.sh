@@ -4,6 +4,7 @@ set -eu
 root_dir="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 env_file="$root_dir/infra/env/dev.env"
 example_env_file="$root_dir/infra/env/dev.env.example"
+compose_file="$root_dir/infra/compose/docker-compose.dev.yml"
 override_base_url="${SMOKE_BASE_URL:-}"
 override_api_base="${SMOKE_API_BASE_URL:-}"
 override_access_token="${SMOKE_ACCESS_TOKEN:-}"
@@ -85,6 +86,54 @@ csv_check() {
   curl_check "$1" GET "$2" 200 "" auth
 }
 
+postgres_scalar() {
+  sql="$1"
+
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "docker is required for persisted stock movement smoke" >&2
+    exit 1
+  fi
+  if [ ! -f "$compose_file" ]; then
+    echo "Missing compose file: $compose_file" >&2
+    exit 1
+  fi
+
+  docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
+    psql -U "${POSTGRES_USER:-erp_dev}" -d "${POSTGRES_DB:-erp_dev}" -tAc "$sql" </dev/null |
+    tr -d '[:space:]'
+}
+
+persisted_stock_movement_check() {
+  smoke_index="$(postgres_scalar "select count(*) + 1 from inventory.stock_ledger where source_doc_type = 'stock_adjustment' and movement_no like 'ADJ-S9-03-03-SMOKE-%'")"
+  case "$smoke_index" in
+    ''|*[!0-9]*)
+      echo "persisted_stock_movement failed: invalid smoke index '$smoke_index'" >&2
+      exit 1
+      ;;
+  esac
+
+  suffix="$(printf '%04d' "$smoke_index")"
+  adjustment_id="00000000-0000-4000-8000-00000009$suffix"
+  line_id="00000000-0000-4000-8000-00000008$suffix"
+  adjustment_no="ADJ-S9-03-03-SMOKE-$suffix"
+  before_count="$(postgres_scalar "select count(*) from inventory.stock_ledger where source_doc_id = '$adjustment_id'::uuid")"
+
+  body="$(printf '{"id":"%s","adjustment_no":"%s","org_id":"00000000-0000-4000-8000-000000000001","warehouse_id":"00000000-0000-4000-8000-000000000801","warehouse_code":"warehouse_main","source_type":"smoke","source_id":"%s","reason":"S9-03-03 persisted stock movement smoke","lines":[{"id":"%s","item_id":"00000000-0000-4000-8000-000000001101","sku":"FG-LIP-001","location_id":"00000000-0000-4000-8000-000000001001","expected_qty":"20","counted_qty":"21","base_uom_code":"PCS","reason":"persisted stock movement smoke"}]}' "$adjustment_id" "$adjustment_no" "$adjustment_id" "$line_id")"
+
+  curl_check "stock_adjustment_create" POST "$api_base/stock-adjustments" 201 "$body" auth
+  curl_check "stock_adjustment_submit" POST "$api_base/stock-adjustments/$adjustment_id/submit" 200 "" auth
+  curl_check "stock_adjustment_approve" POST "$api_base/stock-adjustments/$adjustment_id/approve" 200 "" auth
+  curl_check "stock_adjustment_post" POST "$api_base/stock-adjustments/$adjustment_id/post" 200 "" auth
+
+  after_count="$(postgres_scalar "select count(*) from inventory.stock_ledger where source_doc_id = '$adjustment_id'::uuid")"
+  if [ "$before_count" != "0" ] || [ "$after_count" != "1" ]; then
+    echo "persisted_stock_movement failed: ledger count before=$before_count after=$after_count" >&2
+    exit 1
+  fi
+
+  printf '%-28s %s %s\n' "persisted_stock_movement" "ok" "$adjustment_no"
+}
+
 login_body="$(printf '{"email":"%s","password":"%s"}' "$(json_escape "$login_email")" "$(json_escape "$login_password")")"
 
 echo "Running full ERP dev smoke against $base_url"
@@ -110,5 +159,7 @@ csv_check "operations_report_csv" "$api_base/reports/operations-daily/export.csv
 
 json_check "finance_report_json" "$api_base/reports/finance-summary?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08"
 csv_check "finance_report_csv" "$api_base/reports/finance-summary/export.csv?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08"
+
+persisted_stock_movement_check
 
 echo "Full ERP dev smoke passed"

@@ -7,7 +7,7 @@ Deployment and environment automation scripts belong here.
 - `deploy-dev-staging.sh dev` starts the shared dev stack, runs migrations, seeds dev data, starts API/worker/web/proxy, and runs smoke checks.
 - `deploy-dev-staging.sh staging` starts the staging stack, runs migrations, starts API/worker/web/proxy, and runs smoke checks without resetting or seeding staging data.
 - `smoke-dev-staging.sh dev|staging` verifies the reverse proxy health endpoint, API health endpoint, and web shell.
-- `smoke-dev-full.sh` verifies dev health, login, warehouse dashboards, finance dashboard, report JSON, and report CSV endpoints.
+- `smoke-dev-full.sh` verifies dev health, login, warehouse dashboards, finance dashboard, report JSON, report CSV endpoints, and the persisted stock movement path.
 - `dev-verification-preflight.sh report|cleanup|preflight` reports disk state and safely cleans only task-local verification temp paths before expensive dev verification runs.
 
 Copy `infra/env/dev.env.example` or `infra/env/staging.env.example` to a non-committed `.env` file before real deployment.
@@ -58,3 +58,5 @@ SMOKE_ACCESS_TOKEN=local-dev-access-token
 SMOKE_LOGIN_EMAIL=admin@example.local
 SMOKE_LOGIN_PASSWORD=local-only-mock-password
 ```
+
+The full dev smoke also posts a deterministic stock adjustment through the API and verifies that `inventory.stock_ledger` receives one PostgreSQL row for that source document. This check requires Docker Compose access to the dev PostgreSQL service.
