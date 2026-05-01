@@ -1163,7 +1163,20 @@ func main() {
 		WithPaymentMilestoneStore(subcontractPaymentMilestoneStore).
 		WithSubcontractPayableCreator(subcontractSupplierPayableAdapter{service: supplierPayableService})
 	salesOrderStore := salesapp.NewPrototypeSalesOrderStore(auditLogStore)
-	salesOrderReservationStore := inventoryapp.NewPrototypeSalesOrderReservationStore(auditLogStore)
+	salesOrderReservationStore, closeSalesOrderReservationStore, err := newRuntimeSalesOrderReservationStore(cfg, auditLogStore)
+	if err != nil {
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		log.Fatalf("configure sales order reservation store: %v", err)
+	}
 	salesOrderService := salesapp.NewSalesOrderService(salesOrderStore, partyCatalog, itemCatalog, warehouseCatalog).
 		WithStockReserver(salesOrderReservationStore)
 	customerReceivableStore := financeapp.NewPrototypeCustomerReceivableStore()
@@ -2268,6 +2281,11 @@ func main() {
 
 	log.Printf("api listening on :%s", cfg.AppPort)
 	if err := server.ListenAndServe(); err != nil {
+		if closeSalesOrderReservationStore != nil {
+			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
+				log.Printf("close sales order reservation store: %v", closeErr)
+			}
+		}
 		if closeAuditLogStore != nil {
 			if closeErr := closeAuditLogStore(); closeErr != nil {
 				log.Printf("close audit log store: %v", closeErr)
