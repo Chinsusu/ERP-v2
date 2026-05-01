@@ -217,7 +217,10 @@ describe("operationsDailyReportService", () => {
   });
 
   it("summarizes prototype areas by status", () => {
-    const report = createPrototypeOperationsDailyReport({ warehouseId: "wh-hcm" });
+    const report = createPrototypeOperationsDailyReport({
+      businessDate: "2026-04-30",
+      warehouseId: "wh-hcm"
+    });
 
     expect(report.summary).toMatchObject({
       signalCount: 7,
