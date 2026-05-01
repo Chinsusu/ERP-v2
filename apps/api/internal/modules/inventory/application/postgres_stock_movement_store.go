@@ -237,7 +237,7 @@ func insertStockLedger(
 		movement.SourceDocID,
 		nullableUUID(movement.SourceDocLineID),
 		movement.Reason,
-		movement.CreatedBy,
+		nullableUUID(movement.CreatedBy),
 	)
 	if err != nil {
 		return fmt.Errorf("insert stock ledger movement: %w", err)
@@ -293,9 +293,9 @@ func insertStockMovementAudit(
 		ctx,
 		insertStockMovementAuditSQL,
 		movement.OrgID,
-		movement.CreatedBy,
+		nullableUUID(movement.CreatedBy),
 		stockMovementAuditAction(movement),
-		movement.SourceDocID,
+		nullableUUID(movement.SourceDocID),
 		movement.MovementNo,
 		string(movement.MovementType),
 		string(direction),
@@ -338,9 +338,35 @@ func movementTime(value time.Time) time.Time {
 
 func nullableUUID(value string) any {
 	value = strings.TrimSpace(value)
-	if value == "" {
+	if !isUUIDText(value) {
 		return nil
 	}
 
 	return value
+}
+
+func isUUIDText(value string) bool {
+	if len(value) != 36 {
+		return false
+	}
+	for index, char := range value {
+		switch index {
+		case 8, 13, 18, 23:
+			if char != '-' {
+				return false
+			}
+		default:
+			if !isHexText(char) {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func isHexText(char rune) bool {
+	return (char >= '0' && char <= '9') ||
+		(char >= 'a' && char <= 'f') ||
+		(char >= 'A' && char <= 'F')
 }
