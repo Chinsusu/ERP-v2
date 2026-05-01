@@ -1469,7 +1469,60 @@ func main() {
 	startPackTask := shippingapp.NewStartPackTask(packTaskStore, auditLogStore)
 	confirmPackTask := shippingapp.NewConfirmPackTask(packTaskStore, auditLogStore, salesOrderPackerAdapter{service: salesOrderService})
 	reportPackTaskException := shippingapp.NewReportPackTaskException(packTaskStore, auditLogStore)
-	returnReceiptStore := returnsapp.NewPrototypeReturnReceiptStore()
+	returnReceiptStore, closeReturnReceiptStore, err := newRuntimeReturnReceiptStore(cfg)
+	if err != nil {
+		if closeStockAvailabilityStore != nil {
+			if closeErr := closeStockAvailabilityStore(); closeErr != nil {
+				log.Printf("close stock availability store: %v", closeErr)
+			}
+		}
+		if closeInboundQCInspectionStore != nil {
+			if closeErr := closeInboundQCInspectionStore(); closeErr != nil {
+				log.Printf("close inbound qc inspection store: %v", closeErr)
+			}
+		}
+		if closeWarehouseReceivingStore != nil {
+			if closeErr := closeWarehouseReceivingStore(); closeErr != nil {
+				log.Printf("close warehouse receiving store: %v", closeErr)
+			}
+		}
+		if closeSalesOrderReservationStore != nil {
+			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
+				log.Printf("close sales order reservation store: %v", closeErr)
+			}
+		}
+		if closeSalesOrderStore != nil {
+			if closeErr := closeSalesOrderStore(); closeErr != nil {
+				log.Printf("close sales order store: %v", closeErr)
+			}
+		}
+		if closePurchaseOrderStore != nil {
+			if closeErr := closePurchaseOrderStore(); closeErr != nil {
+				log.Printf("close purchase order store: %v", closeErr)
+			}
+		}
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeStockCountStore != nil {
+			if closeErr := closeStockCountStore(); closeErr != nil {
+				log.Printf("close stock count store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		log.Fatalf("configure return receipt store: %v", err)
+	}
 	listReturnMasterData := returnsapp.NewListReturnMasterData()
 	listReturnReceipts := returnsapp.NewListReturnReceipts(returnReceiptStore)
 	receiveReturn := returnsapp.NewReceiveReturn(returnReceiptStore, auditLogStore)
@@ -2513,6 +2566,11 @@ func main() {
 
 	log.Printf("api listening on :%s", cfg.AppPort)
 	if err := server.ListenAndServe(); err != nil {
+		if closeReturnReceiptStore != nil {
+			if closeErr := closeReturnReceiptStore(); closeErr != nil {
+				log.Printf("close return receipt store: %v", closeErr)
+			}
+		}
 		if closeStockAvailabilityStore != nil {
 			if closeErr := closeStockAvailabilityStore(); closeErr != nil {
 				log.Printf("close stock availability store: %v", closeErr)
