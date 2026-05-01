@@ -1268,7 +1268,40 @@ func main() {
 		stockMovementStore,
 		auditLogStore,
 	).WithPurchaseOrderReader(purchaseOrderService)
-	inboundQCStore := qcapp.NewPrototypeInboundQCInspectionStore()
+	inboundQCStore, closeInboundQCInspectionStore, err := newRuntimeInboundQCInspectionStore(cfg)
+	if err != nil {
+		if closeWarehouseReceivingStore != nil {
+			if closeErr := closeWarehouseReceivingStore(); closeErr != nil {
+				log.Printf("close warehouse receiving store: %v", closeErr)
+			}
+		}
+		if closeSalesOrderReservationStore != nil {
+			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
+				log.Printf("close sales order reservation store: %v", closeErr)
+			}
+		}
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeStockCountStore != nil {
+			if closeErr := closeStockCountStore(); closeErr != nil {
+				log.Printf("close stock count store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		log.Fatalf("configure inbound qc inspection store: %v", err)
+	}
 	inboundQCInspections := qcapp.NewInboundQCInspectionService(inboundQCStore, warehouseReceivingStore, auditLogStore).
 		WithStockMovementRecorder(stockMovementStore).
 		WithBatchQCStatusUpdater(inboundQCBatchQCStatusAdapter{catalog: batchCatalog})
@@ -2353,6 +2386,11 @@ func main() {
 		if closeSalesOrderReservationStore != nil {
 			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
 				log.Printf("close sales order reservation store: %v", closeErr)
+			}
+		}
+		if closeInboundQCInspectionStore != nil {
+			if closeErr := closeInboundQCInspectionStore(); closeErr != nil {
+				log.Printf("close inbound qc inspection store: %v", closeErr)
 			}
 		}
 		if closeWarehouseReceivingStore != nil {
