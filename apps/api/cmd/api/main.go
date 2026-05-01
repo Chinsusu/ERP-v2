@@ -1232,7 +1232,35 @@ func main() {
 		codRemittanceStore,
 		cashTransactionStore,
 	)
-	warehouseReceivingStore := inventoryapp.NewPrototypeWarehouseReceivingStore()
+	warehouseReceivingStore, closeWarehouseReceivingStore, err := newRuntimeWarehouseReceivingStore(cfg)
+	if err != nil {
+		if closeSalesOrderReservationStore != nil {
+			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
+				log.Printf("close sales order reservation store: %v", closeErr)
+			}
+		}
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeStockCountStore != nil {
+			if closeErr := closeStockCountStore(); closeErr != nil {
+				log.Printf("close stock count store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		log.Fatalf("configure warehouse receiving store: %v", err)
+	}
 	warehouseReceiving := inventoryapp.NewWarehouseReceivingService(
 		warehouseReceivingStore,
 		warehouseCatalog,
@@ -2325,6 +2353,11 @@ func main() {
 		if closeSalesOrderReservationStore != nil {
 			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
 				log.Printf("close sales order reservation store: %v", closeErr)
+			}
+		}
+		if closeWarehouseReceivingStore != nil {
+			if closeErr := closeWarehouseReceivingStore(); closeErr != nil {
+				log.Printf("close warehouse receiving store: %v", closeErr)
 			}
 		}
 		if closeStockCountStore != nil {
