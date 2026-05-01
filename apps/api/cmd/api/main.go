@@ -1108,14 +1108,27 @@ func main() {
 	}
 	authSessions := auth.NewSessionManager(authConfig, time.Now)
 	availableStockService := inventoryapp.NewListAvailableStock(inventoryapp.NewPrototypeStockAvailabilityStore())
-	stockAdjustmentStore := inventoryapp.NewPrototypeStockAdjustmentStore()
+	stockAdjustmentStore, closeStockAdjustmentStore, err := newRuntimeStockAdjustmentStore(cfg)
+	if err != nil {
+		log.Fatalf("configure stock adjustment store: %v", err)
+	}
 	stockCountStore := inventoryapp.NewPrototypeStockCountStore()
 	auditLogStore, closeAuditLogStore, err := newRuntimeAuditLogStore(cfg)
 	if err != nil {
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
 		log.Fatalf("configure audit log store: %v", err)
 	}
 	stockMovementStore, closeStockMovementStore, err := newRuntimeStockMovementStore(cfg)
 	if err != nil {
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
 		if closeAuditLogStore != nil {
 			if closeErr := closeAuditLogStore(); closeErr != nil {
 				log.Printf("close audit log store: %v", closeErr)
@@ -1168,6 +1181,11 @@ func main() {
 		if closeStockMovementStore != nil {
 			if closeErr := closeStockMovementStore(); closeErr != nil {
 				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
 			}
 		}
 		if closeAuditLogStore != nil {
@@ -2284,6 +2302,11 @@ func main() {
 		if closeSalesOrderReservationStore != nil {
 			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
 				log.Printf("close sales order reservation store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
 			}
 		}
 		if closeAuditLogStore != nil {
