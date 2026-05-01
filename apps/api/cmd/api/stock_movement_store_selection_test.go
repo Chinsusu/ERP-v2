@@ -69,6 +69,28 @@ func TestRuntimeStockMovementStoreRoutesUUIDMovementsToPostgres(t *testing.T) {
 	}
 }
 
+func TestRuntimeStockMovementStoreRoutesUUIDMovementWithTextOptionalRefsToPostgres(t *testing.T) {
+	postgres := &recordingStockMovementStore{}
+	memory := &recordingStockMovementStore{}
+	store := runtimeStockMovementStore{postgres: postgres, memory: memory}
+
+	err := store.Record(context.Background(), inventorydomain.StockMovement{
+		OrgID:           "00000000-0000-4000-8000-000000000001",
+		ItemID:          "00000000-0000-4000-8000-000000001102",
+		BatchID:         "batch-serum-2604a",
+		WarehouseID:     "00000000-0000-4000-8000-000000000801",
+		BinID:           "loc-hcm-fg-recv-01",
+		SourceDocID:     "00000000-0000-4000-8000-000000009391",
+		SourceDocLineID: "grn-line-runtime-ref",
+	})
+	if err != nil {
+		t.Fatalf("Record() error = %v", err)
+	}
+	if postgres.count != 1 || memory.count != 0 {
+		t.Fatalf("postgres count = %d, memory count = %d; want postgres only", postgres.count, memory.count)
+	}
+}
+
 func TestRuntimeStockMovementStoreKeepsPrototypeIDsInMemory(t *testing.T) {
 	postgres := &recordingStockMovementStore{}
 	memory := &recordingStockMovementStore{}

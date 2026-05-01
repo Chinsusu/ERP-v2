@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -63,6 +64,8 @@ type InMemoryLogStore struct {
 	logs []Log
 }
 
+var generatedLogSequence atomic.Uint64
+
 func NewEvent(actorID string, action string, resource string) Event {
 	return Event{
 		ActorID:   actorID,
@@ -92,7 +95,7 @@ func NewLog(input NewLogInput) (Log, error) {
 		CreatedAt:  createdAt.UTC(),
 	}
 	if log.ID == "" {
-		log.ID = fmt.Sprintf("audit_%d", log.CreatedAt.UnixNano())
+		log.ID = fmt.Sprintf("audit_%d_%d", log.CreatedAt.UnixNano(), generatedLogSequence.Add(1))
 	}
 	if log.ActorID == "" {
 		return Log{}, errors.New("audit actor id is required")
@@ -306,7 +309,7 @@ func matchesQuery(log Log, query Query) bool {
 func sortLogs(logs []Log) {
 	sort.SliceStable(logs, func(i, j int) bool {
 		if logs[i].CreatedAt.Equal(logs[j].CreatedAt) {
-			return logs[i].ID > logs[j].ID
+			return false
 		}
 
 		return logs[i].CreatedAt.After(logs[j].CreatedAt)

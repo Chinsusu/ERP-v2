@@ -103,6 +103,23 @@ postgres_scalar() {
     tr -d '[:space:]'
 }
 
+postgres_exec() {
+  sql="$1"
+
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "docker is required for persisted runtime smoke" >&2
+    exit 1
+  fi
+  if [ ! -f "$compose_file" ]; then
+    echo "Missing compose file: $compose_file" >&2
+    exit 1
+  fi
+
+  printf '%s\n' "$sql" |
+    docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
+      psql -v ON_ERROR_STOP=1 -q -X -U "${POSTGRES_USER:-erp_dev}" -d "${POSTGRES_DB:-erp_dev}" >/dev/null
+}
+
 persisted_stock_movement_check() {
   smoke_index="$(postgres_scalar "select count(*) + 1 from inventory.stock_ledger where source_doc_type = 'stock_adjustment' and movement_no like 'ADJ-S9-03-03-SMOKE-%'")"
   case "$smoke_index" in
@@ -164,6 +181,46 @@ persisted_stock_count_check() {
   fi
 
   printf '%-28s %s %s\n' "persisted_stock_count" "ok" "$count_no"
+}
+
+persisted_inbound_qc_check() {
+  smoke_index="$(postgres_scalar "select count(*) + 1 from qc.inbound_qc_inspections where goods_receipt_ref like '00000000-0000-4000-8000-00000018%'")"
+  case "$smoke_index" in
+    ''|*[!0-9]*)
+      echo "persisted_inbound_qc failed: invalid smoke index '$smoke_index'" >&2
+      exit 1
+      ;;
+  esac
+
+  suffix="$(printf '%04d' "$smoke_index")"
+  org_id="00000000-0000-4000-8000-000000000001"
+  warehouse_id="00000000-0000-4000-8000-000000000801"
+  location_id="00000000-0000-4000-8000-000000001001"
+  item_id="00000000-0000-4000-8000-000000001102"
+  receipt_id="00000000-0000-4000-8000-00000018$suffix"
+  line_id="00000000-0000-4000-8000-00000020$suffix"
+  inspection_id="00000000-0000-4000-8000-00000019$suffix"
+  receipt_no="GRN-S10-04-03-SMOKE-$suffix"
+
+  postgres_exec "INSERT INTO inventory.warehouse_receivings (id, org_id, receipt_ref, receipt_no, org_ref, warehouse_id, warehouse_ref, warehouse_code, location_id, location_ref, location_code, reference_doc_type, reference_doc_ref, supplier_ref, delivery_note_no, status, created_by_ref, submitted_at, submitted_by_ref, inspect_ready_at, inspect_ready_by_ref, created_at, updated_at) VALUES ('$receipt_id'::uuid, '$org_id'::uuid, '$receipt_id', '$receipt_no', '$org_id', '$warehouse_id'::uuid, '$warehouse_id', 'warehouse_main', '$location_id'::uuid, '$location_id', 'A-01', 'manual_receiving', 'manual-s10-04-03-$suffix', 'supplier-local', 'DN-S10-04-03-$suffix', 'inspect_ready', 'user-erp-admin', now(), 'user-erp-admin', now(), 'user-qa', now(), now()) ON CONFLICT ON CONSTRAINT uq_warehouse_receivings_org_ref DO NOTHING; INSERT INTO inventory.warehouse_receiving_lines (id, org_id, receipt_id, line_ref, line_no, item_id, item_ref, sku_code, item_name, batch_ref, batch_no, lot_no, expiry_date, warehouse_id, warehouse_ref, location_id, location_ref, quantity, uom_code, base_uom_code, packaging_status, qc_status, created_at, updated_at) VALUES ('$line_id'::uuid, '$org_id'::uuid, '$receipt_id'::uuid, '$line_id', 1, '$item_id'::uuid, '$item_id', 'FG-SER-001', 'Vitamin C Serum', 'batch-serum-2604a', 'LOT-2604A', 'LOT-2604A', '2027-04-01', '$warehouse_id'::uuid, '$warehouse_id', '$location_id'::uuid, '$location_id', 12.000000, 'PCS', 'PCS', 'intact', 'hold', now(), now()) ON CONFLICT ON CONSTRAINT uq_warehouse_receiving_lines_ref DO NOTHING;"
+
+  create_body="$(printf '{"id":"%s","goods_receipt_id":"%s","goods_receipt_line_id":"%s","inspector_id":"user-qa","note":"S10-04-03 inbound QC persistence smoke"}' "$inspection_id" "$receipt_id" "$line_id")"
+  curl_check "inbound_qc_create" POST "$api_base/inbound-qc-inspections" 201 "$create_body" auth
+  curl_check "inbound_qc_start" POST "$api_base/inbound-qc-inspections/$inspection_id/start" 200 "" auth
+
+  decision_body='{"passed_qty":"7","hold_qty":"5","reason":"S10-04-03 split hold smoke","checklist":[{"id":"check-packaging","code":"PACKAGING","label":"Packaging condition","required":true,"status":"pass"},{"id":"check-lot-expiry","code":"LOT_EXPIRY","label":"Lot and expiry match delivery","required":true,"status":"pass"},{"id":"check-sample","code":"SAMPLE","label":"Sample retained","required":false,"status":"not_applicable"}]}'
+  curl_check "inbound_qc_partial" POST "$api_base/inbound-qc-inspections/$inspection_id/partial" 200 "$decision_body" auth
+
+  document_count="$(postgres_scalar "select count(*) from qc.inbound_qc_inspections where org_id = '$org_id'::uuid and inspection_ref = '$inspection_id' and goods_receipt_ref = '$receipt_id' and goods_receipt_line_ref = '$line_id' and status = 'completed' and result = 'partial' and passed_qty = 7.000000 and hold_qty = 5.000000")"
+  checklist_count="$(postgres_scalar "select count(*) from qc.inbound_qc_inspections i join qc.inbound_qc_checklist_items c on c.inspection_id = i.id where i.org_id = '$org_id'::uuid and i.inspection_ref = '$inspection_id' and c.status in ('pass', 'not_applicable')")"
+  ledger_count="$(postgres_scalar "select count(*) from inventory.stock_ledger where org_id = '$org_id'::uuid and source_doc_type = 'inbound_qc_inspection' and source_doc_id = '$inspection_id'::uuid and ((stock_status = 'available' and movement_qty = 7.000000) or (stock_status = 'qc_hold' and movement_qty = 5.000000))")"
+  audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$inspection_id' and action in ('qc.inbound_inspection.created', 'qc.inbound_inspection.started', 'qc.inbound_inspection.partial')")"
+  if [ "$document_count" != "1" ] || [ "$checklist_count" != "3" ] || [ "$ledger_count" != "2" ] || [ "$audit_count" != "3" ]; then
+    echo "persisted_inbound_qc failed: document=$document_count checklist=$checklist_count ledger=$ledger_count audit=$audit_count" >&2
+    exit 1
+  fi
+
+  printf '%-28s %s %s\n' "persisted_inbound_qc" "ok" "$receipt_no"
 }
 
 persisted_audit_login_count() {
@@ -263,5 +320,6 @@ csv_check "finance_report_csv" "$api_base/reports/finance-summary/export.csv?fro
 persisted_sales_reservation_check
 persisted_stock_movement_check
 persisted_stock_count_check
+persisted_inbound_qc_check
 
 echo "Full ERP dev smoke passed"
