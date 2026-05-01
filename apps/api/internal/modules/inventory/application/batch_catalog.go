@@ -118,29 +118,7 @@ func (c *BatchCatalog) ChangeQCStatus(
 	if businessRef == "" {
 		businessRef = batch.ID
 	}
-	log, err := audit.NewLog(audit.NewLogInput{
-		OrgID:      batch.OrgID,
-		ActorID:    actorID,
-		Action:     batchQCTransitionAction,
-		EntityType: batchQCTransitionEntityType,
-		EntityID:   batch.ID,
-		RequestID:  strings.TrimSpace(input.RequestID),
-		BeforeData: map[string]any{
-			"qc_status":  string(batch.QCStatus),
-			"updated_at": batch.UpdatedAt.UTC().Format(time.RFC3339),
-		},
-		AfterData: map[string]any{
-			"qc_status":  string(updated.QCStatus),
-			"updated_at": updated.UpdatedAt.UTC().Format(time.RFC3339),
-		},
-		Metadata: map[string]any{
-			"batch_no":     batch.BatchNo,
-			"business_ref": businessRef,
-			"reason":       reason,
-			"sku":          batch.SKU,
-		},
-		CreatedAt: changedAt,
-	})
+	log, err := newBatchQCTransitionAuditLog(batch, updated, actorID, reason, businessRef, input.RequestID, changedAt)
 	if err != nil {
 		return ChangeBatchQCStatusResult{}, err
 	}
@@ -261,6 +239,40 @@ func batchQCTransitionFromAudit(log audit.Log) domain.BatchQCTransition {
 		AuditLogID:   log.ID,
 		CreatedAt:    log.CreatedAt,
 	}
+}
+
+func newBatchQCTransitionAuditLog(
+	before domain.Batch,
+	after domain.Batch,
+	actorID string,
+	reason string,
+	businessRef string,
+	requestID string,
+	createdAt time.Time,
+) (audit.Log, error) {
+	return audit.NewLog(audit.NewLogInput{
+		OrgID:      before.OrgID,
+		ActorID:    actorID,
+		Action:     batchQCTransitionAction,
+		EntityType: batchQCTransitionEntityType,
+		EntityID:   before.ID,
+		RequestID:  strings.TrimSpace(requestID),
+		BeforeData: map[string]any{
+			"qc_status":  string(before.QCStatus),
+			"updated_at": before.UpdatedAt.UTC().Format(time.RFC3339),
+		},
+		AfterData: map[string]any{
+			"qc_status":  string(after.QCStatus),
+			"updated_at": after.UpdatedAt.UTC().Format(time.RFC3339),
+		},
+		Metadata: map[string]any{
+			"batch_no":     before.BatchNo,
+			"business_ref": strings.TrimSpace(businessRef),
+			"reason":       strings.TrimSpace(reason),
+			"sku":          before.SKU,
+		},
+		CreatedAt: createdAt,
+	})
 }
 
 func stringValue(values map[string]any, key string) string {

@@ -1159,7 +1159,7 @@ func main() {
 	listStockCounts := inventoryapp.NewListStockCounts(stockCountStore)
 	createStockCount := inventoryapp.NewCreateStockCount(stockCountStore, auditLogStore)
 	submitStockCount := inventoryapp.NewSubmitStockCount(stockCountStore, auditLogStore)
-	batchCatalog, _, err := newRuntimeBatchCatalogStore(cfg, auditLogStore)
+	batchCatalog, closeBatchCatalogStore, err := newRuntimeBatchCatalogStore(cfg, auditLogStore)
 	if err != nil {
 		if closeStockMovementStore != nil {
 			if closeErr := closeStockMovementStore(); closeErr != nil {
@@ -1189,6 +1189,11 @@ func main() {
 	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditLogStore)
 	purchaseOrderStore, closePurchaseOrderStore, err := newRuntimePurchaseOrderStore(cfg, auditLogStore)
 	if err != nil {
+		if closeBatchCatalogStore != nil {
+			if closeErr := closeBatchCatalogStore(); closeErr != nil {
+				log.Printf("close batch catalog store: %v", closeErr)
+			}
+		}
 		if closeStockMovementStore != nil {
 			if closeErr := closeStockMovementStore(); closeErr != nil {
 				log.Printf("close stock movement store: %v", closeErr)
@@ -1240,6 +1245,11 @@ func main() {
 		WithSubcontractPayableCreator(subcontractSupplierPayableAdapter{service: supplierPayableService})
 	salesOrderStore, closeSalesOrderStore, err := newRuntimeSalesOrderStore(cfg, auditLogStore)
 	if err != nil {
+		if closeBatchCatalogStore != nil {
+			if closeErr := closeBatchCatalogStore(); closeErr != nil {
+				log.Printf("close batch catalog store: %v", closeErr)
+			}
+		}
 		if closePurchaseOrderStore != nil {
 			if closeErr := closePurchaseOrderStore(); closeErr != nil {
 				log.Printf("close purchase order store: %v", closeErr)
@@ -1269,6 +1279,11 @@ func main() {
 	}
 	salesOrderReservationStore, closeSalesOrderReservationStore, err := newRuntimeSalesOrderReservationStore(cfg, auditLogStore)
 	if err != nil {
+		if closeBatchCatalogStore != nil {
+			if closeErr := closeBatchCatalogStore(); closeErr != nil {
+				log.Printf("close batch catalog store: %v", closeErr)
+			}
+		}
 		if closeSalesOrderStore != nil {
 			if closeErr := closeSalesOrderStore(); closeErr != nil {
 				log.Printf("close sales order store: %v", closeErr)
@@ -1317,6 +1332,11 @@ func main() {
 	)
 	warehouseReceivingStore, closeWarehouseReceivingStore, err := newRuntimeWarehouseReceivingStore(cfg)
 	if err != nil {
+		if closeBatchCatalogStore != nil {
+			if closeErr := closeBatchCatalogStore(); closeErr != nil {
+				log.Printf("close batch catalog store: %v", closeErr)
+			}
+		}
 		if closeSalesOrderReservationStore != nil {
 			if closeErr := closeSalesOrderReservationStore(); closeErr != nil {
 				log.Printf("close sales order reservation store: %v", closeErr)
@@ -1363,6 +1383,11 @@ func main() {
 	).WithPurchaseOrderReader(purchaseOrderService)
 	inboundQCStore, closeInboundQCInspectionStore, err := newRuntimeInboundQCInspectionStore(cfg)
 	if err != nil {
+		if closeBatchCatalogStore != nil {
+			if closeErr := closeBatchCatalogStore(); closeErr != nil {
+				log.Printf("close batch catalog store: %v", closeErr)
+			}
+		}
 		if closeWarehouseReceivingStore != nil {
 			if closeErr := closeWarehouseReceivingStore(); closeErr != nil {
 				log.Printf("close warehouse receiving store: %v", closeErr)
@@ -1410,6 +1435,11 @@ func main() {
 		WithBatchQCStatusUpdater(inboundQCBatchQCStatusAdapter{catalog: batchCatalog})
 	stockAvailabilityStore, closeStockAvailabilityStore, err := newRuntimeStockAvailabilityStore(cfg)
 	if err != nil {
+		if closeBatchCatalogStore != nil {
+			if closeErr := closeBatchCatalogStore(); closeErr != nil {
+				log.Printf("close batch catalog store: %v", closeErr)
+			}
+		}
 		if closeInboundQCInspectionStore != nil {
 			if closeErr := closeInboundQCInspectionStore(); closeErr != nil {
 				log.Printf("close inbound qc inspection store: %v", closeErr)
@@ -1460,6 +1490,11 @@ func main() {
 	availableStockService := inventoryapp.NewListAvailableStock(stockAvailabilityStore)
 	supplierRejectionStore, closeSupplierRejectionStore, err := newRuntimeSupplierRejectionStore(cfg)
 	if err != nil {
+		if closeBatchCatalogStore != nil {
+			if closeErr := closeBatchCatalogStore(); closeErr != nil {
+				log.Printf("close batch catalog store: %v", closeErr)
+			}
+		}
 		if closeStockAvailabilityStore != nil {
 			if closeErr := closeStockAvailabilityStore(); closeErr != nil {
 				log.Printf("close stock availability store: %v", closeErr)
@@ -1547,6 +1582,11 @@ func main() {
 	reportPackTaskException := shippingapp.NewReportPackTaskException(packTaskStore, auditLogStore)
 	returnReceiptStore, closeReturnReceiptStore, err := newRuntimeReturnReceiptStore(cfg)
 	if err != nil {
+		if closeBatchCatalogStore != nil {
+			if closeErr := closeBatchCatalogStore(); closeErr != nil {
+				log.Printf("close batch catalog store: %v", closeErr)
+			}
+		}
 		if closeSupplierRejectionStore != nil {
 			if closeErr := closeSupplierRejectionStore(); closeErr != nil {
 				log.Printf("close supplier rejection store: %v", closeErr)
@@ -2685,6 +2725,11 @@ func main() {
 		if closeWarehouseReceivingStore != nil {
 			if closeErr := closeWarehouseReceivingStore(); closeErr != nil {
 				log.Printf("close warehouse receiving store: %v", closeErr)
+			}
+		}
+		if closeBatchCatalogStore != nil {
+			if closeErr := closeBatchCatalogStore(); closeErr != nil {
+				log.Printf("close batch catalog store: %v", closeErr)
 			}
 		}
 		if closeStockCountStore != nil {
