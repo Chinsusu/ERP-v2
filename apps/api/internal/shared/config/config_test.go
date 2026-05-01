@@ -19,3 +19,13 @@ func TestStaticAuthAccessTokenDisabledForProductionLikeEnvironments(t *testing.T
 		}
 	}
 }
+
+func TestFromEnvReadsDatabaseURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://erp_dev:erp_dev@postgres:5432/erp_dev?sslmode=disable")
+
+	cfg := FromEnv()
+
+	if cfg.DatabaseURL != "postgres://erp_dev:erp_dev@postgres:5432/erp_dev?sslmode=disable" {
+		t.Fatalf("DatabaseURL = %q, want configured URL", cfg.DatabaseURL)
+	}
+}
