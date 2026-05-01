@@ -29,9 +29,9 @@ A sprint can be merged and dev-verified without being production-tagged.
 Latest observed `main` checks on 2026-05-01:
 
 ```text
-main commit: 3c95606941dffe74452950343c58208cbf1f5e6c
+main commit: dc76ba4ab387b1353bcbda693e2f58a1afa0249e
 workflow: required-ci
-run id: 25196405456
+run id: 25199914071
 result: success
 ```
 
