@@ -39,6 +39,8 @@ compose() {
 }
 
 echo "Deploying ERP $environment"
+"$root_dir/infra/scripts/dev-verification-preflight.sh" preflight
+
 if ! compose pull api worker web; then
   compose build api worker web
 fi
