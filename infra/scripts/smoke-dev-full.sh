@@ -261,6 +261,93 @@ persisted_inbound_qc_check() {
   printf '%-28s %s %s\n' "persisted_inbound_qc" "ok" "$receipt_no"
 }
 
+persisted_return_rejection_check() {
+  org_id="00000000-0000-4000-8000-000000000001"
+
+  return_index="$(postgres_scalar "select count(*) + 1 from returns.return_orders where return_ref like 'rr-unknown-s11-04-04-return-%'")"
+  case "$return_index" in
+    ''|*[!0-9]*)
+      echo "persisted_return_receipt failed: invalid smoke index '$return_index'" >&2
+      exit 1
+      ;;
+  esac
+
+  return_suffix="$(printf '%04d' "$return_index")"
+  return_scan="S11-04-04-RETURN-$return_suffix"
+  return_id="rr-unknown-s11-04-04-return-$return_suffix"
+  return_inspection_id="inspect-$return_id-damaged"
+  return_action_id="dispose-$return_id-not_reusable"
+  return_body="$(printf '{"warehouse_id":"wh-hcm-return","warehouse_code":"WH-HCM-RETURN","source":"CARRIER","code":"%s","package_condition":"damaged box","disposition":"needs_inspection","investigation_note":"S11-04-04 return persistence smoke"}' "$return_scan")"
+  return_inspection_body='{"condition":"damaged","disposition":"not_reusable","note":"S11-04-04 return inspection persistence smoke","evidence_label":"photo-s11-04-04"}'
+  return_disposition_body='{"disposition":"not_reusable","note":"S11-04-04 return disposition persistence smoke"}'
+
+  curl_check "return_receipt_scan" POST "$api_base/returns/scan" 201 "$return_body" auth
+  curl_check "return_receipt_inspect" POST "$api_base/returns/$return_id/inspect" 200 "$return_inspection_body" auth
+  curl_check "return_receipt_dispose" POST "$api_base/returns/$return_id/disposition" 200 "$return_disposition_body" auth
+  curl_check "return_receipt_read" GET "$api_base/returns/receipts?warehouse_id=wh-hcm-return&status=dispositioned" 200 "" auth
+  if ! grep -q "\"id\":\"$return_id\"" "$tmp_body" ||
+    ! grep -q '"status":"dispositioned"' "$tmp_body" ||
+    ! grep -q '"disposition":"not_reusable"' "$tmp_body"; then
+    echo "persisted_return_receipt failed: dispositioned return not queryable" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  return_document_count="$(postgres_scalar "select count(*) from returns.return_orders r join returns.return_order_lines l on l.return_order_id = r.id where r.org_id = '$org_id'::uuid and r.return_ref = '$return_id' and r.status = 'dispositioned' and r.disposition = 'not_reusable' and r.scan_code = '$return_scan' and r.target_location = 'lab-damaged-placeholder' and l.line_ref = 'line-unknown-return' and l.sku_code = 'UNKNOWN-SKU' and l.quantity = 1.000000")"
+  return_inspection_count="$(postgres_scalar "select count(*) from returns.return_inspections where org_id = '$org_id'::uuid and inspection_ref = '$return_inspection_id' and return_ref = '$return_id' and condition_code = 'damaged' and disposition = 'not_reusable' and status = 'inspection_recorded'")"
+  return_action_count="$(postgres_scalar "select count(*) from returns.return_disposition_actions where org_id = '$org_id'::uuid and action_ref = '$return_action_id' and return_ref = '$return_id' and disposition = 'not_reusable' and target_location = 'lab-damaged-placeholder' and target_stock_status = 'damaged' and action_code = 'route_to_lab_or_damaged'")"
+  return_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$return_id' and action in ('returns.receipt.created', 'returns.receipt.inspected', 'returns.inspection.disposition')")"
+  if [ "$return_document_count" != "1" ] || [ "$return_inspection_count" != "1" ] || [ "$return_action_count" != "1" ] || [ "$return_audit_count" != "3" ]; then
+    echo "persisted_return_receipt failed: document=$return_document_count inspection=$return_inspection_count action=$return_action_count audit=$return_audit_count" >&2
+    exit 1
+  fi
+
+  rejection_index="$(postgres_scalar "select count(*) + 1 from inventory.supplier_rejections where rejection_ref like 'srj-s11-04-04-smoke-%'")"
+  case "$rejection_index" in
+    ''|*[!0-9]*)
+      echo "persisted_supplier_rejection failed: invalid smoke index '$rejection_index'" >&2
+      exit 1
+      ;;
+  esac
+
+  rejection_suffix="$(printf '%04d' "$rejection_index")"
+  rejection_id="srj-s11-04-04-smoke-$rejection_suffix"
+  rejection_no="SRJ-S11-04-04-SMOKE-$rejection_suffix"
+  rejection_line_id="srj-line-s11-04-04-smoke-$rejection_suffix"
+  rejection_attachment_id="srj-att-s11-04-04-smoke-$rejection_suffix"
+  purchase_order_id="po-s11-04-04-smoke-$rejection_suffix"
+  purchase_order_line_id="po-line-s11-04-04-smoke-$rejection_suffix"
+  goods_receipt_id="grn-s11-04-04-smoke-$rejection_suffix"
+  goods_receipt_line_id="grn-line-s11-04-04-smoke-$rejection_suffix"
+  inbound_qc_id="iqc-s11-04-04-smoke-$rejection_suffix"
+  supplier_body="$(cat <<EOF
+{"id":"$rejection_id","org_id":"$org_id","rejection_no":"$rejection_no","supplier_id":"sup-rm-bioactive","supplier_code":"SUP-RM-BIOACTIVE","supplier_name":"Bioactive Supplier","purchase_order_id":"$purchase_order_id","purchase_order_no":"PO-S11-04-04-SMOKE-$rejection_suffix","goods_receipt_id":"$goods_receipt_id","goods_receipt_no":"GRN-S11-04-04-SMOKE-$rejection_suffix","inbound_qc_inspection_id":"$inbound_qc_id","warehouse_id":"wh-hcm-rm","warehouse_code":"WH-HCM-RM","reason":"S11-04-04 supplier rejection persistence smoke","lines":[{"id":"$rejection_line_id","purchase_order_line_id":"$purchase_order_line_id","goods_receipt_line_id":"$goods_receipt_line_id","inbound_qc_inspection_id":"$inbound_qc_id","item_id":"item-serum-30ml","sku":"SERUM-30ML","item_name":"Vitamin C Serum","batch_id":"batch-serum-2604a","batch_no":"LOT-2604A","lot_no":"LOT-2604A","expiry_date":"2027-04-01","rejected_qty":"6.000000","uom_code":"PCS","base_uom_code":"PCS","reason":"damaged packaging"}],"attachments":[{"id":"$rejection_attachment_id","line_id":"$rejection_line_id","file_name":"s11-04-04-qc-photo.jpg","object_key":"smoke/s11-04-04/$rejection_attachment_id.jpg","content_type":"image/jpeg","source":"qc_photo"}]}
+EOF
+)"
+
+  curl_check "supplier_rejection_create" POST "$api_base/supplier-rejections" 201 "$supplier_body" auth
+  curl_check "supplier_rejection_submit" POST "$api_base/supplier-rejections/$rejection_id/submit" 200 "" auth
+  curl_check "supplier_rejection_confirm" POST "$api_base/supplier-rejections/$rejection_id/confirm" 200 "" auth
+  curl_check "supplier_rejection_read" GET "$api_base/supplier-rejections/$rejection_id" 200 "" auth
+  if ! grep -q "\"id\":\"$rejection_id\"" "$tmp_body" ||
+    ! grep -q '"status":"confirmed"' "$tmp_body" ||
+    ! grep -q "\"id\":\"$rejection_attachment_id\"" "$tmp_body"; then
+    echo "persisted_supplier_rejection failed: confirmed supplier rejection not queryable" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  supplier_document_count="$(postgres_scalar "select count(*) from inventory.supplier_rejections r join inventory.supplier_rejection_lines l on l.rejection_id = r.id join inventory.supplier_rejection_attachments a on a.rejection_id = r.id where r.org_id = '$org_id'::uuid and r.rejection_ref = '$rejection_id' and r.rejection_no = '$rejection_no' and r.status = 'confirmed' and r.submitted_by_ref = 'user-erp-admin' and r.confirmed_by_ref = 'user-erp-admin' and l.line_ref = '$rejection_line_id' and l.goods_receipt_line_ref = '$goods_receipt_line_id' and l.inbound_qc_inspection_ref = '$inbound_qc_id' and l.sku_code = 'SERUM-30ML' and l.rejected_qty = 6.000000 and a.attachment_ref = '$rejection_attachment_id' and a.line_ref = '$rejection_line_id'")"
+  supplier_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$rejection_id' and action in ('inventory.supplier_rejection.created', 'inventory.supplier_rejection.submitted', 'inventory.supplier_rejection.confirmed')")"
+  if [ "$supplier_document_count" != "1" ] || [ "$supplier_audit_count" != "3" ]; then
+    echo "persisted_supplier_rejection failed: document=$supplier_document_count audit=$supplier_audit_count" >&2
+    exit 1
+  fi
+
+  printf '%-28s %s %s\n' "persisted_return_receipt" "ok" "$return_id"
+  printf '%-28s %s %s\n' "persisted_supplier_rejection" "ok" "$rejection_no"
+}
+
 persisted_audit_login_count() {
   postgres_scalar "select count(*) from audit.audit_logs where actor_ref = 'user-erp-admin' and entity_type = 'auth.session' and action = 'auth.login_succeeded'"
 }
@@ -368,5 +455,6 @@ persisted_sales_reservation_check
 persisted_stock_movement_check
 persisted_stock_count_check
 persisted_inbound_qc_check
+persisted_return_rejection_check
 
 echo "Full ERP dev smoke passed"
