@@ -16,6 +16,9 @@ on:
       - "apps/api/migrations/**"
       - ".github/workflows/migration-ci.yml"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   migration:
     runs-on: ubuntu-latest

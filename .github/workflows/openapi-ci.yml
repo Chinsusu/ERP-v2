@@ -18,6 +18,9 @@ on:
       - "apps/api/cmd/api/**"
       - ".github/workflows/openapi-ci.yml"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   openapi:
     runs-on: ubuntu-latest
