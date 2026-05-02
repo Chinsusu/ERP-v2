@@ -47,6 +47,7 @@ type EndOfDayReconciliation struct {
 	Operations    ReconciliationOperations
 	Checklist     []ReconciliationChecklistItem
 	Lines         []ReconciliationLine
+	ExceptionNote string
 	ClosedAt      time.Time
 	ClosedBy      string
 }
@@ -149,6 +150,7 @@ func (r EndOfDayReconciliation) Close(actorID string, exceptionNote string, clos
 
 	closed := r.Clone()
 	closed.Status = ReconciliationStatusClosed
+	closed.ExceptionNote = strings.TrimSpace(exceptionNote)
 	closed.ClosedAt = closedAt.UTC()
 	closed.ClosedBy = strings.TrimSpace(actorID)
 
