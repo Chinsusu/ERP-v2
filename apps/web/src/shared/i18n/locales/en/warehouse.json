@@ -1,1 +1,268 @@
-{ "title": "Warehouse", "dailyBoard": "Warehouse Daily Board" }
+{
+  "title": "Warehouse",
+  "dailyBoard": "Warehouse Daily Board",
+  "dailyBoardDescription": "Track daily warehouse work queues, handover, returns, and stock variance.",
+  "scan": "Scan",
+  "shiftClosing": "Shift closing",
+  "context": {
+    "date": "Date",
+    "shift": "Shift",
+    "warehouse": "Warehouse",
+    "carrier": "Carrier",
+    "owner": "Owner",
+    "shiftStatus": "Shift status"
+  },
+  "filters": {
+    "label": "Warehouse daily board filters",
+    "warehouse": "Warehouse",
+    "date": "Date",
+    "shift": "Shift",
+    "carrier": "Carrier",
+    "queue": "Queue"
+  },
+  "allWarehouses": "All warehouses",
+  "allCarriers": "All carriers",
+  "warehouseLead": "Warehouse Lead",
+  "shift": {
+    "day": "Day",
+    "night": "Night"
+  },
+  "queue": {
+    "allActiveQueues": "All active queues",
+    "newOrders": "New orders",
+    "picking": "Picking",
+    "packed": "Packed",
+    "handover": "Handover",
+    "returns": "Returns",
+    "qaHold": "QA hold",
+    "adjustment": "Adjustment",
+    "stockVariance": "Stock variance",
+    "closing": "Closing",
+    "p0Exceptions": "P0 exceptions"
+  },
+  "columns": {
+    "type": "Type",
+    "reference": "Reference",
+    "status": "Status",
+    "source": "Source",
+    "owner": "Owner",
+    "sla": "SLA",
+    "action": "Action",
+    "sku": "SKU",
+    "batch": "Batch",
+    "bin": "Bin",
+    "system": "System",
+    "counted": "Counted",
+    "variance": "Variance"
+  },
+  "reports": {
+    "inventoryReport": "Inventory report",
+    "operationsReport": "Operations report",
+    "financeReport": "Finance report",
+    "inventory": "Inventory",
+    "operations": "Operations",
+    "finance": "Finance",
+    "allStatuses": "All statuses",
+    "arApCod": "AR / AP / COD",
+    "report": "Report"
+  },
+  "signals": {
+    "inbound": "Inbound",
+    "outbound": "Outbound",
+    "returns": "Returns",
+    "stockCount": "Stock count",
+    "qc": "QC",
+    "subcontract": "Subcontract"
+  },
+  "inventoryStatus": {
+    "available": "Available stock",
+    "reserved": "Reserved stock",
+    "quarantine": "Quarantine stock",
+    "blocked": "Blocked stock"
+  },
+  "operationStatus": {
+    "pending": "Pending",
+    "inProgress": "In progress",
+    "completed": "Completed",
+    "blocked": "Blocked",
+    "exception": "Exception"
+  },
+  "metrics": {
+    "inboundControl": "Inbound control",
+    "subcontractManufacturing": "Subcontract manufacturing",
+    "fulfillmentStatus": "Fulfillment status",
+    "incomingPO": "{count} incoming PO",
+    "receivingPending": "{count} receiving pending",
+    "openOrders": "{count} open orders",
+    "factoryClaims": "{count} factory claims",
+    "ordersCarrier": "{count} orders / {carrier}"
+  },
+  "fulfillment": {
+    "new": "New",
+    "reserved": "Reserved",
+    "picking": "Picking",
+    "packed": "Packed",
+    "waitingHandover": "Waiting handover",
+    "missing": "Missing",
+    "handover": "Handed over",
+    "order": "Order",
+    "exception": "Exception"
+  },
+  "inbound": {
+    "purchaseOrdersIncoming": "PO incoming",
+    "receivingPending": "Receiving pending",
+    "qcHold": "QC hold",
+    "qcFail": "QC fail",
+    "qcPass": "QC pass",
+    "qcPartial": "QC partial",
+    "supplierRejections": "Supplier reject"
+  },
+  "subcontract": {
+    "openOrders": "Open orders",
+    "materialIssued": "Material issued",
+    "samplePending": "Sample pending",
+    "factoryClaims": "Factory claims",
+    "finalReady": "Final ready",
+    "orders": "Order",
+    "transfers": "{count} transfers",
+    "sample": "Sample",
+    "overdue": "{count} overdue",
+    "pay": "Pay"
+  },
+  "queueCards": {
+    "receive": "Receive",
+    "pick": "Pick",
+    "pack": "Pack",
+    "scan": "Scan",
+    "inspect": "Inspect",
+    "release": "Release",
+    "approve": "Approve",
+    "reconcile": "Reconcile",
+    "close": "Close",
+    "resolve": "Resolve",
+    "openQueue": "Open queue",
+    "openReturns": "Open returns",
+    "openInventory": "Open inventory",
+    "openCounts": "Open counts",
+    "openClosing": "Open closing"
+  },
+  "source": {
+    "receiving": "Receiving",
+    "shipping": "Shipping",
+    "returns": "Returns",
+    "adjustment": "Adjustment",
+    "closing": "Closing",
+    "stockMovement": "Stock movement",
+    "reconciliation": "Reconciliation",
+    "orderQueue": "Order queue"
+  },
+  "taskType": {
+    "handover": "Handover",
+    "mismatch": "Variance",
+    "picking": "Picking",
+    "packed": "Packed",
+    "returns": "Return",
+    "qaHold": "QA hold",
+    "adjustment": "Adjustment",
+    "closing": "Closing",
+    "waiting": "New order"
+  },
+  "taskSummary": {
+    "handover": "Waiting for carrier handover scan",
+    "mismatch": "Stock variance requires action",
+    "picking": "Order is being picked",
+    "packed": "Packed order waiting for handover",
+    "returns": "Return waiting for inspection",
+    "qaHold": "Stock is on QA hold",
+    "adjustment": "Stock adjustment waiting for approval",
+    "closingBlocked": "Shift has blockers",
+    "closingReady": "Shift ready to close",
+    "waiting": "Order waiting for processing"
+  },
+  "taskAction": {
+    "scan": "Scan",
+    "reconcile": "Reconcile",
+    "continue": "Continue",
+    "review": "Review",
+    "inspect": "Inspect",
+    "approve": "Approve",
+    "close": "Close",
+    "start": "Start"
+  },
+  "status": {
+    "handover": "Handover",
+    "mismatch": "Mismatch",
+    "picking": "Picking",
+    "packed": "Packed",
+    "returns": "Returns",
+    "qaHold": "QA hold",
+    "adjustment": "Adjustment",
+    "closing": "Closing",
+    "closed": "Closed",
+    "open": "Open",
+    "waiting": "Waiting",
+    "inReview": "In Review",
+    "done": "Done",
+    "resolve": "Resolve",
+    "exception": "Exception",
+    "loading": "Loading"
+  },
+  "scanStation": {
+    "title": "Scan station",
+    "label": "Warehouse scan",
+    "placeholder": "Order, manifest, return, or variance code",
+    "queued": "Queued {code}"
+  },
+  "exceptions": {
+    "title": "Exceptions",
+    "open": "{count} open",
+    "none": "No P0 exceptions"
+  },
+  "taskBoard": {
+    "title": "Task board",
+    "rows": "{count} rows",
+    "emptyTitle": "No tasks in this queue",
+    "emptyDescription": "Change the warehouse, date, or queue filter."
+  },
+  "shiftClosingPanel": {
+    "title": "End-of-day closing",
+    "noSession": "No session",
+    "summaryLabel": "End-of-day reconciliation summary",
+    "operationsLabel": "Shift closing operating counters",
+    "system": "System",
+    "counted": "Counted",
+    "variance": "Variance",
+    "checklist": "Checklist",
+    "orders": "Orders",
+    "handover": "Handover",
+    "returns": "Returns",
+    "movements": "Movements",
+    "stockCount": "Stock count",
+    "issues": "Issues",
+    "blockers": "{count} blockers",
+    "exceptionNote": "Exception note",
+    "requiredVarianceException": "Required for variance exception",
+    "noExceptionNeeded": "No exception needed",
+    "closeShift": "Close shift",
+    "resolveOperationalBlockers": "Resolve operational blockers before closing.",
+    "shiftClosed": "Shift closed",
+    "auditLog": "Audit log {id}",
+    "closeFailed": "Shift close failed",
+    "systemVsCounted": "System vs counted quantity",
+    "varianceLines": "{count} variance lines",
+    "ops": "Ops",
+    "checklistItems": {
+      "manifests": "Carrier manifests scanned",
+      "returns": "Returns triaged",
+      "stock_count": "Stock count submitted",
+      "adjustments": "Adjustments approved",
+      "pending_tasks": "Issues resolved",
+      "variance": "Stock variance reviewed"
+    },
+    "checklistNotes": {
+      "adjustments": "One variance approval is still pending",
+      "pending_tasks": "One mismatch pending lead sign-off",
+      "variance": "Stock variance needs resolution"
+    }
+  }
+}

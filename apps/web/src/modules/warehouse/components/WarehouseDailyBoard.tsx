@@ -10,6 +10,7 @@ import {
   type StatusTone,
   type ToastMessage
 } from "@/shared/design-system/components";
+import { t } from "@/shared/i18n";
 import { carrierOptions } from "../../shipping/services/carrierManifestService";
 import { useWarehouseDailyBoard } from "../hooks/useWarehouseDailyBoard";
 import { ShiftClosingPanel } from "./ShiftClosingPanel";
@@ -53,34 +54,34 @@ type QueueFilter = "" | WarehouseDailyTaskStatus | "overdue";
 type QueueCardTarget = "task-board" | "drill-down";
 
 const queueOptions: { label: string; value: QueueFilter }[] = [
-  { label: "All active queues", value: "" },
-  { label: "New orders", value: "waiting" },
-  { label: "Picking", value: "picking" },
-  { label: "Packed", value: "packed" },
-  { label: "Handover", value: "handover" },
-  { label: "Returns", value: "returns" },
-  { label: "QA hold", value: "qa_hold" },
-  { label: "Adjustment", value: "adjustment" },
-  { label: "Stock variance", value: "mismatch" },
-  { label: "Closing", value: "closing" },
-  { label: "P0 exceptions", value: "overdue" }
+  { label: warehouseCopy("queue.allActiveQueues"), value: "" },
+  { label: warehouseCopy("queue.newOrders"), value: "waiting" },
+  { label: warehouseCopy("queue.picking"), value: "picking" },
+  { label: warehouseCopy("queue.packed"), value: "packed" },
+  { label: warehouseCopy("queue.handover"), value: "handover" },
+  { label: warehouseCopy("queue.returns"), value: "returns" },
+  { label: warehouseCopy("queue.qaHold"), value: "qa_hold" },
+  { label: warehouseCopy("queue.adjustment"), value: "adjustment" },
+  { label: warehouseCopy("queue.stockVariance"), value: "mismatch" },
+  { label: warehouseCopy("queue.closing"), value: "closing" },
+  { label: warehouseCopy("queue.p0Exceptions"), value: "overdue" }
 ];
 
 const columns: DataTableColumn<WarehouseDailyTask>[] = [
   {
     key: "type",
-    header: "Type",
+    header: warehouseCopy("columns.type"),
     render: (row) => (
       <span className="erp-warehouse-task-type">
         <strong>{taskTypeLabel(row.status)}</strong>
-        <small>{row.title}</small>
+        <small>{taskSummaryLabel(row)}</small>
       </span>
     ),
     width: "250px"
   },
   {
     key: "reference",
-    header: "Reference",
+    header: warehouseCopy("columns.reference"),
     render: (row) => (
       <a className="erp-warehouse-task-link" href={row.href}>
         {row.reference}
@@ -90,13 +91,13 @@ const columns: DataTableColumn<WarehouseDailyTask>[] = [
   },
   {
     key: "status",
-    header: "Status",
+    header: warehouseCopy("columns.status"),
     render: (row) => <StatusChip tone={warehouseTaskTone(row.status)}>{statusLabel(row.status)}</StatusChip>,
     width: "130px"
   },
   {
     key: "source",
-    header: "Source",
+    header: warehouseCopy("columns.source"),
     render: (row) => (
       <span className="erp-warehouse-source-cell">
         <strong>{sourceLabel(row.source)}</strong>
@@ -107,19 +108,19 @@ const columns: DataTableColumn<WarehouseDailyTask>[] = [
   },
   {
     key: "owner",
-    header: "Owner",
+    header: warehouseCopy("columns.owner"),
     render: (row) => row.owner,
     width: "120px"
   },
   {
     key: "sla",
-    header: "SLA",
+    header: warehouseCopy("columns.sla"),
     render: (row) => <StatusChip tone={priorityTone(row.priority)}>{formatSla(row)}</StatusChip>,
     width: "130px"
   },
   {
     key: "action",
-    header: "Action",
+    header: warehouseCopy("columns.action"),
     render: (row) => (
       <a className="erp-button erp-button--secondary erp-button--compact" href={row.href}>
         {taskActionLabel(row.status)}
@@ -150,8 +151,8 @@ export default function WarehouseDailyBoard() {
   const visibleTasks = useMemo(() => filterTasksByQueue(allTasks, queueFilter), [allTasks, queueFilter]);
   const exceptions = allTasks.filter((task) => task.priority === "P0" || task.status === "mismatch");
   const selectedWarehouseLabel =
-    warehouseOptions.find((option) => option.value === warehouseId)?.label ?? board?.warehouseCode ?? "All warehouses";
-  const selectedCarrierLabel = carrierOptions.find((option) => option.value === carrierCode)?.label ?? "All carriers";
+    warehouseOptionLabel(warehouseId) ?? board?.warehouseCode ?? warehouseCopy("allWarehouses");
+  const selectedCarrierLabel = carrierOptionLabel(carrierCode) ?? warehouseCopy("allCarriers");
   const activeQueueLabel = queueLabel(queueFilter);
   const inventoryReportStatus = warehouseInventoryReportStatusFromQueue(queueFilter);
   const operationsReportStatus = warehouseOperationsReportStatusFromQueue(queueFilter);
@@ -167,28 +168,28 @@ export default function WarehouseDailyBoard() {
   }[] = [
     {
       key: "inventory",
-      label: "Inventory report",
+      label: warehouseCopy("reports.inventoryReport"),
       value: inventoryReportStatusLabel(inventoryReportStatus),
       helper: `${boardDateLabel} / ${selectedWarehouseLabel}`,
-      chip: "Inventory",
+      chip: warehouseCopy("reports.inventory"),
       tone: inventoryReportTone(inventoryReportStatus),
       href: buildWarehouseInventoryReportHref(query, inventoryReportStatus)
     },
     {
       key: "operations",
-      label: "Operations report",
-      value: operationsReportStatus ? operationsReportStatusLabel(operationsReportStatus) : "All statuses",
+      label: warehouseCopy("reports.operationsReport"),
+      value: operationsReportStatus ? operationsReportStatusLabel(operationsReportStatus) : warehouseCopy("reports.allStatuses"),
       helper: `${boardDateLabel} / ${activeQueueLabel}`,
-      chip: "Operations",
+      chip: warehouseCopy("reports.operations"),
       tone: operationsReportStatus ? operationsReportTone(operationsReportStatus) : "info",
       href: buildWarehouseOperationsReportHref(query, operationsReportStatus)
     },
     {
       key: "finance",
-      label: "Finance report",
-      value: "AR / AP / COD",
+      label: warehouseCopy("reports.financeReport"),
+      value: warehouseCopy("reports.arApCod"),
       helper: boardDateLabel,
-      chip: "Finance",
+      chip: warehouseCopy("reports.finance"),
       tone: "info",
       href: buildWarehouseFinanceReportHref(query)
     }
@@ -229,7 +230,7 @@ export default function WarehouseDailyBoard() {
   }[] = [
     {
       key: "inbound",
-      label: "Inbound",
+      label: warehouseCopy("signals.inbound"),
       value: inboundSignalCount,
       status: inboundSignalStatus,
       tone: operationsSignalTone(inboundSignalStatus, inboundSignalCount),
@@ -237,7 +238,7 @@ export default function WarehouseDailyBoard() {
     },
     {
       key: "outbound",
-      label: "Outbound",
+      label: warehouseCopy("signals.outbound"),
       value: outboundSignalCount,
       status: outboundSignalStatus,
       tone: operationsSignalTone(outboundSignalStatus, outboundSignalCount),
@@ -245,7 +246,7 @@ export default function WarehouseDailyBoard() {
     },
     {
       key: "returns",
-      label: "Returns",
+      label: warehouseCopy("signals.returns"),
       value: returnSignalCount,
       status: returnSignalStatus,
       tone: operationsSignalTone(returnSignalStatus, returnSignalCount),
@@ -253,7 +254,7 @@ export default function WarehouseDailyBoard() {
     },
     {
       key: "stock_count",
-      label: "Stock count",
+      label: warehouseCopy("signals.stockCount"),
       value: stockCountSignalCount,
       status: stockCountSignalStatus,
       tone: operationsSignalTone(stockCountSignalStatus, stockCountSignalCount),
@@ -261,7 +262,7 @@ export default function WarehouseDailyBoard() {
     },
     {
       key: "qc",
-      label: "QC",
+      label: warehouseCopy("signals.qc"),
       value: qcSignalCount,
       status: qcSignalStatus,
       tone: operationsSignalTone(qcSignalStatus, qcSignalCount),
@@ -269,7 +270,7 @@ export default function WarehouseDailyBoard() {
     },
     {
       key: "subcontract",
-      label: "Subcontract",
+      label: warehouseCopy("signals.subcontract"),
       value: subcontractSignalCount,
       status: subcontractSignalStatus,
       tone: operationsSignalTone(subcontractSignalStatus, subcontractSignalCount),
@@ -285,49 +286,49 @@ export default function WarehouseDailyBoard() {
   }[] = [
     {
       key: "new",
-      label: "New",
+      label: warehouseCopy("fulfillment.new"),
       value: fulfillment?.newOrders ?? 0,
       tone: "normal",
       href: buildWarehouseFulfillmentDrillDownHref("new", query)
     },
     {
       key: "reserved",
-      label: "Reserved",
+      label: warehouseCopy("fulfillment.reserved"),
       value: fulfillment?.reservedOrders ?? 0,
       tone: "info",
       href: buildWarehouseFulfillmentDrillDownHref("reserved", query)
     },
     {
       key: "picking",
-      label: "Picking",
+      label: warehouseCopy("fulfillment.picking"),
       value: fulfillment?.pickingOrders ?? 0,
       tone: "warning",
       href: buildWarehouseFulfillmentDrillDownHref("picking", query)
     },
     {
       key: "packed",
-      label: "Packed",
+      label: warehouseCopy("fulfillment.packed"),
       value: fulfillment?.packedOrders ?? 0,
       tone: "success",
       href: buildWarehouseFulfillmentDrillDownHref("packed", query)
     },
     {
       key: "waiting_handover",
-      label: "Waiting handover",
+      label: warehouseCopy("fulfillment.waitingHandover"),
       value: fulfillment?.waitingHandoverOrders ?? 0,
       tone: "info",
       href: buildWarehouseFulfillmentDrillDownHref("waiting_handover", query)
     },
     {
       key: "missing",
-      label: "Missing",
+      label: warehouseCopy("fulfillment.missing"),
       value: fulfillment?.missingOrders ?? 0,
       tone: "danger",
       href: buildWarehouseFulfillmentDrillDownHref("missing", query)
     },
     {
       key: "handover",
-      label: "Handed over",
+      label: warehouseCopy("fulfillment.handover"),
       value: fulfillment?.handoverOrders ?? 0,
       tone: "success",
       href: buildWarehouseFulfillmentDrillDownHref("handover", query)
@@ -343,7 +344,7 @@ export default function WarehouseDailyBoard() {
   }[] = [
     {
       key: "purchase_orders_incoming",
-      label: "PO incoming",
+      label: warehouseCopy("inbound.purchaseOrdersIncoming"),
       value: inbound?.purchaseOrdersIncoming ?? 0,
       tone: "info",
       href: buildWarehouseInboundDrillDownHref("purchase_orders_incoming", query),
@@ -351,7 +352,7 @@ export default function WarehouseDailyBoard() {
     },
     {
       key: "receiving_pending",
-      label: "Receiving pending",
+      label: warehouseCopy("inbound.receivingPending"),
       value: inbound?.receivingPending ?? 0,
       tone: "warning",
       href: buildWarehouseInboundDrillDownHref("receiving_pending", query),
@@ -359,7 +360,7 @@ export default function WarehouseDailyBoard() {
     },
     {
       key: "qc_hold",
-      label: "QC hold",
+      label: warehouseCopy("inbound.qcHold"),
       value: inbound?.qcHold ?? 0,
       tone: "warning",
       href: buildWarehouseInboundDrillDownHref("qc_hold", query),
@@ -367,7 +368,7 @@ export default function WarehouseDailyBoard() {
     },
     {
       key: "qc_fail",
-      label: "QC fail",
+      label: warehouseCopy("inbound.qcFail"),
       value: inbound?.qcFail ?? 0,
       tone: "danger",
       href: buildWarehouseInboundDrillDownHref("qc_fail", query),
@@ -375,7 +376,7 @@ export default function WarehouseDailyBoard() {
     },
     {
       key: "qc_pass",
-      label: "QC pass",
+      label: warehouseCopy("inbound.qcPass"),
       value: inbound?.qcPass ?? 0,
       tone: "success",
       href: buildWarehouseInboundDrillDownHref("qc_pass", query),
@@ -383,7 +384,7 @@ export default function WarehouseDailyBoard() {
     },
     {
       key: "qc_partial",
-      label: "QC partial",
+      label: warehouseCopy("inbound.qcPartial"),
       value: inbound?.qcPartial ?? 0,
       tone: "warning",
       href: buildWarehouseInboundDrillDownHref("qc_partial", query),
@@ -391,7 +392,7 @@ export default function WarehouseDailyBoard() {
     },
     {
       key: "supplier_rejections",
-      label: "Supplier reject",
+      label: warehouseCopy("inbound.supplierRejections"),
       value: inbound?.supplierRejections ?? 0,
       tone: "danger",
       href: buildWarehouseInboundDrillDownHref("supplier_rejections", query),
@@ -408,43 +409,43 @@ export default function WarehouseDailyBoard() {
   }[] = [
     {
       key: "open_orders",
-      label: "Open orders",
+      label: warehouseCopy("subcontract.openOrders"),
       value: subcontract?.openOrders ?? 0,
       tone: "info",
       href: buildWarehouseSubcontractDrillDownHref("open_orders", query),
-      chip: "Order"
+      chip: warehouseCopy("subcontract.orders")
     },
     {
       key: "material_issued_orders",
-      label: "Material issued",
+      label: warehouseCopy("subcontract.materialIssued"),
       value: subcontract?.materialIssuedOrders ?? 0,
       tone: "warning",
       href: buildWarehouseSubcontractDrillDownHref("material_issued_orders", query),
-      chip: `${subcontract?.materialTransferCount ?? 0} transfers`
+      chip: warehouseCopy("subcontract.transfers", { count: subcontract?.materialTransferCount ?? 0 })
     },
     {
       key: "sample_pending",
-      label: "Sample pending",
+      label: warehouseCopy("subcontract.samplePending"),
       value: subcontract?.samplePending ?? 0,
       tone: "warning",
       href: buildWarehouseSubcontractDrillDownHref("sample_pending", query),
-      chip: "Sample"
+      chip: warehouseCopy("subcontract.sample")
     },
     {
       key: "factory_claims",
-      label: "Factory claims",
+      label: warehouseCopy("subcontract.factoryClaims"),
       value: subcontract?.factoryClaims ?? 0,
       tone: (subcontract?.factoryClaims ?? 0) > 0 ? "danger" : "success",
       href: buildWarehouseSubcontractDrillDownHref("factory_claims", query),
-      chip: `${subcontract?.factoryClaimsOverdue ?? 0} overdue`
+      chip: warehouseCopy("subcontract.overdue", { count: subcontract?.factoryClaimsOverdue ?? 0 })
     },
     {
       key: "final_payment_ready_orders",
-      label: "Final ready",
+      label: warehouseCopy("subcontract.finalReady"),
       value: subcontract?.finalPaymentReadyOrders ?? 0,
       tone: "success",
       href: buildWarehouseSubcontractDrillDownHref("final_payment_ready_orders", query),
-      chip: "Pay"
+      chip: warehouseCopy("subcontract.pay")
     }
   ];
   const queueCards: {
@@ -459,102 +460,102 @@ export default function WarehouseDailyBoard() {
   }[] = [
     {
       key: "waiting",
-      label: "New orders",
+      label: warehouseCopy("queue.newOrders"),
       value: board?.summary.waiting ?? 0,
       tone: "normal",
-      helper: "Receive",
+      helper: warehouseCopy("queueCards.receive"),
       href: buildWarehouseQueueDrillDownHref("waiting", query),
-      actionLabel: "Open queue",
+      actionLabel: warehouseCopy("queueCards.openQueue"),
       target: "task-board"
     },
     {
       key: "picking",
-      label: "Picking",
+      label: warehouseCopy("queue.picking"),
       value: board?.summary.picking ?? 0,
       tone: "warning",
-      helper: "Pick",
+      helper: warehouseCopy("queueCards.pick"),
       href: buildWarehouseQueueDrillDownHref("picking", query),
-      actionLabel: "Open queue",
+      actionLabel: warehouseCopy("queueCards.openQueue"),
       target: "task-board"
     },
     {
       key: "packed",
-      label: "Packed",
+      label: warehouseCopy("queue.packed"),
       value: board?.summary.packed ?? 0,
       tone: "success",
-      helper: "Pack",
+      helper: warehouseCopy("queueCards.pack"),
       href: buildWarehouseQueueDrillDownHref("packed", query),
-      actionLabel: "Open queue",
+      actionLabel: warehouseCopy("queueCards.openQueue"),
       target: "task-board"
     },
     {
       key: "handover",
-      label: "Handover",
+      label: warehouseCopy("queue.handover"),
       value: board?.summary.handover ?? 0,
       tone: "info",
-      helper: "Scan",
+      helper: warehouseCopy("queueCards.scan"),
       href: buildWarehouseQueueDrillDownHref("handover", query),
-      actionLabel: "Open queue",
+      actionLabel: warehouseCopy("queueCards.openQueue"),
       target: "task-board"
     },
     {
       key: "returns",
-      label: "Return pending",
+      label: warehouseCopy("queue.returns"),
       value: board?.summary.returnPending ?? 0,
       tone: "warning",
-      helper: "Inspect",
+      helper: warehouseCopy("queueCards.inspect"),
       href: buildWarehouseQueueDrillDownHref("returns", query),
-      actionLabel: "Open returns",
+      actionLabel: warehouseCopy("queueCards.openReturns"),
       target: "drill-down"
     },
     {
       key: "qa_hold",
-      label: "QA hold",
+      label: warehouseCopy("queue.qaHold"),
       value: board?.summary.qaHold ?? 0,
       tone: "danger",
-      helper: "Release",
+      helper: warehouseCopy("queueCards.release"),
       href: buildWarehouseQueueDrillDownHref("qa_hold", query),
-      actionLabel: "Open returns",
+      actionLabel: warehouseCopy("queueCards.openReturns"),
       target: "drill-down"
     },
     {
       key: "adjustment",
-      label: "Adjustment pending",
+      label: warehouseCopy("queue.adjustment"),
       value: board?.summary.adjustmentPending ?? 0,
       tone: "danger",
-      helper: "Approve",
+      helper: warehouseCopy("queueCards.approve"),
       href: buildWarehouseQueueDrillDownHref("adjustment", query),
-      actionLabel: "Open inventory",
+      actionLabel: warehouseCopy("queueCards.openInventory"),
       target: "drill-down"
     },
     {
       key: "mismatch",
-      label: "Stock count variance",
+      label: warehouseCopy("queue.stockVariance"),
       value: board?.summary.stockCountVariance ?? 0,
       tone: "danger",
-      helper: "Reconcile",
+      helper: warehouseCopy("queueCards.reconcile"),
       href: buildWarehouseQueueDrillDownHref("mismatch", query),
-      actionLabel: "Open counts",
+      actionLabel: warehouseCopy("queueCards.openCounts"),
       target: "drill-down"
     },
     {
       key: "closing",
-      label: "Closing blocked",
+      label: warehouseCopy("queue.closing"),
       value: board?.summary.closingBlocked ?? 0,
       tone: (board?.summary.closingBlocked ?? 0) > 0 ? "danger" : "success",
-      helper: "Close",
+      helper: warehouseCopy("queueCards.close"),
       href: buildWarehouseQueueDrillDownHref("closing", query),
-      actionLabel: "Open closing",
+      actionLabel: warehouseCopy("queueCards.openClosing"),
       target: "drill-down"
     },
     {
       key: "overdue",
-      label: "P0 exceptions",
+      label: warehouseCopy("queue.p0Exceptions"),
       value: board?.summary.overdue ?? 0,
       tone: "danger",
-      helper: "Resolve",
+      helper: warehouseCopy("queueCards.resolve"),
       href: buildWarehouseQueueDrillDownHref("overdue", query),
-      actionLabel: "Open queue",
+      actionLabel: warehouseCopy("queueCards.openQueue"),
       target: "task-board"
     }
   ];
@@ -606,45 +607,45 @@ export default function WarehouseDailyBoard() {
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">WH</p>
-          <h1 className="erp-page-title">Warehouse Daily Board</h1>
-          <p className="erp-page-description">Daily warehouse work queue, handover, returns, and variance control</p>
+          <h1 className="erp-page-title">{warehouseCopy("dailyBoard")}</h1>
+          <p className="erp-page-description">{warehouseCopy("dailyBoardDescription")}</p>
         </div>
         <div className="erp-page-actions">
           <a className="erp-button erp-button--secondary" href="#scan-station">
-            Scan
+            {warehouseCopy("scan")}
           </a>
           <a className="erp-button erp-button--primary" href={buildWarehouseShiftClosingDrillDownHref(query)}>
-            Shift closing
+            {warehouseCopy("shiftClosing")}
           </a>
         </div>
       </header>
 
-      <section className="erp-warehouse-context" aria-label="Warehouse shift context">
-        <WarehouseContext label="Date" value={formatBoardDate(date)} />
-        <WarehouseContext label="Shift" value={shiftLabel(shiftCode)} />
-        <WarehouseContext label="Warehouse" value={board?.warehouseCode ?? selectedWarehouseLabel} />
-        <WarehouseContext label="Carrier" value={selectedCarrierLabel} />
-        <WarehouseContext label="Owner" value={board?.owner ?? "Warehouse Lead"} />
-        <WarehouseContext label="Shift status" value={statusLabel(board?.shiftStatus ?? "open")} />
+      <section className="erp-warehouse-context" aria-label={warehouseCopy("filters.label")}>
+        <WarehouseContext label={warehouseCopy("context.date")} value={formatBoardDate(date)} />
+        <WarehouseContext label={warehouseCopy("context.shift")} value={shiftLabel(shiftCode)} />
+        <WarehouseContext label={warehouseCopy("context.warehouse")} value={board?.warehouseCode ?? selectedWarehouseLabel} />
+        <WarehouseContext label={warehouseCopy("context.carrier")} value={selectedCarrierLabel} />
+        <WarehouseContext label={warehouseCopy("context.owner")} value={board?.owner ?? warehouseCopy("warehouseLead")} />
+        <WarehouseContext label={warehouseCopy("context.shiftStatus")} value={statusLabel(board?.shiftStatus ?? "open")} />
       </section>
 
-      <section className="erp-warehouse-toolbar" aria-label="Warehouse daily board filters">
+      <section className="erp-warehouse-toolbar" aria-label={warehouseCopy("filters.label")}>
         <label className="erp-field">
-          <span>Warehouse</span>
+          <span>{warehouseCopy("filters.warehouse")}</span>
           <select className="erp-input" value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
             {warehouseOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {warehouseOptionLabel(option.value) ?? option.label}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Date</span>
+          <span>{warehouseCopy("filters.date")}</span>
           <input className="erp-input" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
         </label>
         <label className="erp-field">
-          <span>Shift</span>
+          <span>{warehouseCopy("filters.shift")}</span>
           <select
             className="erp-input"
             value={shiftCode}
@@ -652,23 +653,23 @@ export default function WarehouseDailyBoard() {
           >
             {warehouseShiftOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {shiftLabel(option.value)}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Carrier</span>
+          <span>{warehouseCopy("filters.carrier")}</span>
           <select className="erp-input" value={carrierCode} onChange={(event) => setCarrierCode(event.target.value)}>
             {carrierOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {carrierOptionLabel(option.value) ?? option.label}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Queue</span>
+          <span>{warehouseCopy("filters.queue")}</span>
           <select
             className="erp-input"
             value={queueFilter}
@@ -683,7 +684,7 @@ export default function WarehouseDailyBoard() {
         </label>
       </section>
 
-      <section className="erp-warehouse-report-grid" aria-label="Dashboard report entry points">
+      <section className="erp-warehouse-report-grid" aria-label={warehouseCopy("reports.operationsReport")}>
         {reportCards.map((card) => (
           <a className="erp-warehouse-report-card" href={card.href} key={card.key}>
             <span>{card.label}</span>
@@ -694,13 +695,13 @@ export default function WarehouseDailyBoard() {
         ))}
       </section>
 
-      <section className="erp-warehouse-signal-report-grid" aria-label="Warehouse signal report drilldowns">
+      <section className="erp-warehouse-signal-report-grid" aria-label={warehouseCopy("reports.operationsReport")}>
         {signalReportCards.map((card) => (
           <a className="erp-warehouse-signal-report-card" href={card.href} key={card.key}>
             <span>{card.label}</span>
             <strong>{card.value}</strong>
             <small>{operationsReportStatusLabel(card.status)}</small>
-            <StatusChip tone={card.tone}>Report</StatusChip>
+            <StatusChip tone={card.tone}>{warehouseCopy("reports.report")}</StatusChip>
           </a>
         ))}
       </section>
@@ -721,12 +722,13 @@ export default function WarehouseDailyBoard() {
         ))}
       </section>
 
-      <section className="erp-warehouse-fulfillment" aria-label="Inbound status metrics">
+      <section className="erp-warehouse-fulfillment" aria-label={warehouseCopy("metrics.inboundControl")}>
         <div className="erp-section-header">
           <div>
-            <h2 className="erp-section-title">Inbound control</h2>
+            <h2 className="erp-section-title">{warehouseCopy("metrics.inboundControl")}</h2>
             <p className="erp-section-description">
-              {inbound?.purchaseOrdersIncoming ?? 0} incoming PO / {inbound?.receivingPending ?? 0} receiving pending
+              {warehouseCopy("metrics.incomingPO", { count: inbound?.purchaseOrdersIncoming ?? 0 })} /{" "}
+              {warehouseCopy("metrics.receivingPending", { count: inbound?.receivingPending ?? 0 })}
             </p>
           </div>
           <StatusChip tone={inboundStatusTone(inbound)}>
@@ -744,12 +746,13 @@ export default function WarehouseDailyBoard() {
         </div>
       </section>
 
-      <section className="erp-warehouse-fulfillment" aria-label="Subcontract manufacturing metrics">
+      <section className="erp-warehouse-fulfillment" aria-label={warehouseCopy("metrics.subcontractManufacturing")}>
         <div className="erp-section-header">
           <div>
-            <h2 className="erp-section-title">Subcontract manufacturing</h2>
+            <h2 className="erp-section-title">{warehouseCopy("metrics.subcontractManufacturing")}</h2>
             <p className="erp-section-description">
-              {subcontract?.openOrders ?? 0} open orders / {subcontract?.factoryClaims ?? 0} factory claims
+              {warehouseCopy("metrics.openOrders", { count: subcontract?.openOrders ?? 0 })} /{" "}
+              {warehouseCopy("metrics.factoryClaims", { count: subcontract?.factoryClaims ?? 0 })}
             </p>
           </div>
           <StatusChip tone={subcontractStatusTone(subcontract)}>
@@ -767,12 +770,12 @@ export default function WarehouseDailyBoard() {
         </div>
       </section>
 
-      <section className="erp-warehouse-fulfillment" aria-label="Fulfillment status metrics">
+      <section className="erp-warehouse-fulfillment" aria-label={warehouseCopy("metrics.fulfillmentStatus")}>
         <div className="erp-section-header">
           <div>
-            <h2 className="erp-section-title">Fulfillment status</h2>
+            <h2 className="erp-section-title">{warehouseCopy("metrics.fulfillmentStatus")}</h2>
             <p className="erp-section-description">
-              {fulfillment?.totalOrders ?? 0} orders / {selectedCarrierLabel}
+              {warehouseCopy("metrics.ordersCarrier", { count: fulfillment?.totalOrders ?? 0, carrier: selectedCarrierLabel })}
             </p>
           </div>
           <StatusChip tone={!fulfillment ? "info" : fulfillment.missingOrders > 0 ? "danger" : "success"}>
@@ -784,16 +787,18 @@ export default function WarehouseDailyBoard() {
             <a className="erp-warehouse-fulfillment-card" href={card.href} key={card.key}>
               <span>{card.label}</span>
               <strong>{card.value}</strong>
-              <StatusChip tone={card.tone}>{card.key === "missing" ? "Exception" : "Order"}</StatusChip>
+              <StatusChip tone={card.tone}>
+                {card.key === "missing" ? warehouseCopy("fulfillment.exception") : warehouseCopy("fulfillment.order")}
+              </StatusChip>
             </a>
           ))}
         </div>
       </section>
 
-      <section className="erp-warehouse-source-strip" aria-label="Counter source fields">
+      <section className="erp-warehouse-source-strip" aria-label={warehouseCopy("columns.source")}>
         {(board?.sourceFields ?? []).map((source) => (
           <span className="erp-warehouse-source-item" key={source.counter}>
-            <strong>{source.label}</strong>
+            <strong>{counterSourceLabel(source.counter, source.label)}</strong>
             <small>{source.fields.join(" / ")}</small>
           </span>
         ))}
@@ -802,19 +807,19 @@ export default function WarehouseDailyBoard() {
       <section className="erp-warehouse-ops">
         <div className="erp-card erp-card--padded erp-warehouse-scan-card" id="scan-station">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Scan station</h2>
+            <h2 className="erp-section-title">{warehouseCopy("scanStation.title")}</h2>
             <StatusChip tone={board?.shiftStatus === "open" ? "warning" : "success"}>
-              {board?.shiftStatus ?? "open"}
+              {statusLabel(board?.shiftStatus ?? "open")}
             </StatusChip>
           </div>
           <ScanInput
-            label="Warehouse scan"
-            placeholder="Order, manifest, return, or variance code"
+            label={warehouseCopy("scanStation.label")}
+            placeholder={warehouseCopy("scanStation.placeholder")}
             feedback={scanFeedback}
             onScan={(value) =>
               setScanFeedback({
                 id: value,
-                title: `Queued ${value.toUpperCase()}`,
+                title: warehouseCopy("scanStation.queued", { code: value.toUpperCase() }),
                 tone: "info"
               })
             }
@@ -823,8 +828,10 @@ export default function WarehouseDailyBoard() {
 
         <div className="erp-card erp-card--padded erp-warehouse-exception-card">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Exceptions</h2>
-            <StatusChip tone={exceptions.length > 0 ? "danger" : "success"}>{exceptions.length} open</StatusChip>
+            <h2 className="erp-section-title">{warehouseCopy("exceptions.title")}</h2>
+            <StatusChip tone={exceptions.length > 0 ? "danger" : "success"}>
+              {warehouseCopy("exceptions.open", { count: exceptions.length })}
+            </StatusChip>
           </div>
           <div className="erp-warehouse-exception-list">
             {exceptions.length > 0 ? (
@@ -832,12 +839,12 @@ export default function WarehouseDailyBoard() {
                 <a className="erp-warehouse-exception" href={task.href} key={task.id}>
                   <strong>{task.reference}</strong>
                   <span>
-                    {task.title} / {formatSla(task)}
+                    {taskSummaryLabel(task)} / {formatSla(task)}
                   </span>
                 </a>
               ))
             ) : (
-              <span className="erp-warehouse-empty">No P0 exceptions</span>
+              <span className="erp-warehouse-empty">{warehouseCopy("exceptions.none")}</span>
             )}
           </div>
         </div>
@@ -850,17 +857,24 @@ export default function WarehouseDailyBoard() {
       <section className="erp-card erp-card--padded erp-module-table-card" id="task-board" tabIndex={-1}>
         <div className="erp-section-header">
           <div>
-            <h2 className="erp-section-title">Task board</h2>
+            <h2 className="erp-section-title">{warehouseCopy("taskBoard.title")}</h2>
             <p className="erp-section-description">{activeQueueLabel}</p>
           </div>
-          <StatusChip tone={visibleTasks.length === 0 ? "warning" : "info"}>{visibleTasks.length} rows</StatusChip>
+          <StatusChip tone={visibleTasks.length === 0 ? "warning" : "info"}>
+            {warehouseCopy("taskBoard.rows", { count: visibleTasks.length })}
+          </StatusChip>
         </div>
         <DataTable
           columns={columns}
           rows={visibleTasks}
           getRowKey={(row) => row.id}
           loading={loading}
-          emptyState={<EmptyState title="No tasks in this queue" description="Change the warehouse, date, or queue filter." />}
+          emptyState={
+            <EmptyState
+              title={warehouseCopy("taskBoard.emptyTitle")}
+              description={warehouseCopy("taskBoard.emptyDescription")}
+            />
+          }
         />
       </section>
     </section>
@@ -974,20 +988,20 @@ function scrollTaskBoardIntoView() {
 }
 
 function queueLabel(queueFilter: QueueFilter) {
-  return queueOptions.find((option) => option.value === queueFilter)?.label ?? "All active queues";
+  return queueOptions.find((option) => option.value === queueFilter)?.label ?? warehouseCopy("queue.allActiveQueues");
 }
 
 function inventoryReportStatusLabel(status: WarehouseInventoryReportStatus) {
   switch (status) {
     case "reserved":
-      return "Reserved stock";
+      return warehouseCopy("inventoryStatus.reserved");
     case "quarantine":
-      return "Quarantine stock";
+      return warehouseCopy("inventoryStatus.quarantine");
     case "blocked":
-      return "Blocked stock";
+      return warehouseCopy("inventoryStatus.blocked");
     case "available":
     default:
-      return "Available stock";
+      return warehouseCopy("inventoryStatus.available");
   }
 }
 
@@ -1008,16 +1022,16 @@ function inventoryReportTone(status: WarehouseInventoryReportStatus): StatusTone
 function operationsReportStatusLabel(status: WarehouseOperationsReportStatus) {
   switch (status) {
     case "in_progress":
-      return "In progress";
+      return warehouseCopy("operationStatus.inProgress");
     case "completed":
-      return "Completed";
+      return warehouseCopy("operationStatus.completed");
     case "blocked":
-      return "Blocked";
+      return warehouseCopy("operationStatus.blocked");
     case "exception":
-      return "Exception";
+      return warehouseCopy("operationStatus.exception");
     case "pending":
     default:
-      return "Pending";
+      return warehouseCopy("operationStatus.pending");
   }
 }
 
@@ -1047,80 +1061,102 @@ function operationsSignalTone(status: WarehouseOperationsReportStatus, value: nu
 function sourceLabel(source: WarehouseDailyTask["source"]) {
   switch (source) {
     case "receiving":
-      return "Receiving";
+      return warehouseCopy("source.receiving");
     case "shipping":
-      return "Shipping";
+      return warehouseCopy("source.shipping");
     case "returns":
-      return "Returns";
+      return warehouseCopy("source.returns");
     case "adjustment":
-      return "Adjustment";
+      return warehouseCopy("source.adjustment");
     case "closing":
-      return "Closing";
+      return warehouseCopy("source.closing");
     case "stock_movement":
-      return "Stock movement";
+      return warehouseCopy("source.stockMovement");
     case "reconciliation":
-      return "Reconciliation";
+      return warehouseCopy("source.reconciliation");
     case "order_queue":
     default:
-      return "Order queue";
+      return warehouseCopy("source.orderQueue");
   }
 }
 
 function shiftLabel(shiftCode: WarehouseDailyShiftCode) {
-  return warehouseShiftOptions.find((option) => option.value === shiftCode)?.label ?? shiftCode;
+  return warehouseCopy(`shift.${shiftCode}`, { fallback: shiftCode });
 }
 
 function taskTypeLabel(status: WarehouseDailyTaskStatus) {
   switch (status) {
     case "handover":
-      return "Handover";
+      return warehouseCopy("taskType.handover");
     case "mismatch":
-      return "Variance";
+      return warehouseCopy("taskType.mismatch");
     case "picking":
-      return "Picking";
+      return warehouseCopy("taskType.picking");
     case "packed":
-      return "Packed";
+      return warehouseCopy("taskType.packed");
     case "returns":
-      return "Return";
+      return warehouseCopy("taskType.returns");
     case "qa_hold":
-      return "QA hold";
+      return warehouseCopy("taskType.qaHold");
     case "adjustment":
-      return "Adjustment";
+      return warehouseCopy("taskType.adjustment");
     case "closing":
-      return "Closing";
+      return warehouseCopy("taskType.closing");
     case "waiting":
     default:
-      return "New order";
+      return warehouseCopy("taskType.waiting");
+  }
+}
+
+function taskSummaryLabel(task: WarehouseDailyTask) {
+  switch (task.status) {
+    case "handover":
+      return warehouseCopy("taskSummary.handover");
+    case "mismatch":
+      return warehouseCopy("taskSummary.mismatch");
+    case "picking":
+      return warehouseCopy("taskSummary.picking");
+    case "packed":
+      return warehouseCopy("taskSummary.packed");
+    case "returns":
+      return warehouseCopy("taskSummary.returns");
+    case "qa_hold":
+      return warehouseCopy("taskSummary.qaHold");
+    case "adjustment":
+      return warehouseCopy("taskSummary.adjustment");
+    case "closing":
+      return task.priority === "P0" ? warehouseCopy("taskSummary.closingBlocked") : warehouseCopy("taskSummary.closingReady");
+    case "waiting":
+    default:
+      return warehouseCopy("taskSummary.waiting");
   }
 }
 
 function statusLabel(status: WarehouseDailyTaskStatus | "open" | "closing" | "closed") {
   switch (status) {
     case "handover":
-      return "Handover";
+      return warehouseCopy("status.handover");
     case "mismatch":
-      return "Mismatch";
+      return warehouseCopy("status.mismatch");
     case "picking":
-      return "Picking";
+      return warehouseCopy("status.picking");
     case "packed":
-      return "Packed";
+      return warehouseCopy("status.packed");
     case "returns":
-      return "Returns";
+      return warehouseCopy("status.returns");
     case "qa_hold":
-      return "QA hold";
+      return warehouseCopy("status.qaHold");
     case "adjustment":
-      return "Adjustment";
+      return warehouseCopy("status.adjustment");
     case "closing":
-      return "Closing";
-    case "closing":
-      return "Closing";
+      return warehouseCopy("status.closing");
     case "closed":
-      return "Closed";
+      return warehouseCopy("status.closed");
     case "open":
-      return "Open";
+      return warehouseCopy("status.open");
     case "waiting":
     default:
-      return "Waiting";
+      return warehouseCopy("status.waiting");
   }
 }
 
@@ -1138,24 +1174,24 @@ function priorityTone(priority: WarehouseDailyTask["priority"]) {
 function taskActionLabel(status: WarehouseDailyTaskStatus) {
   switch (status) {
     case "handover":
-      return "Scan";
+      return warehouseCopy("taskAction.scan");
     case "mismatch":
-      return "Reconcile";
+      return warehouseCopy("taskAction.reconcile");
     case "picking":
-      return "Continue";
+      return warehouseCopy("taskAction.continue");
     case "packed":
-      return "Review";
+      return warehouseCopy("taskAction.review");
     case "returns":
-      return "Inspect";
+      return warehouseCopy("taskAction.inspect");
     case "qa_hold":
-      return "Review";
+      return warehouseCopy("taskAction.review");
     case "adjustment":
-      return "Approve";
+      return warehouseCopy("taskAction.approve");
     case "closing":
-      return "Close";
+      return warehouseCopy("taskAction.close");
     case "waiting":
     default:
-      return "Start";
+      return warehouseCopy("taskAction.start");
   }
 }
 
@@ -1169,14 +1205,16 @@ function formatSla(row: WarehouseDailyTask) {
 }
 
 function formatDueTime(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
 }
 
 function formatBoardDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
     day: "2-digit",
     month: "2-digit",
     year: "numeric"
@@ -1216,11 +1254,70 @@ function subcontractStatusTone(metrics?: WarehouseSubcontractMetrics) {
 
 function formatMetricTimestamp(value?: string) {
   if (!value) {
-    return "Loading";
+    return warehouseCopy("status.loading");
   }
 
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function warehouseCopy(key: string, options: { fallback?: string; count?: number; carrier?: string; code?: string } = {}) {
+  const values: Record<string, string | number> = {};
+  if (options.count !== undefined) {
+    values.count = options.count;
+  }
+  if (options.carrier !== undefined) {
+    values.carrier = options.carrier;
+  }
+  if (options.code !== undefined) {
+    values.code = options.code;
+  }
+
+  return t(`warehouse.${key}`, { fallback: options.fallback, values });
+}
+
+function warehouseOptionLabel(value: string) {
+  if (value === "") {
+    return warehouseCopy("allWarehouses");
+  }
+
+  return warehouseOptions.find((option) => option.value === value)?.label;
+}
+
+function carrierOptionLabel(value: string) {
+  if (value === "") {
+    return warehouseCopy("allCarriers");
+  }
+
+  return carrierOptions.find((option) => option.value === value)?.label;
+}
+
+function counterSourceLabel(counter: string, fallback: string) {
+  switch (counter) {
+    case "waiting":
+      return warehouseCopy("queue.newOrders");
+    case "picking":
+      return warehouseCopy("queue.picking");
+    case "packed":
+      return warehouseCopy("queue.packed");
+    case "handover":
+      return warehouseCopy("queue.handover");
+    case "returnPending":
+      return warehouseCopy("queue.returns");
+    case "qaHold":
+      return warehouseCopy("queue.qaHold");
+    case "adjustmentPending":
+      return warehouseCopy("queue.adjustment");
+    case "reconciliationMismatch":
+      return warehouseCopy("queue.stockVariance");
+    case "closingBlocked":
+      return warehouseCopy("queue.closing");
+    case "overdue":
+      return warehouseCopy("queue.p0Exceptions");
+    default:
+      return fallback;
+  }
 }

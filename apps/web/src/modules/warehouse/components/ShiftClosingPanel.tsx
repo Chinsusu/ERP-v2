@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { DataTable, StatusChip, type DataTableColumn, type ToastMessage } from "@/shared/design-system/components";
+import { t } from "@/shared/i18n";
 import { useEndOfDayReconciliation } from "../hooks/useEndOfDayReconciliation";
 import {
   closeEndOfDayReconciliation,
@@ -23,33 +24,33 @@ const reconciliationColumns: DataTableColumn<ReconciliationLine>[] = [
   },
   {
     key: "batch",
-    header: "Batch",
+    header: closingCopy("columns.batch"),
     render: (row) => row.batchNo,
     width: "130px"
   },
   {
     key: "bin",
-    header: "Bin",
+    header: closingCopy("columns.bin"),
     render: (row) => row.binCode,
     width: "90px"
   },
   {
     key: "system",
-    header: "System",
+    header: closingCopy("columns.system"),
     render: (row) => row.systemQuantity,
     align: "right",
     width: "90px"
   },
   {
     key: "counted",
-    header: "Counted",
+    header: closingCopy("columns.counted"),
     render: (row) => row.countedQuantity,
     align: "right",
     width: "90px"
   },
   {
     key: "variance",
-    header: "Variance",
+    header: closingCopy("columns.variance"),
     render: (row) => (
       <StatusChip tone={row.varianceQuantity === 0 ? "success" : "danger"}>
         {formatVariance(row.varianceQuantity)}
@@ -60,7 +61,7 @@ const reconciliationColumns: DataTableColumn<ReconciliationLine>[] = [
   },
   {
     key: "owner",
-    header: "Owner",
+    header: closingCopy("columns.owner"),
     render: (row) => row.owner,
     width: "140px"
   }
@@ -103,14 +104,14 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
       setCloseResult(closed);
       setFeedback({
         id: closed.auditLogId ?? closed.id,
-        title: "Shift closed",
-        description: closed.auditLogId ? `Audit log ${closed.auditLogId}` : undefined,
+        title: closingCopy("shiftClosingPanel.shiftClosed"),
+        description: closed.auditLogId ? closingCopy("shiftClosingPanel.auditLog", { id: closed.auditLogId }) : undefined,
         tone: "success"
       });
     } catch (error) {
       setFeedback({
         id: "close-error",
-        title: error instanceof Error ? error.message : "Shift close failed",
+        title: error instanceof Error ? error.message : closingCopy("shiftClosingPanel.closeFailed"),
         tone: "danger"
       });
     }
@@ -120,8 +121,8 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
     return (
       <section className="erp-card erp-card--padded erp-shift-closing-panel">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">End-of-day closing</h2>
-          <StatusChip tone="info">Loading</StatusChip>
+          <h2 className="erp-section-title">{closingCopy("shiftClosingPanel.title")}</h2>
+          <StatusChip tone="info">{closingCopy("status.loading")}</StatusChip>
         </div>
       </section>
     );
@@ -131,8 +132,8 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
     return (
       <section className="erp-card erp-card--padded erp-shift-closing-panel">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">End-of-day closing</h2>
-          <StatusChip tone="warning">No session</StatusChip>
+          <h2 className="erp-section-title">{closingCopy("shiftClosingPanel.title")}</h2>
+          <StatusChip tone="warning">{closingCopy("shiftClosingPanel.noSession")}</StatusChip>
         </div>
       </section>
     );
@@ -142,7 +143,7 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
     <section className="erp-card erp-card--padded erp-shift-closing-panel">
       <div className="erp-section-header">
         <div>
-          <h2 className="erp-section-title">End-of-day closing</h2>
+          <h2 className="erp-section-title">{closingCopy("shiftClosingPanel.title")}</h2>
           <p className="erp-section-description">
             {activeReconciliation.warehouseCode} / {activeReconciliation.date} / {activeReconciliation.shiftCode}
           </p>
@@ -152,29 +153,29 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
         </StatusChip>
       </div>
 
-      <section className="erp-shift-closing-summary" aria-label="End-of-day reconciliation summary">
-        <ClosingMetric label="System" value={activeReconciliation.summary.systemQuantity} tone="normal" />
-        <ClosingMetric label="Counted" value={activeReconciliation.summary.countedQuantity} tone="info" />
+      <section className="erp-shift-closing-summary" aria-label={closingCopy("shiftClosingPanel.summaryLabel")}>
+        <ClosingMetric label={closingCopy("shiftClosingPanel.system")} value={activeReconciliation.summary.systemQuantity} tone="normal" />
+        <ClosingMetric label={closingCopy("shiftClosingPanel.counted")} value={activeReconciliation.summary.countedQuantity} tone="info" />
         <ClosingMetric
-          label="Variance"
+          label={closingCopy("shiftClosingPanel.variance")}
           value={activeReconciliation.summary.varianceQuantity}
           tone={activeReconciliation.summary.varianceQuantity === 0 ? "success" : "danger"}
         />
         <ClosingMetric
-          label="Checklist"
+          label={closingCopy("shiftClosingPanel.checklist")}
           value={`${activeReconciliation.summary.checklistCompleted}/${activeReconciliation.summary.checklistTotal}`}
           tone={openBlockingItems.length === 0 ? "success" : "warning"}
         />
       </section>
 
-      <section className="erp-shift-operations" aria-label="Shift closing operating counters">
-        <OperationMetric label="Orders" value={activeReconciliation.operations.orderCount} />
-        <OperationMetric label="Handover" value={activeReconciliation.operations.handoverOrderCount} />
-        <OperationMetric label="Returns" value={activeReconciliation.operations.returnOrderCount} />
-        <OperationMetric label="Movements" value={activeReconciliation.operations.stockMovementCount} />
-        <OperationMetric label="Stock count" value={activeReconciliation.operations.stockCountSessionCount} />
+      <section className="erp-shift-operations" aria-label={closingCopy("shiftClosingPanel.operationsLabel")}>
+        <OperationMetric label={closingCopy("shiftClosingPanel.orders")} value={activeReconciliation.operations.orderCount} />
+        <OperationMetric label={closingCopy("shiftClosingPanel.handover")} value={activeReconciliation.operations.handoverOrderCount} />
+        <OperationMetric label={closingCopy("shiftClosingPanel.returns")} value={activeReconciliation.operations.returnOrderCount} />
+        <OperationMetric label={closingCopy("shiftClosingPanel.movements")} value={activeReconciliation.operations.stockMovementCount} />
+        <OperationMetric label={closingCopy("shiftClosingPanel.stockCount")} value={activeReconciliation.operations.stockCountSessionCount} />
         <OperationMetric
-          label="Issues"
+          label={closingCopy("shiftClosingPanel.issues")}
           value={activeReconciliation.operations.pendingIssueCount}
           tone={activeReconciliation.operations.pendingIssueCount > 0 ? "danger" : "success"}
         />
@@ -183,9 +184,9 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
       <section className="erp-shift-closing-grid">
         <div>
           <div className="erp-section-header erp-section-header--compact">
-            <h3 className="erp-subsection-title">Checklist</h3>
+            <h3 className="erp-subsection-title">{closingCopy("shiftClosingPanel.checklist")}</h3>
             <StatusChip tone={openBlockingItems.length === 0 ? "success" : "warning"}>
-              {openBlockingItems.length} blockers
+              {closingCopy("shiftClosingPanel.blockers", { count: openBlockingItems.length })}
             </StatusChip>
           </div>
           <ol className="erp-shift-checklist">
@@ -196,11 +197,15 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
               >
                 <span className={item.complete ? "erp-shift-checkmark is-complete" : "erp-shift-checkmark"} aria-hidden="true" />
                 <span>
-                  <strong>{item.label}</strong>
-                  {item.note ? <small>{item.note}</small> : null}
+                  <strong>{checklistLabel(item.key, item.label)}</strong>
+                  {item.note ? <small>{checklistNote(item.key, item.note)}</small> : null}
                 </span>
                 <StatusChip tone={item.complete ? "success" : isOperationalClosingBlocker(item) ? "danger" : "warning"}>
-                  {item.complete ? "Done" : isOperationalClosingBlocker(item) ? "Resolve" : "Exception"}
+                  {item.complete
+                    ? closingCopy("status.done")
+                    : isOperationalClosingBlocker(item)
+                      ? closingCopy("status.resolve")
+                      : closingCopy("status.exception")}
                 </StatusChip>
               </li>
             ))}
@@ -209,20 +214,24 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
 
         <div className="erp-shift-close-box">
           <label className="erp-field">
-            <span>Exception note</span>
+            <span>{closingCopy("shiftClosingPanel.exceptionNote")}</span>
             <textarea
               className="erp-input erp-textarea"
               value={exceptionNote}
               onChange={(event) => setExceptionNote(event.target.value)}
-              placeholder={exceptionBlockingItems.length > 0 ? "Required for variance exception" : "No exception needed"}
+              placeholder={
+                exceptionBlockingItems.length > 0
+                  ? closingCopy("shiftClosingPanel.requiredVarianceException")
+                  : closingCopy("shiftClosingPanel.noExceptionNeeded")
+              }
             />
           </label>
           <button className="erp-button erp-button--primary erp-button--full" type="button" disabled={closeDisabled} onClick={handleClose}>
-            Close shift
+            {closingCopy("shiftClosingPanel.closeShift")}
           </button>
           {operationalBlockingItems.length > 0 ? (
             <small className="erp-shift-close-feedback erp-shift-close-feedback--danger">
-              Resolve operational blockers before closing.
+              {closingCopy("shiftClosingPanel.resolveOperationalBlockers")}
             </small>
           ) : null}
           {feedback ? (
@@ -235,9 +244,9 @@ export function ShiftClosingPanel({ query }: ShiftClosingPanelProps) {
 
       <div className="erp-shift-lines">
         <div className="erp-section-header erp-section-header--compact">
-          <h3 className="erp-subsection-title">System vs counted quantity</h3>
+          <h3 className="erp-subsection-title">{closingCopy("shiftClosingPanel.systemVsCounted")}</h3>
           <StatusChip tone={activeReconciliation.summary.varianceCount === 0 ? "success" : "danger"}>
-            {activeReconciliation.summary.varianceCount} variance lines
+            {closingCopy("shiftClosingPanel.varianceLines", { count: activeReconciliation.summary.varianceCount })}
           </StatusChip>
         </div>
         <DataTable
@@ -263,7 +272,7 @@ function OperationMetric({
     <article className="erp-shift-operation">
       <span>{label}</span>
       <strong>{formatCount(value)}</strong>
-      <StatusChip tone={tone}>Ops</StatusChip>
+      <StatusChip tone={tone}>{closingCopy("shiftClosingPanel.ops")}</StatusChip>
     </article>
   );
 }
@@ -289,12 +298,12 @@ function ClosingMetric({
 function statusLabel(status: EndOfDayReconciliation["status"]) {
   switch (status) {
     case "closed":
-      return "Closed";
+      return closingCopy("status.closed");
     case "in_review":
-      return "In Review";
+      return closingCopy("status.inReview");
     case "open":
     default:
-      return "Open";
+      return closingCopy("status.open");
   }
 }
 
@@ -308,4 +317,16 @@ function formatVariance(value: number) {
 
 function formatCount(value: number) {
   return value.toLocaleString("vi-VN");
+}
+
+function closingCopy(key: string, values?: Record<string, string | number>) {
+  return t(`warehouse.${key}`, { values });
+}
+
+function checklistLabel(key: string, fallback: string) {
+  return t(`warehouse.shiftClosingPanel.checklistItems.${key}`, { fallback });
+}
+
+function checklistNote(key: string, fallback: string) {
+  return t(`warehouse.shiftClosingPanel.checklistNotes.${key}`, { fallback });
 }

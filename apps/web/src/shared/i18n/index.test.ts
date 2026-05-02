@@ -29,6 +29,9 @@ describe("Vietnamese-first i18n foundation", () => {
     expect(getActionLabel("Download")).toBe("Tải xuống");
     expect(t("common.noRecordsYet")).toBe("Chưa có dữ liệu.");
     expect(t("common.scanCode")).toBe("Quét mã");
+    expect(t("warehouse.dailyBoard")).toBe("Bảng công việc kho");
+    expect(t("warehouse.taskBoard.rows", { values: { count: 3 } })).toBe("3 dòng");
+    expect(t("warehouse.shiftClosingPanel.closeShift")).toBe("Đóng ca");
   });
 
   it("centralizes status, error, validation, and unit labels", () => {
