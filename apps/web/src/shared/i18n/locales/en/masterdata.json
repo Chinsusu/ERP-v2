@@ -1,1 +1,129 @@
-{ "title": "Master Data" }
+{
+  "title": "Master Data",
+  "description": "Operational master data for SKU, warehouse, location, supplier, and customer setup",
+  "sectionsLabel": "Master data sections",
+  "views": {
+    "products": "Items / SKU",
+    "warehouses": "Warehouses / Locations",
+    "parties": "Suppliers / Customers"
+  },
+  "viewStatus": {
+    "products": "Item setup",
+    "warehouses": "Warehouse setup",
+    "parties": "Party setup"
+  },
+  "page": {
+    "title": "Master Data",
+    "description": "Item and SKU catalog for cosmetic operations",
+    "skuCount": "{count} SKUs"
+  },
+  "filters": {
+    "label": "Master data filters",
+    "search": "Search",
+    "status": "Status",
+    "itemType": "Item type",
+    "allStatuses": "All statuses",
+    "allItemTypes": "All item types"
+  },
+  "columns": {
+    "sku": "SKU",
+    "item": "Item",
+    "uom": "UOM",
+    "controls": "Controls",
+    "status": "Status",
+    "updated": "Updated"
+  },
+  "actions": {
+    "detail": "Detail",
+    "edit": "Edit",
+    "activate": "Activate",
+    "inactivate": "Inactivate",
+    "newItem": "New item",
+    "dismiss": "Dismiss",
+    "clear": "Clear",
+    "saving": "Saving",
+    "update": "Update",
+    "create": "Create"
+  },
+  "kpi": {
+    "total": "Total",
+    "controlled": "Controlled"
+  },
+  "list": {
+    "title": "Item & SKU master",
+    "rows": "{count} rows"
+  },
+  "empty": {
+    "title": "No product master data",
+    "description": "Adjust the filters or create a SKU."
+  },
+  "errors": {
+    "loadTitle": "Master data could not load",
+    "requestFailed": "Product master data request failed"
+  },
+  "form": {
+    "createTitle": "Create SKU",
+    "updateTitle": "Update SKU",
+    "description": "Required cosmetic master data, lifecycle, and control flags",
+    "itemCode": "Item code",
+    "skuCode": "SKU code",
+    "name": "Name",
+    "itemType": "Item type",
+    "group": "Group",
+    "brand": "Brand",
+    "baseUom": "Base UOM",
+    "purchaseUom": "Purchase UOM",
+    "issueUom": "Issue UOM",
+    "shelfLifeDays": "Shelf life days",
+    "standardCost": "Standard cost",
+    "specVersion": "Spec version",
+    "status": "Status",
+    "auditHint": "Audit metadata records create, update, and status changes."
+  },
+  "controls": {
+    "lot": "Lot",
+    "expiry": "Expiry",
+    "qc": "QC",
+    "sellable": "Sellable",
+    "purchasable": "Purchasable",
+    "producible": "Producible"
+  },
+  "detail": {
+    "title": "SKU detail",
+    "itemCode": "Item code",
+    "sku": "SKU",
+    "type": "Type",
+    "status": "Status",
+    "uom": "UOM",
+    "shelfLife": "Shelf life",
+    "days": "{count} days",
+    "spec": "Spec",
+    "audit": "Audit",
+    "auditFallback": "Tracked on write"
+  },
+  "toast": {
+    "detailFailed": "Detail failed",
+    "detailFailedDescription": "Could not load product detail",
+    "statusChanged": "Status changed",
+    "statusChangedDescription": "{sku} is {status}",
+    "statusFailed": "Status failed",
+    "itemUpdated": "Item updated",
+    "itemCreated": "Item created",
+    "saved": "{sku} saved"
+  },
+  "product": {
+    "status": {
+      "draft": "Draft",
+      "active": "Active",
+      "inactive": "Inactive",
+      "obsolete": "Obsolete"
+    },
+    "type": {
+      "finished_good": "Finished good",
+      "raw_material": "Raw material",
+      "packaging": "Packaging",
+      "semi_finished": "Semi finished",
+      "service": "Service"
+    }
+  }
+}

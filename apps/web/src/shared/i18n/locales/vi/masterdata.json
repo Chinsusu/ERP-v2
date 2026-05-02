@@ -1,1 +1,129 @@
-{ "title": "Dữ liệu gốc" }
+{
+  "title": "Dữ liệu gốc",
+  "description": "Dữ liệu vận hành cho mã hàng, kho, vị trí, nhà cung cấp và khách hàng",
+  "sectionsLabel": "Nhóm dữ liệu gốc",
+  "views": {
+    "products": "Mã hàng / SKU",
+    "warehouses": "Kho / Vị trí",
+    "parties": "Nhà cung cấp / Khách hàng"
+  },
+  "viewStatus": {
+    "products": "Thiết lập mã hàng",
+    "warehouses": "Thiết lập kho",
+    "parties": "Thiết lập đối tác"
+  },
+  "page": {
+    "title": "Dữ liệu gốc",
+    "description": "Danh mục mã hàng và SKU cho vận hành mỹ phẩm",
+    "skuCount": "{count} SKU"
+  },
+  "filters": {
+    "label": "Bộ lọc dữ liệu mã hàng",
+    "search": "Tìm kiếm",
+    "status": "Trạng thái",
+    "itemType": "Loại hàng",
+    "allStatuses": "Tất cả trạng thái",
+    "allItemTypes": "Tất cả loại hàng"
+  },
+  "columns": {
+    "sku": "SKU",
+    "item": "Mã hàng",
+    "uom": "Đơn vị",
+    "controls": "Kiểm soát",
+    "status": "Trạng thái",
+    "updated": "Cập nhật"
+  },
+  "actions": {
+    "detail": "Chi tiết",
+    "edit": "Sửa",
+    "activate": "Kích hoạt",
+    "inactivate": "Ngưng kích hoạt",
+    "newItem": "Mã hàng mới",
+    "dismiss": "Đóng",
+    "clear": "Xóa form",
+    "saving": "Đang lưu",
+    "update": "Cập nhật",
+    "create": "Tạo"
+  },
+  "kpi": {
+    "total": "Tổng",
+    "controlled": "Có kiểm soát"
+  },
+  "list": {
+    "title": "Dữ liệu mã hàng & SKU",
+    "rows": "{count} dòng"
+  },
+  "empty": {
+    "title": "Chưa có dữ liệu mã hàng",
+    "description": "Đổi bộ lọc hoặc tạo SKU mới."
+  },
+  "errors": {
+    "loadTitle": "Không thể tải dữ liệu gốc",
+    "requestFailed": "Yêu cầu dữ liệu mã hàng thất bại"
+  },
+  "form": {
+    "createTitle": "Tạo SKU",
+    "updateTitle": "Cập nhật SKU",
+    "description": "Thông tin mã hàng mỹ phẩm bắt buộc, vòng đời và cờ kiểm soát",
+    "itemCode": "Mã hàng",
+    "skuCode": "Mã SKU",
+    "name": "Tên",
+    "itemType": "Loại hàng",
+    "group": "Nhóm",
+    "brand": "Thương hiệu",
+    "baseUom": "Đơn vị gốc",
+    "purchaseUom": "Đơn vị mua",
+    "issueUom": "Đơn vị xuất",
+    "shelfLifeDays": "Số ngày hạn dùng",
+    "standardCost": "Giá vốn chuẩn",
+    "specVersion": "Phiên bản spec",
+    "status": "Trạng thái",
+    "auditHint": "Nhật ký ghi nhận tạo, cập nhật và đổi trạng thái."
+  },
+  "controls": {
+    "lot": "Lô",
+    "expiry": "Hạn dùng",
+    "qc": "QC",
+    "sellable": "Bán được",
+    "purchasable": "Mua được",
+    "producible": "Sản xuất được"
+  },
+  "detail": {
+    "title": "Chi tiết SKU",
+    "itemCode": "Mã hàng",
+    "sku": "SKU",
+    "type": "Loại",
+    "status": "Trạng thái",
+    "uom": "Đơn vị",
+    "shelfLife": "Hạn dùng",
+    "days": "{count} ngày",
+    "spec": "Spec",
+    "audit": "Nhật ký",
+    "auditFallback": "Theo dõi khi ghi"
+  },
+  "toast": {
+    "detailFailed": "Tải chi tiết thất bại",
+    "detailFailedDescription": "Không thể tải chi tiết mã hàng",
+    "statusChanged": "Đã đổi trạng thái",
+    "statusChangedDescription": "{sku} đang ở trạng thái {status}",
+    "statusFailed": "Đổi trạng thái thất bại",
+    "itemUpdated": "Đã cập nhật mã hàng",
+    "itemCreated": "Đã tạo mã hàng",
+    "saved": "Đã lưu {sku}"
+  },
+  "product": {
+    "status": {
+      "draft": "Nháp",
+      "active": "Đang dùng",
+      "inactive": "Ngưng dùng",
+      "obsolete": "Lỗi thời"
+    },
+    "type": {
+      "finished_good": "Thành phẩm",
+      "raw_material": "Nguyên liệu",
+      "packaging": "Bao bì",
+      "semi_finished": "Bán thành phẩm",
+      "service": "Dịch vụ"
+    }
+  }
+}

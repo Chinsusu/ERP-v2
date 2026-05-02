@@ -14,20 +14,19 @@ import {
   type ToastMessage
 } from "@/shared/design-system/components";
 import { decimalScales } from "@/shared/format/numberFormat";
+import { t } from "@/shared/i18n";
 import { useProductMasterData } from "../hooks/useProductMasterData";
 import {
   emptyProductInput,
   productStatusOptions,
   productStatusTone,
-  productTypeLabel,
   productTypeOptions,
-  statusLabel,
   toProductInput
 } from "../services/productMasterDataService";
-import type { ProductMasterDataInput, ProductMasterDataItem, ProductMasterDataQuery, ProductStatus } from "../types";
+import type { ProductMasterDataInput, ProductMasterDataItem, ProductMasterDataQuery, ProductStatus, ProductType } from "../types";
 
-const allStatusOptions = [{ label: "All statuses", value: "" }, ...productStatusOptions] as const;
-const allTypeOptions = [{ label: "All item types", value: "" }, ...productTypeOptions] as const;
+const allStatusOptions = [{ label: productCopy("filters.allStatuses"), value: "" }, ...productStatusOptions] as const;
+const allTypeOptions = [{ label: productCopy("filters.allItemTypes"), value: "" }, ...productTypeOptions] as const;
 
 export function ProductMasterDataPrototype({ embedded = false }: { embedded?: boolean }) {
   const [search, setSearch] = useState("");
@@ -63,7 +62,7 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
   const columns: DataTableColumn<ProductMasterDataItem>[] = [
     {
       key: "sku",
-      header: "SKU",
+      header: productCopy("columns.sku"),
       render: (row) => (
         <div className="erp-masterdata-product-cell">
           <strong>{row.skuCode}</strong>
@@ -74,36 +73,36 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
     },
     {
       key: "name",
-      header: "Item",
+      header: productCopy("columns.item"),
       render: (row) => (
         <div className="erp-masterdata-product-cell">
           <strong>{row.name}</strong>
-          <small>{[productTypeLabel(row.itemType), row.itemGroup].filter(Boolean).join(" / ")}</small>
+          <small>{[productTypeDisplay(row.itemType), row.itemGroup].filter(Boolean).join(" / ")}</small>
         </div>
       ),
       width: "260px"
     },
     {
       key: "uom",
-      header: "UOM",
+      header: productCopy("columns.uom"),
       render: (row) => row.uomBase,
       width: "80px"
     },
     {
       key: "controls",
-      header: "Controls",
+      header: productCopy("columns.controls"),
       render: (row) => controlLabels(row).join(", "),
       width: "190px"
     },
     {
       key: "status",
-      header: "Status",
-      render: (row) => <StatusChip tone={productStatusTone(row.status)}>{statusLabel(row.status)}</StatusChip>,
+      header: productCopy("columns.status"),
+      render: (row) => <StatusChip tone={productStatusTone(row.status)}>{productStatusDisplay(row.status)}</StatusChip>,
       width: "120px"
     },
     {
       key: "updated",
-      header: "Updated",
+      header: productCopy("columns.updated"),
       render: (row) => formatDate(row.updatedAt),
       width: "130px"
     },
@@ -115,10 +114,10 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
       render: (row) => (
         <div className="erp-masterdata-row-actions">
           <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => openDetail(row.id)}>
-            Detail
+            {productCopy("actions.detail")}
           </button>
           <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => startEdit(row)}>
-            Edit
+            {productCopy("actions.edit")}
           </button>
           <button
             className="erp-button erp-button--secondary erp-button--compact"
@@ -126,7 +125,7 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
             disabled={saving}
             onClick={() => toggleStatus(row)}
           >
-            {row.status === "active" ? "Inactivate" : "Activate"}
+            {row.status === "active" ? productCopy("actions.inactivate") : productCopy("actions.activate")}
           </button>
         </div>
       ),
@@ -138,7 +137,7 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
     try {
       await loadProductDetail(productId);
     } catch {
-      pushToast("Detail failed", "Could not load product detail", "danger");
+      pushToast(productCopy("toast.detailFailed"), productCopy("toast.detailFailedDescription"), "danger");
     }
   }
 
@@ -158,9 +157,9 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
     const nextStatus: ProductStatus = item.status === "active" ? "inactive" : "active";
     try {
       const result = await saveProductStatus(item.id, nextStatus);
-      pushToast("Status changed", `${result.skuCode} is ${statusLabel(result.status)}`, "success");
+      pushToast(productCopy("toast.statusChanged"), productCopy("toast.statusChangedDescription", { sku: result.skuCode, status: productStatusDisplay(result.status) }), "success");
     } catch (statusError) {
-      pushToast("Status failed", errorText(statusError), "danger");
+      pushToast(productCopy("toast.statusFailed"), errorText(statusError), "danger");
     }
   }
 
@@ -169,7 +168,7 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
     setFormError(undefined);
     try {
       const result = editingId ? await saveProduct(editingId, form) : await saveNewProduct(form);
-      pushToast(editingId ? "Item updated" : "Item created", `${result.skuCode} saved`, "success");
+      pushToast(editingId ? productCopy("toast.itemUpdated") : productCopy("toast.itemCreated"), productCopy("toast.saved", { sku: result.skuCode }), "success");
       resetForm();
     } catch (saveError) {
       setFormError(errorText(saveError));
@@ -182,9 +181,9 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
 
   const content = (
     <>
-      <section className="erp-masterdata-toolbar" aria-label="Master data filters">
+      <section className="erp-masterdata-toolbar" aria-label={productCopy("filters.label")}>
         <label className="erp-field">
-          <span>Search</span>
+          <span>{productCopy("filters.search")}</span>
           <input
             className="erp-input"
             type="search"
@@ -194,17 +193,17 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
           />
         </label>
         <label className="erp-field">
-          <span>Status</span>
+          <span>{productCopy("filters.status")}</span>
           <select className="erp-input" value={status} onChange={(event) => setStatus(event.target.value as ProductStatus | "")}>
             {allStatusOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? productStatusDisplay(option.value) : option.label}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Item type</span>
+          <span>{productCopy("filters.itemType")}</span>
           <select
             className="erp-input"
             value={itemType}
@@ -212,28 +211,28 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
           >
             {allTypeOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? productTypeDisplay(option.value) : option.label}
               </option>
             ))}
           </select>
         </label>
         <button className="erp-button erp-button--secondary" type="button" onClick={resetForm}>
-          New item
+          {productCopy("actions.newItem")}
         </button>
       </section>
 
       <section className="erp-kpi-grid erp-masterdata-kpis">
-        <MasterDataKPI label="Total" value={summary.total} tone="normal" />
-        <MasterDataKPI label="Active" value={summary.active} tone="success" />
-        <MasterDataKPI label="Draft" value={summary.draft} tone="info" />
-        <MasterDataKPI label="Controlled" value={summary.controlled} tone="warning" />
+        <MasterDataKPI label={productCopy("kpi.total")} value={summary.total} tone="normal" />
+        <MasterDataKPI label={productStatusDisplay("active")} value={summary.active} tone="success" />
+        <MasterDataKPI label={productStatusDisplay("draft")} value={summary.draft} tone="info" />
+        <MasterDataKPI label={productCopy("kpi.controlled")} value={summary.controlled} tone="warning" />
       </section>
 
       <section className="erp-masterdata-workspace">
         <section className="erp-card erp-card--padded erp-masterdata-list-card">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Item & SKU master</h2>
-            <StatusChip tone={items.length === 0 ? "warning" : "info"}>{items.length} rows</StatusChip>
+            <h2 className="erp-section-title">{productCopy("list.title")}</h2>
+            <StatusChip tone={items.length === 0 ? "warning" : "info"}>{productCopy("list.rows", { count: items.length })}</StatusChip>
           </div>
           <DataTable
             columns={columns}
@@ -243,91 +242,91 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
             error={
               error ? (
                 <ErrorState
-                  title="Master data could not load"
+                  title={productCopy("errors.loadTitle")}
                   description={error}
                   action={
                     <button className="erp-button erp-button--secondary" type="button" onClick={clearError}>
-                      Dismiss
+                      {productCopy("actions.dismiss")}
                     </button>
                   }
                 />
               ) : undefined
             }
-            emptyState={<EmptyState title="No product master data" description="Adjust the filters or create a SKU." />}
+            emptyState={<EmptyState title={productCopy("empty.title")} description={productCopy("empty.description")} />}
           />
         </section>
 
         <form onSubmit={submitForm}>
           <FormSection
-            title={editingId ? "Update SKU" : "Create SKU"}
-            description="Required cosmetic master data, lifecycle, and control flags"
+            title={editingId ? productCopy("form.updateTitle") : productCopy("form.createTitle")}
+            description={productCopy("form.description")}
             footer={
               <>
                 <button className="erp-button erp-button--secondary" type="button" onClick={resetForm}>
-                  Clear
+                  {productCopy("actions.clear")}
                 </button>
                 <button className="erp-button erp-button--primary" type="submit" disabled={saving}>
-                  {saving ? "Saving" : editingId ? "Update" : "Create"}
+                  {saving ? productCopy("actions.saving") : editingId ? productCopy("actions.update") : productCopy("actions.create")}
                 </button>
               </>
             }
           >
             {formError ? <p className="erp-form-error">{formError}</p> : null}
             <div className="erp-masterdata-form-grid">
-              <TextField label="Item code" value={form.itemCode} onChange={(value) => updateForm({ itemCode: value.toUpperCase() })} />
-              <TextField label="SKU code" value={form.skuCode} onChange={(value) => updateForm({ skuCode: value.toUpperCase() })} />
-              <TextField label="Name" value={form.name} onChange={(value) => updateForm({ name: value })} />
+              <TextField label={productCopy("form.itemCode")} value={form.itemCode} onChange={(value) => updateForm({ itemCode: value.toUpperCase() })} />
+              <TextField label={productCopy("form.skuCode")} value={form.skuCode} onChange={(value) => updateForm({ skuCode: value.toUpperCase() })} />
+              <TextField label={productCopy("form.name")} value={form.name} onChange={(value) => updateForm({ name: value })} />
               <label className="erp-field">
-                <span>Item type</span>
+                <span>{productCopy("form.itemType")}</span>
                 <select className="erp-input" value={form.itemType} onChange={(event) => updateForm({ itemType: event.target.value as ProductMasterDataInput["itemType"] })}>
                   {productTypeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {productTypeDisplay(option.value)}
                     </option>
                   ))}
                 </select>
               </label>
-              <TextField label="Group" value={form.itemGroup} onChange={(value) => updateForm({ itemGroup: value })} />
-              <TextField label="Brand" value={form.brandCode} onChange={(value) => updateForm({ brandCode: value.toUpperCase() })} />
-              <TextField label="Base UOM" value={form.uomBase} onChange={(value) => updateForm({ uomBase: value.toUpperCase() })} />
-              <TextField label="Purchase UOM" value={form.uomPurchase} onChange={(value) => updateForm({ uomPurchase: value.toUpperCase() })} />
-              <TextField label="Issue UOM" value={form.uomIssue} onChange={(value) => updateForm({ uomIssue: value.toUpperCase() })} />
-              <NumberField label="Shelf life days" value={form.shelfLifeDays} onChange={(value) => updateForm({ shelfLifeDays: value })} />
-              <DecimalInput label="Standard cost" scale={decimalScales.unitCost} suffix="VND" value={form.standardCost} onChange={(value) => updateForm({ standardCost: value })} />
-              <TextField label="Spec version" value={form.specVersion} onChange={(value) => updateForm({ specVersion: value })} />
+              <TextField label={productCopy("form.group")} value={form.itemGroup} onChange={(value) => updateForm({ itemGroup: value })} />
+              <TextField label={productCopy("form.brand")} value={form.brandCode} onChange={(value) => updateForm({ brandCode: value.toUpperCase() })} />
+              <TextField label={productCopy("form.baseUom")} value={form.uomBase} onChange={(value) => updateForm({ uomBase: value.toUpperCase() })} />
+              <TextField label={productCopy("form.purchaseUom")} value={form.uomPurchase} onChange={(value) => updateForm({ uomPurchase: value.toUpperCase() })} />
+              <TextField label={productCopy("form.issueUom")} value={form.uomIssue} onChange={(value) => updateForm({ uomIssue: value.toUpperCase() })} />
+              <NumberField label={productCopy("form.shelfLifeDays")} value={form.shelfLifeDays} onChange={(value) => updateForm({ shelfLifeDays: value })} />
+              <DecimalInput label={productCopy("form.standardCost")} scale={decimalScales.unitCost} suffix="VND" value={form.standardCost} onChange={(value) => updateForm({ standardCost: value })} />
+              <TextField label={productCopy("form.specVersion")} value={form.specVersion} onChange={(value) => updateForm({ specVersion: value })} />
             </div>
             <div className="erp-masterdata-toggle-grid">
-              <ToggleField label="Lot" checked={form.lotControlled} onChange={(value) => updateForm({ lotControlled: value })} />
-              <ToggleField label="Expiry" checked={form.expiryControlled} onChange={(value) => updateForm({ expiryControlled: value })} />
-              <ToggleField label="QC" checked={form.qcRequired} onChange={(value) => updateForm({ qcRequired: value })} />
-              <ToggleField label="Sellable" checked={form.isSellable} onChange={(value) => updateForm({ isSellable: value })} />
-              <ToggleField label="Purchasable" checked={form.isPurchasable} onChange={(value) => updateForm({ isPurchasable: value })} />
-              <ToggleField label="Producible" checked={form.isProducible} onChange={(value) => updateForm({ isProducible: value })} />
+              <ToggleField label={productCopy("controls.lot")} checked={form.lotControlled} onChange={(value) => updateForm({ lotControlled: value })} />
+              <ToggleField label={productCopy("controls.expiry")} checked={form.expiryControlled} onChange={(value) => updateForm({ expiryControlled: value })} />
+              <ToggleField label={productCopy("controls.qc")} checked={form.qcRequired} onChange={(value) => updateForm({ qcRequired: value })} />
+              <ToggleField label={productCopy("controls.sellable")} checked={form.isSellable} onChange={(value) => updateForm({ isSellable: value })} />
+              <ToggleField label={productCopy("controls.purchasable")} checked={form.isPurchasable} onChange={(value) => updateForm({ isPurchasable: value })} />
+              <ToggleField label={productCopy("controls.producible")} checked={form.isProducible} onChange={(value) => updateForm({ isProducible: value })} />
             </div>
             <label className="erp-field">
-              <span>Status</span>
+              <span>{productCopy("form.status")}</span>
               <select className="erp-input" value={form.status} onChange={(event) => updateForm({ status: event.target.value as ProductStatus })}>
                 {productStatusOptions.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label}
+                    {productStatusDisplay(option.value)}
                   </option>
                 ))}
               </select>
             </label>
-            <p className="erp-masterdata-audit-hint">Audit metadata records create, update, and status changes.</p>
+            <p className="erp-masterdata-audit-hint">{productCopy("form.auditHint")}</p>
           </FormSection>
         </form>
       </section>
 
       <DetailDrawer
         open={Boolean(selectedItem)}
-        title={selectedItem?.skuCode ?? "SKU detail"}
+        title={selectedItem?.skuCode ?? productCopy("detail.title")}
         subtitle={selectedItem?.name}
         onClose={clearSelectedItem}
         footer={
           selectedItem ? (
             <button className="erp-button erp-button--secondary" type="button" onClick={() => startEdit(selectedItem)}>
-              Edit
+              {productCopy("actions.edit")}
             </button>
           ) : null
         }
@@ -347,10 +346,10 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">MD</p>
-          <h1 className="erp-page-title">Master Data</h1>
-          <p className="erp-page-description">Item and SKU catalog for cosmetic operations</p>
+          <h1 className="erp-page-title">{productCopy("page.title")}</h1>
+          <p className="erp-page-description">{productCopy("page.description")}</p>
         </div>
-        <StatusChip tone="info">{summary.total} SKUs</StatusChip>
+        <StatusChip tone="info">{productCopy("page.skuCount", { count: summary.total })}</StatusChip>
       </header>
       {content}
     </section>
@@ -364,14 +363,14 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
 function ProductDetail({ item }: { item: ProductMasterDataItem }) {
   return (
     <div className="erp-masterdata-detail-grid">
-      <MasterDataFact label="Item code" value={item.itemCode} />
-      <MasterDataFact label="SKU" value={item.skuCode} />
-      <MasterDataFact label="Type" value={productTypeLabel(item.itemType)} />
-      <MasterDataFact label="Status" value={statusLabel(item.status)} />
-      <MasterDataFact label="UOM" value={item.uomBase} />
-      <MasterDataFact label="Shelf life" value={`${item.shelfLifeDays ?? 0} days`} />
-      <MasterDataFact label="Spec" value={item.specVersion || "-"} />
-      <MasterDataFact label="Audit" value={item.auditLogId || "Tracked on write"} />
+      <MasterDataFact label={productCopy("detail.itemCode")} value={item.itemCode} />
+      <MasterDataFact label={productCopy("detail.sku")} value={item.skuCode} />
+      <MasterDataFact label={productCopy("detail.type")} value={productTypeDisplay(item.itemType)} />
+      <MasterDataFact label={productCopy("detail.status")} value={productStatusDisplay(item.status)} />
+      <MasterDataFact label={productCopy("detail.uom")} value={item.uomBase} />
+      <MasterDataFact label={productCopy("detail.shelfLife")} value={productCopy("detail.days", { count: item.shelfLifeDays ?? 0 })} />
+      <MasterDataFact label={productCopy("detail.spec")} value={item.specVersion || "-"} />
+      <MasterDataFact label={productCopy("detail.audit")} value={item.auditLogId || productCopy("detail.auditFallback")} />
     </div>
   );
 }
@@ -430,16 +429,28 @@ function ToggleField({ label, checked, onChange }: { label: string; checked: boo
 
 function controlLabels(item: ProductMasterDataItem) {
   return [
-    item.lotControlled ? "Lot" : undefined,
-    item.expiryControlled ? "Expiry" : undefined,
-    item.qcRequired ? "QC" : undefined
+    item.lotControlled ? productCopy("controls.lot") : undefined,
+    item.expiryControlled ? productCopy("controls.expiry") : undefined,
+    item.qcRequired ? productCopy("controls.qc") : undefined
   ].filter((label): label is string => Boolean(label));
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" }).format(new Date(value));
+  return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(new Date(value));
 }
 
 function errorText(error: unknown) {
-  return error instanceof Error ? error.message : "Product master data request failed";
+  return error instanceof Error ? error.message : productCopy("errors.requestFailed");
+}
+
+function productStatusDisplay(status: ProductStatus) {
+  return productCopy(`product.status.${status}`);
+}
+
+function productTypeDisplay(type: ProductType) {
+  return productCopy(`product.type.${type}`);
+}
+
+function productCopy(key: string, values?: Record<string, string | number>, fallback?: string) {
+  return t(`masterdata.${key}`, { values, fallback });
 }
