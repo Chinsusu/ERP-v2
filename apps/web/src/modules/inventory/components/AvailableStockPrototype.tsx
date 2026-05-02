@@ -32,81 +32,81 @@ import type {
 } from "../types";
 
 const warehouseOptions = [
-  { label: "All warehouses", value: "" },
+  { label: inventoryCopy("filters.allWarehouses"), value: "" },
   { label: "HCM", value: "wh-hcm" },
   { label: "HN", value: "wh-hn" }
 ];
 
 const qcStatusOptions: { label: string; value: BatchQCStatus }[] = [
-  { label: "Pass", value: "pass" },
-  { label: "Fail", value: "fail" },
-  { label: "Quarantine", value: "quarantine" },
-  { label: "Retest", value: "retest_required" }
+  { label: inventoryCopy("qc.status.pass"), value: "pass" },
+  { label: inventoryCopy("qc.status.fail"), value: "fail" },
+  { label: inventoryCopy("qc.status.quarantine"), value: "quarantine" },
+  { label: inventoryCopy("qc.status.retest_required"), value: "retest_required" }
 ];
 
 const columns: DataTableColumn<AvailableStockItem>[] = [
   {
     key: "warehouse",
-    header: "Warehouse",
+    header: inventoryCopy("availableStock.columns.warehouse"),
     render: (row) => row.warehouseCode,
     width: "110px"
   },
   {
     key: "location",
-    header: "Location",
+    header: inventoryCopy("availableStock.columns.location"),
     render: (row) => row.locationCode ?? "-",
     width: "110px"
   },
   {
     key: "sku",
-    header: "SKU",
+    header: inventoryCopy("availableStock.columns.sku"),
     render: (row) => row.sku,
     width: "180px"
   },
   {
     key: "batch",
-    header: "Batch",
+    header: inventoryCopy("availableStock.columns.batch"),
     render: (row) => row.batchNo ?? "-",
     width: "150px"
   },
   {
     key: "physical",
-    header: "Physical",
+    header: inventoryCopy("availableStock.columns.physical"),
     render: (row) => formatQuantity(row.physicalQty, row.baseUomCode),
     align: "right",
     width: "130px"
   },
   {
     key: "reserved",
-    header: "Reserved",
+    header: inventoryCopy("availableStock.columns.reserved"),
     render: (row) => formatQuantity(row.reservedQty, row.baseUomCode),
     align: "right",
     width: "130px"
   },
   {
     key: "qcHold",
-    header: "QC Hold",
+    header: inventoryCopy("availableStock.columns.qcHold"),
     render: (row) => formatQuantity(row.qcHoldQty, row.baseUomCode),
     align: "right",
     width: "130px"
   },
   {
     key: "blocked",
-    header: "Blocked",
+    header: inventoryCopy("availableStock.columns.blocked"),
     render: (row) => formatQuantity(row.blockedQty, row.baseUomCode),
     align: "right",
     width: "130px"
   },
   {
     key: "available",
-    header: "Available",
+    header: inventoryCopy("availableStock.columns.available"),
     render: (row) => formatQuantity(row.availableQty, row.baseUomCode),
     align: "right",
     width: "130px"
   },
   {
     key: "state",
-    header: "State",
+    header: inventoryCopy("availableStock.columns.state"),
     render: (row) => <StatusChip tone={availabilityTone(row)}>{statusLabel(row)}</StatusChip>,
     width: "130px"
   }
@@ -115,17 +115,17 @@ const columns: DataTableColumn<AvailableStockItem>[] = [
 const transitionColumns: DataTableColumn<BatchQCTransition>[] = [
   {
     key: "createdAt",
-    header: "Time",
+    header: inventoryCopy("qc.columns.time"),
     render: (row) => formatDateTime(row.createdAt),
     width: "180px"
   },
   {
     key: "status",
-    header: "QC status",
+    header: inventoryCopy("qc.columns.status"),
     render: (row) => (
       <span className="erp-stock-qc-status-flow">
         <StatusChip tone={qcStatusTone(row.fromQcStatus)}>{qcStatusLabel(row.fromQcStatus)}</StatusChip>
-        <span>to</span>
+        <span>{inventoryCopy("qc.to")}</span>
         <StatusChip tone={qcStatusTone(row.toQcStatus)}>{qcStatusLabel(row.toQcStatus)}</StatusChip>
       </span>
     ),
@@ -133,24 +133,24 @@ const transitionColumns: DataTableColumn<BatchQCTransition>[] = [
   },
   {
     key: "actor",
-    header: "Actor",
+    header: inventoryCopy("qc.columns.actor"),
     render: (row) => row.actorId,
     width: "150px"
   },
   {
     key: "businessRef",
-    header: "Ref",
+    header: inventoryCopy("qc.columns.ref"),
     render: (row) => row.businessRef || "-",
     width: "150px"
   },
   {
     key: "reason",
-    header: "Reason",
+    header: inventoryCopy("qc.columns.reason"),
     render: (row) => row.reason
   },
   {
     key: "audit",
-    header: "Audit",
+    header: inventoryCopy("qc.columns.audit"),
     render: (row) => row.auditLogId,
     width: "190px"
   }
@@ -274,6 +274,7 @@ export function AvailableStockPrototype() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [transitionSubmitting, setTransitionSubmitting] = useState(false);
   const [transitionMessage, setTransitionMessage] = useState("");
+  const [transitionMessageTone, setTransitionMessageTone] = useState<StatusTone>("info");
   const [stockCounts, setStockCounts] = useState<StockCountSession[]>([]);
   const [stockCountsLoading, setStockCountsLoading] = useState(false);
   const [selectedStockKey, setSelectedStockKey] = useState("");
@@ -424,9 +425,11 @@ export function AvailableStockPrototype() {
       setTransitionReason("");
       setBusinessRef("");
       setTransitions(await getBatchQCTransitions(selectedBatchId));
-      setTransitionMessage("Recorded");
+      setTransitionMessageTone("success");
+      setTransitionMessage(inventoryCopy("qc.messages.recorded"));
     } catch {
-      setTransitionMessage("Could not record");
+      setTransitionMessageTone("danger");
+      setTransitionMessage(inventoryCopy("qc.messages.recordError"));
     } finally {
       setTransitionSubmitting(false);
     }
@@ -536,14 +539,14 @@ export function AvailableStockPrototype() {
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">IV</p>
-          <h1 className="erp-page-title">Inventory</h1>
-          <p className="erp-page-description">Available stock by warehouse, SKU, and batch</p>
+          <h1 className="erp-page-title">{inventoryCopy("title")}</h1>
+          <p className="erp-page-description">{inventoryCopy("description")}</p>
         </div>
       </header>
 
-      <section className="erp-stock-toolbar" aria-label="Inventory filters">
+      <section className="erp-stock-toolbar" aria-label={inventoryCopy("filters.label")}>
         <label className="erp-field">
-          <span>Warehouse</span>
+          <span>{inventoryCopy("filters.warehouse")}</span>
           <select className="erp-input" value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
             {warehouseOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -553,7 +556,7 @@ export function AvailableStockPrototype() {
           </select>
         </label>
         <label className="erp-field">
-          <span>Location</span>
+          <span>{inventoryCopy("filters.location")}</span>
           <input
             className="erp-input"
             type="search"
@@ -563,7 +566,7 @@ export function AvailableStockPrototype() {
           />
         </label>
         <label className="erp-field">
-          <span>SKU</span>
+          <span>{inventoryCopy("filters.sku")}</span>
           <input
             className="erp-input"
             type="search"
@@ -575,17 +578,17 @@ export function AvailableStockPrototype() {
       </section>
 
       <section className="erp-kpi-grid erp-stock-kpis">
-        <StockKPI label="Physical" value={summary.physicalQty} uomCode={summary.baseUomCode} tone="normal" />
-        <StockKPI label="Reserved" value={summary.reservedQty} uomCode={summary.baseUomCode} tone="warning" />
-        <StockKPI label="QC Hold" value={summary.qcHoldQty} uomCode={summary.baseUomCode} tone="danger" />
-        <StockKPI label="Blocked" value={summary.blockedQty} uomCode={summary.baseUomCode} tone="danger" />
-        <StockKPI label="Available" value={summary.availableQty} uomCode={summary.baseUomCode} tone="success" />
+        <StockKPI label={inventoryCopy("kpi.physical")} value={summary.physicalQty} uomCode={summary.baseUomCode} tone="normal" />
+        <StockKPI label={inventoryCopy("kpi.reserved")} value={summary.reservedQty} uomCode={summary.baseUomCode} tone="warning" />
+        <StockKPI label={inventoryCopy("kpi.qcHold")} value={summary.qcHoldQty} uomCode={summary.baseUomCode} tone="danger" />
+        <StockKPI label={inventoryCopy("kpi.blocked")} value={summary.blockedQty} uomCode={summary.baseUomCode} tone="danger" />
+        <StockKPI label={inventoryCopy("kpi.available")} value={summary.availableQty} uomCode={summary.baseUomCode} tone="success" />
       </section>
 
       <section className="erp-card erp-card--padded erp-module-table-card">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Available stock</h2>
-          <StatusChip tone={items.length === 0 ? "warning" : "info"}>{items.length} rows</StatusChip>
+          <h2 className="erp-section-title">{inventoryCopy("availableStock.title")}</h2>
+          <StatusChip tone={items.length === 0 ? "warning" : "info"}>{inventoryCopy("availableStock.rows", { count: items.length })}</StatusChip>
         </div>
         <DataTable
           columns={columns}
@@ -731,15 +734,15 @@ export function AvailableStockPrototype() {
 
       <section className="erp-card erp-card--padded erp-module-table-card erp-stock-qc-audit">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Batch QC audit</h2>
+          <h2 className="erp-section-title">{inventoryCopy("qc.title")}</h2>
           <StatusChip tone={selectedBatchQCStatus ? qcStatusTone(selectedBatchQCStatus) : "normal"}>
-            {selectedBatchQCStatus ? qcStatusLabel(selectedBatchQCStatus) : "No batch"}
+            {selectedBatchQCStatus ? qcStatusLabel(selectedBatchQCStatus) : inventoryCopy("qc.noBatch")}
           </StatusChip>
         </div>
 
         <form className="erp-stock-qc-form" onSubmit={handleTransitionSubmit}>
           <label className="erp-field">
-            <span>Batch</span>
+            <span>{inventoryCopy("qc.batch")}</span>
             <select
               className="erp-input"
               value={selectedBatchId}
@@ -753,7 +756,7 @@ export function AvailableStockPrototype() {
             </select>
           </label>
           <label className="erp-field">
-            <span>Next QC</span>
+            <span>{inventoryCopy("qc.nextQC")}</span>
             <select
               className="erp-input"
               value={nextQCStatus}
@@ -761,13 +764,13 @@ export function AvailableStockPrototype() {
             >
               {qcStatusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {qcStatusLabel(option.value)}
                 </option>
               ))}
             </select>
           </label>
           <label className="erp-field">
-            <span>Reference</span>
+            <span>{inventoryCopy("qc.reference")}</span>
             <input
               className="erp-input"
               type="text"
@@ -777,12 +780,12 @@ export function AvailableStockPrototype() {
             />
           </label>
           <label className="erp-field erp-stock-qc-reason">
-            <span>Reason</span>
+            <span>{inventoryCopy("qc.reason")}</span>
             <input
               className="erp-input"
               type="text"
               value={transitionReason}
-              placeholder="COA and visual inspection passed"
+              placeholder={inventoryCopy("qc.reasonPlaceholder")}
               required
               onChange={(event) => setTransitionReason(event.target.value)}
             />
@@ -792,9 +795,9 @@ export function AvailableStockPrototype() {
             type="submit"
             disabled={!selectedBatchId || transitionReason.trim() === "" || transitionSubmitting}
           >
-            {transitionSubmitting ? "Recording" : "Record"}
+            {transitionSubmitting ? inventoryCopy("qc.recording") : inventoryCopy("qc.record")}
           </button>
-          {transitionMessage ? <StatusChip tone={transitionMessage === "Recorded" ? "success" : "danger"}>{transitionMessage}</StatusChip> : null}
+          {transitionMessage ? <StatusChip tone={transitionMessageTone}>{transitionMessage}</StatusChip> : null}
         </form>
 
         <DataTable
@@ -830,16 +833,16 @@ function StockKPI({
 
 function statusLabel(item: AvailableStockItem) {
   if (item.availableQty === "0.000000") {
-    return "Blocked";
+    return inventoryCopy("state.blocked");
   }
   if (item.qcHoldQty !== "0.000000") {
-    return "QC Hold";
+    return inventoryCopy("state.qcHold");
   }
   if (item.blockedQty !== "0.000000") {
-    return "Blocked";
+    return inventoryCopy("state.blocked");
   }
 
-  return "Available";
+  return inventoryCopy("state.available");
 }
 
 function uniqueBatchOptions(items: AvailableStockItem[]) {
@@ -1056,16 +1059,16 @@ function stockAdjustmentStatusTone(status: StockAdjustmentStatus): StatusTone {
 function qcStatusLabel(status: BatchQCStatus) {
   switch (status) {
     case "pass":
-      return "Pass";
+      return inventoryCopy("qc.status.pass");
     case "fail":
-      return "Fail";
+      return inventoryCopy("qc.status.fail");
     case "quarantine":
-      return "Quarantine";
+      return inventoryCopy("qc.status.quarantine");
     case "retest_required":
-      return "Retest";
+      return inventoryCopy("qc.status.retest_required");
     case "hold":
     default:
-      return "Hold";
+      return inventoryCopy("qc.status.hold");
   }
 }
 

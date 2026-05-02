@@ -1,5 +1,72 @@
 {
   "title": "Inventory",
+  "description": "Available stock by warehouse, SKU, and batch",
+  "filters": {
+    "label": "Inventory filters",
+    "warehouse": "Warehouse",
+    "location": "Location",
+    "sku": "SKU",
+    "allWarehouses": "All warehouses"
+  },
+  "kpi": {
+    "physical": "Physical",
+    "reserved": "Reserved",
+    "qcHold": "QC Hold",
+    "blocked": "Blocked",
+    "available": "Available"
+  },
+  "state": {
+    "blocked": "Blocked",
+    "qcHold": "QC Hold",
+    "available": "Available"
+  },
+  "availableStock": {
+    "title": "Available stock",
+    "rows": "{count} rows",
+    "columns": {
+      "warehouse": "Warehouse",
+      "location": "Location",
+      "sku": "SKU",
+      "batch": "Batch",
+      "physical": "Physical",
+      "reserved": "Reserved",
+      "qcHold": "QC Hold",
+      "blocked": "Blocked",
+      "available": "Available",
+      "state": "State"
+    }
+  },
+  "qc": {
+    "title": "Batch QC audit",
+    "noBatch": "No batch",
+    "batch": "Batch",
+    "nextQC": "Next QC",
+    "reference": "Reference",
+    "reason": "Reason",
+    "reasonPlaceholder": "COA and visual inspection passed",
+    "record": "Record",
+    "recording": "Recording",
+    "to": "to",
+    "columns": {
+      "time": "Time",
+      "status": "QC status",
+      "actor": "Actor",
+      "ref": "Ref",
+      "reason": "Reason",
+      "audit": "Audit"
+    },
+    "status": {
+      "hold": "Hold",
+      "pass": "Pass",
+      "fail": "Fail",
+      "quarantine": "Quarantine",
+      "retest_required": "Retest"
+    },
+    "messages": {
+      "recorded": "Recorded",
+      "recordError": "Could not record"
+    }
+  },
   "stockCount": {
     "title": "Stock counts",
     "sessions": "{count} sessions",

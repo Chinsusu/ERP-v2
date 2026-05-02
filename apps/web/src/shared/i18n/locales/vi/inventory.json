@@ -1,5 +1,72 @@
 {
   "title": "Kho hàng",
+  "description": "Tồn khả dụng theo kho, SKU và lô",
+  "filters": {
+    "label": "Bộ lọc tồn kho",
+    "warehouse": "Kho",
+    "location": "Vị trí",
+    "sku": "SKU",
+    "allWarehouses": "Tất cả kho"
+  },
+  "kpi": {
+    "physical": "Tồn thực tế",
+    "reserved": "Tồn đã giữ",
+    "qcHold": "Giữ QC",
+    "blocked": "Bị chặn",
+    "available": "Tồn khả dụng"
+  },
+  "state": {
+    "blocked": "Bị chặn",
+    "qcHold": "Giữ QC",
+    "available": "Khả dụng"
+  },
+  "availableStock": {
+    "title": "Tồn khả dụng",
+    "rows": "{count} dòng",
+    "columns": {
+      "warehouse": "Kho",
+      "location": "Vị trí",
+      "sku": "SKU",
+      "batch": "Lô",
+      "physical": "Tồn thực tế",
+      "reserved": "Tồn đã giữ",
+      "qcHold": "Giữ QC",
+      "blocked": "Bị chặn",
+      "available": "Khả dụng",
+      "state": "Trạng thái"
+    }
+  },
+  "qc": {
+    "title": "Nhật ký QC lô",
+    "noBatch": "Chưa chọn lô",
+    "batch": "Lô",
+    "nextQC": "QC tiếp theo",
+    "reference": "Tham chiếu",
+    "reason": "Lý do",
+    "reasonPlaceholder": "COA và kiểm ngoại quan đạt",
+    "record": "Ghi nhận",
+    "recording": "Đang ghi",
+    "to": "sang",
+    "columns": {
+      "time": "Thời gian",
+      "status": "Trạng thái QC",
+      "actor": "Người thao tác",
+      "ref": "Tham chiếu",
+      "reason": "Lý do",
+      "audit": "Nhật ký"
+    },
+    "status": {
+      "hold": "Đang giữ kiểm",
+      "pass": "Đạt QC",
+      "fail": "Không đạt QC",
+      "quarantine": "Cách ly QC",
+      "retest_required": "Cần kiểm lại"
+    },
+    "messages": {
+      "recorded": "Đã ghi nhận",
+      "recordError": "Không thể ghi nhận"
+    }
+  },
   "stockCount": {
     "title": "Kiểm kê tồn kho",
     "sessions": "{count} phiên",
