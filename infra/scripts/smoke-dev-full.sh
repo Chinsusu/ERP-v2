@@ -82,6 +82,11 @@ json_check() {
   fi
 }
 
+json_string_field() {
+  field="$1"
+  sed -n "s/.*\"$field\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$tmp_body" | head -n 1
+}
+
 csv_check() {
   curl_check "$1" GET "$2" 200 "" auth
 }
@@ -1525,6 +1530,53 @@ persisted_audit_login_check() {
   printf '%-28s %s %s->%s\n' "persisted_audit_login" "ok" "$before_count" "$after_count"
 }
 
+persisted_auth_session_check() {
+  previous_access_token="$access_token"
+
+  curl_check "auth_session_login" POST "$api_base/auth/login" 200 "$login_body" noauth
+  session_access_token="$(json_string_field "access_token")"
+  session_refresh_token="$(json_string_field "refresh_token")"
+  if [ "$session_access_token" = "" ] || [ "$session_refresh_token" = "" ]; then
+    echo "persisted_auth_session failed: login tokens missing" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  access_token="$session_access_token"
+  json_check "auth_me_before_restart" "$api_base/me"
+  restart_api_service
+  json_check "auth_me_after_restart" "$api_base/me"
+
+  refresh_body="$(printf '{"refresh_token":"%s"}' "$(json_escape "$session_refresh_token")")"
+  curl_check "auth_refresh_rotate" POST "$api_base/auth/refresh" 200 "$refresh_body" noauth
+  rotated_access_token="$(json_string_field "access_token")"
+  if [ "$rotated_access_token" = "" ] || [ "$rotated_access_token" = "$session_access_token" ]; then
+    echo "persisted_auth_session failed: refresh token did not rotate access token" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+  curl_check "auth_old_refresh_reject" POST "$api_base/auth/refresh" 401 "$refresh_body" noauth
+
+  lock_email="s18-smoke-lockout-$(date +%s)@example.local"
+  lock_body="$(printf '{"email":"%s","password":"wrong-password!"}' "$(json_escape "$lock_email")")"
+  for attempt in 1 2 3 4 5; do
+    curl_check "auth_lockout_attempt_$attempt" POST "$api_base/auth/login" 401 "$lock_body" noauth
+  done
+  restart_api_service
+  lock_check_body="$(printf '{"email":"%s","password":"%s"}' "$(json_escape "$lock_email")" "$(json_escape "$login_password")")"
+  curl_check "auth_lockout_after_restart" POST "$api_base/auth/login" 401 "$lock_check_body" noauth
+  if ! grep -q '"reason"[[:space:]]*:[[:space:]]*"locked"' "$tmp_body" &&
+    ! grep -q 'Account temporarily locked' "$tmp_body"; then
+    echo "persisted_auth_session failed: lockout reason missing after restart" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+  postgres_exec "DELETE FROM core.auth_login_failures WHERE email_normalized = '$lock_email';"
+
+  access_token="$previous_access_token"
+  printf '%-28s %s %s\n' "persisted_auth_session" "ok" "access/refresh/lockout"
+}
+
 persisted_sales_reservation_check() {
   smoke_index="$(postgres_scalar "select count(*) + 1 from inventory.stock_reservations where reservation_ref like 'rsv-so-s10-02-03-smoke-%'")"
   case "$smoke_index" in
@@ -1586,6 +1638,7 @@ if ! grep -q '"access_token"[[:space:]]*:' "$tmp_body"; then
   exit 1
 fi
 persisted_audit_login_check "$audit_login_before_count"
+persisted_auth_session_check
 
 json_check "warehouse_fulfillment" "$api_base/warehouse/daily-board/fulfillment-metrics?business_date=2026-04-30&warehouse_id=wh-hcm"
 json_check "warehouse_inbound" "$api_base/warehouse/daily-board/inbound-metrics?business_date=2026-04-30&warehouse_id=wh-hcm"
