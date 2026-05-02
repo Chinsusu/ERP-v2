@@ -36,6 +36,8 @@ describe("Vietnamese-first i18n foundation", () => {
     expect(t("sales.actions.confirm")).toBe("Xác nhận");
     expect(t("shipping.picking.title")).toBe("Trạm soạn hàng");
     expect(t("shipping.picking.scan.readyTitle")).toBe("Sẵn sàng quét");
+    expect(t("shipping.packing.title")).toBe("Trạm đóng hàng");
+    expect(t("shipping.packing.scan.readyTitle")).toBe("Sẵn sàng đóng hàng");
   });
 
   it("centralizes status, error, validation, and unit labels", () => {

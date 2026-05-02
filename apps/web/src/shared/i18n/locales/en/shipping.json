@@ -92,5 +92,91 @@
       "wrong_location": "Wrong location",
       "cancelled": "Cancel task"
     }
+  },
+  "packing": {
+    "title": "Packing Station",
+    "description": "Confirm SKU, batch, and base UOM quantity before carrier handover.",
+    "actions": {
+      "start": "Start",
+      "confirmPack": "Confirm pack",
+      "select": "Select"
+    },
+    "filters": {
+      "label": "Packing filters",
+      "warehouse": "Warehouse",
+      "status": "Status",
+      "assignedUser": "Assigned user",
+      "assignedPlaceholder": "user-packer",
+      "allStatuses": "All statuses"
+    },
+    "columns": {
+      "task": "Pack task",
+      "warehouse": "Warehouse",
+      "status": "Status",
+      "lines": "Lines",
+      "batch": "Batch",
+      "qty": "Qty",
+      "packed": "Packed",
+      "state": "State"
+    },
+    "kpi": {
+      "openTasks": "Open tasks",
+      "pendingLines": "Pending lines",
+      "packedLines": "Packed lines",
+      "exceptions": "Exceptions"
+    },
+    "sections": {
+      "packingQueue": "Packing queue",
+      "packTasks": "Pack tasks",
+      "packLines": "Pack lines",
+      "packLinesDescription": "SKU, batch, base UOM quantity, and packed quantity."
+    },
+    "facts": {
+      "order": "Order",
+      "pickTask": "Pick task",
+      "warehouse": "Warehouse",
+      "nextSku": "Next SKU",
+      "batch": "Batch",
+      "qty": "Qty"
+    },
+    "scan": {
+      "label": "Scan SKU / batch / pack line",
+      "placeholderDone": "All lines packed",
+      "readyTitle": "Ready to pack",
+      "readyDetail": "Scan SKU, batch, or pack line code",
+      "cannotAccept": "Task cannot accept scans",
+      "notMatched": "Scan does not match pending line",
+      "verified": "{sku} verified",
+      "started": "Pack task started",
+      "confirmed": "Pack confirmed",
+      "exceptionReported": "Exception reported",
+      "actionFailed": "Packing action failed",
+      "unknownError": "Unknown error"
+    },
+    "note": {
+      "label": "Packing note",
+      "placeholder": "Seal damage, shortage, wrong item, or package note"
+    },
+    "exceptionReason": "Reported from packing station: {code}",
+    "empty": {
+      "noTaskSelected": "No pack task selected",
+      "selectTask": "Select a pack task"
+    },
+    "rows": "{count} rows",
+    "status": {
+      "created": "Created",
+      "in_progress": "In progress",
+      "packed": "Packed",
+      "pack_exception": "Pack exception",
+      "cancelled": "Cancelled",
+      "pending": "Pending"
+    },
+    "warehouse": {
+      "all": "All warehouses",
+      "wh-hcm-fg": "Finished Goods HCM"
+    },
+    "exceptions": {
+      "pack_exception": "Pack exception"
+    }
   }
 }

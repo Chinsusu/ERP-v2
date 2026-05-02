@@ -8,6 +8,7 @@ import {
   type DataTableColumn,
   type StatusTone
 } from "@/shared/design-system/components";
+import { t } from "@/shared/i18n";
 import { usePackTasks } from "../hooks/usePackTasks";
 import {
   confirmPackTask,
@@ -35,7 +36,7 @@ function createTaskColumns(
   return [
     {
       key: "task",
-      header: "Pack task",
+      header: packingCopy("columns.task"),
       render: (row) => (
         <span className="erp-packing-task-cell">
           <strong>{row.packTaskNo}</strong>
@@ -46,19 +47,19 @@ function createTaskColumns(
     },
     {
       key: "warehouse",
-      header: "Warehouse",
+      header: packingCopy("columns.warehouse"),
       render: (row) => row.warehouseCode,
       width: "120px"
     },
     {
       key: "status",
-      header: "Status",
+      header: packingCopy("columns.status"),
       render: (row) => <StatusChip tone={packTaskStatusTone(row.status)}>{packTaskStatusLabel(row.status)}</StatusChip>,
       width: "140px"
     },
     {
       key: "lines",
-      header: "Lines",
+      header: packingCopy("columns.lines"),
       render: (row) => `${packedLineCount(row)}/${row.lines.length}`,
       align: "right",
       width: "90px"
@@ -72,7 +73,7 @@ function createTaskColumns(
           type="button"
           onClick={() => onSelectTask(row.id)}
         >
-          Select
+          {packingCopy("actions.select")}
         </button>
       ),
       align: "right",
@@ -95,7 +96,7 @@ const lineColumns: DataTableColumn<PackTaskLine>[] = [
   },
   {
     key: "batch",
-    header: "Batch",
+    header: packingCopy("columns.batch"),
     render: (row) => (
       <span className="erp-packing-line-cell">
         <strong>{row.batchNo}</strong>
@@ -106,21 +107,21 @@ const lineColumns: DataTableColumn<PackTaskLine>[] = [
   },
   {
     key: "qty",
-    header: "Qty",
+    header: packingCopy("columns.qty"),
     render: (row) => <QuantityDisplay value={row.qtyToPack} uomCode={row.baseUOMCode} />,
     align: "right",
     width: "120px"
   },
   {
     key: "packed",
-    header: "Packed",
+    header: packingCopy("columns.packed"),
     render: (row) => <QuantityDisplay value={row.qtyPacked} uomCode={row.baseUOMCode} />,
     align: "right",
     width: "120px"
   },
   {
     key: "state",
-    header: "State",
+    header: packingCopy("columns.state"),
     render: (row) => <StatusChip tone={packTaskLineStatusTone(row.status)}>{packTaskLineStatusLabel(row.status)}</StatusChip>,
     width: "130px"
   }
@@ -142,8 +143,8 @@ export function PackingPrototype() {
   const [packingNote, setPackingNote] = useState("");
   const [feedback, setFeedback] = useState<ScanFeedback>({
     tone: "info",
-    title: "Ready to pack",
-    detail: "Scan SKU, batch, or pack line code"
+    title: packingCopy("scan.readyTitle"),
+    detail: packingCopy("scan.readyDetail")
   });
   const [busy, setBusy] = useState(false);
   const [localTasks, setLocalTasks] = useState<PackTask[]>([]);
@@ -195,8 +196,8 @@ export function PackingPrototype() {
     setPackingNote("");
     setFeedback({
       tone: "info",
-      title: "Ready to pack",
-      detail: "Scan SKU, batch, or pack line code"
+      title: packingCopy("scan.readyTitle"),
+      detail: packingCopy("scan.readyDetail")
     });
   }
 
@@ -207,7 +208,7 @@ export function PackingPrototype() {
     await runPackAction(async () => {
       const task = await startPackTask(selectedTask.id);
       patchTask(task);
-      setFeedback({ tone: "success", title: "Pack task started", detail: task.packTaskNo });
+      setFeedback({ tone: "success", title: packingCopy("scan.started"), detail: task.packTaskNo });
     });
   }
 
@@ -227,13 +228,13 @@ export function PackingPrototype() {
         patchTask(task);
       }
       if (task.status !== "in_progress") {
-        setFeedback({ tone: "danger", title: "Task cannot accept scans", detail: packTaskStatusLabel(task.status) });
+        setFeedback({ tone: "danger", title: packingCopy("scan.cannotAccept"), detail: packTaskStatusLabel(task.status) });
         return;
       }
 
       const matchedLine = task.lines.find((line) => line.status === "pending" && matchesPackScan(line, code));
       if (!matchedLine) {
-        setFeedback({ tone: "danger", title: "Scan does not match pending line", detail: code.toUpperCase() });
+        setFeedback({ tone: "danger", title: packingCopy("scan.notMatched"), detail: code.toUpperCase() });
         window.setTimeout(() => scanInputRef.current?.select(), 0);
         return;
       }
@@ -241,7 +242,7 @@ export function PackingPrototype() {
       setScanValue("");
       setFeedback({
         tone: "success",
-        title: `${matchedLine.skuCode} verified`,
+        title: packingCopy("scan.verified", { sku: matchedLine.skuCode }),
         detail: `${matchedLine.batchNo} / ${matchedLine.qtyToPack} ${matchedLine.baseUOMCode}`
       });
       window.setTimeout(() => scanInputRef.current?.focus(), 0);
@@ -259,7 +260,7 @@ export function PackingPrototype() {
       }));
       const task = await confirmPackTask(selectedTask.id, lines);
       patchTask(task);
-      setFeedback({ tone: "success", title: "Pack confirmed", detail: task.orderNo });
+      setFeedback({ tone: "success", title: packingCopy("scan.confirmed"), detail: task.orderNo });
     });
   }
 
@@ -271,11 +272,11 @@ export function PackingPrototype() {
       const task = await reportPackTaskException(
         selectedTask.id,
         code,
-        packingNote || `Reported from packing station: ${code}`,
+        packingNote || packingCopy("exceptionReason", { code }),
         pendingLine?.id
       );
       patchTask(task);
-      setFeedback({ tone: "danger", title: "Exception reported", detail: packTaskStatusLabel(task.status) });
+      setFeedback({ tone: "danger", title: packingCopy("scan.exceptionReported"), detail: packTaskStatusLabel(task.status) });
     });
   }
 
@@ -286,8 +287,8 @@ export function PackingPrototype() {
     } catch (cause) {
       setFeedback({
         tone: "danger",
-        title: "Packing action failed",
-        detail: cause instanceof Error ? cause.message : "Unknown error"
+        title: packingCopy("scan.actionFailed"),
+        detail: cause instanceof Error ? cause.message : packingCopy("scan.unknownError")
       });
     } finally {
       setBusy(false);
@@ -304,84 +305,93 @@ export function PackingPrototype() {
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">PACK</p>
-          <h1 className="erp-page-title">Packing Station</h1>
-          <p className="erp-page-description">Confirm packed SKU, batch, and base UOM quantity before carrier manifest</p>
+          <h1 className="erp-page-title">{packingCopy("title")}</h1>
+          <p className="erp-page-description">{packingCopy("description")}</p>
         </div>
         <div className="erp-page-actions">
           <button className="erp-button erp-button--secondary" type="button" onClick={handleStartTask} disabled={!canStart}>
-            Start
+            {packingCopy("actions.start")}
           </button>
           <button className="erp-button erp-button--primary" type="button" onClick={handleConfirmTask} disabled={!canConfirm}>
-            Confirm pack
+            {packingCopy("actions.confirmPack")}
           </button>
         </div>
       </header>
 
-      <section className="erp-packing-toolbar" aria-label="Packing filters">
+      <section className="erp-packing-toolbar" aria-label={packingCopy("filters.label")}>
         <label className="erp-field">
-          <span>Warehouse</span>
+          <span>{packingCopy("filters.warehouse")}</span>
           <select className="erp-input" value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
             {packTaskWarehouseOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {packingWarehouseLabel(option.value, option.label)}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Status</span>
+          <span>{packingCopy("filters.status")}</span>
           <select className="erp-input" value={status} onChange={(event) => setStatus(event.target.value as "" | PackTaskStatus)}>
             {packTaskStatusOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? packTaskStatusLabel(option.value) : packingCopy("filters.allStatuses")}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Assigned user</span>
-          <input className="erp-input" value={assignedTo} onChange={(event) => setAssignedTo(event.target.value)} placeholder="user-packer" />
+          <span>{packingCopy("filters.assignedUser")}</span>
+          <input
+            className="erp-input"
+            value={assignedTo}
+            onChange={(event) => setAssignedTo(event.target.value)}
+            placeholder={packingCopy("filters.assignedPlaceholder")}
+          />
         </label>
       </section>
 
       <section className="erp-kpi-grid erp-packing-kpis">
-        <PackingKPI label="Open tasks" value={totals.open} tone="info" />
-        <PackingKPI label="Pending lines" value={totals.pending} tone={totals.pending === 0 ? "success" : "warning"} />
-        <PackingKPI label="Packed lines" value={totals.packed} tone="success" />
-        <PackingKPI label="Exceptions" value={totals.exceptions} tone={totals.exceptions === 0 ? "normal" : "danger"} />
+        <PackingKPI label={packingCopy("kpi.openTasks")} value={totals.open} tone="info" />
+        <PackingKPI label={packingCopy("kpi.pendingLines")} value={totals.pending} tone={totals.pending === 0 ? "success" : "warning"} />
+        <PackingKPI label={packingCopy("kpi.packedLines")} value={totals.packed} tone="success" />
+        <PackingKPI label={packingCopy("kpi.exceptions")} value={totals.exceptions} tone={totals.exceptions === 0 ? "normal" : "danger"} />
       </section>
 
       <section className="erp-packing-workspace">
         <div className="erp-card erp-card--padded erp-packing-station-card">
           <div className="erp-section-header">
             <div>
-              <h2 className="erp-section-title">Packing queue</h2>
-              <p className="erp-section-description">{selectedTask?.packTaskNo ?? "No pack task selected"}</p>
+              <h2 className="erp-section-title">{packingCopy("sections.packingQueue")}</h2>
+              <p className="erp-section-description">{selectedTask?.packTaskNo ?? packingCopy("empty.noTaskSelected")}</p>
             </div>
             {selectedTask ? <StatusChip tone={packTaskStatusTone(selectedTask.status)}>{packTaskStatusLabel(selectedTask.status)}</StatusChip> : null}
           </div>
 
           <div className="erp-packing-meta-grid">
-            <PackingFact label="Order" value={selectedTask?.orderNo ?? "-"} />
-            <PackingFact label="Pick task" value={selectedTask?.pickTaskNo ?? "-"} />
-            <PackingFact label="Warehouse" value={selectedTask?.warehouseCode ?? "-"} />
-            <PackingFact label="Next SKU" value={pendingLine?.skuCode ?? "-"} />
-            <PackingFact label="Batch" value={pendingLine?.batchNo ?? "-"} />
+            <PackingFact label={packingCopy("facts.order")} value={selectedTask?.orderNo ?? "-"} />
+            <PackingFact label={packingCopy("facts.pickTask")} value={selectedTask?.pickTaskNo ?? "-"} />
+            <PackingFact label={packingCopy("facts.warehouse")} value={selectedTask?.warehouseCode ?? "-"} />
+            <PackingFact label={packingCopy("facts.nextSku")} value={pendingLine?.skuCode ?? "-"} />
+            <PackingFact label={packingCopy("facts.batch")} value={pendingLine?.batchNo ?? "-"} />
             <PackingFact
-              label="Qty"
+              label={packingCopy("facts.qty")}
               value={pendingLine ? `${pendingLine.qtyToPack} ${pendingLine.baseUOMCode}` : "-"}
               tone={pendingLine ? "info" : "success"}
             />
           </div>
 
           <label className={`erp-packing-scan-primary erp-packing-scan-primary--${feedback.tone}`}>
-            <span>Scan SKU / batch / pack line</span>
+            <span>{packingCopy("scan.label")}</span>
             <input
               ref={scanInputRef}
               value={scanValue}
               onChange={(event) => setScanValue(event.target.value)}
               onKeyDown={handleScanKeyDown}
-              placeholder={pendingLine ? `${pendingLine.skuCode} / ${pendingLine.batchNo} / ${pendingLine.id}` : "All lines packed"}
+              placeholder={
+                pendingLine
+                  ? `${pendingLine.skuCode} / ${pendingLine.batchNo} / ${pendingLine.id}`
+                  : packingCopy("scan.placeholderDone")
+              }
               disabled={!selectedTask || busy || !pendingLine || selectedTask.status === "packed" || exceptionOpen}
             />
             <small>
@@ -391,12 +401,12 @@ export function PackingPrototype() {
           </label>
 
           <label className="erp-field erp-packing-note">
-            <span>Packing note</span>
+            <span>{packingCopy("note.label")}</span>
             <textarea
               className="erp-input"
               value={packingNote}
               onChange={(event) => setPackingNote(event.target.value)}
-              placeholder="Seal damage, shortage, wrong item, or package note"
+              placeholder={packingCopy("note.placeholder")}
               rows={3}
             />
           </label>
@@ -410,7 +420,7 @@ export function PackingPrototype() {
                 onClick={() => handleException(option.value)}
                 disabled={!selectedTask || busy || selectedTask.status === "packed" || exceptionOpen}
               >
-                {option.label}
+                {packingExceptionLabel(option.value)}
               </button>
             ))}
           </div>
@@ -418,8 +428,10 @@ export function PackingPrototype() {
 
         <div className="erp-card erp-card--padded erp-packing-queue-card">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Pack tasks</h2>
-            <StatusChip tone={displayedTasks.length === 0 ? "warning" : "info"}>{displayedTasks.length} rows</StatusChip>
+            <h2 className="erp-section-title">{packingCopy("sections.packTasks")}</h2>
+            <StatusChip tone={displayedTasks.length === 0 ? "warning" : "info"}>
+              {packingCopy("rows", { count: displayedTasks.length })}
+            </StatusChip>
           </div>
           <DataTable
             columns={taskColumns}
@@ -434,8 +446,8 @@ export function PackingPrototype() {
       <section className="erp-card erp-card--padded erp-module-table-card">
         <div className="erp-section-header">
           <div>
-            <h2 className="erp-section-title">Pack lines</h2>
-            <p className="erp-section-description">SKU, batch, base UOM quantity, and packed quantity</p>
+            <h2 className="erp-section-title">{packingCopy("sections.packLines")}</h2>
+            <p className="erp-section-description">{packingCopy("sections.packLinesDescription")}</p>
           </div>
           <StatusChip tone={selectedTask && selectedTask.lines.every((line) => line.status === "packed") ? "success" : "warning"}>
             {selectedTask ? `${packedLineCount(selectedTask)}/${selectedTask.lines.length}` : "0/0"}
@@ -447,8 +459,8 @@ export function PackingPrototype() {
           getRowKey={(row) => row.id}
           emptyState={
             <section className="erp-shipping-empty-state">
-              <StatusChip tone="warning">No task</StatusChip>
-              <strong>Select a pack task</strong>
+              <StatusChip tone="warning">{packingCopy("empty.noTaskSelected")}</StatusChip>
+              <strong>{packingCopy("empty.selectTask")}</strong>
             </section>
           }
         />
@@ -518,34 +530,26 @@ function isExceptionStatus(status: PackTaskStatus) {
   return ["pack_exception", "cancelled"].includes(status);
 }
 
-function packTaskStatusLabel(status: PackTaskStatus) {
-  switch (status) {
-    case "created":
-      return "Created";
-    case "in_progress":
-      return "In progress";
-    case "packed":
-      return "Packed";
-    case "pack_exception":
-      return "Pack exception";
-    case "cancelled":
-      return "Cancelled";
-    default:
-      return status;
+function packingCopy(key: string, values?: Record<string, string | number>) {
+  return t(`shipping.packing.${key}`, { values });
+}
+
+function packingWarehouseLabel(value: string, fallback: string) {
+  if (value === "") {
+    return packingCopy("warehouse.all");
   }
+
+  return t(`shipping.packing.warehouse.${value}`, { fallback });
+}
+
+function packingExceptionLabel(value: PackTaskExceptionCode) {
+  return packingCopy(`exceptions.${value}`);
+}
+
+function packTaskStatusLabel(status: PackTaskStatus) {
+  return packingCopy(`status.${status}`);
 }
 
 function packTaskLineStatusLabel(status: PackTaskLine["status"]) {
-  switch (status) {
-    case "pending":
-      return "Pending";
-    case "packed":
-      return "Packed";
-    case "pack_exception":
-      return "Pack exception";
-    case "cancelled":
-      return "Cancelled";
-    default:
-      return status;
-  }
+  return packingCopy(`status.${status}`);
 }
