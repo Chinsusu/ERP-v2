@@ -222,10 +222,10 @@ Subcontract order, material transfer, sample approval, finished goods receipt, f
 Sprint 16 release gate status:
 
 ```text
-Task PRs: merged through S16-08 hardening PR #481
-Current changelog PR: #482 pending manual review and merge
+Task PRs: merged through S16-10-01 PR #482
 Main cloud CI: blocked by exhausted GitHub Actions minutes
-Dev runtime smoke: green at commit af284cf
+Dev runtime smoke: green at runtime commit af284cf
+Docs-only main sync: green at commit ad3fa354
 Migration apply/rollback: green on PostgreSQL 16 isolated instance
 Production tag: HOLD
 ```
