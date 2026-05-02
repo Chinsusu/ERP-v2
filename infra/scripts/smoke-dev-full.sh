@@ -544,6 +544,539 @@ EOF
   printf '%-28s %s %s\n' "persisted_carrier_manifest" "ok" "$manifest_id"
 }
 
+persisted_pick_pack_check() {
+  smoke_index="$(postgres_scalar "select greatest((select count(*) from shipping.pick_tasks where pick_ref like 'pick-s14-02-02-smoke-%'), (select count(*) from shipping.pack_tasks where pack_ref like 'pack-s14-02-02-smoke-%'), (select count(*) from sales.sales_orders where order_ref like 'so-s14-02-02-smoke-%')) + 1")"
+  case "$smoke_index" in
+    ''|*[!0-9]*)
+      echo "persisted_pick_pack failed: invalid smoke index '$smoke_index'" >&2
+      exit 1
+      ;;
+  esac
+
+  suffix="$(printf '%04d' "$smoke_index")"
+  org_id="00000000-0000-4000-8000-000000000001"
+  user_id="00000000-0000-4000-8000-000000000101"
+  customer_id="00000000-0000-4000-8000-000000000601"
+  unit_id="00000000-0000-4000-8000-000000000401"
+  warehouse_id="00000000-0000-4000-8000-000000000801"
+  bin_id="00000000-0000-4000-8000-000000001001"
+  item_id="00000000-0000-4000-8000-000000001101"
+  batch_id="00000000-0000-4000-8000-000000001201"
+  sales_order_uuid="00000000-0000-4000-8000-00000051$suffix"
+  sales_order_line_uuid="00000000-0000-4000-8000-00000052$suffix"
+  reservation_uuid="00000000-0000-4000-8000-00000053$suffix"
+  pick_task_uuid="00000000-0000-4000-8000-00000054$suffix"
+  pick_line_uuid="00000000-0000-4000-8000-00000055$suffix"
+  pack_task_uuid="00000000-0000-4000-8000-00000056$suffix"
+  pack_line_uuid="00000000-0000-4000-8000-00000057$suffix"
+  sales_order_id="so-s14-02-02-smoke-$suffix"
+  sales_order_line_id="so-line-s14-02-02-smoke-$suffix"
+  sales_order_no="SO-S14-02-02-SMOKE-$suffix"
+  reservation_ref="rsv-s14-02-02-smoke-$suffix"
+  pick_id="pick-s14-02-02-smoke-$suffix"
+  pick_no="PICK-S14-02-02-SMOKE-$suffix"
+  pick_line_id="pick-line-s14-02-02-smoke-$suffix"
+  pack_id="pack-s14-02-02-smoke-$suffix"
+  pack_no="PACK-S14-02-02-SMOKE-$suffix"
+  pack_line_id="pack-line-s14-02-02-smoke-$suffix"
+
+  before_pick_count="$(postgres_scalar "select count(*) from shipping.pick_tasks where org_id = '$org_id'::uuid and pick_ref = '$pick_id'")"
+  before_pack_count="$(postgres_scalar "select count(*) from shipping.pack_tasks where org_id = '$org_id'::uuid and pack_ref = '$pack_id'")"
+  postgres_exec "$(cat <<EOF
+INSERT INTO sales.sales_orders (
+  id,
+  org_id,
+  order_no,
+  customer_id,
+  order_date,
+  channel,
+  status,
+  currency_code,
+  total_amount,
+  subtotal_amount,
+  net_amount,
+  order_ref,
+  org_ref,
+  customer_ref,
+  customer_code,
+  customer_name,
+  warehouse_id,
+  warehouse_ref,
+  warehouse_code,
+  created_at,
+  created_by,
+  created_by_ref,
+  updated_at,
+  updated_by,
+  updated_by_ref,
+  confirmed_at,
+  confirmed_by,
+  confirmed_by_ref,
+  reserved_at,
+  reserved_by,
+  reserved_by_ref,
+  picking_started_at,
+  picking_started_by,
+  picking_started_by_ref,
+  picked_at,
+  picked_by,
+  picked_by_ref,
+  packing_started_at,
+  packing_started_by,
+  packing_started_by_ref
+) VALUES (
+  '$sales_order_uuid'::uuid,
+  '$org_id'::uuid,
+  '$sales_order_no',
+  '$customer_id'::uuid,
+  '2026-05-02',
+  'online',
+  'packing',
+  'VND',
+  375000,
+  375000,
+  375000,
+  '$sales_order_id',
+  '$org_id',
+  '$customer_id',
+  '$customer_id',
+  'Sprint 14 Smoke Customer',
+  '$warehouse_id'::uuid,
+  '$warehouse_id',
+  'warehouse_main',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin'
+) ON CONFLICT (org_id, order_no) DO NOTHING;
+
+INSERT INTO sales.sales_order_lines (
+  id,
+  org_id,
+  sales_order_id,
+  line_ref,
+  line_no,
+  item_id,
+  item_ref,
+  sku_code,
+  item_name,
+  unit_id,
+  ordered_qty,
+  reserved_qty,
+  unit_price,
+  uom_code,
+  base_ordered_qty,
+  base_uom_code,
+  conversion_factor,
+  currency_code,
+  line_amount,
+  batch_id,
+  batch_ref,
+  batch_no,
+  created_at,
+  created_by,
+  updated_at,
+  updated_by
+) VALUES (
+  '$sales_order_line_uuid'::uuid,
+  '$org_id'::uuid,
+  '$sales_order_uuid'::uuid,
+  '$sales_order_line_id',
+  1,
+  '$item_id'::uuid,
+  'FG-LIP-001',
+  'FG-LIP-001',
+  'Matte Lipstick',
+  '$unit_id'::uuid,
+  3.000000,
+  3.000000,
+  125000,
+  'PCS',
+  3.000000,
+  'PCS',
+  1.000000,
+  'VND',
+  375000,
+  '$batch_id'::uuid,
+  '$batch_id',
+  'BATCH-LIP-LOCAL',
+  now(),
+  '$user_id'::uuid,
+  now(),
+  '$user_id'::uuid
+) ON CONFLICT (sales_order_id, line_no) DO NOTHING;
+
+INSERT INTO inventory.stock_reservations (
+  id,
+  org_id,
+  reservation_no,
+  item_id,
+  batch_id,
+  warehouse_id,
+  reserved_qty,
+  source_doc_type,
+  source_doc_id,
+  status,
+  created_at,
+  created_by,
+  sales_order_id,
+  sales_order_line_id,
+  source_doc_line_id,
+  bin_id,
+  base_uom_code,
+  stock_status,
+  updated_at,
+  reservation_ref,
+  org_ref,
+  sales_order_ref,
+  sales_order_line_ref,
+  source_doc_ref,
+  source_doc_line_ref,
+  item_ref,
+  sku_code,
+  batch_ref,
+  batch_no,
+  warehouse_ref,
+  warehouse_code,
+  bin_ref,
+  bin_code,
+  created_by_ref
+) VALUES (
+  '$reservation_uuid'::uuid,
+  '$org_id'::uuid,
+  'RSV-S14-02-02-SMOKE-$suffix',
+  '$item_id'::uuid,
+  '$batch_id'::uuid,
+  '$warehouse_id'::uuid,
+  3.000000,
+  'sales_order',
+  '$sales_order_uuid'::uuid,
+  'active',
+  now(),
+  '$user_id'::uuid,
+  '$sales_order_uuid'::uuid,
+  '$sales_order_line_uuid'::uuid,
+  '$sales_order_line_uuid'::uuid,
+  '$bin_id'::uuid,
+  'PCS',
+  'available',
+  now(),
+  '$reservation_ref',
+  '$org_id',
+  '$sales_order_id',
+  '$sales_order_line_id',
+  '$sales_order_id',
+  '$sales_order_line_id',
+  'FG-LIP-001',
+  'FG-LIP-001',
+  '$batch_id',
+  'BATCH-LIP-LOCAL',
+  'warehouse_main',
+  'warehouse_main',
+  'A-01',
+  'A-01',
+  'user-erp-admin'
+) ON CONFLICT (org_id, reservation_no) DO NOTHING;
+
+INSERT INTO shipping.pick_tasks (
+  id,
+  org_id,
+  pick_ref,
+  org_ref,
+  pick_task_no,
+  source_doc_type,
+  sales_order_id,
+  sales_order_ref,
+  order_no,
+  warehouse_id,
+  warehouse_ref,
+  warehouse_code,
+  status,
+  created_at,
+  created_by,
+  created_by_ref,
+  updated_at,
+  updated_by,
+  updated_by_ref
+) VALUES (
+  '$pick_task_uuid'::uuid,
+  '$org_id'::uuid,
+  '$pick_id',
+  '$org_id',
+  '$pick_no',
+  'sales_order',
+  '$sales_order_uuid'::uuid,
+  '$sales_order_id',
+  '$sales_order_no',
+  '$warehouse_id'::uuid,
+  'warehouse_main',
+  'warehouse_main',
+  'created',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin'
+) ON CONFLICT (org_id, pick_ref) DO NOTHING;
+
+INSERT INTO shipping.pick_task_lines (
+  id,
+  org_id,
+  pick_task_id,
+  line_ref,
+  pick_task_ref,
+  line_no,
+  sales_order_line_id,
+  sales_order_line_ref,
+  stock_reservation_id,
+  stock_reservation_ref,
+  item_id,
+  item_ref,
+  sku_code,
+  batch_id,
+  batch_ref,
+  batch_no,
+  warehouse_id,
+  warehouse_ref,
+  bin_id,
+  bin_ref,
+  bin_code,
+  base_uom_code,
+  qty_to_pick,
+  qty_picked,
+  status,
+  created_at,
+  created_by,
+  created_by_ref,
+  updated_at,
+  updated_by,
+  updated_by_ref
+) VALUES (
+  '$pick_line_uuid'::uuid,
+  '$org_id'::uuid,
+  '$pick_task_uuid'::uuid,
+  '$pick_line_id',
+  '$pick_id',
+  1,
+  '$sales_order_line_uuid'::uuid,
+  '$sales_order_line_id',
+  '$reservation_uuid'::uuid,
+  '$reservation_ref',
+  '$item_id'::uuid,
+  'FG-LIP-001',
+  'FG-LIP-001',
+  '$batch_id'::uuid,
+  '$batch_id',
+  'BATCH-LIP-LOCAL',
+  '$warehouse_id'::uuid,
+  'warehouse_main',
+  '$bin_id'::uuid,
+  'A-01',
+  'A-01',
+  'PCS',
+  3.000000,
+  0.000000,
+  'pending',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin'
+) ON CONFLICT (org_id, pick_task_id, line_ref) DO NOTHING;
+EOF
+)"
+
+  curl_check "pick_task_start" POST "$api_base/pick-tasks/$pick_id/start" 200 "" auth
+  curl_check "pick_task_confirm_line" POST "$api_base/pick-tasks/$pick_id/confirm-line" 200 "$(printf '{"line_id":"%s","picked_qty":"3.000000"}' "$pick_line_id")" auth
+  curl_check "pick_task_complete" POST "$api_base/pick-tasks/$pick_id/complete" 200 "" auth
+  curl_check "pick_task_read" GET "$api_base/pick-tasks/$pick_id" 200 "" auth
+  if ! grep -q "\"id\":\"$pick_id\"" "$tmp_body" ||
+    ! grep -q '"status":"completed"' "$tmp_body" ||
+    ! grep -q "\"id\":\"$pick_line_id\"" "$tmp_body" ||
+    ! grep -q '"qty_picked":"3.000000"' "$tmp_body" ||
+    ! grep -q '"picked_by":"user-erp-admin"' "$tmp_body"; then
+    echo "persisted_pick_task failed: completed pick task response mismatch" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+  curl_check "pick_task_list" GET "$api_base/pick-tasks?warehouse_id=warehouse_main&status=completed&assigned_to=user-erp-admin" 200 "" auth
+  if ! grep -q "\"id\":\"$pick_id\"" "$tmp_body"; then
+    echo "persisted_pick_task failed: completed pick task not queryable" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  pick_document_count="$(postgres_scalar "select count(*) from shipping.pick_tasks t join shipping.pick_task_lines l on l.pick_task_id = t.id where t.org_id = '$org_id'::uuid and t.pick_ref = '$pick_id' and t.status = 'completed' and t.assigned_to_ref = 'user-erp-admin' and t.started_by_ref = 'user-erp-admin' and t.completed_by_ref = 'user-erp-admin' and l.line_ref = '$pick_line_id' and l.status = 'picked' and l.qty_picked = 3.000000 and l.picked_by_ref = 'user-erp-admin'")"
+  pick_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$pick_id' and action in ('shipping.pick_task.started', 'shipping.pick_task.line_confirmed', 'shipping.pick_task.completed')")"
+  if [ "$before_pick_count" != "0" ] || [ "$pick_document_count" != "1" ] || [ "$pick_audit_count" != "3" ]; then
+    echo "persisted_pick_task failed: before=$before_pick_count document=$pick_document_count audit=$pick_audit_count" >&2
+    exit 1
+  fi
+
+  postgres_exec "$(cat <<EOF
+INSERT INTO shipping.pack_tasks (
+  id,
+  org_id,
+  pack_ref,
+  org_ref,
+  pack_task_no,
+  source_doc_type,
+  sales_order_id,
+  sales_order_ref,
+  order_no,
+  pick_task_id,
+  pick_task_ref,
+  pick_task_no,
+  warehouse_id,
+  warehouse_ref,
+  warehouse_code,
+  status,
+  assigned_to,
+  assigned_to_ref,
+  assigned_at,
+  created_at,
+  created_by,
+  created_by_ref,
+  updated_at,
+  updated_by,
+  updated_by_ref
+) VALUES (
+  '$pack_task_uuid'::uuid,
+  '$org_id'::uuid,
+  '$pack_id',
+  '$org_id',
+  '$pack_no',
+  'sales_order',
+  '$sales_order_uuid'::uuid,
+  '$sales_order_id',
+  '$sales_order_no',
+  '$pick_task_uuid'::uuid,
+  '$pick_id',
+  '$pick_no',
+  '$warehouse_id'::uuid,
+  'warehouse_main',
+  'warehouse_main',
+  'created',
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin'
+) ON CONFLICT (org_id, pack_ref) DO NOTHING;
+
+INSERT INTO shipping.pack_task_lines (
+  id,
+  org_id,
+  pack_task_id,
+  line_ref,
+  pack_task_ref,
+  line_no,
+  pick_task_line_id,
+  pick_task_line_ref,
+  sales_order_line_id,
+  sales_order_line_ref,
+  item_id,
+  item_ref,
+  sku_code,
+  batch_id,
+  batch_ref,
+  batch_no,
+  warehouse_id,
+  warehouse_ref,
+  base_uom_code,
+  qty_to_pack,
+  qty_packed,
+  status,
+  created_at,
+  created_by,
+  created_by_ref,
+  updated_at,
+  updated_by,
+  updated_by_ref
+) VALUES (
+  '$pack_line_uuid'::uuid,
+  '$org_id'::uuid,
+  '$pack_task_uuid'::uuid,
+  '$pack_line_id',
+  '$pack_id',
+  1,
+  (select id from shipping.pick_task_lines where org_id = '$org_id'::uuid and line_ref = '$pick_line_id' limit 1),
+  '$pick_line_id',
+  '$sales_order_line_uuid'::uuid,
+  '$sales_order_line_id',
+  '$item_id'::uuid,
+  'FG-LIP-001',
+  'FG-LIP-001',
+  '$batch_id'::uuid,
+  '$batch_id',
+  'BATCH-LIP-LOCAL',
+  '$warehouse_id'::uuid,
+  'warehouse_main',
+  'PCS',
+  3.000000,
+  0.000000,
+  'pending',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin'
+) ON CONFLICT (org_id, pack_task_id, line_ref) DO NOTHING;
+EOF
+)"
+
+  curl_check "pack_task_start" POST "$api_base/pack-tasks/$pack_id/start" 200 "" auth
+  curl_check "pack_task_exception" POST "$api_base/pack-tasks/$pack_id/exception" 200 "$(printf '{"line_id":"%s","exception_code":"short_pack","investigation":"S14-02-02 pack persistence smoke"}' "$pack_line_id")" auth
+  curl_check "pack_task_read" GET "$api_base/pack-tasks/$pack_id" 200 "" auth
+  if ! grep -q "\"id\":\"$pack_id\"" "$tmp_body" ||
+    ! grep -q '"status":"pack_exception"' "$tmp_body" ||
+    ! grep -q "\"id\":\"$pack_line_id\"" "$tmp_body"; then
+    echo "persisted_pack_task failed: exception pack task response mismatch" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+  curl_check "pack_task_list" GET "$api_base/pack-tasks?warehouse_id=warehouse_main&status=pack_exception&assigned_to=user-erp-admin" 200 "" auth
+  if ! grep -q "\"id\":\"$pack_id\"" "$tmp_body"; then
+    echo "persisted_pack_task failed: exception pack task not queryable" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  pack_document_count="$(postgres_scalar "select count(*) from shipping.pack_tasks t join shipping.pack_task_lines l on l.pack_task_id = t.id where t.org_id = '$org_id'::uuid and t.pack_ref = '$pack_id' and t.status = 'pack_exception' and t.assigned_to_ref = 'user-erp-admin' and t.started_by_ref = 'user-erp-admin' and l.line_ref = '$pack_line_id' and l.status = 'pack_exception'")"
+  pack_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$pack_id' and action in ('shipping.pack_task.started', 'shipping.pack_task.exception_reported')")"
+  if [ "$before_pack_count" != "0" ] || [ "$pack_document_count" != "1" ] || [ "$pack_audit_count" != "2" ]; then
+    echo "persisted_pack_task failed: before=$before_pack_count document=$pack_document_count audit=$pack_audit_count" >&2
+    exit 1
+  fi
+
+  printf '%-28s %s %s\n' "persisted_pick_task" "ok" "$pick_no"
+  printf '%-28s %s %s\n' "persisted_pack_task" "ok" "$pack_no"
+}
+
 persisted_return_rejection_check() {
   org_id="00000000-0000-4000-8000-000000000001"
 
@@ -739,6 +1272,7 @@ persisted_stock_movement_check
 persisted_stock_count_check
 persisted_inbound_qc_check
 persisted_carrier_manifest_check
+persisted_pick_pack_check
 persisted_return_rejection_check
 
 echo "Full ERP dev smoke passed"
