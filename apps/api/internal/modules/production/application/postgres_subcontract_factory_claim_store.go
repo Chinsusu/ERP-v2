@@ -357,6 +357,10 @@ func (s PostgresSubcontractFactoryClaimStore) ListBySubcontractOrder(
 }
 
 func (s PostgresSubcontractFactoryClaimStore) withTx(ctx context.Context, fn func(*sql.Tx) error) error {
+	if tx, ok := postgresSubcontractTxFromContext(ctx); ok {
+		return fn(tx)
+	}
+
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return fmt.Errorf("begin subcontract factory claim transaction: %w", err)

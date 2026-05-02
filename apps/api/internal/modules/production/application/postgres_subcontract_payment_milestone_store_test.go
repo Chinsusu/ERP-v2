@@ -159,6 +159,95 @@ func TestPostgresSubcontractPaymentMilestoneStorePersistsMilestones(t *testing.T
 	}
 }
 
+func TestPostgresSubcontractOrderServiceRecordDepositUsesSharedPostgresTransaction(t *testing.T) {
+	databaseURL := os.Getenv("ERP_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("ERP_TEST_DATABASE_URL is not set")
+	}
+
+	ctx := context.Background()
+	db, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer db.Close()
+
+	if err := seedSubcontractOrderSmokeOrg(ctx, db); err != nil {
+		t.Fatalf("seed org: %v", err)
+	}
+
+	suffix := fmt.Sprintf("%d", time.Now().UTC().UnixNano())
+	order := subcontractMaterialTransferTestOrder(t)
+	order.ID = "sco-s16-08-shared-tx-" + suffix
+	order.OrderNo = "SCO-S16-08-SHARED-TX-" + suffix
+	order.MaterialLines[0].ID = "sco-mat-s16-08-shared-tx-a-" + suffix
+	order.MaterialLines[1].ID = "sco-mat-s16-08-shared-tx-b-" + suffix
+	if err := order.Validate(); err != nil {
+		t.Fatalf("validate shared transaction test order: %v", err)
+	}
+
+	orderStore := NewPostgresSubcontractOrderStore(
+		db,
+		PostgresSubcontractOrderStoreConfig{DefaultOrgID: testSubcontractOrderOrgID},
+	)
+	if err := orderStore.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		return tx.Save(txCtx, order)
+	}); err != nil {
+		t.Fatalf("seed subcontract order: %v", err)
+	}
+
+	paymentStore := NewPostgresSubcontractPaymentMilestoneStore(
+		db,
+		PostgresSubcontractPaymentMilestoneStoreConfig{DefaultOrgID: testSubcontractOrderOrgID},
+	)
+	service := SubcontractOrderService{
+		store:                 orderStore,
+		paymentMilestoneStore: paymentStore,
+		paymentMilestoneBuild: NewSubcontractPaymentMilestoneService(),
+	}
+
+	recordCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	recordedAt := time.Date(2026, 5, 2, 17, 0, 0, 0, time.UTC)
+	result, err := service.RecordSubcontractDeposit(recordCtx, RecordSubcontractDepositInput{
+		ID:              order.ID,
+		ExpectedVersion: order.Version,
+		MilestoneID:     "spm-s16-08-shared-tx-deposit-" + suffix,
+		MilestoneNo:     "SPM-S16-08-SHARED-TX-DEPOSIT-" + suffix,
+		Amount:          "1000000",
+		RecordedBy:      "finance-user",
+		RecordedAt:      recordedAt,
+		ActorID:         "finance-user",
+		RequestID:       "req-s16-08-shared-tx-" + suffix,
+		Note:            "Deposit transfer confirmed by finance",
+	})
+	if err != nil {
+		t.Fatalf("record deposit using shared postgres transaction: %v", err)
+	}
+	if result.CurrentStatus != productiondomain.SubcontractOrderStatusDepositRecorded ||
+		result.Milestone.Status != productiondomain.SubcontractPaymentMilestoneStatusRecorded {
+		t.Fatalf("result = %+v, want deposit order and milestone recorded", result)
+	}
+
+	loadedOrder, err := orderStore.Get(ctx, order.ID)
+	if err != nil {
+		t.Fatalf("get deposit order: %v", err)
+	}
+	if loadedOrder.Status != productiondomain.SubcontractOrderStatusDepositRecorded ||
+		loadedOrder.DepositAmount.String() != "1000000.00" {
+		t.Fatalf("loaded order = %+v, want persisted deposit transition", loadedOrder)
+	}
+	loadedMilestone, err := paymentStore.Get(ctx, result.Milestone.ID)
+	if err != nil {
+		t.Fatalf("get deposit milestone: %v", err)
+	}
+	if loadedMilestone.SubcontractOrderID != order.ID ||
+		loadedMilestone.Amount.String() != "1000000.00" ||
+		!loadedMilestone.RecordedAt.Equal(recordedAt) {
+		t.Fatalf("loaded milestone = %+v, want persisted deposit milestone", loadedMilestone)
+	}
+}
+
 func TestPostgresSubcontractPaymentMilestoneStoreRequiresDatabase(t *testing.T) {
 	store := NewPostgresSubcontractPaymentMilestoneStore(nil, PostgresSubcontractPaymentMilestoneStoreConfig{})
 

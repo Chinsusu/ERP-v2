@@ -682,7 +682,8 @@ func (s PostgresSubcontractOrderStore) WithinTx(
 		}
 	}()
 
-	if err := fn(ctx, postgresSubcontractOrderTx{store: s, tx: tx}); err != nil {
+	txCtx := contextWithPostgresSubcontractTx(ctx, tx)
+	if err := fn(txCtx, postgresSubcontractOrderTx{store: s, tx: tx}); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
