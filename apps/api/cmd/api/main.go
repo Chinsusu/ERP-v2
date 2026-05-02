@@ -1616,7 +1616,10 @@ func main() {
 	}
 	listEndOfDayReconciliations := inventoryapp.NewListEndOfDayReconciliations(reconciliationStore)
 	closeEndOfDayReconciliation := inventoryapp.NewCloseEndOfDayReconciliation(reconciliationStore, auditLogStore)
-	carrierManifestStore := shippingapp.NewPrototypeCarrierManifestStore()
+	carrierManifestStore, closeCarrierManifestStore, err := newRuntimeCarrierManifestStore(cfg)
+	if err != nil {
+		log.Fatalf("configure carrier manifest store: %v", err)
+	}
 	listCarrierManifests := shippingapp.NewListCarrierManifests(carrierManifestStore)
 	createCarrierManifest := shippingapp.NewCreateCarrierManifest(carrierManifestStore, auditLogStore)
 	addShipmentToCarrierManifest := shippingapp.NewAddShipmentToCarrierManifest(carrierManifestStore, auditLogStore)
@@ -1630,14 +1633,20 @@ func main() {
 		salesOrderHandoverAdapter{service: salesOrderService},
 	)
 	verifyCarrierManifestScan := shippingapp.NewVerifyCarrierManifestScan(carrierManifestStore, auditLogStore)
-	pickTaskStore := shippingapp.NewPrototypePickTaskStore(mustPrototypePickTask())
+	pickTaskStore, closePickTaskStore, err := newRuntimePickTaskStore(cfg, mustPrototypePickTask())
+	if err != nil {
+		log.Fatalf("configure pick task store: %v", err)
+	}
 	listPickTasks := shippingapp.NewListPickTasks(pickTaskStore)
 	getPickTask := shippingapp.NewGetPickTask(pickTaskStore)
 	startPickTask := shippingapp.NewStartPickTask(pickTaskStore, auditLogStore)
 	confirmPickTaskLine := shippingapp.NewConfirmPickTaskLine(pickTaskStore, auditLogStore)
 	completePickTask := shippingapp.NewCompletePickTask(pickTaskStore, auditLogStore)
 	reportPickTaskException := shippingapp.NewReportPickTaskException(pickTaskStore, auditLogStore)
-	packTaskStore := shippingapp.NewPrototypePackTaskStore(mustPrototypePackTask())
+	packTaskStore, closePackTaskStore, err := newRuntimePackTaskStore(cfg, mustPrototypePackTask())
+	if err != nil {
+		log.Fatalf("configure pack task store: %v", err)
+	}
 	listPackTasks := shippingapp.NewListPackTasks(packTaskStore)
 	getPackTask := shippingapp.NewGetPackTask(packTaskStore)
 	startPackTask := shippingapp.NewStartPackTask(packTaskStore, auditLogStore)
@@ -1645,6 +1654,21 @@ func main() {
 	reportPackTaskException := shippingapp.NewReportPackTaskException(packTaskStore, auditLogStore)
 	returnReceiptStore, closeReturnReceiptStore, err := newRuntimeReturnReceiptStore(cfg)
 	if err != nil {
+		if closePackTaskStore != nil {
+			if closeErr := closePackTaskStore(); closeErr != nil {
+				log.Printf("close pack task store: %v", closeErr)
+			}
+		}
+		if closePickTaskStore != nil {
+			if closeErr := closePickTaskStore(); closeErr != nil {
+				log.Printf("close pick task store: %v", closeErr)
+			}
+		}
+		if closeCarrierManifestStore != nil {
+			if closeErr := closeCarrierManifestStore(); closeErr != nil {
+				log.Printf("close carrier manifest store: %v", closeErr)
+			}
+		}
 		if closeReconciliationStore != nil {
 			if closeErr := closeReconciliationStore(); closeErr != nil {
 				log.Printf("close end-of-day reconciliation store: %v", closeErr)
@@ -2758,6 +2782,21 @@ func main() {
 		if closeReturnReceiptStore != nil {
 			if closeErr := closeReturnReceiptStore(); closeErr != nil {
 				log.Printf("close return receipt store: %v", closeErr)
+			}
+		}
+		if closePackTaskStore != nil {
+			if closeErr := closePackTaskStore(); closeErr != nil {
+				log.Printf("close pack task store: %v", closeErr)
+			}
+		}
+		if closePickTaskStore != nil {
+			if closeErr := closePickTaskStore(); closeErr != nil {
+				log.Printf("close pick task store: %v", closeErr)
+			}
+		}
+		if closeCarrierManifestStore != nil {
+			if closeErr := closeCarrierManifestStore(); closeErr != nil {
+				log.Printf("close carrier manifest store: %v", closeErr)
 			}
 		}
 		if closeReconciliationStore != nil {
