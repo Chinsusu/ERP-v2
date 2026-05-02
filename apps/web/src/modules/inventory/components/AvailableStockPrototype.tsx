@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { DataTable, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
 import { decimalScales, normalizeDecimalInput } from "@/shared/format/numberFormat";
+import { t } from "@/shared/i18n";
 import { useAvailableStock } from "../hooks/useAvailableStock";
 import {
   availabilityTone,
@@ -158,51 +159,51 @@ const transitionColumns: DataTableColumn<BatchQCTransition>[] = [
 const stockCountColumns: DataTableColumn<StockCountSession>[] = [
   {
     key: "countNo",
-    header: "Count",
+    header: inventoryCopy("stockCount.columns.count"),
     render: (row) => row.countNo,
     width: "150px"
   },
   {
     key: "warehouse",
-    header: "Warehouse",
+    header: inventoryCopy("stockCount.columns.warehouse"),
     render: (row) => row.warehouseCode || row.warehouseId,
     width: "110px"
   },
   {
     key: "status",
-    header: "Status",
+    header: inventoryCopy("stockCount.columns.status"),
     render: (row) => <StatusChip tone={stockCountStatusTone(row.status)}>{stockCountStatusLabel(row.status)}</StatusChip>,
     width: "150px"
   },
   {
     key: "line",
-    header: "Line",
+    header: inventoryCopy("stockCount.columns.line"),
     render: (row) => stockCountLineLabel(row)
   },
   {
     key: "expected",
-    header: "Expected",
+    header: inventoryCopy("stockCount.columns.expected"),
     render: (row) => stockCountLineQuantity(row, "expectedQty"),
     align: "right",
     width: "130px"
   },
   {
     key: "counted",
-    header: "Counted",
+    header: inventoryCopy("stockCount.columns.counted"),
     render: (row) => stockCountLineQuantity(row, "countedQty"),
     align: "right",
     width: "130px"
   },
   {
     key: "delta",
-    header: "Delta",
+    header: inventoryCopy("stockCount.columns.delta"),
     render: (row) => stockCountLineQuantity(row, "deltaQty"),
     align: "right",
     width: "130px"
   },
   {
     key: "updated",
-    header: "Updated",
+    header: inventoryCopy("stockCount.columns.updated"),
     render: (row) => formatDateTime(row.updatedAt),
     width: "170px"
   }
@@ -211,19 +212,19 @@ const stockCountColumns: DataTableColumn<StockCountSession>[] = [
 const stockAdjustmentColumns: DataTableColumn<StockAdjustment>[] = [
   {
     key: "adjustmentNo",
-    header: "Adjustment",
+    header: inventoryCopy("stockAdjustment.columns.adjustment"),
     render: (row) => row.adjustmentNo,
     width: "160px"
   },
   {
     key: "warehouse",
-    header: "Warehouse",
+    header: inventoryCopy("stockAdjustment.columns.warehouse"),
     render: (row) => row.warehouseCode || row.warehouseId,
     width: "110px"
   },
   {
     key: "status",
-    header: "Status",
+    header: inventoryCopy("stockAdjustment.columns.status"),
     render: (row) => (
       <StatusChip tone={stockAdjustmentStatusTone(row.status)}>{stockAdjustmentStatusLabel(row.status)}</StatusChip>
     ),
@@ -231,31 +232,31 @@ const stockAdjustmentColumns: DataTableColumn<StockAdjustment>[] = [
   },
   {
     key: "beforeAfter",
-    header: "Before / after",
+    header: inventoryCopy("stockAdjustment.columns.beforeAfter"),
     render: (row) => stockAdjustmentBeforeAfter(row),
     width: "210px"
   },
   {
     key: "delta",
-    header: "Delta",
+    header: inventoryCopy("stockAdjustment.columns.delta"),
     render: (row) => stockAdjustmentDelta(row),
     align: "right",
     width: "130px"
   },
   {
     key: "reason",
-    header: "Reason",
+    header: inventoryCopy("stockAdjustment.columns.reason"),
     render: (row) => row.reason
   },
   {
     key: "requestedBy",
-    header: "Requested",
+    header: inventoryCopy("stockAdjustment.columns.requestedBy"),
     render: (row) => row.requestedBy,
     width: "150px"
   },
   {
     key: "audit",
-    header: "Audit",
+    header: inventoryCopy("stockAdjustment.columns.audit"),
     render: (row) => row.auditLogId || "-",
     width: "210px"
   }
@@ -280,11 +281,13 @@ export function AvailableStockPrototype() {
   const [countedQty, setCountedQty] = useState("");
   const [stockCountSubmitting, setStockCountSubmitting] = useState(false);
   const [stockCountMessage, setStockCountMessage] = useState("");
+  const [stockCountMessageTone, setStockCountMessageTone] = useState<StatusTone>("info");
   const [stockAdjustments, setStockAdjustments] = useState<StockAdjustment[]>([]);
   const [stockAdjustmentsLoading, setStockAdjustmentsLoading] = useState(false);
   const [selectedAdjustmentId, setSelectedAdjustmentId] = useState("");
   const [adjustmentSubmitting, setAdjustmentSubmitting] = useState(false);
   const [adjustmentMessage, setAdjustmentMessage] = useState("");
+  const [adjustmentMessageTone, setAdjustmentMessageTone] = useState<StatusTone>("info");
   const query = useMemo<AvailableStockQuery>(
     () => ({
       warehouseId: warehouseId || undefined,
@@ -456,9 +459,11 @@ export function AvailableStockPrototype() {
       setSelectedStockCountId(created.id);
       setCountedQty(selectedStock.physicalQty);
       setStockCounts(await getStockCounts());
-      setStockCountMessage("Count opened");
+      setStockCountMessageTone("success");
+      setStockCountMessage(inventoryCopy("stockCount.messages.opened"));
     } catch {
-      setStockCountMessage("Could not open count");
+      setStockCountMessageTone("danger");
+      setStockCountMessage(inventoryCopy("stockCount.messages.openError"));
     } finally {
       setStockCountSubmitting(false);
     }
@@ -474,7 +479,8 @@ export function AvailableStockPrototype() {
     try {
       normalizedCountedQty = normalizeDecimalInput(countedQty, decimalScales.quantity);
     } catch {
-      setStockCountMessage("Invalid counted qty");
+      setStockCountMessageTone("danger");
+      setStockCountMessage(inventoryCopy("stockCount.messages.invalidCountedQty"));
       return;
     }
 
@@ -490,9 +496,15 @@ export function AvailableStockPrototype() {
       });
       setSelectedStockCountId(submitted.id);
       setStockCounts(await getStockCounts());
-      setStockCountMessage(submitted.status === "variance_review" ? "Variance review" : "Submitted");
+      setStockCountMessageTone("success");
+      setStockCountMessage(
+        submitted.status === "variance_review"
+          ? inventoryCopy("stockCount.messages.varianceReview")
+          : inventoryCopy("stockCount.messages.submitted")
+      );
     } catch {
-      setStockCountMessage("Could not submit count");
+      setStockCountMessageTone("danger");
+      setStockCountMessage(inventoryCopy("stockCount.messages.submitError"));
     } finally {
       setStockCountSubmitting(false);
     }
@@ -509,9 +521,11 @@ export function AvailableStockPrototype() {
       const updated = await transitionStockAdjustment(selectedAdjustment.id, action);
       setSelectedAdjustmentId(updated.id);
       setStockAdjustments((current) => replaceStockAdjustment(current, updated));
-      setAdjustmentMessage(`${stockAdjustmentActionLabel(action)} recorded`);
+      setAdjustmentMessageTone("success");
+      setAdjustmentMessage(stockAdjustmentActionResultLabel(action));
     } catch {
-      setAdjustmentMessage(`Could not ${stockAdjustmentActionLabel(action).toLowerCase()}`);
+      setAdjustmentMessageTone("danger");
+      setAdjustmentMessage(inventoryCopy("stockAdjustment.messages.actionError", { action: stockAdjustmentActionLabel(action) }));
     } finally {
       setAdjustmentSubmitting(false);
     }
@@ -583,15 +597,17 @@ export function AvailableStockPrototype() {
 
       <section className="erp-card erp-card--padded erp-module-table-card" id="stock-counts">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Stock counts</h2>
+          <h2 className="erp-section-title">{inventoryCopy("stockCount.title")}</h2>
           <StatusChip tone={activeOpenStockCount ? "warning" : "info"}>
-            {activeOpenStockCount ? activeOpenStockCount.countNo : `${stockCounts.length} sessions`}
+            {activeOpenStockCount
+              ? activeOpenStockCount.countNo
+              : inventoryCopy("stockCount.sessions", { count: stockCounts.length })}
           </StatusChip>
         </div>
 
         <form className="erp-stock-count-form" onSubmit={handleSubmitStockCount}>
           <label className="erp-field">
-            <span>Stock row</span>
+            <span>{inventoryCopy("stockCount.stockRow")}</span>
             <select
               className="erp-input"
               value={selectedStockKey}
@@ -605,7 +621,7 @@ export function AvailableStockPrototype() {
             </select>
           </label>
           <label className="erp-field">
-            <span>Counted qty</span>
+            <span>{inventoryCopy("stockCount.countedQty")}</span>
             <input
               className="erp-input"
               inputMode="decimal"
@@ -621,19 +637,17 @@ export function AvailableStockPrototype() {
             disabled={!selectedStock || stockCountSubmitting}
             onClick={handleCreateStockCount}
           >
-            Open count
+            {inventoryCopy("stockCount.openCount")}
           </button>
           <button
             className="erp-button erp-button--primary"
             type="submit"
             disabled={!activeOpenStockCount || countedQty.trim() === "" || stockCountSubmitting}
           >
-            Submit count
+            {inventoryCopy("stockCount.submitCount")}
           </button>
           {stockCountMessage ? (
-            <StatusChip tone={stockCountMessage.includes("Could") || stockCountMessage.includes("Invalid") ? "danger" : "success"}>
-              {stockCountMessage}
-            </StatusChip>
+            <StatusChip tone={stockCountMessageTone}>{stockCountMessage}</StatusChip>
           ) : null}
         </form>
 
@@ -647,15 +661,17 @@ export function AvailableStockPrototype() {
 
       <section className="erp-card erp-card--padded erp-module-table-card" id="stock-adjustments">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Adjustment approvals</h2>
+          <h2 className="erp-section-title">{inventoryCopy("stockAdjustment.title")}</h2>
           <StatusChip tone={selectedAdjustment ? stockAdjustmentStatusTone(selectedAdjustment.status) : "info"}>
-            {selectedAdjustment ? selectedAdjustment.adjustmentNo : `${stockAdjustments.length} requests`}
+            {selectedAdjustment
+              ? selectedAdjustment.adjustmentNo
+              : inventoryCopy("stockAdjustment.requests", { count: stockAdjustments.length })}
           </StatusChip>
         </div>
 
         <div className="erp-stock-adjustment-actions">
           <label className="erp-field">
-            <span>Request</span>
+            <span>{inventoryCopy("stockAdjustment.request")}</span>
             <select
               className="erp-input"
               value={selectedAdjustment?.id ?? ""}
@@ -674,7 +690,7 @@ export function AvailableStockPrototype() {
             disabled={!canTransitionAdjustment(selectedAdjustment, "submit") || adjustmentSubmitting}
             onClick={() => handleAdjustmentAction("submit")}
           >
-            Submit
+            {stockAdjustmentActionLabel("submit")}
           </button>
           <button
             className="erp-button erp-button--primary"
@@ -682,7 +698,7 @@ export function AvailableStockPrototype() {
             disabled={!canTransitionAdjustment(selectedAdjustment, "approve") || adjustmentSubmitting}
             onClick={() => handleAdjustmentAction("approve")}
           >
-            Approve
+            {stockAdjustmentActionLabel("approve")}
           </button>
           <button
             className="erp-button erp-button--danger"
@@ -690,7 +706,7 @@ export function AvailableStockPrototype() {
             disabled={!canTransitionAdjustment(selectedAdjustment, "reject") || adjustmentSubmitting}
             onClick={() => handleAdjustmentAction("reject")}
           >
-            Reject
+            {stockAdjustmentActionLabel("reject")}
           </button>
           <button
             className="erp-button erp-button--secondary"
@@ -698,10 +714,10 @@ export function AvailableStockPrototype() {
             disabled={!canTransitionAdjustment(selectedAdjustment, "post") || adjustmentSubmitting}
             onClick={() => handleAdjustmentAction("post")}
           >
-            Post
+            {stockAdjustmentActionLabel("post")}
           </button>
           {adjustmentMessage ? (
-            <StatusChip tone={adjustmentMessage.startsWith("Could") ? "danger" : "success"}>{adjustmentMessage}</StatusChip>
+            <StatusChip tone={adjustmentMessageTone}>{adjustmentMessage}</StatusChip>
           ) : null}
         </div>
 
@@ -860,7 +876,7 @@ function stockCountLineLabel(count: StockCountSession) {
     return "-";
   }
   if (count.lines.length > 1) {
-    return `${count.lines.length} lines`;
+    return inventoryCopy("stockCount.lines", { count: count.lines.length });
   }
 
   return `${firstLine.sku} / ${firstLine.batchNo ?? "-"} / ${firstLine.locationCode ?? "-"}`;
@@ -875,7 +891,7 @@ function stockCountLineQuantity(
     return "-";
   }
   if (count.lines.length > 1) {
-    return `${count.lines.length} lines`;
+    return inventoryCopy("stockCount.lines", { count: count.lines.length });
   }
 
   return formatQuantity(firstLine[field], firstLine.baseUomCode);
@@ -884,12 +900,12 @@ function stockCountLineQuantity(
 function stockCountStatusLabel(status: StockCountStatus) {
   switch (status) {
     case "open":
-      return "Open";
+      return inventoryCopy("stockCount.status.open");
     case "submitted":
-      return "Submitted";
+      return inventoryCopy("stockCount.status.submitted");
     case "variance_review":
     default:
-      return "Variance review";
+      return inventoryCopy("stockCount.status.variance_review");
   }
 }
 
@@ -941,14 +957,28 @@ function canTransitionAdjustment(adjustment: StockAdjustment | undefined, action
 function stockAdjustmentActionLabel(action: StockAdjustmentAction) {
   switch (action) {
     case "submit":
-      return "Submit";
+      return inventoryCopy("stockAdjustment.actions.submit");
     case "approve":
-      return "Approve";
+      return inventoryCopy("stockAdjustment.actions.approve");
     case "reject":
-      return "Reject";
+      return inventoryCopy("stockAdjustment.actions.reject");
     case "post":
     default:
-      return "Post";
+      return inventoryCopy("stockAdjustment.actions.post");
+  }
+}
+
+function stockAdjustmentActionResultLabel(action: StockAdjustmentAction) {
+  switch (action) {
+    case "submit":
+      return inventoryCopy("stockAdjustment.messages.submitted");
+    case "approve":
+      return inventoryCopy("stockAdjustment.messages.approved");
+    case "reject":
+      return inventoryCopy("stockAdjustment.messages.rejected");
+    case "post":
+    default:
+      return inventoryCopy("stockAdjustment.messages.posted");
   }
 }
 
@@ -958,13 +988,13 @@ function stockAdjustmentBeforeAfter(adjustment: StockAdjustment) {
     return "-";
   }
   if (adjustment.lines.length > 1) {
-    return `${adjustment.lines.length} lines`;
+    return inventoryCopy("stockAdjustment.lines", { count: adjustment.lines.length });
   }
 
   return (
     <span className="erp-stock-qc-status-flow">
       <span>{formatQuantity(firstLine.expectedQty, firstLine.baseUomCode)}</span>
-      <span>to</span>
+      <span>{inventoryCopy("stockAdjustment.to")}</span>
       <span>{formatQuantity(firstLine.countedQty, firstLine.baseUomCode)}</span>
     </span>
   );
@@ -980,25 +1010,31 @@ function stockAdjustmentDelta(adjustment: StockAdjustment) {
   }
 
   const summary = summarizeStockAdjustmentDelta(adjustment);
-  return summary.baseUomCode ? formatQuantity(summary.deltaQty, summary.baseUomCode) : `${adjustment.lines.length} lines`;
+  return summary.baseUomCode
+    ? formatQuantity(summary.deltaQty, summary.baseUomCode)
+    : inventoryCopy("stockAdjustment.lines", { count: adjustment.lines.length });
 }
 
 function stockAdjustmentStatusLabel(status: StockAdjustmentStatus) {
   switch (status) {
     case "draft":
-      return "Draft";
+      return inventoryCopy("stockAdjustment.status.draft");
     case "submitted":
-      return "Submitted";
+      return inventoryCopy("stockAdjustment.status.submitted");
     case "approved":
-      return "Approved";
+      return inventoryCopy("stockAdjustment.status.approved");
     case "rejected":
-      return "Rejected";
+      return inventoryCopy("stockAdjustment.status.rejected");
     case "posted":
-      return "Posted";
+      return inventoryCopy("stockAdjustment.status.posted");
     case "cancelled":
     default:
-      return "Cancelled";
+      return inventoryCopy("stockAdjustment.status.cancelled");
   }
+}
+
+function inventoryCopy(key: string, values?: Record<string, string | number>) {
+  return t(`inventory.${key}`, { values });
 }
 
 function stockAdjustmentStatusTone(status: StockAdjustmentStatus): StatusTone {
