@@ -63,6 +63,27 @@ func TestNewRuntimePickTaskStoreUsesPrototypeFallback(t *testing.T) {
 	}
 }
 
+func TestNewRuntimePickTaskStoreUsesPostgresWhenDatabaseURLConfigured(t *testing.T) {
+	store, closeStore, err := newRuntimePickTaskStore(config.Config{
+		AppEnv:      "dev",
+		DatabaseURL: "postgres://erp_dev:erp_dev@postgres:5432/erp_dev?sslmode=disable",
+	})
+	if err != nil {
+		t.Fatalf("newRuntimePickTaskStore() error = %v", err)
+	}
+	if closeStore == nil {
+		t.Fatal("closeStore = nil, want database close function")
+	}
+	defer func() {
+		if err := closeStore(); err != nil {
+			t.Fatalf("closeStore() error = %v", err)
+		}
+	}()
+	if _, ok := store.(shippingapp.PostgresPickTaskStore); !ok {
+		t.Fatalf("store type = %T, want PostgresPickTaskStore", store)
+	}
+}
+
 func TestNewRuntimePackTaskStoreUsesPrototypeFallback(t *testing.T) {
 	seed := mustPrototypePackTask()
 	store, closeStore, err := newRuntimePackTaskStore(config.Config{}, seed)

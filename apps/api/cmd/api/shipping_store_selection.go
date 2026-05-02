@@ -32,10 +32,24 @@ func newRuntimeCarrierManifestStore(
 }
 
 func newRuntimePickTaskStore(
-	_ config.Config,
+	cfg config.Config,
 	tasks ...shippingdomain.PickTask,
 ) (shippingapp.PickTaskStore, func() error, error) {
-	return shippingapp.NewPrototypePickTaskStore(tasks...), nil, nil
+	if strings.TrimSpace(cfg.DatabaseURL) == "" {
+		return shippingapp.NewPrototypePickTaskStore(tasks...), nil, nil
+	}
+
+	db, err := sql.Open("pgx", cfg.DatabaseURL)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	storeConfig := shippingapp.PostgresPickTaskStoreConfig{}
+	if config.AllowsStaticAuthAccessToken(cfg.AppEnv) {
+		storeConfig.DefaultOrgID = localAuditOrgID
+	}
+
+	return shippingapp.NewPostgresPickTaskStore(db, storeConfig), db.Close, nil
 }
 
 func newRuntimePackTaskStore(
