@@ -1,4 +1,5 @@
-import { ApiError, apiGet, apiPost, apiPostForm } from "../../../shared/api/client";
+import { apiGet, apiPost, apiPostForm } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import type {
   ApplyReturnDispositionInput,
@@ -507,13 +508,6 @@ export function formatReturnDisposition(disposition: ReturnDisposition) {
   return returnDispositionOptions.find((option) => option.value === disposition)?.label ?? disposition;
 }
 
-function shouldUsePrototypeFallback(reason: unknown) {
-  if (reason instanceof ApiError) {
-    return false;
-  }
-
-  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
-}
 
 function fromApiReturnReceipt(receipt: ReturnReceiptApi): ReturnReceipt {
   return createReturnReceipt({

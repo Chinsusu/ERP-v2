@@ -18,6 +18,7 @@ describe("customerReceivableService", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("filters prototype receivables by status and search", async () => {
@@ -101,6 +102,12 @@ describe("customerReceivableService", () => {
       code: "FORBIDDEN",
       requestId: "req-denied"
     });
+  });
+
+  it("does not use prototype fallback in production mode", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    await expect(getCustomerReceivables()).rejects.toThrow("offline");
   });
 
   it("records receipts and updates paid/outstanding status", async () => {

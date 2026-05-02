@@ -1,4 +1,5 @@
-import { ApiError, apiGet } from "../../../shared/api/client";
+import { apiGet } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import type { FinanceDashboard, FinanceDashboardQuery } from "../types";
 
@@ -41,13 +42,6 @@ export function resetPrototypeFinanceDashboardForTest() {
   return createPrototypeFinanceDashboard("2026-04-30");
 }
 
-function shouldUsePrototypeFallback(reason: unknown) {
-  if (reason instanceof ApiError) {
-    return false;
-  }
-
-  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
-}
 
 function toApiFinanceDashboardQuery(query: FinanceDashboardQuery): FinanceDashboardApiQuery {
   return {

@@ -1,4 +1,5 @@
-import { ApiError, apiGet, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
+import { apiGet, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import type {
   WarehouseLocationMasterDataInput,
@@ -239,7 +240,7 @@ export async function getWarehouses(query: WarehouseMasterDataQuery = {}): Promi
 
     return items.map(fromWarehouseApiItem);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -255,7 +256,7 @@ export async function getWarehouse(warehouseId: string): Promise<WarehouseMaster
 
     return fromWarehouseApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -279,7 +280,7 @@ export async function createWarehouse(input: WarehouseMasterDataInput): Promise<
 
     return fromWarehouseApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -313,7 +314,7 @@ export async function updateWarehouse(warehouseId: string, input: WarehouseMaste
 
     return fromWarehouseApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -349,7 +350,7 @@ export async function changeWarehouseStatus(warehouseId: string, status: Warehou
 
     return fromWarehouseApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -378,7 +379,7 @@ export async function getLocations(query: WarehouseLocationMasterDataQuery = {})
 
     return items.map(fromLocationApiItem);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -394,7 +395,7 @@ export async function getLocation(locationId: string): Promise<WarehouseLocation
 
     return fromLocationApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -422,7 +423,7 @@ export async function createLocation(input: WarehouseLocationMasterDataInput): P
 
     return fromLocationApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -458,7 +459,7 @@ export async function updateLocation(locationId: string, input: WarehouseLocatio
 
     return fromLocationApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -496,7 +497,7 @@ export async function changeLocationStatus(locationId: string, status: Warehouse
 
     return fromLocationApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 

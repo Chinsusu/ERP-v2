@@ -1,4 +1,5 @@
-import { ApiError, apiGet, apiGetRaw, apiPost } from "../../../shared/api/client";
+import { apiGet, apiGetRaw, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import type {
   AvailableStockItem,
@@ -199,7 +200,11 @@ export async function getAvailableStock(query: AvailableStockQuery = {}): Promis
     });
 
     return items.map(fromApiItem);
-  } catch {
+  } catch (reason) {
+    if (!shouldUsePrototypeFallback(reason)) {
+      throw reason;
+    }
+
     return filterPrototypeStock(query);
   }
 }
@@ -212,7 +217,11 @@ export async function getBatchQCTransitions(batchId: string): Promise<BatchQCTra
     );
 
     return items.map(fromApiTransition);
-  } catch {
+  } catch (reason) {
+    if (!shouldUsePrototypeFallback(reason)) {
+      throw reason;
+    }
+
     return prototypeBatchQCTransitions.filter((transition) => transition.batchId === batchId);
   }
 }
@@ -243,7 +252,11 @@ export async function getStockCounts(): Promise<StockCountSession[]> {
     });
 
     return items.map(fromApiStockCount);
-  } catch {
+  } catch (reason) {
+    if (!shouldUsePrototypeFallback(reason)) {
+      throw reason;
+    }
+
     return prototypeStockCounts.map(cloneStockCount);
   }
 }
@@ -258,7 +271,7 @@ export async function createStockCount(input: CreateStockCountInput): Promise<St
 
     return fromApiStockCount(result);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -276,7 +289,7 @@ export async function submitStockCount(id: string, input: SubmitStockCountInput)
 
     return fromApiStockCount(result);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 

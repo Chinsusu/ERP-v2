@@ -1,4 +1,5 @@
-import { ApiError, apiGetRaw, apiPost } from "../../../shared/api/client";
+import { apiGetRaw, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { StockAdjustment, StockAdjustmentAction, StockAdjustmentStatus } from "../types";
 
 type StockAdjustmentApiLine = {
@@ -89,7 +90,11 @@ export async function getStockAdjustments(): Promise<StockAdjustment[]> {
     });
 
     return items.map(fromApiStockAdjustment);
-  } catch {
+  } catch (reason) {
+    if (!shouldUsePrototypeFallback(reason)) {
+      throw reason;
+    }
+
     return prototypeStockAdjustments.map(cloneStockAdjustment);
   }
 }
@@ -107,7 +112,7 @@ export async function transitionStockAdjustment(
 
     return fromApiStockAdjustment(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 

@@ -1,4 +1,5 @@
-import { ApiError, apiGet, apiGetBlob } from "../../../shared/api/client";
+import { apiGet, apiGetBlob } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { ApiGetQuery, ApiGetResponse } from "../../../shared/api/client";
 import type {
   FinanceSummaryAgingBucket,
@@ -264,13 +265,6 @@ function fromApiSourceReference(reference: FinanceSummaryAgingBucketApi["source_
   };
 }
 
-function shouldUsePrototypeFallback(reason: unknown) {
-  if (reason instanceof ApiError) {
-    return false;
-  }
-
-  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
-}
 
 function agingBuckets(
   entityType: string,

@@ -1,4 +1,5 @@
-import { ApiError, apiGetRaw, apiPost } from "../../../shared/api/client";
+import { apiGetRaw, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { PickTask, PickTaskExceptionCode, PickTaskLine, PickTaskQuery, PickTaskStatus } from "../types";
 
 const defaultAccessToken = "local-dev-access-token";
@@ -209,13 +210,6 @@ export function resetPrototypePickTasksForTest() {
   prototypePickTasks = createPrototypePickTasks();
 }
 
-function shouldUsePrototypeFallback(reason: unknown) {
-  if (reason instanceof ApiError) {
-    return false;
-  }
-
-  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
-}
 
 function fromApiPickTask(task: PickTaskApi): PickTask {
   return {

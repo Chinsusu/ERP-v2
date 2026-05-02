@@ -1,4 +1,5 @@
-import { ApiError, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
+import { apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import {
   decimalScales,
@@ -258,13 +259,6 @@ async function runPurchaseOrderAction(
   }
 }
 
-function shouldUsePrototypeFallback(reason: unknown) {
-  if (reason instanceof ApiError) {
-    return false;
-  }
-
-  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
-}
 
 function fromApiPurchaseOrderListItem(order: PurchaseOrderListItemApi): PurchaseOrder {
   return {

@@ -1,4 +1,5 @@
-import { ApiError, apiGetRaw, apiPost } from "../../../shared/api/client";
+import { apiGetRaw, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import { decimalScales, formatDateTimeVI, formatQuantity, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type {
@@ -359,13 +360,6 @@ function toApiGoodsReceiptQuery(query: GoodsReceiptQuery): GoodsReceiptListApiQu
   };
 }
 
-function shouldUsePrototypeFallback(reason: unknown) {
-  if (reason instanceof ApiError) {
-    return false;
-  }
-
-  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
-}
 
 function filterPrototypeReceipts(query: GoodsReceiptQuery): GoodsReceipt[] {
   return prototypeGoodsReceipts

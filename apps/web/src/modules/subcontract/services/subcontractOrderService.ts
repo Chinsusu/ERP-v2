@@ -1,4 +1,5 @@
-import { ApiError, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
+import { apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import { decimalScales, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type { AuditLogItem } from "@/modules/audit/types";
 import type {
@@ -1044,13 +1045,6 @@ async function runSubcontractOrderAction(
   }
 }
 
-function shouldUsePrototypeFallback(reason: unknown) {
-  if (reason instanceof ApiError) {
-    return false;
-  }
-
-  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
-}
 
 function fromApiSubcontractOrderListItem(order: SubcontractOrderApiListItem): SubcontractOrder {
   return {

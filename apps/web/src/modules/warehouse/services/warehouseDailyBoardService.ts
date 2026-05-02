@@ -1,4 +1,5 @@
 import { apiGet } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import { getStockAdjustments, summarizeStockAdjustmentDelta } from "../../inventory/services/stockAdjustmentService";
 import type { StockAdjustment } from "../../inventory/types";
@@ -446,7 +447,11 @@ export async function getWarehouseFulfillmentMetrics(
     });
 
     return fromFulfillmentMetricsApi(metrics);
-  } catch {
+  } catch (reason) {
+    if (!shouldUsePrototypeFallback(reason)) {
+      throw reason;
+    }
+
     return undefined;
   }
 }
@@ -461,7 +466,11 @@ export async function getWarehouseInboundMetrics(
     });
 
     return fromInboundMetricsApi(metrics);
-  } catch {
+  } catch (reason) {
+    if (!shouldUsePrototypeFallback(reason)) {
+      throw reason;
+    }
+
     return undefined;
   }
 }
@@ -476,7 +485,11 @@ export async function getWarehouseSubcontractMetrics(
     });
 
     return fromSubcontractMetricsApi(metrics);
-  } catch {
+  } catch (reason) {
+    if (!shouldUsePrototypeFallback(reason)) {
+      throw reason;
+    }
+
     return undefined;
   }
 }

@@ -1,4 +1,5 @@
-import { ApiError, apiDelete, apiGetRaw, apiPost } from "../../../shared/api/client";
+import { apiDelete, apiGetRaw, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type {
   CarrierManifest,
   CarrierManifestLine,
@@ -348,13 +349,6 @@ export function resetPrototypeCarrierManifestsForTest() {
   prototypeScanSequence = 0;
 }
 
-function shouldUsePrototypeFallback(reason: unknown) {
-  if (reason instanceof ApiError) {
-    return false;
-  }
-
-  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
-}
 
 function fromApiCarrierManifest(manifest: CarrierManifestApi): CarrierManifest {
   return createManifest({

@@ -1,4 +1,5 @@
-import { ApiError, apiGet, apiGetBlob } from "../../../shared/api/client";
+import { apiGet, apiGetBlob } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { ApiGetQuery, ApiGetResponse } from "../../../shared/api/client";
 import type {
   OperationsDailyAreaSummary,
@@ -411,13 +412,6 @@ function addRowToSummary(summary: OperationsDailySummary, row: OperationsDailyRo
   }
 }
 
-function shouldUsePrototypeFallback(reason: unknown) {
-  if (reason instanceof ApiError) {
-    return false;
-  }
-
-  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
-}
 
 function matchesPrototypeFilter(row: OperationsDailyRow, query: OperationsDailyQuery) {
   if (query.warehouseId && row.warehouseId !== query.warehouseId) {

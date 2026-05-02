@@ -1,4 +1,5 @@
 import { apiGet } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import type { AuditLogItem, AuditLogQuery, AuditLogSummary } from "../types";
 
@@ -74,7 +75,11 @@ export async function getAuditLogs(query: AuditLogQuery = {}): Promise<AuditLogI
     });
 
     return items.map(fromApiItem);
-  } catch {
+  } catch (reason) {
+    if (!shouldUsePrototypeFallback(reason)) {
+      throw reason;
+    }
+
     return filterPrototypeAuditLogs(query);
   }
 }

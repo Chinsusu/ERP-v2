@@ -1,4 +1,5 @@
-import { ApiError, apiGet, apiGetRaw, apiPost } from "../../../shared/api/client";
+import { apiGet, apiGetRaw, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import { decimalScales, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type {
@@ -132,13 +133,6 @@ export function cashAllocationTargetAllowedForDirection(
   return ["supplier_payable", "payment_request", "manual_adjustment"].includes(targetType);
 }
 
-function shouldUsePrototypeFallback(reason: unknown) {
-  if (reason instanceof ApiError) {
-    return false;
-  }
-
-  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
-}
 
 function toApiCashTransactionQuery(query: CashTransactionQuery): CashTransactionListApiQuery {
   return {
