@@ -1841,1013 +1841,189 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", healthHandler)
-	mux.HandleFunc("/readyz", readinessHandler)
-	mux.HandleFunc("/api/v1/health", healthHandler)
-	mux.HandleFunc("/api/v1/ready", readinessHandler)
-	mux.HandleFunc("/api/v1/auth/login", loginHandler(authSessions, auditLogStore))
-	mux.HandleFunc("/api/v1/auth/mock-login", loginHandler(authSessions, auditLogStore))
-	mux.HandleFunc("/api/v1/auth/refresh", refreshHandler(authSessions, auditLogStore))
-	mux.HandleFunc("/api/v1/auth/policy", authPolicyHandler(authSessions))
-	mux.Handle("/api/v1/me", auth.RequireSessionToken(authSessions, http.HandlerFunc(meHandler)))
-	mux.Handle(
-		"/api/v1/rbac/roles",
-		auth.RequireSessionPermission(authSessions, auth.PermissionSettingsView, http.HandlerFunc(rbacRolesHandler)),
-	)
-	mux.Handle(
-		"/api/v1/rbac/permissions",
-		auth.RequireSessionPermission(authSessions, auth.PermissionSettingsView, http.HandlerFunc(rbacPermissionsHandler)),
-	)
-	mux.Handle(
-		"/api/v1/audit-logs",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionAuditLogView,
-			http.HandlerFunc(auditLogsHandler(auditLogStore)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/products",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(productsHandler(itemCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/products/{product_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(productDetailHandler(itemCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/products/{product_id}/status",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(changeProductStatusHandler(itemCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/warehouses",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(warehousesHandler(warehouseCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/warehouses/{warehouse_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(warehouseDetailHandler(warehouseCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/warehouses/{warehouse_id}/status",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(changeWarehouseStatusHandler(warehouseCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/warehouse-locations",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(warehouseLocationsHandler(warehouseCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/warehouse-locations/{location_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(warehouseLocationDetailHandler(warehouseCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/warehouse-locations/{location_id}/status",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(changeWarehouseLocationStatusHandler(warehouseCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/suppliers",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(suppliersHandler(partyCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/suppliers/{supplier_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(supplierDetailHandler(partyCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/suppliers/{supplier_id}/status",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(changeSupplierStatusHandler(partyCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/customers",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(customersHandler(partyCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/customers/{customer_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(customerDetailHandler(partyCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/customers/{customer_id}/status",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(changeCustomerStatusHandler(partyCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/sales-orders",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(salesOrdersHandler(salesOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/sales-orders/{sales_order_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(salesOrderDetailHandler(salesOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/sales-orders/{sales_order_id}/confirm",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(salesOrderConfirmHandler(salesOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/sales-orders/{sales_order_id}/cancel",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(salesOrderCancelHandler(salesOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/customer-receivables",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(customerReceivablesHandler(customerReceivableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/customer-receivables/{customer_receivable_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(customerReceivableDetailHandler(customerReceivableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/customer-receivables/{customer_receivable_id}/record-receipt",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(customerReceivableRecordReceiptHandler(customerReceivableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/customer-receivables/{customer_receivable_id}/mark-disputed",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(customerReceivableMarkDisputedHandler(customerReceivableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/customer-receivables/{customer_receivable_id}/void",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(customerReceivableVoidHandler(customerReceivableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/supplier-payables",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(supplierPayablesHandler(supplierPayableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/supplier-payables/{supplier_payable_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(supplierPayableDetailHandler(supplierPayableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/supplier-payables/{supplier_payable_id}/request-payment",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(supplierPayableRequestPaymentHandler(supplierPayableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/supplier-payables/{supplier_payable_id}/approve-payment",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(supplierPayableApprovePaymentHandler(supplierPayableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/supplier-payables/{supplier_payable_id}/reject-payment",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(supplierPayableRejectPaymentHandler(supplierPayableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/supplier-payables/{supplier_payable_id}/record-payment",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(supplierPayableRecordPaymentHandler(supplierPayableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/supplier-payables/{supplier_payable_id}/void",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(supplierPayableVoidHandler(supplierPayableService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/cash-transactions",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(cashTransactionsHandler(cashTransactionService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/cash-transactions/{cash_transaction_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(cashTransactionDetailHandler(cashTransactionService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/finance/dashboard",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(financeDashboardHandler(financeDashboardService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/cod-remittances",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(codRemittancesHandler(codRemittanceService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/cod-remittances/{cod_remittance_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(codRemittanceDetailHandler(codRemittanceService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/cod-remittances/{cod_remittance_id}/match",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(codRemittanceMatchHandler(codRemittanceService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/cod-remittances/{cod_remittance_id}/record-discrepancy",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(codRemittanceDiscrepancyHandler(codRemittanceService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/cod-remittances/{cod_remittance_id}/submit",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(codRemittanceSubmitHandler(codRemittanceService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/cod-remittances/{cod_remittance_id}/approve",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(codRemittanceApproveHandler(codRemittanceService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/cod-remittances/{cod_remittance_id}/close",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(codRemittanceCloseHandler(codRemittanceService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/purchase-orders",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionPurchaseView,
-			http.HandlerFunc(purchaseOrdersHandler(purchaseOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/purchase-orders/{purchase_order_id}",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionPurchaseView,
-			http.HandlerFunc(purchaseOrderDetailHandler(purchaseOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/purchase-orders/{purchase_order_id}/submit",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(purchaseOrderSubmitHandler(purchaseOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/purchase-orders/{purchase_order_id}/approve",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(purchaseOrderApproveHandler(purchaseOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/purchase-orders/{purchase_order_id}/cancel",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(purchaseOrderCancelHandler(purchaseOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/purchase-orders/{purchase_order_id}/close",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(purchaseOrderCloseHandler(purchaseOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionSubcontractView,
-			http.HandlerFunc(subcontractOrdersHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionSubcontractView,
-			http.HandlerFunc(subcontractOrderDetailHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/submit",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderSubmitHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/approve",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderApproveHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/confirm-factory",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderConfirmFactoryHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/record-deposit",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderRecordDepositHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/issue-materials",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderIssueMaterialsHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/start-mass-production",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderStartMassProductionHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/receive-finished-goods",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderReceiveFinishedGoodsHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/report-factory-defect",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderReportFactoryDefectHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/accept",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderAcceptFinishedGoodsHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/partial-accept",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderPartialAcceptFinishedGoodsHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/mark-final-payment-ready",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderMarkFinalPaymentReadyHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/submit-sample",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderSubmitSampleHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/approve-sample",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderApproveSampleHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/reject-sample",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderRejectSampleHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/cancel",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderCancelHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/subcontract-orders/{subcontract_order_id}/close",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(subcontractOrderCloseHandler(subcontractOrderService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inventory/stock-movements",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(stockMovementHandler(auditLogStore)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inventory/available-stock",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionInventoryView,
-			http.HandlerFunc(availableStockHandler(availableStockService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/reports/inventory-snapshot",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(inventorySnapshotReportHandler(availableStockService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/reports/inventory-snapshot/export.csv",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(inventorySnapshotCSVExportHandler(availableStockService)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/reports/operations-daily",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(operationsDailyReportHandler(operationsDailySignals)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/reports/operations-daily/export.csv",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(operationsDailyCSVExportHandler(operationsDailySignals)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/reports/finance-summary",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(financeSummaryReportHandler(
-				financeStores.customerReceivables,
-				financeStores.supplierPayables,
-				financeStores.codRemittances,
-				financeStores.cashTransactions,
-			)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/reports/finance-summary/export.csv",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(financeSummaryCSVExportHandler(
-				financeStores.customerReceivables,
-				financeStores.supplierPayables,
-				financeStores.codRemittances,
-				financeStores.cashTransactions,
-			)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/stock-adjustments",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(stockAdjustmentsHandler(listStockAdjustments, createStockAdjustment)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/stock-adjustments/{stock_adjustment_id}/submit",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(stockAdjustmentActionHandler(transitionStockAdjustment, "submit")),
-		),
-	)
-	mux.Handle(
-		"/api/v1/stock-adjustments/{stock_adjustment_id}/approve",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(stockAdjustmentActionHandler(transitionStockAdjustment, "approve")),
-		),
-	)
-	mux.Handle(
-		"/api/v1/stock-adjustments/{stock_adjustment_id}/reject",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(stockAdjustmentActionHandler(transitionStockAdjustment, "reject")),
-		),
-	)
-	mux.Handle(
-		"/api/v1/stock-adjustments/{stock_adjustment_id}/post",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(stockAdjustmentActionHandler(transitionStockAdjustment, "post")),
-		),
-	)
-	mux.Handle(
-		"/api/v1/stock-counts",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(stockCountsHandler(listStockCounts, createStockCount)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/stock-counts/{stock_count_id}/submit",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(stockCountSubmitHandler(submitStockCount)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inventory/batches",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionInventoryView,
-			http.HandlerFunc(batchesHandler(batchCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inventory/batches/{batch_id}/qc-transitions",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(batchQCTransitionsHandler(batchCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inventory/batches/{batch_id}",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionInventoryView,
-			http.HandlerFunc(batchDetailHandler(batchCatalog)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/goods-receipts",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(goodsReceiptsHandler(warehouseReceiving)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/goods-receipts/{receipt_id}/submit",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(submitGoodsReceiptHandler(warehouseReceiving)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/goods-receipts/{receipt_id}/inspect-ready",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(markGoodsReceiptInspectReadyHandler(warehouseReceiving)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/goods-receipts/{receipt_id}/post",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(postGoodsReceiptHandler(warehouseReceiving)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/goods-receipts/{receipt_id}",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionWarehouseView,
-			http.HandlerFunc(goodsReceiptDetailHandler(warehouseReceiving)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inbound-qc-inspections",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(inboundQCInspectionsHandler(inboundQCInspections)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inbound-qc-inspections/{inspection_id}/start",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(inboundQCInspectionStartHandler(inboundQCInspections)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inbound-qc-inspections/{inspection_id}/pass",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(inboundQCInspectionPassHandler(inboundQCInspections)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inbound-qc-inspections/{inspection_id}/fail",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(inboundQCInspectionFailHandler(inboundQCInspections)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inbound-qc-inspections/{inspection_id}/partial",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(inboundQCInspectionPartialHandler(inboundQCInspections)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inbound-qc-inspections/{inspection_id}/hold",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(inboundQCInspectionHoldHandler(inboundQCInspections)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/inbound-qc-inspections/{inspection_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(inboundQCInspectionDetailHandler(inboundQCInspections)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/supplier-rejections",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(supplierRejectionsHandler(listSupplierRejections, createSupplierRejection)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/supplier-rejections/{supplier_rejection_id}/submit",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(supplierRejectionActionHandler(transitionSupplierRejection, "submit")),
-		),
-	)
-	mux.Handle(
-		"/api/v1/supplier-rejections/{supplier_rejection_id}/confirm",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(supplierRejectionActionHandler(transitionSupplierRejection, "confirm")),
-		),
-	)
-	mux.Handle(
-		"/api/v1/supplier-rejections/{supplier_rejection_id}",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionWarehouseView,
-			http.HandlerFunc(supplierRejectionDetailHandler(supplierRejectionStore)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/warehouse/end-of-day-reconciliations",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionWarehouseView,
-			http.HandlerFunc(endOfDayReconciliationsHandler(listEndOfDayReconciliations)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/warehouse/end-of-day-reconciliations/{reconciliation_id}/close",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(closeEndOfDayReconciliationHandler(closeEndOfDayReconciliation)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/warehouse/daily-board/fulfillment-metrics",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionWarehouseView,
-			http.HandlerFunc(warehouseDailyBoardFulfillmentMetricsHandler(salesOrderService, listCarrierManifests)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/warehouse/daily-board/inbound-metrics",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionWarehouseView,
-			http.HandlerFunc(warehouseDailyBoardInboundMetricsHandler(
-				purchaseOrderService,
-				warehouseReceiving,
-				inboundQCInspections,
-				listSupplierRejections,
-			)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/warehouse/daily-board/subcontract-metrics",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionWarehouseView,
-			http.HandlerFunc(warehouseDailyBoardSubcontractMetricsHandler(
-				subcontractOrderService,
-				subcontractStores.materialTransfers,
-				subcontractStores.factoryClaims,
-				subcontractStores.paymentMilestones,
-			)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/pick-tasks",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(pickTasksHandler(listPickTasks)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/pick-tasks/{pick_task_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(pickTaskDetailHandler(getPickTask)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/pick-tasks/{pick_task_id}/start",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(startPickTaskHandler(startPickTask)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/pick-tasks/{pick_task_id}/confirm-line",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(confirmPickTaskLineHandler(confirmPickTaskLine)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/pick-tasks/{pick_task_id}/complete",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(completePickTaskHandler(completePickTask)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/pick-tasks/{pick_task_id}/exception",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(reportPickTaskExceptionHandler(reportPickTaskException)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/pack-tasks",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(packTasksHandler(listPackTasks)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/pack-tasks/{pack_task_id}",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(packTaskDetailHandler(getPackTask)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/pack-tasks/{pack_task_id}/start",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(startPackTaskHandler(startPackTask)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/pack-tasks/{pack_task_id}/confirm",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(confirmPackTaskHandler(confirmPackTask)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/pack-tasks/{pack_task_id}/exception",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(reportPackTaskExceptionHandler(reportPackTaskException)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/shipping/manifests",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(carrierManifestsHandler(listCarrierManifests, createCarrierManifest)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/shipping/manifests/{manifest_id}/shipments",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(addShipmentToCarrierManifestHandler(addShipmentToCarrierManifest)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/shipping/manifests/{manifest_id}/shipments/{shipment_id}",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(removeShipmentFromCarrierManifestHandler(removeShipmentFromCarrierManifest)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/shipping/manifests/{manifest_id}/ready",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(markCarrierManifestReadyToScanHandler(markCarrierManifestReadyToScan)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/shipping/manifests/{manifest_id}/cancel",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(cancelCarrierManifestHandler(cancelCarrierManifest)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/shipping/manifests/{manifest_id}/exceptions",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(reportCarrierManifestMissingOrdersHandler(reportCarrierManifestMissingOrders)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/shipping/manifests/{manifest_id}/confirm-handover",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionRecordCreate,
-			http.HandlerFunc(confirmCarrierManifestHandoverHandler(confirmCarrierManifestHandover)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/shipping/manifests/{manifest_id}/scan",
-		auth.RequireSessionPermission(
-			authSessions,
-			auth.PermissionShippingView,
-			http.HandlerFunc(verifyCarrierManifestScanHandler(verifyCarrierManifestScan)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/return-reasons",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(returnMasterDataHandler(listReturnMasterData)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/returns/scan",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(returnScanHandler(receiveReturn)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/returns/receipts",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(returnReceiptsHandler(listReturnReceipts, receiveReturn)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/returns/{return_receipt_id}/inspect",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(returnInspectionHandler(inspectReturn)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/returns/{return_receipt_id}/disposition",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(returnDispositionHandler(applyReturnDisposition)),
-		),
-	)
-	mux.Handle(
-		"/api/v1/returns/{return_receipt_id}/attachments",
-		auth.RequireSessionToken(
-			authSessions,
-			http.HandlerFunc(returnAttachmentHandler(uploadReturnAttachment)),
-		),
-	)
+	routes := newRouteGroup(mux, authSessions)
+	registerPlatformRoutes(routes, platformRouteHandlers{
+		health:          healthHandler,
+		readiness:       readinessHandler,
+		login:           loginHandler(authSessions, auditLogStore),
+		refresh:         refreshHandler(authSessions, auditLogStore),
+		policy:          authPolicyHandler(authSessions),
+		me:              meHandler,
+		rbacRoles:       rbacRolesHandler,
+		rbacPermissions: rbacPermissionsHandler,
+		auditLogs:       auditLogsHandler(auditLogStore),
+	})
+	registerMasterDataRoutes(routes, masterDataRouteHandlers{
+		products:                productsHandler(itemCatalog),
+		productDetail:           productDetailHandler(itemCatalog),
+		productStatus:           changeProductStatusHandler(itemCatalog),
+		warehouses:              warehousesHandler(warehouseCatalog),
+		warehouseDetail:         warehouseDetailHandler(warehouseCatalog),
+		warehouseStatus:         changeWarehouseStatusHandler(warehouseCatalog),
+		warehouseLocations:      warehouseLocationsHandler(warehouseCatalog),
+		warehouseLocationDetail: warehouseLocationDetailHandler(warehouseCatalog),
+		warehouseLocationStatus: changeWarehouseLocationStatusHandler(warehouseCatalog),
+		suppliers:               suppliersHandler(partyCatalog),
+		supplierDetail:          supplierDetailHandler(partyCatalog),
+		supplierStatus:          changeSupplierStatusHandler(partyCatalog),
+		customers:               customersHandler(partyCatalog),
+		customerDetail:          customerDetailHandler(partyCatalog),
+		customerStatus:          changeCustomerStatusHandler(partyCatalog),
+	})
+	registerSalesRoutes(routes, salesRouteHandlers{
+		salesOrders:       salesOrdersHandler(salesOrderService),
+		salesOrderDetail:  salesOrderDetailHandler(salesOrderService),
+		salesOrderConfirm: salesOrderConfirmHandler(salesOrderService),
+		salesOrderCancel:  salesOrderCancelHandler(salesOrderService),
+	})
+	registerFinanceRoutes(routes, financeRouteHandlers{
+		customerReceivables:             customerReceivablesHandler(customerReceivableService),
+		customerReceivableDetail:        customerReceivableDetailHandler(customerReceivableService),
+		customerReceivableRecordReceipt: customerReceivableRecordReceiptHandler(customerReceivableService),
+		customerReceivableMarkDisputed:  customerReceivableMarkDisputedHandler(customerReceivableService),
+		customerReceivableVoid:          customerReceivableVoidHandler(customerReceivableService),
+		supplierPayables:                supplierPayablesHandler(supplierPayableService),
+		supplierPayableDetail:           supplierPayableDetailHandler(supplierPayableService),
+		supplierPayableRequestPayment:   supplierPayableRequestPaymentHandler(supplierPayableService),
+		supplierPayableApprovePayment:   supplierPayableApprovePaymentHandler(supplierPayableService),
+		supplierPayableRejectPayment:    supplierPayableRejectPaymentHandler(supplierPayableService),
+		supplierPayableRecordPayment:    supplierPayableRecordPaymentHandler(supplierPayableService),
+		supplierPayableVoid:             supplierPayableVoidHandler(supplierPayableService),
+		cashTransactions:                cashTransactionsHandler(cashTransactionService),
+		cashTransactionDetail:           cashTransactionDetailHandler(cashTransactionService),
+		financeDashboard:                financeDashboardHandler(financeDashboardService),
+		codRemittances:                  codRemittancesHandler(codRemittanceService),
+		codRemittanceDetail:             codRemittanceDetailHandler(codRemittanceService),
+		codRemittanceMatch:              codRemittanceMatchHandler(codRemittanceService),
+		codRemittanceDiscrepancy:        codRemittanceDiscrepancyHandler(codRemittanceService),
+		codRemittanceSubmit:             codRemittanceSubmitHandler(codRemittanceService),
+		codRemittanceApprove:            codRemittanceApproveHandler(codRemittanceService),
+		codRemittanceClose:              codRemittanceCloseHandler(codRemittanceService),
+	})
+	registerPurchaseRoutes(routes, purchaseRouteHandlers{
+		purchaseOrders:       purchaseOrdersHandler(purchaseOrderService),
+		purchaseOrderDetail:  purchaseOrderDetailHandler(purchaseOrderService),
+		purchaseOrderSubmit:  purchaseOrderSubmitHandler(purchaseOrderService),
+		purchaseOrderApprove: purchaseOrderApproveHandler(purchaseOrderService),
+		purchaseOrderCancel:  purchaseOrderCancelHandler(purchaseOrderService),
+		purchaseOrderClose:   purchaseOrderCloseHandler(purchaseOrderService),
+	})
+	registerSubcontractRoutes(routes, subcontractRouteHandlers{
+		subcontractOrders:                 subcontractOrdersHandler(subcontractOrderService),
+		subcontractOrderDetail:            subcontractOrderDetailHandler(subcontractOrderService),
+		subcontractOrderSubmit:            subcontractOrderSubmitHandler(subcontractOrderService),
+		subcontractOrderApprove:           subcontractOrderApproveHandler(subcontractOrderService),
+		subcontractOrderConfirmFactory:    subcontractOrderConfirmFactoryHandler(subcontractOrderService),
+		subcontractOrderRecordDeposit:     subcontractOrderRecordDepositHandler(subcontractOrderService),
+		subcontractOrderIssueMaterials:    subcontractOrderIssueMaterialsHandler(subcontractOrderService),
+		subcontractOrderStartProduction:   subcontractOrderStartMassProductionHandler(subcontractOrderService),
+		subcontractOrderReceiveGoods:      subcontractOrderReceiveFinishedGoodsHandler(subcontractOrderService),
+		subcontractOrderReportDefect:      subcontractOrderReportFactoryDefectHandler(subcontractOrderService),
+		subcontractOrderAccept:            subcontractOrderAcceptFinishedGoodsHandler(subcontractOrderService),
+		subcontractOrderPartialAccept:     subcontractOrderPartialAcceptFinishedGoodsHandler(subcontractOrderService),
+		subcontractOrderFinalPaymentReady: subcontractOrderMarkFinalPaymentReadyHandler(subcontractOrderService),
+		subcontractOrderSubmitSample:      subcontractOrderSubmitSampleHandler(subcontractOrderService),
+		subcontractOrderApproveSample:     subcontractOrderApproveSampleHandler(subcontractOrderService),
+		subcontractOrderRejectSample:      subcontractOrderRejectSampleHandler(subcontractOrderService),
+		subcontractOrderCancel:            subcontractOrderCancelHandler(subcontractOrderService),
+		subcontractOrderClose:             subcontractOrderCloseHandler(subcontractOrderService),
+	})
+	registerInventoryRoutes(routes, inventoryRouteHandlers{
+		stockMovement:          stockMovementHandler(auditLogStore),
+		availableStock:         availableStockHandler(availableStockService),
+		stockAdjustments:       stockAdjustmentsHandler(listStockAdjustments, createStockAdjustment),
+		stockAdjustmentSubmit:  stockAdjustmentActionHandler(transitionStockAdjustment, "submit"),
+		stockAdjustmentApprove: stockAdjustmentActionHandler(transitionStockAdjustment, "approve"),
+		stockAdjustmentReject:  stockAdjustmentActionHandler(transitionStockAdjustment, "reject"),
+		stockAdjustmentPost:    stockAdjustmentActionHandler(transitionStockAdjustment, "post"),
+		stockCounts:            stockCountsHandler(listStockCounts, createStockCount),
+		stockCountSubmit:       stockCountSubmitHandler(submitStockCount),
+		batches:                batchesHandler(batchCatalog),
+		batchQCTransitions:     batchQCTransitionsHandler(batchCatalog),
+		batchDetail:            batchDetailHandler(batchCatalog),
+	})
+	registerReportingRoutes(routes, reportingRouteHandlers{
+		inventorySnapshot:    inventorySnapshotReportHandler(availableStockService),
+		inventorySnapshotCSV: inventorySnapshotCSVExportHandler(availableStockService),
+		operationsDaily:      operationsDailyReportHandler(operationsDailySignals),
+		operationsDailyCSV:   operationsDailyCSVExportHandler(operationsDailySignals),
+		financeSummary: financeSummaryReportHandler(
+			financeStores.customerReceivables,
+			financeStores.supplierPayables,
+			financeStores.codRemittances,
+			financeStores.cashTransactions,
+		),
+		financeSummaryCSV: financeSummaryCSVExportHandler(
+			financeStores.customerReceivables,
+			financeStores.supplierPayables,
+			financeStores.codRemittances,
+			financeStores.cashTransactions,
+		),
+	})
+	registerInboundRoutes(routes, inboundRouteHandlers{
+		goodsReceipts:            goodsReceiptsHandler(warehouseReceiving),
+		goodsReceiptSubmit:       submitGoodsReceiptHandler(warehouseReceiving),
+		goodsReceiptInspectReady: markGoodsReceiptInspectReadyHandler(warehouseReceiving),
+		goodsReceiptPost:         postGoodsReceiptHandler(warehouseReceiving),
+		goodsReceiptDetail:       goodsReceiptDetailHandler(warehouseReceiving),
+		inboundQCInspections:     inboundQCInspectionsHandler(inboundQCInspections),
+		inboundQCStart:           inboundQCInspectionStartHandler(inboundQCInspections),
+		inboundQCPass:            inboundQCInspectionPassHandler(inboundQCInspections),
+		inboundQCFail:            inboundQCInspectionFailHandler(inboundQCInspections),
+		inboundQCPartial:         inboundQCInspectionPartialHandler(inboundQCInspections),
+		inboundQCHold:            inboundQCInspectionHoldHandler(inboundQCInspections),
+		inboundQCDetail:          inboundQCInspectionDetailHandler(inboundQCInspections),
+		supplierRejections:       supplierRejectionsHandler(listSupplierRejections, createSupplierRejection),
+		supplierRejectionSubmit:  supplierRejectionActionHandler(transitionSupplierRejection, "submit"),
+		supplierRejectionConfirm: supplierRejectionActionHandler(transitionSupplierRejection, "confirm"),
+		supplierRejectionDetail:  supplierRejectionDetailHandler(supplierRejectionStore),
+	})
+	registerWarehouseRoutes(routes, warehouseRouteHandlers{
+		endOfDayReconciliations:      endOfDayReconciliationsHandler(listEndOfDayReconciliations),
+		closeEndOfDayReconciliation:  closeEndOfDayReconciliationHandler(closeEndOfDayReconciliation),
+		dailyBoardFulfillmentMetrics: warehouseDailyBoardFulfillmentMetricsHandler(salesOrderService, listCarrierManifests),
+		dailyBoardInboundMetrics: warehouseDailyBoardInboundMetricsHandler(
+			purchaseOrderService,
+			warehouseReceiving,
+			inboundQCInspections,
+			listSupplierRejections,
+		),
+		dailyBoardSubcontractMetrics: warehouseDailyBoardSubcontractMetricsHandler(
+			subcontractOrderService,
+			subcontractStores.materialTransfers,
+			subcontractStores.factoryClaims,
+			subcontractStores.paymentMilestones,
+		),
+	})
+	registerFulfillmentRoutes(routes, fulfillmentRouteHandlers{
+		pickTasks:                     pickTasksHandler(listPickTasks),
+		pickTaskDetail:                pickTaskDetailHandler(getPickTask),
+		pickTaskStart:                 startPickTaskHandler(startPickTask),
+		pickTaskConfirmLine:           confirmPickTaskLineHandler(confirmPickTaskLine),
+		pickTaskComplete:              completePickTaskHandler(completePickTask),
+		pickTaskException:             reportPickTaskExceptionHandler(reportPickTaskException),
+		packTasks:                     packTasksHandler(listPackTasks),
+		packTaskDetail:                packTaskDetailHandler(getPackTask),
+		packTaskStart:                 startPackTaskHandler(startPackTask),
+		packTaskConfirm:               confirmPackTaskHandler(confirmPackTask),
+		packTaskException:             reportPackTaskExceptionHandler(reportPackTaskException),
+		carrierManifests:              carrierManifestsHandler(listCarrierManifests, createCarrierManifest),
+		carrierManifestAddShipment:    addShipmentToCarrierManifestHandler(addShipmentToCarrierManifest),
+		carrierManifestRemoveShipment: removeShipmentFromCarrierManifestHandler(removeShipmentFromCarrierManifest),
+		carrierManifestReady:          markCarrierManifestReadyToScanHandler(markCarrierManifestReadyToScan),
+		carrierManifestCancel:         cancelCarrierManifestHandler(cancelCarrierManifest),
+		carrierManifestExceptions:     reportCarrierManifestMissingOrdersHandler(reportCarrierManifestMissingOrders),
+		carrierManifestHandover:       confirmCarrierManifestHandoverHandler(confirmCarrierManifestHandover),
+		carrierManifestScan:           verifyCarrierManifestScanHandler(verifyCarrierManifestScan),
+	})
+	registerReturnsRoutes(routes, returnsRouteHandlers{
+		returnMasterData:  returnMasterDataHandler(listReturnMasterData),
+		returnScan:        returnScanHandler(receiveReturn),
+		returnReceipts:    returnReceiptsHandler(listReturnReceipts, receiveReturn),
+		returnInspection:  returnInspectionHandler(inspectReturn),
+		returnDisposition: returnDispositionHandler(applyReturnDisposition),
+		returnAttachment:  returnAttachmentHandler(uploadReturnAttachment),
+	})
 
 	server := &http.Server{
 		Addr:              ":" + cfg.AppPort,
