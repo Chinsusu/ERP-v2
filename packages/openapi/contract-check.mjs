@@ -1,14 +1,14 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
 const repoRoot = process.cwd();
 const openapiPath = path.join(repoRoot, "packages/openapi/openapi.yaml");
-const apiMainPath = path.join(repoRoot, "apps/api/cmd/api/main.go");
+const apiRouteDir = path.join(repoRoot, "apps/api/cmd/api");
 
-const [openapi, apiMain] = await Promise.all([
+const [openapi, apiRoutes] = await Promise.all([
   readFile(openapiPath, "utf8"),
-  readFile(apiMainPath, "utf8")
+  readApiRouteRegistrationSource(apiRouteDir)
 ]);
 
 const sprint4Routes = [
@@ -420,7 +420,7 @@ const routes = [...sprint4Routes, ...sprint5Routes, ...sprint6Routes, ...sprint7
 
 for (const route of routes) {
   requireContains(openapi, `  ${route.path}:`, `OpenAPI path missing: ${route.path}`);
-  requireContains(apiMain, `"${route.apiRoute}"`, `API route registration missing: ${route.apiRoute}`);
+  requireContains(apiRoutes, `"${route.apiRoute}"`, `API route registration missing: ${route.apiRoute}`);
   for (const operationId of route.operationIds) {
     requireContains(openapi, `operationId: ${operationId}`, `OpenAPI operationId missing: ${operationId}`);
   }
@@ -463,4 +463,15 @@ function schemaBlock(source, schemaName) {
   const pattern = new RegExp(`^    ${schemaName}:\\n(?<body>(?:      .+\\n|        .+\\n|          .+\\n|            .+\\n|              .+\\n|                .+\\n|\\s*\\n)*)`, "m");
   const match = source.match(pattern);
   return match?.groups?.body ? `${schemaName}:\n${match.groups.body}` : "";
+}
+
+async function readApiRouteRegistrationSource(directory) {
+  const entries = await readdir(directory);
+  const routeFiles = entries
+    .filter((entry) => entry === "main.go" || /^routes.*\.go$/.test(entry))
+    .sort();
+  const contents = await Promise.all(
+    routeFiles.map((entry) => readFile(path.join(directory, entry), "utf8"))
+  );
+  return contents.join("\n");
 }
