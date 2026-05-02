@@ -1101,14 +1101,17 @@ type auditLogResponse struct {
 
 func main() {
 	cfg := config.FromEnv()
-	authConfig := auth.MockConfig{
-		Email:       cfg.AuthMockEmail,
-		Password:    cfg.AuthMockPassword,
-		AccessToken: cfg.StaticAuthAccessToken(),
+	authSessions, closeAuthSessions, err := newRuntimeSessionManager(cfg, time.Now)
+	if err != nil {
+		log.Fatalf("configure auth session manager: %v", err)
 	}
-	authSessions := auth.NewSessionManager(authConfig, time.Now)
 	stockAdjustmentStore, closeStockAdjustmentStore, err := newRuntimeStockAdjustmentStore(cfg)
 	if err != nil {
+		if closeAuthSessions != nil {
+			if closeErr := closeAuthSessions(); closeErr != nil {
+				log.Printf("close auth session manager: %v", closeErr)
+			}
+		}
 		log.Fatalf("configure stock adjustment store: %v", err)
 	}
 	stockCountStore, closeStockCountStore, err := newRuntimeStockCountStore(cfg)
@@ -2942,6 +2945,11 @@ func main() {
 		if closeAuditLogStore != nil {
 			if closeErr := closeAuditLogStore(); closeErr != nil {
 				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		if closeAuthSessions != nil {
+			if closeErr := closeAuthSessions(); closeErr != nil {
+				log.Printf("close auth session manager: %v", closeErr)
 			}
 		}
 		if closeFinanceStores != nil {
