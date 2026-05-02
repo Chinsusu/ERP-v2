@@ -260,7 +260,7 @@ S16-08-03 subcontract persistence smoke
 | S16-06-02 | Factory claim persistence tests | Fresh store reload and factory defect lifecycle tests pass against PostgreSQL store | `apps/api/internal/modules/production/application/postgres_subcontract_factory_claim_store_test.go` |
 | S16-07-01 | Payment milestone PostgreSQL store | Deposit/final payment milestone state persists with supplier payable link evidence | `apps/api/internal/modules/production/application/postgres_subcontract_payment_milestone_store.go` |
 | S16-07-02 | Payment milestone persistence tests | Fresh store reload and payable-link lifecycle tests pass against PostgreSQL store | `apps/api/internal/modules/production/application/postgres_subcontract_payment_milestone_store_test.go` |
-| S16-08-01 | Package runtime selectors | DB mode wires all subcontract stores together; no partial subcontract DB selection | `apps/api/cmd/api/main.go` |
+| S16-08-01 | Package runtime selectors | DB mode wires all subcontract stores together; no partial subcontract DB selection | `apps/api/cmd/api/subcontract_store_selection.go` |
 | S16-08-02 | Warehouse daily board integration check | Daily board reads the same DB-backed subcontract stores and keeps response shape | `apps/api/cmd/api/main.go` |
 | S16-08-03 | Subcontract persistence smoke | Full dev smoke proves order/transfer/sample/receipt/claim/milestone state survives restart/redeploy | `infra/scripts/smoke-dev-full.sh` |
 | S16-09-01 | Remaining prototype ledger update | Remaining prototype ledger supersedes Sprint 15 and removes subcontract stores from production persistence gaps | `docs/qa/S14-04-01_remaining_prototype_store_ledger.md` |

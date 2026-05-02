@@ -1733,23 +1733,26 @@ func main() {
 		financeStores.codRemittances,
 		financeStores.cashTransactions,
 	)
-	subcontractOrderStore := productionapp.NewPrototypeSubcontractOrderStore(auditLogStore)
-	subcontractMaterialTransferStore := productionapp.NewPrototypeSubcontractMaterialTransferStore()
-	subcontractSampleApprovalStore := productionapp.NewPrototypeSubcontractSampleApprovalStore()
-	subcontractFinishedGoodsReceiptStore := productionapp.NewPrototypeSubcontractFinishedGoodsReceiptStore()
-	subcontractFactoryClaimStore := productionapp.NewPrototypeSubcontractFactoryClaimStore()
-	subcontractPaymentMilestoneStore := productionapp.NewPrototypeSubcontractPaymentMilestoneStore()
+	subcontractStores, closeSubcontractStores, err := newRuntimeSubcontractStores(cfg, auditLogStore)
+	if err != nil {
+		if closeFinanceStores != nil {
+			if closeErr := closeFinanceStores(); closeErr != nil {
+				log.Printf("close finance stores: %v", closeErr)
+			}
+		}
+		log.Fatalf("configure subcontract stores: %v", err)
+	}
 	subcontractOrderService := productionapp.NewSubcontractOrderService(
-		subcontractOrderStore,
+		subcontractStores.orders,
 		partyCatalog,
 		itemCatalog,
 		subcontractOrderUOMConverterAdapter{catalog: uomCatalog},
 	).
-		WithMaterialIssueStores(subcontractMaterialTransferStore, stockMovementStore).
-		WithSampleApprovalStore(subcontractSampleApprovalStore).
-		WithFinishedGoodsReceiptStores(subcontractFinishedGoodsReceiptStore, stockMovementStore).
-		WithFactoryClaimStore(subcontractFactoryClaimStore).
-		WithPaymentMilestoneStore(subcontractPaymentMilestoneStore).
+		WithMaterialIssueStores(subcontractStores.materialTransfers, stockMovementStore).
+		WithSampleApprovalStore(subcontractStores.sampleApprovals).
+		WithFinishedGoodsReceiptStores(subcontractStores.finishedGoodsReceipts, stockMovementStore).
+		WithFactoryClaimStore(subcontractStores.factoryClaims).
+		WithPaymentMilestoneStore(subcontractStores.paymentMilestones).
 		WithSubcontractPayableCreator(subcontractSupplierPayableAdapter{service: supplierPayableService})
 	operationsDailySignals := operationsDailyRuntimeSignalSource{
 		receivings:           warehouseReceiving,
@@ -1759,7 +1762,7 @@ func main() {
 		returnReceipts:       listReturnReceipts,
 		stockCounts:          listStockCounts,
 		subcontractOrders:    subcontractOrderService,
-		subcontractTransfers: subcontractMaterialTransferStore,
+		subcontractTransfers: subcontractStores.materialTransfers,
 	}
 
 	mux := http.NewServeMux()
@@ -2575,9 +2578,9 @@ func main() {
 			auth.PermissionWarehouseView,
 			http.HandlerFunc(warehouseDailyBoardSubcontractMetricsHandler(
 				subcontractOrderService,
-				subcontractMaterialTransferStore,
-				subcontractFactoryClaimStore,
-				subcontractPaymentMilestoneStore,
+				subcontractStores.materialTransfers,
+				subcontractStores.factoryClaims,
+				subcontractStores.paymentMilestones,
 			)),
 		),
 	)
@@ -2779,6 +2782,11 @@ func main() {
 
 	log.Printf("api listening on :%s", cfg.AppPort)
 	if err := server.ListenAndServe(); err != nil {
+		if closeSubcontractStores != nil {
+			if closeErr := closeSubcontractStores(); closeErr != nil {
+				log.Printf("close subcontract stores: %v", closeErr)
+			}
+		}
 		if closeReturnReceiptStore != nil {
 			if closeErr := closeReturnReceiptStore(); closeErr != nil {
 				log.Printf("close return receipt store: %v", closeErr)
