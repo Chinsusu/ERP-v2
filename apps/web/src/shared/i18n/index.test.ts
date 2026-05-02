@@ -32,6 +32,8 @@ describe("Vietnamese-first i18n foundation", () => {
     expect(t("warehouse.dailyBoard")).toBe("Bảng công việc kho");
     expect(t("warehouse.taskBoard.rows", { values: { count: 3 } })).toBe("3 dòng");
     expect(t("warehouse.shiftClosingPanel.closeShift")).toBe("Đóng ca");
+    expect(t("sales.orders")).toBe("Đơn bán hàng");
+    expect(t("sales.actions.confirm")).toBe("Xác nhận");
   });
 
   it("centralizes status, error, validation, and unit labels", () => {
