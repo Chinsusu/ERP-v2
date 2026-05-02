@@ -6,7 +6,7 @@ Sprint: Sprint 15 - Finance runtime store persistence v1
 Document role: Sprint changelog and release evidence
 Version: v1.0
 Date: 2026-05-02
-Status: Release evidence prepared; production tag pending until this changelog merges and main CI is green
+Status: Release evidence complete; production tag pushed after green CI, dev smoke, and migration gate
 
 ---
 
@@ -176,10 +176,10 @@ Latest Sprint 15 smoke evidence on dev:
 
 ```text
 api_restart                  ok finance-runtime
-persisted_finance_ar         ok AR-S15-06-03-SMOKE-0003
-persisted_finance_ap         ok AP-S15-06-03-SMOKE-0003
-persisted_finance_cod        ok COD-S15-06-03-SMOKE-0003
-persisted_finance_cash       ok CASH-IN-S15-06-03-SMOKE-0003
+persisted_finance_ar         ok AR-S15-06-03-SMOKE-0004
+persisted_finance_ap         ok AP-S15-06-03-SMOKE-0004
+persisted_finance_cod        ok COD-S15-06-03-SMOKE-0004
+persisted_finance_cash       ok CASH-IN-S15-06-03-SMOKE-0004
 ```
 
 The same full smoke also passed the previously persisted audit, sales reservation/order, stock adjustment/movement/count, purchase order, inbound QC, carrier manifest, pick task, pack task, return receipt, and supplier rejection checks.
@@ -209,6 +209,8 @@ S15-06-03: full dev smoke passed with finance restart persistence evidence.
 S15-07-01: git diff --check passed.
 S15-07-01: documentation-only change; no runtime test required.
 S15-08-01: dev release gate passed at commit d87ddcec.
+S15 tag gate: full dev smoke passed at tag commit 87df2da4.
+S15 tag gate: PostgreSQL 16 migration apply/rollback passed at tag commit 87df2da4.
 ```
 
 Migration runtime gate:
@@ -216,7 +218,7 @@ Migration runtime gate:
 ```text
 PostgreSQL 16 isolated container
 PostgreSQL version: 16.13
-Source: /opt/ERP-v2 at main commit d87ddcec
+Source: /opt/ERP-v2 at main commit 87df2da4
 Action: apply every *.up.sql in order, then apply every *.down.sql in reverse order
 Result: passed
 Applied migrations: 31
@@ -250,18 +252,24 @@ Finance AR, AP, COD, cash, dashboard, report, and CSV export runtime paths are n
 Sprint 15 release gate status:
 
 ```text
-Task PRs: merged through S15-07-01
-Current changelog PR: pending merge
-Main CI: green through PR #467; rerun required for this changelog PR
-Dev runtime smoke: green at commit d87ddcec
+Task PRs: merged through S15-08-01
+Current changelog PR: merged as PR #468
+Main CI: green through PR #468
+Dev runtime smoke: green at tag commit 87df2da4
 Migration apply/rollback: green on PostgreSQL 16 isolated instance
-Production tag: pending
+Production tag: pushed
 ```
 
-Recommended tag after this changelog merges and main CI is green:
+Production tag:
 
 ```text
 v0.15.0-finance-runtime-store-persistence
+```
+
+Tag commit:
+
+```text
+87df2da44f58bc2f9534205ab47e4a5605b51d4f
 ```
 
 Do not move the tag once pushed. If a post-tag fix is needed, create a new patch tag instead.
