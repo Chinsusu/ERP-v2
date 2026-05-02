@@ -120,6 +120,144 @@ postgres_exec() {
       psql -v ON_ERROR_STOP=1 -q -X -U "${POSTGRES_USER:-erp_dev}" -d "${POSTGRES_DB:-erp_dev}" >/dev/null
 }
 
+restart_api_service() {
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "docker is required for api restart smoke" >&2
+    exit 1
+  fi
+  if [ ! -f "$compose_file" ]; then
+    echo "Missing compose file: $compose_file" >&2
+    exit 1
+  fi
+
+  docker compose --env-file "$env_file" -f "$compose_file" restart api >/dev/null
+
+  retries=30
+  while [ "$retries" -gt 0 ]; do
+    if curl -fsS "$api_base/health" >/dev/null 2>&1; then
+      printf '%-28s %s %s\n' "api_restart" "ok" "finance-runtime"
+      return
+    fi
+    retries=$((retries - 1))
+    sleep 2
+  done
+
+  echo "api_restart failed: API health did not recover" >&2
+  exit 1
+}
+
+persisted_finance_runtime_check() {
+  org_id="00000000-0000-4000-8000-000000000001"
+  smoke_index="$(postgres_scalar "select greatest((select count(*) from finance.customer_receivables where receivable_ref like 'ar-s15-06-03-smoke-%'), (select count(*) from finance.supplier_payables where payable_ref like 'ap-s15-06-03-smoke-%'), (select count(*) from finance.cod_remittances where remittance_ref like 'cod-s15-06-03-smoke-%'), (select count(*) from finance.cash_transactions where transaction_ref like 'cash-s15-06-03-smoke-%')) + 1")"
+  case "$smoke_index" in
+    ''|*[!0-9]*)
+      echo "persisted_finance_runtime failed: invalid smoke index '$smoke_index'" >&2
+      exit 1
+      ;;
+  esac
+
+  suffix="$(printf '%04d' "$smoke_index")"
+  ar_id="ar-s15-06-03-smoke-$suffix"
+  ar_no="AR-S15-06-03-SMOKE-$suffix"
+  ar_line_id="ar-line-s15-06-03-smoke-$suffix"
+  shipment_id="shipment-s15-06-03-smoke-$suffix"
+  shipment_no="SHP-S15-06-03-SMOKE-$suffix"
+  ap_id="ap-s15-06-03-smoke-$suffix"
+  ap_no="AP-S15-06-03-SMOKE-$suffix"
+  ap_line_id="ap-line-s15-06-03-smoke-$suffix"
+  qc_id="qc-s15-06-03-smoke-$suffix"
+  qc_no="QC-S15-06-03-SMOKE-$suffix"
+  receipt_id="gr-s15-06-03-smoke-$suffix"
+  receipt_no="GR-S15-06-03-SMOKE-$suffix"
+  cod_id="cod-s15-06-03-smoke-$suffix"
+  cod_no="COD-S15-06-03-SMOKE-$suffix"
+  cod_line_id="cod-line-s15-06-03-smoke-$suffix"
+  tracking_no="GHN-S15-06-03-SMOKE-$suffix"
+  cash_id="cash-s15-06-03-smoke-$suffix"
+  cash_no="CASH-IN-S15-06-03-SMOKE-$suffix"
+  cash_allocation_id="cash-alloc-s15-06-03-smoke-$suffix"
+
+  before_count="$(postgres_scalar "select (select count(*) from finance.customer_receivables where receivable_ref = '$ar_id') + (select count(*) from finance.supplier_payables where payable_ref = '$ap_id') + (select count(*) from finance.cod_remittances where remittance_ref = '$cod_id') + (select count(*) from finance.cash_transactions where transaction_ref = '$cash_id')")"
+
+  ar_body="$(cat <<EOF
+{"id":"$ar_id","receivable_no":"$ar_no","customer_id":"customer-s15-06-03","customer_code":"CUS-S15-06-03","customer_name":"Sprint 15 Finance Smoke Customer","source_document":{"type":"shipment","id":"$shipment_id","no":"$shipment_no"},"lines":[{"id":"$ar_line_id","description":"S15-06-03 finance persistence smoke AR","source_document":{"type":"shipment","id":"$shipment_id","no":"$shipment_no"},"amount":"1250000.00"}],"total_amount":"1250000.00","currency_code":"VND","due_date":"2026-05-02"}
+EOF
+)"
+  ap_body="$(cat <<EOF
+{"id":"$ap_id","payable_no":"$ap_no","supplier_id":"supplier-s15-06-03","supplier_code":"SUP-S15-06-03","supplier_name":"Sprint 15 Finance Smoke Supplier","source_document":{"type":"qc_inspection","id":"$qc_id","no":"$qc_no"},"lines":[{"id":"$ap_line_id","description":"S15-06-03 finance persistence smoke AP","source_document":{"type":"warehouse_receipt","id":"$receipt_id","no":"$receipt_no"},"amount":"4250000.00"}],"total_amount":"4250000.00","currency_code":"VND","due_date":"2026-05-02"}
+EOF
+)"
+  cod_body="$(cat <<EOF
+{"id":"$cod_id","remittance_no":"$cod_no","carrier_id":"carrier-s15-06-03","carrier_code":"GHN","carrier_name":"GHN Express","business_date":"2026-05-02","expected_amount":"1250000.00","remitted_amount":"1200000.00","currency_code":"VND","lines":[{"id":"$cod_line_id","receivable_id":"$ar_id","receivable_no":"$ar_no","shipment_id":"$shipment_id","tracking_no":"$tracking_no","customer_name":"Sprint 15 Finance Smoke Customer","expected_amount":"1250000.00","remitted_amount":"1200000.00"}]}
+EOF
+)"
+  cash_body="$(cat <<EOF
+{"id":"$cash_id","transaction_no":"$cash_no","direction":"cash_in","business_date":"2026-05-02","counterparty_id":"carrier-s15-06-03","counterparty_name":"GHN Express","payment_method":"bank_transfer","reference_no":"BANK-S15-06-03-$suffix","allocations":[{"id":"$cash_allocation_id","target_type":"customer_receivable","target_id":"$ar_id","target_no":"$ar_no","amount":"1250000.00"}],"total_amount":"1250000.00","currency_code":"VND","memo":"S15-06-03 finance persistence smoke"}
+EOF
+)"
+
+  curl_check "finance_ar_create" POST "$api_base/customer-receivables" 201 "$ar_body" auth
+  curl_check "finance_ap_create" POST "$api_base/supplier-payables" 201 "$ap_body" auth
+  curl_check "finance_cod_create" POST "$api_base/cod-remittances" 201 "$cod_body" auth
+  curl_check "finance_cash_create" POST "$api_base/cash-transactions" 201 "$cash_body" auth
+
+  restart_api_service
+
+  curl_check "finance_ar_read" GET "$api_base/customer-receivables/$ar_id" 200 "" auth
+  if ! grep -q "\"id\":\"$ar_id\"" "$tmp_body" ||
+    ! grep -q '"status":"open"' "$tmp_body" ||
+    ! grep -q '"outstanding_amount":"1250000.00"' "$tmp_body"; then
+    echo "persisted_finance_ar failed: receivable not readable after restart" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  curl_check "finance_ap_read" GET "$api_base/supplier-payables/$ap_id" 200 "" auth
+  if ! grep -q "\"id\":\"$ap_id\"" "$tmp_body" ||
+    ! grep -q '"status":"open"' "$tmp_body" ||
+    ! grep -q '"outstanding_amount":"4250000.00"' "$tmp_body"; then
+    echo "persisted_finance_ap failed: payable not readable after restart" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  curl_check "finance_cod_read" GET "$api_base/cod-remittances/$cod_id" 200 "" auth
+  if ! grep -q "\"id\":\"$cod_id\"" "$tmp_body" ||
+    ! grep -q '"status":"draft"' "$tmp_body" ||
+    ! grep -q '"discrepancy_amount":"-50000.00"' "$tmp_body"; then
+    echo "persisted_finance_cod failed: COD remittance not readable after restart" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  curl_check "finance_cash_read" GET "$api_base/cash-transactions/$cash_id" 200 "" auth
+  if ! grep -q "\"id\":\"$cash_id\"" "$tmp_body" ||
+    ! grep -q '"status":"posted"' "$tmp_body" ||
+    ! grep -q "\"id\":\"$cash_allocation_id\"" "$tmp_body"; then
+    echo "persisted_finance_cash failed: cash transaction not readable after restart" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  json_check "finance_dashboard_after" "$api_base/finance/dashboard?business_date=2026-05-02"
+  json_check "finance_report_after" "$api_base/reports/finance-summary?from_date=2026-05-02&to_date=2026-05-02&business_date=2026-05-02"
+
+  ar_count="$(postgres_scalar "select count(*) from finance.customer_receivables r join finance.customer_receivable_lines l on l.customer_receivable_id = r.id where r.org_id = '$org_id'::uuid and r.receivable_ref = '$ar_id' and r.receivable_no = '$ar_no' and r.status = 'open' and r.outstanding_amount = 1250000.00 and l.line_ref = '$ar_line_id' and l.source_document_ref = '$shipment_id' and l.amount = 1250000.00")"
+  ap_count="$(postgres_scalar "select count(*) from finance.supplier_payables p join finance.supplier_payable_lines l on l.supplier_payable_id = p.id where p.org_id = '$org_id'::uuid and p.payable_ref = '$ap_id' and p.payable_no = '$ap_no' and p.status = 'open' and p.outstanding_amount = 4250000.00 and l.line_ref = '$ap_line_id' and l.source_document_ref = '$receipt_id' and l.amount = 4250000.00")"
+  cod_count="$(postgres_scalar "select count(*) from finance.cod_remittances r join finance.cod_remittance_lines l on l.cod_remittance_id = r.id where r.org_id = '$org_id'::uuid and r.remittance_ref = '$cod_id' and r.remittance_no = '$cod_no' and r.status = 'draft' and r.discrepancy_amount = -50000.00 and l.line_ref = '$cod_line_id' and l.receivable_ref = '$ar_id' and l.discrepancy_amount = -50000.00")"
+  cash_count="$(postgres_scalar "select count(*) from finance.cash_transactions t join finance.cash_transaction_allocations a on a.cash_transaction_id = t.id where t.org_id = '$org_id'::uuid and t.transaction_ref = '$cash_id' and t.transaction_no = '$cash_no' and t.status = 'posted' and t.direction = 'cash_in' and t.total_amount = 1250000.00 and a.allocation_ref = '$cash_allocation_id' and a.target_ref = '$ar_id' and a.amount = 1250000.00")"
+  audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref in ('$ar_id', '$ap_id', '$cod_id', '$cash_id') and action in ('finance.customer_receivable.created', 'finance.supplier_payable.created', 'finance.cod_remittance.created', 'finance.cash_transaction.recorded')")"
+  if [ "$before_count" != "0" ] || [ "$ar_count" != "1" ] || [ "$ap_count" != "1" ] || [ "$cod_count" != "1" ] || [ "$cash_count" != "1" ] || [ "$audit_count" != "4" ]; then
+    echo "persisted_finance_runtime failed: before=$before_count ar=$ar_count ap=$ap_count cod=$cod_count cash=$cash_count audit=$audit_count" >&2
+    exit 1
+  fi
+
+  printf '%-28s %s %s\n' "persisted_finance_ar" "ok" "$ar_no"
+  printf '%-28s %s %s\n' "persisted_finance_ap" "ok" "$ap_no"
+  printf '%-28s %s %s\n' "persisted_finance_cod" "ok" "$cod_no"
+  printf '%-28s %s %s\n' "persisted_finance_cash" "ok" "$cash_no"
+}
+
 persisted_stock_movement_check() {
   smoke_index="$(postgres_scalar "select count(*) + 1 from inventory.stock_ledger where source_doc_type = 'stock_adjustment' and movement_no like 'ADJ-S9-03-03-SMOKE-%'")"
   case "$smoke_index" in
@@ -1279,6 +1417,7 @@ csv_check "operations_report_csv" "$api_base/reports/operations-daily/export.csv
 json_check "finance_report_json" "$api_base/reports/finance-summary?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08"
 csv_check "finance_report_csv" "$api_base/reports/finance-summary/export.csv?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08"
 
+persisted_finance_runtime_check
 persisted_sales_reservation_check
 persisted_stock_movement_check
 persisted_stock_count_check
