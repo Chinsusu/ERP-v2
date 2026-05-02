@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { getActionLabel } from "../i18n/action-labels";
+import { t } from "../i18n";
 import type { StatusTone } from "./components";
 
 export const pageTemplateNames = [
@@ -49,7 +51,7 @@ export function PageHeader({ eyebrow, breadcrumbs = [], title, description, stat
     <header className="erp-ds-page-header">
       <div className="erp-ds-page-header-main">
         {breadcrumbs.length > 0 ? (
-          <nav className="erp-ds-breadcrumbs" aria-label="Breadcrumb">
+          <nav className="erp-ds-breadcrumbs" aria-label={t("common.breadcrumb")}>
             <ol>
               {breadcrumbs.map((breadcrumb, index) => (
                 <li key={index}>{breadcrumb}</li>
@@ -66,7 +68,7 @@ export function PageHeader({ eyebrow, breadcrumbs = [], title, description, stat
         {meta ? <div className="erp-ds-page-meta">{meta}</div> : null}
       </div>
       {actions ? (
-        <div className="erp-ds-page-actions" aria-label="Page actions">
+        <div className="erp-ds-page-actions" aria-label={t("common.pageActions")}>
           {actions}
         </div>
       ) : null}
@@ -80,7 +82,7 @@ export type FilterBarProps = {
   label?: string;
 };
 
-export function FilterBar({ children, actions, label = "Filters" }: FilterBarProps) {
+export function FilterBar({ children, actions, label = t("common.filters") }: FilterBarProps) {
   return (
     <section className="erp-ds-filter-bar" aria-label={label}>
       <div className="erp-ds-filter-fields">{children}</div>
@@ -163,7 +165,7 @@ export type StickyFooterProps = {
 
 export function StickyFooter({ children }: StickyFooterProps) {
   return (
-    <footer className="erp-ds-sticky-footer" aria-label="Page actions">
+    <footer className="erp-ds-sticky-footer" aria-label={t("common.pageActions")}>
       {children}
     </footer>
   );
@@ -256,9 +258,9 @@ export type AuditLogPanelProps = {
   title?: ReactNode;
 };
 
-export function AuditLogPanel({ entries, title = "Audit log" }: AuditLogPanelProps) {
+export function AuditLogPanel({ entries, title = t("common.auditLog") }: AuditLogPanelProps) {
   return (
-    <TemplatePanel title={title} description="Latest traceable changes for this record">
+    <TemplatePanel title={title} description={t("common.auditDescription")}>
       {entries.length > 0 ? (
         <ol className="erp-ds-audit-list">
           {entries.map((entry) => (
@@ -268,8 +270,8 @@ export function AuditLogPanel({ entries, title = "Audit log" }: AuditLogPanelPro
               <span>{entry.actor}</span>
               {entry.before || entry.after ? (
                 <div className="erp-ds-audit-diff">
-                  <span>{entry.before ?? "Before: n/a"}</span>
-                  <span>{entry.after ?? "After: n/a"}</span>
+                  <span>{entry.before ?? t("common.beforeNA")}</span>
+                  <span>{entry.after ?? t("common.afterNA")}</span>
                 </div>
               ) : null}
               {entry.metadata ? <small>{entry.metadata}</small> : null}
@@ -277,7 +279,7 @@ export function AuditLogPanel({ entries, title = "Audit log" }: AuditLogPanelPro
           ))}
         </ol>
       ) : (
-        <p className="erp-ds-panel-empty">No audit events recorded.</p>
+        <p className="erp-ds-panel-empty">{t("common.noAuditEvents")}</p>
       )}
     </TemplatePanel>
   );
@@ -311,15 +313,15 @@ export type AttachmentPanelProps = {
 
 export function AttachmentPanel({
   items,
-  title = "Attachments",
+  title = t("common.attachments"),
   action,
   uploadAction,
-  emptyMessage = "No attachments uploaded."
+  emptyMessage = t("common.noAttachments")
 }: AttachmentPanelProps) {
   return (
     <TemplatePanel
       title={title}
-      description="Files linked to this record"
+      description={t("common.attachmentDescription")}
       actions={
         action || uploadAction ? (
           <div className="erp-ds-attachment-toolbar">
@@ -349,12 +351,12 @@ export function AttachmentPanel({
                   {item.action}
                   {item.canDownload ? (
                     <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={item.onDownload}>
-                      {item.downloadLabel ?? "Download"}
+                      {item.downloadLabel ?? getActionLabel("Download")}
                     </button>
                   ) : null}
                   {item.canDelete ? (
                     <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={item.onDelete}>
-                      {item.deleteLabel ?? "Delete"}
+                      {item.deleteLabel ?? getActionLabel("Delete")}
                     </button>
                   ) : null}
                 </div>
