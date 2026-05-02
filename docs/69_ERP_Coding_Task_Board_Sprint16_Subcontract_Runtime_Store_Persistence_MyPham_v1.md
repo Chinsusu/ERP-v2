@@ -246,7 +246,7 @@ S16-08-03 subcontract persistence smoke
 | Task ID | Task | Output / Acceptance | Primary Ref |
 | --- | --- | --- | --- |
 | S16-00-00 | Sprint 16 task board | File 69 created with scope, guardrails, sequencing, verification gates, and task list | `docs/68_ERP_Sprint15_Changelog_Finance_Runtime_Store_Persistence_MyPham_v1.md` |
-| S16-01-01 | Subcontract persistence design | Map existing subcontract domain contracts to PostgreSQL tables, selectors, fallback behavior, tests, smoke, and rollback | `apps/api/internal/modules/production/application/subcontract_order_service.go` |
+| S16-01-01 | Subcontract persistence design | Map existing subcontract domain contracts to PostgreSQL tables, selectors, fallback behavior, tests, smoke, and rollback | `docs/qa/S16-01-01_subcontract_persistence_design.md` |
 | S16-01-02 | Subcontract migration foundation | Migration extends/creates subcontract runtime tables and indexes for order, transfer, sample, receipt, claim, and milestone persistence | `apps/api/migrations/000013_subcontract_order_core.up.sql` |
 | S16-02-01 | Subcontract order PostgreSQL store | Order list/get/save persists status transitions, material lines, quantities, amounts, actor refs, and stable IDs | `apps/api/internal/modules/production/application/subcontract_order_service.go` |
 | S16-02-02 | Subcontract order persistence tests | Fresh store reload and lifecycle tests pass against PostgreSQL store | `apps/api/internal/modules/production/application/subcontract_order_service_test.go` |
