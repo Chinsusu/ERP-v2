@@ -12,20 +12,17 @@ import {
   type DataTableColumn,
   type ToastMessage
 } from "@/shared/design-system/components";
+import { t } from "@/shared/i18n";
 import { useWarehouseMasterData } from "../hooks/useWarehouseMasterData";
 import {
   emptyLocationInput,
   emptyWarehouseInput,
-  locationStatusLabel,
   locationStatusOptions,
-  locationTypeLabel,
   locationTypeOptions,
   toLocationInput,
   toWarehouseInput,
-  warehouseStatusLabel,
   warehouseStatusOptions,
   warehouseStatusTone,
-  warehouseTypeLabel,
   warehouseTypeOptions
 } from "../services/warehouseMasterDataService";
 import type {
@@ -33,16 +30,18 @@ import type {
   WarehouseLocationMasterDataItem,
   WarehouseLocationMasterDataQuery,
   WarehouseLocationStatus,
+  WarehouseLocationType,
   WarehouseMasterDataInput,
   WarehouseMasterDataItem,
   WarehouseMasterDataQuery,
-  WarehouseStatus
+  WarehouseStatus,
+  WarehouseType
 } from "../types";
 
-const allWarehouseStatusOptions = [{ label: "All warehouse statuses", value: "" }, ...warehouseStatusOptions] as const;
-const allWarehouseTypeOptions = [{ label: "All warehouse types", value: "" }, ...warehouseTypeOptions] as const;
-const allLocationStatusOptions = [{ label: "All location statuses", value: "" }, ...locationStatusOptions] as const;
-const allLocationTypeOptions = [{ label: "All location types", value: "" }, ...locationTypeOptions] as const;
+const allWarehouseStatusOptions = [{ label: warehouseCopy("filters.allWarehouseStatuses"), value: "" }, ...warehouseStatusOptions] as const;
+const allWarehouseTypeOptions = [{ label: warehouseCopy("filters.allWarehouseTypes"), value: "" }, ...warehouseTypeOptions] as const;
+const allLocationStatusOptions = [{ label: warehouseCopy("filters.allLocationStatuses"), value: "" }, ...locationStatusOptions] as const;
+const allLocationTypeOptions = [{ label: warehouseCopy("filters.allLocationTypes"), value: "" }, ...locationTypeOptions] as const;
 
 export function WarehouseLocationMasterDataPrototype({ embedded = false }: { embedded?: boolean }) {
   const [search, setSearch] = useState("");
@@ -100,7 +99,7 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
   const warehouseColumns: DataTableColumn<WarehouseMasterDataItem>[] = [
     {
       key: "warehouse",
-      header: "Warehouse",
+      header: warehouseCopy("warehouse.columns.warehouse"),
       render: (row) => (
         <div className="erp-masterdata-product-cell">
           <strong>{row.warehouseCode}</strong>
@@ -109,18 +108,18 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
       ),
       width: "240px"
     },
-    { key: "type", header: "Type", render: (row) => warehouseTypeLabel(row.warehouseType), width: "130px" },
-    { key: "site", header: "Site", render: (row) => row.siteCode, width: "80px" },
+    { key: "type", header: warehouseCopy("columns.type"), render: (row) => warehouseTypeDisplay(row.warehouseType), width: "130px" },
+    { key: "site", header: warehouseCopy("columns.site"), render: (row) => row.siteCode, width: "80px" },
     {
       key: "flow",
-      header: "Flow",
+      header: warehouseCopy("columns.flow"),
       render: (row) => warehouseFlowLabels(row).join(", ") || "-",
       width: "160px"
     },
     {
       key: "status",
-      header: "Status",
-      render: (row) => <StatusChip tone={warehouseStatusTone(row.status)}>{warehouseStatusLabel(row.status)}</StatusChip>,
+      header: warehouseCopy("columns.status"),
+      render: (row) => <StatusChip tone={warehouseStatusTone(row.status)}>{warehouseStatusDisplay(row.status)}</StatusChip>,
       width: "110px"
     },
     {
@@ -131,10 +130,10 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
       render: (row) => (
         <div className="erp-masterdata-row-actions">
           <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => openWarehouseDetail(row.id)}>
-            Detail
+            {commonAction("detail")}
           </button>
           <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => startWarehouseEdit(row)}>
-            Edit
+            {commonAction("edit")}
           </button>
           <button
             className="erp-button erp-button--secondary erp-button--compact"
@@ -142,7 +141,7 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
             disabled={saving}
             onClick={() => toggleWarehouseStatus(row)}
           >
-            {row.status === "active" ? "Inactivate" : "Activate"}
+            {row.status === "active" ? commonAction("inactivate") : commonAction("activate")}
           </button>
         </div>
       )
@@ -152,7 +151,7 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
   const locationColumns: DataTableColumn<WarehouseLocationMasterDataItem>[] = [
     {
       key: "location",
-      header: "Location",
+      header: warehouseCopy("location.columns.location"),
       render: (row) => (
         <div className="erp-masterdata-product-cell">
           <strong>{row.locationCode}</strong>
@@ -161,18 +160,18 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
       ),
       width: "220px"
     },
-    { key: "warehouse", header: "WH", render: (row) => row.warehouseCode, width: "120px" },
-    { key: "type", header: "Type", render: (row) => locationTypeLabel(row.locationType), width: "120px" },
+    { key: "warehouse", header: warehouseCopy("location.columns.warehouse"), render: (row) => row.warehouseCode, width: "120px" },
+    { key: "type", header: warehouseCopy("columns.type"), render: (row) => locationTypeDisplay(row.locationType), width: "120px" },
     {
       key: "flow",
-      header: "Flow",
+      header: warehouseCopy("columns.flow"),
       render: (row) => locationFlowLabels(row).join(", ") || "-",
       width: "160px"
     },
     {
       key: "status",
-      header: "Status",
-      render: (row) => <StatusChip tone={warehouseStatusTone(row.status)}>{locationStatusLabel(row.status)}</StatusChip>,
+      header: warehouseCopy("columns.status"),
+      render: (row) => <StatusChip tone={warehouseStatusTone(row.status)}>{locationStatusDisplay(row.status)}</StatusChip>,
       width: "110px"
     },
     {
@@ -183,10 +182,10 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
       render: (row) => (
         <div className="erp-masterdata-row-actions">
           <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => openLocationDetail(row.id)}>
-            Detail
+            {commonAction("detail")}
           </button>
           <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => startLocationEdit(row)}>
-            Edit
+            {commonAction("edit")}
           </button>
           <button
             className="erp-button erp-button--secondary erp-button--compact"
@@ -194,7 +193,7 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
             disabled={saving}
             onClick={() => toggleLocationStatus(row)}
           >
-            {row.status === "active" ? "Inactivate" : "Activate"}
+            {row.status === "active" ? commonAction("inactivate") : commonAction("activate")}
           </button>
         </div>
       )
@@ -203,47 +202,47 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
 
   const content = (
     <>
-      <section className="erp-masterdata-toolbar erp-masterdata-toolbar--wide" aria-label="Warehouse master data filters">
+      <section className="erp-masterdata-toolbar erp-masterdata-toolbar--wide" aria-label={warehouseCopy("filters.label")}>
         <label className="erp-field">
-          <span>Search</span>
+          <span>{warehouseCopy("filters.search")}</span>
           <input className="erp-input" type="search" value={search} placeholder="WH-HCM-FG" onChange={(event) => setSearch(event.target.value.toUpperCase())} />
         </label>
         <label className="erp-field">
-          <span>Warehouse status</span>
+          <span>{warehouseCopy("filters.warehouseStatus")}</span>
           <select className="erp-input" value={warehouseStatus} onChange={(event) => setWarehouseStatus(event.target.value as WarehouseStatus | "")}>
             {allWarehouseStatusOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? warehouseStatusDisplay(option.value) : option.label}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Warehouse type</span>
+          <span>{warehouseCopy("filters.warehouseType")}</span>
           <select className="erp-input" value={warehouseType} onChange={(event) => setWarehouseType(event.target.value as WarehouseMasterDataQuery["warehouseType"])}>
             {allWarehouseTypeOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? warehouseTypeDisplay(option.value) : option.label}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Location status</span>
+          <span>{warehouseCopy("filters.locationStatus")}</span>
           <select className="erp-input" value={locationStatus} onChange={(event) => setLocationStatus(event.target.value as WarehouseLocationStatus | "")}>
             {allLocationStatusOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? locationStatusDisplay(option.value) : option.label}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Location type</span>
+          <span>{warehouseCopy("filters.locationType")}</span>
           <select className="erp-input" value={locationType} onChange={(event) => setLocationType(event.target.value as WarehouseLocationMasterDataQuery["locationType"])}>
             {allLocationTypeOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? locationTypeDisplay(option.value) : option.label}
               </option>
             ))}
           </select>
@@ -251,17 +250,17 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
       </section>
 
       <section className="erp-kpi-grid erp-masterdata-kpis">
-        <MasterDataKPI label="Warehouses" value={summary.warehouses} tone="normal" />
-        <MasterDataKPI label="Active WH" value={summary.activeWarehouses} tone="success" />
-        <MasterDataKPI label="Active locations" value={summary.activeLocations} tone="info" />
-        <MasterDataKPI label="Receiving" value={summary.receivingLocations} tone="warning" />
+        <MasterDataKPI label={warehouseCopy("kpi.warehouses")} value={summary.warehouses} tone="normal" />
+        <MasterDataKPI label={warehouseCopy("kpi.activeWarehouses")} value={summary.activeWarehouses} tone="success" />
+        <MasterDataKPI label={warehouseCopy("kpi.activeLocations")} value={summary.activeLocations} tone="info" />
+        <MasterDataKPI label={warehouseCopy("kpi.receiving")} value={summary.receivingLocations} tone="warning" />
       </section>
 
       <section className="erp-masterdata-workspace">
         <section className="erp-card erp-card--padded erp-masterdata-list-card">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Warehouse master</h2>
-            <StatusChip tone={warehouses.length === 0 ? "warning" : "info"}>{warehouses.length} rows</StatusChip>
+            <h2 className="erp-section-title">{warehouseCopy("warehouse.list.title")}</h2>
+            <StatusChip tone={warehouses.length === 0 ? "warning" : "info"}>{warehouseCopy("list.rows", { count: warehouses.length })}</StatusChip>
           </div>
           <DataTable
             columns={warehouseColumns}
@@ -269,19 +268,19 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
             getRowKey={(row) => row.id}
             loading={loading}
             error={tableError(error, clearError)}
-            emptyState={<EmptyState title="No warehouses" description="Adjust the filters or create a warehouse." />}
+            emptyState={<EmptyState title={warehouseCopy("warehouse.empty.title")} description={warehouseCopy("warehouse.empty.description")} />}
           />
         </section>
 
         <section className="erp-card erp-card--padded erp-masterdata-list-card">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Location master</h2>
-            <StatusChip tone={locations.length === 0 ? "warning" : "info"}>{locations.length} rows</StatusChip>
+            <h2 className="erp-section-title">{warehouseCopy("location.list.title")}</h2>
+            <StatusChip tone={locations.length === 0 ? "warning" : "info"}>{warehouseCopy("list.rows", { count: locations.length })}</StatusChip>
           </div>
           <label className="erp-field erp-masterdata-inline-filter">
-            <span>Warehouse</span>
+            <span>{warehouseCopy("fields.warehouse")}</span>
             <select className="erp-input" value={locationWarehouseId} onChange={(event) => setLocationWarehouseId(event.target.value)}>
-              <option value="">All warehouses</option>
+              <option value="">{warehouseCopy("filters.allWarehouses")}</option>
               {warehouses.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
                   {warehouse.warehouseCode}
@@ -295,7 +294,7 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
             getRowKey={(row) => row.id}
             loading={loading}
             error={tableError(error, clearError)}
-            emptyState={<EmptyState title="No locations" description="Adjust the filters or create a location." />}
+            emptyState={<EmptyState title={warehouseCopy("location.empty.title")} description={warehouseCopy("location.empty.description")} />}
           />
         </section>
       </section>
@@ -324,13 +323,13 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
 
       <DetailDrawer
         open={Boolean(selectedWarehouse)}
-        title={selectedWarehouse?.warehouseCode ?? "Warehouse detail"}
+        title={selectedWarehouse?.warehouseCode ?? warehouseCopy("warehouse.detail.title")}
         subtitle={selectedWarehouse?.warehouseName}
         onClose={clearSelectedWarehouse}
         footer={
           selectedWarehouse ? (
             <button className="erp-button erp-button--secondary" type="button" onClick={() => startWarehouseEdit(selectedWarehouse)}>
-              Edit
+              {commonAction("edit")}
             </button>
           ) : null
         }
@@ -339,13 +338,13 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
       </DetailDrawer>
       <DetailDrawer
         open={Boolean(selectedLocation)}
-        title={selectedLocation?.locationCode ?? "Location detail"}
+        title={selectedLocation?.locationCode ?? warehouseCopy("location.detail.title")}
         subtitle={selectedLocation?.locationName}
         onClose={clearSelectedLocation}
         footer={
           selectedLocation ? (
             <button className="erp-button erp-button--secondary" type="button" onClick={() => startLocationEdit(selectedLocation)}>
-              Edit
+              {commonAction("edit")}
             </button>
           ) : null
         }
@@ -365,10 +364,10 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">MD</p>
-          <h1 className="erp-page-title">Warehouse Master Data</h1>
-          <p className="erp-page-description">Warehouse and location catalog for receiving and stock ledger flows</p>
+          <h1 className="erp-page-title">{warehouseCopy("page.title")}</h1>
+          <p className="erp-page-description">{warehouseCopy("page.description")}</p>
         </div>
-        <StatusChip tone="info">{summary.activeLocations} active locations</StatusChip>
+        <StatusChip tone="info">{warehouseCopy("page.activeLocations", { count: summary.activeLocations })}</StatusChip>
       </header>
       {content}
     </section>
@@ -378,7 +377,7 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
     try {
       await loadWarehouseDetail(warehouseId);
     } catch (detailError) {
-      pushToast("Detail failed", errorText(detailError), "danger");
+      pushToast(warehouseCopy("toast.detailFailed"), errorText(detailError), "danger");
     }
   }
 
@@ -386,7 +385,7 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
     try {
       await loadLocationDetail(locationId);
     } catch (detailError) {
-      pushToast("Detail failed", errorText(detailError), "danger");
+      pushToast(warehouseCopy("toast.detailFailed"), errorText(detailError), "danger");
     }
   }
 
@@ -419,7 +418,7 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
     setFormError(undefined);
     try {
       const result = editingWarehouseId ? await saveWarehouse(editingWarehouseId, warehouseForm) : await saveNewWarehouse(warehouseForm);
-      pushToast(editingWarehouseId ? "Warehouse updated" : "Warehouse created", `${result.warehouseCode} saved`, "success");
+      pushToast(editingWarehouseId ? warehouseCopy("warehouse.toast.updated") : warehouseCopy("warehouse.toast.created"), warehouseCopy("toast.saved", { code: result.warehouseCode }), "success");
       resetWarehouseForm();
     } catch (saveError) {
       setFormError(errorText(saveError));
@@ -431,7 +430,7 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
     setFormError(undefined);
     try {
       const result = editingLocationId ? await saveLocation(editingLocationId, locationForm) : await saveNewLocation(locationForm);
-      pushToast(editingLocationId ? "Location updated" : "Location created", `${result.locationCode} saved`, "success");
+      pushToast(editingLocationId ? warehouseCopy("location.toast.updated") : warehouseCopy("location.toast.created"), warehouseCopy("toast.saved", { code: result.locationCode }), "success");
       resetLocationForm();
     } catch (saveError) {
       setFormError(errorText(saveError));
@@ -442,9 +441,9 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
     const nextStatus: WarehouseStatus = item.status === "active" ? "inactive" : "active";
     try {
       const result = await saveWarehouseStatus(item.id, nextStatus);
-      pushToast("Warehouse status changed", `${result.warehouseCode} is ${warehouseStatusLabel(result.status)}`, "success");
+      pushToast(warehouseCopy("warehouse.toast.statusChanged"), warehouseCopy("toast.statusChangedDescription", { code: result.warehouseCode, status: warehouseStatusDisplay(result.status) }), "success");
     } catch (statusError) {
-      pushToast("Status failed", errorText(statusError), "danger");
+      pushToast(warehouseCopy("toast.statusFailed"), errorText(statusError), "danger");
     }
   }
 
@@ -452,9 +451,9 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
     const nextStatus: WarehouseLocationStatus = item.status === "active" ? "inactive" : "active";
     try {
       const result = await saveLocationStatus(item.id, nextStatus);
-      pushToast("Location status changed", `${result.locationCode} is ${locationStatusLabel(result.status)}`, "success");
+      pushToast(warehouseCopy("location.toast.statusChanged"), warehouseCopy("toast.statusChangedDescription", { code: result.locationCode, status: locationStatusDisplay(result.status) }), "success");
     } catch (statusError) {
-      pushToast("Status failed", errorText(statusError), "danger");
+      pushToast(warehouseCopy("toast.statusFailed"), errorText(statusError), "danger");
     }
   }
 
@@ -483,50 +482,50 @@ function WarehouseForm({
   return (
     <form onSubmit={onSubmit}>
       <FormSection
-        title={editingId ? "Update warehouse" : "Create warehouse"}
-        description="Warehouse identity, lifecycle, and operational issue controls"
+        title={editingId ? warehouseCopy("warehouse.form.updateTitle") : warehouseCopy("warehouse.form.createTitle")}
+        description={warehouseCopy("warehouse.form.description")}
         footer={
           <>
             <button className="erp-button erp-button--secondary" type="button" onClick={onClear}>
-              Clear
+              {commonAction("clear")}
             </button>
             <button className="erp-button erp-button--primary" type="submit" disabled={saving}>
-              {saving ? "Saving" : editingId ? "Update" : "Create"}
+              {saving ? commonAction("saving") : editingId ? commonAction("update") : commonAction("create")}
             </button>
           </>
         }
       >
         {formError ? <p className="erp-form-error">{formError}</p> : null}
         <div className="erp-masterdata-form-grid">
-          <TextField label="Warehouse code" value={form.warehouseCode} onChange={(value) => onChange({ warehouseCode: value.toUpperCase() })} />
-          <TextField label="Warehouse name" value={form.warehouseName} onChange={(value) => onChange({ warehouseName: value })} />
+          <TextField label={warehouseCopy("warehouse.form.warehouseCode")} value={form.warehouseCode} onChange={(value) => onChange({ warehouseCode: value.toUpperCase() })} />
+          <TextField label={warehouseCopy("warehouse.form.warehouseName")} value={form.warehouseName} onChange={(value) => onChange({ warehouseName: value })} />
           <label className="erp-field">
-            <span>Warehouse type</span>
+            <span>{warehouseCopy("warehouse.form.warehouseType")}</span>
             <select className="erp-input" value={form.warehouseType} onChange={(event) => onChange({ warehouseType: event.target.value as WarehouseMasterDataInput["warehouseType"] })}>
               {warehouseTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {warehouseTypeDisplay(option.value)}
                 </option>
               ))}
             </select>
           </label>
-          <TextField label="Site" value={form.siteCode} onChange={(value) => onChange({ siteCode: value.toUpperCase() })} />
-          <TextField label="Address" value={form.address} onChange={(value) => onChange({ address: value })} />
+          <TextField label={warehouseCopy("fields.site")} value={form.siteCode} onChange={(value) => onChange({ siteCode: value.toUpperCase() })} />
+          <TextField label={warehouseCopy("fields.address")} value={form.address} onChange={(value) => onChange({ address: value })} />
           <label className="erp-field">
-            <span>Status</span>
+            <span>{warehouseCopy("fields.status")}</span>
             <select className="erp-input" value={form.status} onChange={(event) => onChange({ status: event.target.value as WarehouseStatus })}>
               {warehouseStatusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {warehouseStatusDisplay(option.value)}
                 </option>
               ))}
             </select>
           </label>
         </div>
         <div className="erp-masterdata-toggle-grid">
-          <ToggleField label="Sale issue" checked={form.allowSaleIssue} onChange={(value) => onChange({ allowSaleIssue: value })} />
-          <ToggleField label="Production issue" checked={form.allowProdIssue} onChange={(value) => onChange({ allowProdIssue: value })} />
-          <ToggleField label="Quarantine" checked={form.allowQuarantine} onChange={(value) => onChange({ allowQuarantine: value })} />
+          <ToggleField label={warehouseCopy("flow.saleIssue")} checked={form.allowSaleIssue} onChange={(value) => onChange({ allowSaleIssue: value })} />
+          <ToggleField label={warehouseCopy("flow.productionIssue")} checked={form.allowProdIssue} onChange={(value) => onChange({ allowProdIssue: value })} />
+          <ToggleField label={warehouseCopy("flow.quarantine")} checked={form.allowQuarantine} onChange={(value) => onChange({ allowQuarantine: value })} />
         </div>
       </FormSection>
     </form>
@@ -555,15 +554,15 @@ function LocationForm({
   return (
     <form onSubmit={onSubmit}>
       <FormSection
-        title={editingId ? "Update location" : "Create location"}
-        description="Location/bin setup for receiving, pick, QC hold, and stock ledger references"
+        title={editingId ? warehouseCopy("location.form.updateTitle") : warehouseCopy("location.form.createTitle")}
+        description={warehouseCopy("location.form.description")}
         footer={
           <>
             <button className="erp-button erp-button--secondary" type="button" onClick={onClear}>
-              Clear
+              {commonAction("clear")}
             </button>
             <button className="erp-button erp-button--primary" type="submit" disabled={saving}>
-              {saving ? "Saving" : editingId ? "Update" : "Create"}
+              {saving ? commonAction("saving") : editingId ? commonAction("update") : commonAction("create")}
             </button>
           </>
         }
@@ -571,9 +570,9 @@ function LocationForm({
         {formError ? <p className="erp-form-error">{formError}</p> : null}
         <div className="erp-masterdata-form-grid">
           <label className="erp-field">
-            <span>Warehouse</span>
+            <span>{warehouseCopy("fields.warehouse")}</span>
             <select className="erp-input" value={form.warehouseId} onChange={(event) => onChange({ warehouseId: event.target.value })}>
-              <option value="">Select warehouse</option>
+              <option value="">{warehouseCopy("location.form.selectWarehouse")}</option>
               {warehouses.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
                   {warehouse.warehouseCode}
@@ -581,35 +580,35 @@ function LocationForm({
               ))}
             </select>
           </label>
-          <TextField label="Location code" value={form.locationCode} onChange={(value) => onChange({ locationCode: value.toUpperCase() })} />
-          <TextField label="Location name" value={form.locationName} onChange={(value) => onChange({ locationName: value })} />
+          <TextField label={warehouseCopy("location.form.locationCode")} value={form.locationCode} onChange={(value) => onChange({ locationCode: value.toUpperCase() })} />
+          <TextField label={warehouseCopy("location.form.locationName")} value={form.locationName} onChange={(value) => onChange({ locationName: value })} />
           <label className="erp-field">
-            <span>Location type</span>
+            <span>{warehouseCopy("location.form.locationType")}</span>
             <select className="erp-input" value={form.locationType} onChange={(event) => onChange({ locationType: event.target.value as WarehouseLocationMasterDataInput["locationType"] })}>
               {locationTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {locationTypeDisplay(option.value)}
                 </option>
               ))}
             </select>
           </label>
-          <TextField label="Zone" value={form.zoneCode} onChange={(value) => onChange({ zoneCode: value.toUpperCase() })} />
+          <TextField label={warehouseCopy("fields.zone")} value={form.zoneCode} onChange={(value) => onChange({ zoneCode: value.toUpperCase() })} />
           <label className="erp-field">
-            <span>Status</span>
+            <span>{warehouseCopy("fields.status")}</span>
             <select className="erp-input" value={form.status} onChange={(event) => onChange({ status: event.target.value as WarehouseLocationStatus })}>
               {locationStatusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {locationStatusDisplay(option.value)}
                 </option>
               ))}
             </select>
           </label>
         </div>
         <div className="erp-masterdata-toggle-grid">
-          <ToggleField label="Receive" checked={form.allowReceive} onChange={(value) => onChange({ allowReceive: value })} />
-          <ToggleField label="Pick" checked={form.allowPick} onChange={(value) => onChange({ allowPick: value })} />
-          <ToggleField label="Store" checked={form.allowStore} onChange={(value) => onChange({ allowStore: value })} />
-          <ToggleField label="Default" checked={form.isDefault} onChange={(value) => onChange({ isDefault: value })} />
+          <ToggleField label={warehouseCopy("flow.receive")} checked={form.allowReceive} onChange={(value) => onChange({ allowReceive: value })} />
+          <ToggleField label={warehouseCopy("flow.pick")} checked={form.allowPick} onChange={(value) => onChange({ allowPick: value })} />
+          <ToggleField label={warehouseCopy("flow.store")} checked={form.allowStore} onChange={(value) => onChange({ allowStore: value })} />
+          <ToggleField label={warehouseCopy("flow.default")} checked={form.isDefault} onChange={(value) => onChange({ isDefault: value })} />
         </div>
       </FormSection>
     </form>
@@ -619,14 +618,14 @@ function LocationForm({
 function WarehouseDetail({ item }: { item: WarehouseMasterDataItem }) {
   return (
     <div className="erp-masterdata-detail-grid">
-      <MasterDataFact label="Code" value={item.warehouseCode} />
-      <MasterDataFact label="Type" value={warehouseTypeLabel(item.warehouseType)} />
-      <MasterDataFact label="Site" value={item.siteCode} />
-      <MasterDataFact label="Status" value={warehouseStatusLabel(item.status)} />
-      <MasterDataFact label="Flow" value={warehouseFlowLabels(item).join(", ") || "-"} />
-      <MasterDataFact label="Address" value={item.address || "-"} />
-      <MasterDataFact label="Updated" value={formatDate(item.updatedAt)} />
-      <MasterDataFact label="Audit" value={item.auditLogId || "Tracked on write"} />
+      <MasterDataFact label={warehouseCopy("detail.code")} value={item.warehouseCode} />
+      <MasterDataFact label={warehouseCopy("columns.type")} value={warehouseTypeDisplay(item.warehouseType)} />
+      <MasterDataFact label={warehouseCopy("fields.site")} value={item.siteCode} />
+      <MasterDataFact label={warehouseCopy("fields.status")} value={warehouseStatusDisplay(item.status)} />
+      <MasterDataFact label={warehouseCopy("columns.flow")} value={warehouseFlowLabels(item).join(", ") || "-"} />
+      <MasterDataFact label={warehouseCopy("fields.address")} value={item.address || "-"} />
+      <MasterDataFact label={warehouseCopy("detail.updated")} value={formatDate(item.updatedAt)} />
+      <MasterDataFact label={warehouseCopy("detail.audit")} value={item.auditLogId || warehouseCopy("detail.auditFallback")} />
     </div>
   );
 }
@@ -634,14 +633,14 @@ function WarehouseDetail({ item }: { item: WarehouseMasterDataItem }) {
 function LocationDetail({ item }: { item: WarehouseLocationMasterDataItem }) {
   return (
     <div className="erp-masterdata-detail-grid">
-      <MasterDataFact label="Code" value={item.locationCode} />
-      <MasterDataFact label="Warehouse" value={item.warehouseCode} />
-      <MasterDataFact label="Type" value={locationTypeLabel(item.locationType)} />
-      <MasterDataFact label="Zone" value={item.zoneCode || "-"} />
-      <MasterDataFact label="Status" value={locationStatusLabel(item.status)} />
-      <MasterDataFact label="Flow" value={locationFlowLabels(item).join(", ") || "-"} />
-      <MasterDataFact label="Updated" value={formatDate(item.updatedAt)} />
-      <MasterDataFact label="Audit" value={item.auditLogId || "Tracked on write"} />
+      <MasterDataFact label={warehouseCopy("detail.code")} value={item.locationCode} />
+      <MasterDataFact label={warehouseCopy("fields.warehouse")} value={item.warehouseCode} />
+      <MasterDataFact label={warehouseCopy("columns.type")} value={locationTypeDisplay(item.locationType)} />
+      <MasterDataFact label={warehouseCopy("fields.zone")} value={item.zoneCode || "-"} />
+      <MasterDataFact label={warehouseCopy("fields.status")} value={locationStatusDisplay(item.status)} />
+      <MasterDataFact label={warehouseCopy("columns.flow")} value={locationFlowLabels(item).join(", ") || "-"} />
+      <MasterDataFact label={warehouseCopy("detail.updated")} value={formatDate(item.updatedAt)} />
+      <MasterDataFact label={warehouseCopy("detail.audit")} value={item.auditLogId || warehouseCopy("detail.auditFallback")} />
     </div>
   );
 }
@@ -686,11 +685,11 @@ function ToggleField({ label, checked, onChange }: { label: string; checked: boo
 function tableError(error: string | undefined, clearError: () => void) {
   return error ? (
     <ErrorState
-      title="Warehouse master data could not load"
+      title={warehouseCopy("errors.loadTitle")}
       description={error}
       action={
         <button className="erp-button erp-button--secondary" type="button" onClick={clearError}>
-          Dismiss
+          {commonAction("dismiss")}
         </button>
       }
     />
@@ -699,25 +698,49 @@ function tableError(error: string | undefined, clearError: () => void) {
 
 function warehouseFlowLabels(item: WarehouseMasterDataItem) {
   return [
-    item.allowSaleIssue ? "Sale" : undefined,
-    item.allowProdIssue ? "Production" : undefined,
-    item.allowQuarantine ? "QC hold" : undefined
+    item.allowSaleIssue ? warehouseCopy("flow.saleIssue") : undefined,
+    item.allowProdIssue ? warehouseCopy("flow.productionIssue") : undefined,
+    item.allowQuarantine ? warehouseCopy("flow.quarantine") : undefined
   ].filter((label): label is string => Boolean(label));
 }
 
 function locationFlowLabels(item: WarehouseLocationMasterDataItem) {
   return [
-    item.allowReceive ? "Receive" : undefined,
-    item.allowPick ? "Pick" : undefined,
-    item.allowStore ? "Store" : undefined,
-    item.isDefault ? "Default" : undefined
+    item.allowReceive ? warehouseCopy("flow.receive") : undefined,
+    item.allowPick ? warehouseCopy("flow.pick") : undefined,
+    item.allowStore ? warehouseCopy("flow.store") : undefined,
+    item.isDefault ? warehouseCopy("flow.default") : undefined
   ].filter((label): label is string => Boolean(label));
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" }).format(new Date(value));
+  return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(new Date(value));
 }
 
 function errorText(error: unknown) {
-  return error instanceof Error ? error.message : "Warehouse master data request failed";
+  return error instanceof Error ? error.message : warehouseCopy("errors.requestFailed");
+}
+
+function warehouseTypeDisplay(type: WarehouseType) {
+  return warehouseCopy(`warehouse.type.${type}`);
+}
+
+function warehouseStatusDisplay(status: WarehouseStatus) {
+  return warehouseCopy(`status.${status}`);
+}
+
+function locationTypeDisplay(type: WarehouseLocationType) {
+  return warehouseCopy(`location.type.${type}`);
+}
+
+function locationStatusDisplay(status: WarehouseLocationStatus) {
+  return warehouseCopy(`status.${status}`);
+}
+
+function commonAction(key: string, values?: Record<string, string | number>, fallback?: string) {
+  return t(`masterdata.actions.${key}`, { values, fallback });
+}
+
+function warehouseCopy(key: string, values?: Record<string, string | number>, fallback?: string) {
+  return t(`masterdata.warehouse.${key}`, { values, fallback });
 }

@@ -293,5 +293,155 @@
         "internal_store": "Cửa hàng nội bộ"
       }
     }
+  },
+  "warehouse": {
+    "page": {
+      "title": "Dữ liệu kho và vị trí",
+      "description": "Danh mục kho và vị trí cho luồng nhập hàng và sổ kho",
+      "activeLocations": "{count} vị trí đang dùng"
+    },
+    "filters": {
+      "label": "Bộ lọc dữ liệu kho",
+      "search": "Tìm kiếm",
+      "warehouseStatus": "Trạng thái kho",
+      "warehouseType": "Loại kho",
+      "locationStatus": "Trạng thái vị trí",
+      "locationType": "Loại vị trí",
+      "allWarehouseStatuses": "Tất cả trạng thái kho",
+      "allWarehouseTypes": "Tất cả loại kho",
+      "allLocationStatuses": "Tất cả trạng thái vị trí",
+      "allLocationTypes": "Tất cả loại vị trí",
+      "allWarehouses": "Tất cả kho"
+    },
+    "columns": {
+      "type": "Loại",
+      "site": "Site",
+      "flow": "Luồng",
+      "status": "Trạng thái"
+    },
+    "list": {
+      "rows": "{count} dòng"
+    },
+    "kpi": {
+      "warehouses": "Kho",
+      "activeWarehouses": "Kho đang dùng",
+      "activeLocations": "Vị trí đang dùng",
+      "receiving": "Nhận hàng"
+    },
+    "fields": {
+      "warehouse": "Kho",
+      "site": "Site",
+      "address": "Địa chỉ",
+      "status": "Trạng thái",
+      "zone": "Khu"
+    },
+    "detail": {
+      "code": "Mã",
+      "updated": "Cập nhật",
+      "audit": "Nhật ký",
+      "auditFallback": "Theo dõi khi ghi"
+    },
+    "errors": {
+      "loadTitle": "Không thể tải dữ liệu kho",
+      "requestFailed": "Yêu cầu dữ liệu kho thất bại"
+    },
+    "toast": {
+      "detailFailed": "Tải chi tiết thất bại",
+      "statusFailed": "Đổi trạng thái thất bại",
+      "saved": "Đã lưu {code}",
+      "statusChangedDescription": "{code} đang ở trạng thái {status}"
+    },
+    "flow": {
+      "saleIssue": "Xuất bán",
+      "productionIssue": "Xuất sản xuất",
+      "quarantine": "Giữ QC",
+      "receive": "Nhận hàng",
+      "pick": "Soạn hàng",
+      "store": "Lưu kho",
+      "default": "Mặc định"
+    },
+    "status": {
+      "active": "Đang dùng",
+      "inactive": "Ngưng dùng"
+    },
+    "warehouse": {
+      "columns": {
+        "warehouse": "Kho"
+      },
+      "list": {
+        "title": "Dữ liệu kho"
+      },
+      "empty": {
+        "title": "Chưa có kho",
+        "description": "Đổi bộ lọc hoặc tạo kho mới."
+      },
+      "form": {
+        "createTitle": "Tạo kho",
+        "updateTitle": "Cập nhật kho",
+        "description": "Thông tin định danh kho, vòng đời và quyền xuất vận hành",
+        "warehouseCode": "Mã kho",
+        "warehouseName": "Tên kho",
+        "warehouseType": "Loại kho"
+      },
+      "detail": {
+        "title": "Chi tiết kho"
+      },
+      "toast": {
+        "created": "Đã tạo kho",
+        "updated": "Đã cập nhật kho",
+        "statusChanged": "Đã đổi trạng thái kho"
+      },
+      "type": {
+        "finished_good": "Thành phẩm",
+        "raw_material": "Nguyên liệu",
+        "packaging": "Bao bì",
+        "semi_finished": "Bán thành phẩm",
+        "quarantine": "Cách ly QC",
+        "sample": "Mẫu",
+        "defect": "Hàng lỗi",
+        "retail_store": "Cửa hàng bán lẻ"
+      }
+    },
+    "location": {
+      "columns": {
+        "location": "Vị trí",
+        "warehouse": "Kho"
+      },
+      "list": {
+        "title": "Dữ liệu vị trí"
+      },
+      "empty": {
+        "title": "Chưa có vị trí",
+        "description": "Đổi bộ lọc hoặc tạo vị trí mới."
+      },
+      "form": {
+        "createTitle": "Tạo vị trí",
+        "updateTitle": "Cập nhật vị trí",
+        "description": "Thiết lập vị trí/bin cho nhận hàng, soạn hàng, giữ QC và tham chiếu sổ kho",
+        "selectWarehouse": "Chọn kho",
+        "locationCode": "Mã vị trí",
+        "locationName": "Tên vị trí",
+        "locationType": "Loại vị trí"
+      },
+      "detail": {
+        "title": "Chi tiết vị trí"
+      },
+      "toast": {
+        "created": "Đã tạo vị trí",
+        "updated": "Đã cập nhật vị trí",
+        "statusChanged": "Đã đổi trạng thái vị trí"
+      },
+      "type": {
+        "receiving": "Nhận hàng",
+        "qc_hold": "Giữ QC",
+        "storage": "Lưu kho",
+        "pick": "Soạn hàng",
+        "pack": "Đóng hàng",
+        "handover": "Bàn giao ĐVVC",
+        "return": "Hàng hoàn",
+        "lab": "Lab",
+        "scrap": "Hủy lỗi"
+      }
+    }
   }
 }

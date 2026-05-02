@@ -58,6 +58,8 @@ describe("Vietnamese-first i18n foundation", () => {
     expect(t("masterdata.product.type.raw_material")).toBe("Nguyên liệu");
     expect(t("masterdata.party.supplier.group.outsource")).toBe("Gia công ngoài");
     expect(t("masterdata.party.customer.type.dealer")).toBe("Đại lý");
+    expect(t("masterdata.warehouse.warehouse.type.quarantine")).toBe("Cách ly QC");
+    expect(t("masterdata.warehouse.location.type.handover")).toBe("Bàn giao ĐVVC");
   });
 
   it("centralizes status, error, validation, and unit labels", () => {
