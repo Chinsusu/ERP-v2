@@ -382,9 +382,15 @@ DO UPDATE SET
   exception_by_ref = EXCLUDED.exception_by_ref
 RETURNING id::text`
 
-const deleteSalesOrderLinesSQL = `
-DELETE FROM sales.sales_order_lines
+const selectSalesOrderLineRefsForOrderSQL = `
+SELECT line_ref
+FROM sales.sales_order_lines
 WHERE sales_order_id = $1::uuid`
+
+const deleteStaleSalesOrderLineSQL = `
+DELETE FROM sales.sales_order_lines
+WHERE sales_order_id = $1::uuid
+  AND line_ref = $2`
 
 const insertSalesOrderLineSQL = `
 INSERT INTO sales.sales_order_lines (
@@ -443,7 +449,31 @@ INSERT INTO sales.sales_order_lines (
   $25::uuid,
   $26,
   $27::uuid
-)`
+)
+ON CONFLICT (sales_order_id, line_ref)
+DO UPDATE SET
+  line_no = EXCLUDED.line_no,
+  item_id = EXCLUDED.item_id,
+  item_ref = EXCLUDED.item_ref,
+  sku_code = EXCLUDED.sku_code,
+  item_name = EXCLUDED.item_name,
+  batch_id = EXCLUDED.batch_id,
+  batch_ref = EXCLUDED.batch_ref,
+  batch_no = EXCLUDED.batch_no,
+  ordered_qty = EXCLUDED.ordered_qty,
+  reserved_qty = EXCLUDED.reserved_qty,
+  shipped_qty = EXCLUDED.shipped_qty,
+  unit_price = EXCLUDED.unit_price,
+  uom_code = EXCLUDED.uom_code,
+  base_ordered_qty = EXCLUDED.base_ordered_qty,
+  base_uom_code = EXCLUDED.base_uom_code,
+  conversion_factor = EXCLUDED.conversion_factor,
+  currency_code = EXCLUDED.currency_code,
+  line_discount_amount = EXCLUDED.line_discount_amount,
+  line_amount = EXCLUDED.line_amount,
+  created_by = COALESCE(sales.sales_order_lines.created_by, EXCLUDED.created_by),
+  updated_at = EXCLUDED.updated_at,
+  updated_by = EXCLUDED.updated_by`
 
 const insertSalesOrderAuditSQL = `
 INSERT INTO audit.audit_logs (
@@ -1087,10 +1117,10 @@ func replaceSalesOrderLines(
 	persistedID string,
 	order salesdomain.SalesOrder,
 ) error {
-	if _, err := tx.ExecContext(ctx, deleteSalesOrderLinesSQL, persistedID); err != nil {
-		return fmt.Errorf("delete sales order lines: %w", err)
-	}
+	keptLineRefs := make(map[string]struct{}, len(order.Lines))
 	for _, line := range order.Lines {
+		lineRef := strings.TrimSpace(line.ID)
+		keptLineRefs[lineRef] = struct{}{}
 		if _, err := tx.ExecContext(
 			ctx,
 			insertSalesOrderLineSQL,
@@ -1123,6 +1153,46 @@ func replaceSalesOrderLines(
 			nullableSalesOrderUUID(order.UpdatedBy),
 		); err != nil {
 			return fmt.Errorf("insert sales order line: %w", err)
+		}
+	}
+
+	if err := deleteStaleSalesOrderLines(ctx, tx, persistedID, keptLineRefs); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deleteStaleSalesOrderLines(
+	ctx context.Context,
+	tx *sql.Tx,
+	persistedID string,
+	keptLineRefs map[string]struct{},
+) error {
+	rows, err := tx.QueryContext(ctx, selectSalesOrderLineRefsForOrderSQL, persistedID)
+	if err != nil {
+		return fmt.Errorf("list sales order line refs: %w", err)
+	}
+	defer rows.Close()
+
+	staleLineRefs := make([]string, 0)
+	for rows.Next() {
+		var lineRef string
+		if err := rows.Scan(&lineRef); err != nil {
+			return fmt.Errorf("scan sales order line ref: %w", err)
+		}
+		if _, ok := keptLineRefs[strings.TrimSpace(lineRef)]; ok {
+			continue
+		}
+		staleLineRefs = append(staleLineRefs, strings.TrimSpace(lineRef))
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate sales order line refs: %w", err)
+	}
+
+	for _, lineRef := range staleLineRefs {
+		if _, err := tx.ExecContext(ctx, deleteStaleSalesOrderLineSQL, persistedID, lineRef); err != nil {
+			return fmt.Errorf("delete stale sales order line %q: %w", lineRef, err)
 		}
 	}
 
