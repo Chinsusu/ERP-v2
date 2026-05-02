@@ -1,0 +1,8 @@
+{
+  "required": "Vui lòng nhập thông tin bắt buộc.",
+  "invalid": "Thông tin không hợp lệ.",
+  "decimal": "Giá trị phải là số hợp lệ.",
+  "positiveQuantity": "Số lượng phải lớn hơn 0.",
+  "date": "Ngày không hợp lệ.",
+  "uom": "Đơn vị tính không hợp lệ."
+}

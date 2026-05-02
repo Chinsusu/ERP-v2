@@ -1,0 +1,17 @@
+{
+  "INSUFFICIENT_STOCK": "Available stock is insufficient.",
+  "INVALID_BATCH_STATUS": "This batch has not passed QC and cannot be used.",
+  "ORDER_NOT_PACKED": "The order is not packed and cannot be handed over.",
+  "MANIFEST_ORDER_MISSING": "The manifest still has orders that have not been scanned.",
+  "ORDER_NOT_IN_MANIFEST": "This order does not belong to the current handover manifest.",
+  "RETURN_ALREADY_RECEIVED": "This return has already been received.",
+  "RETURN_NOT_INSPECTED": "This return has not been inspected.",
+  "SHIFT_HAS_UNRESOLVED_ISSUES": "The shift still has unresolved issues and cannot be closed.",
+  "QC_REQUIRED": "This item requires QC before it can enter available stock.",
+  "INVALID_UOM_CONVERSION": "The UOM conversion is invalid.",
+  "REQUIRED_FIELD": "Please enter the required information.",
+  "PERMISSION_DENIED": "You do not have permission to perform this action.",
+  "SESSION_EXPIRED": "Your session has expired. Please sign in again.",
+  "VALIDATION_DECIMAL": "The value must be a valid number.",
+  "VALIDATION_POSITIVE_QTY": "Quantity must be greater than 0."
+}

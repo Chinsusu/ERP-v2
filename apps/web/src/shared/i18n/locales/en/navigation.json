@@ -1,0 +1,31 @@
+{
+  "groups": {
+    "Overview": "Overview",
+    "Operations": "Operations",
+    "Data": "Data",
+    "Control": "Control"
+  },
+  "items": {
+    "dashboard": "Dashboard",
+    "alerts": "Alert Center",
+    "warehouse": "Warehouse Daily Board",
+    "receiving": "Receiving",
+    "inventory": "Inventory",
+    "purchase": "Purchase",
+    "qc": "QC",
+    "production": "Production",
+    "subcontract": "Subcontract",
+    "sales": "Sales Orders",
+    "shipping": "Shipping",
+    "returns": "Returns",
+    "masterData": "Master Data",
+    "skuBatch": "SKU / Batch",
+    "suppliers": "Supplier / Factory",
+    "customers": "Customer",
+    "approvals": "Approvals",
+    "finance": "Finance",
+    "auditLog": "Audit Log",
+    "reports": "Reporting",
+    "settings": "Settings"
+  }
+}

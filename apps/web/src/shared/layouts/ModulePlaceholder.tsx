@@ -2,6 +2,10 @@
 
 import type { MockUser } from "@/shared/auth/mockSession";
 import { DataTable, StatusChip, type DataTableColumn } from "@/shared/design-system/components";
+import { getActionLabel } from "@/shared/i18n/action-labels";
+import { t } from "@/shared/i18n";
+import { getNavigationItemLabel } from "@/shared/i18n/navigation-labels";
+import { getStatusLabel } from "@/shared/i18n/status-labels";
 import { getVisibleActions, moduleActions, type AppMenuItem } from "@/shared/permissions/menu";
 
 type ModulePlaceholderProps = {
@@ -10,32 +14,32 @@ type ModulePlaceholderProps = {
 };
 
 const kpis = [
-  { label: "Open queue", value: "0", status: "normal", chip: "Ready" },
-  { label: "Needs review", value: "0", status: "normal", chip: "Clear" },
-  { label: "Blocked", value: "0", status: "normal", chip: "Clear" }
+  { labelKey: "openQueue", value: "0", status: "normal", chipKey: "ready" },
+  { labelKey: "needsReview", value: "0", status: "normal", chipKey: "clear" },
+  { labelKey: "blocked", value: "0", status: "normal", chipKey: "clear" }
 ] as const;
 
 type WorkQueueRow = {
-  queue: string;
-  owner: string;
+  queueKey: "newReceipts" | "exceptionReview" | "dailyCheckpoint";
+  ownerKey: "ops" | "lead";
   status: "Ready" | "Review" | "Blocked";
 };
 
 const rows: WorkQueueRow[] = [
-  { queue: "New receipts", owner: "Ops", status: "Ready" },
-  { queue: "Exception review", owner: "Lead", status: "Review" },
-  { queue: "Daily checkpoint", owner: "Ops", status: "Ready" }
+  { queueKey: "newReceipts", ownerKey: "ops", status: "Ready" },
+  { queueKey: "exceptionReview", ownerKey: "lead", status: "Review" },
+  { queueKey: "dailyCheckpoint", ownerKey: "ops", status: "Ready" }
 ];
 
 const columns: DataTableColumn<WorkQueueRow>[] = [
-  { key: "queue", header: "Queue", render: (row) => row.queue },
-  { key: "owner", header: "Owner", render: (row) => row.owner, width: "140px" },
+  { key: "queue", header: t("common.queue"), render: (row) => t(`common.${row.queueKey}`) },
+  { key: "owner", header: t("common.owner"), render: (row) => t(`common.${row.ownerKey}`), width: "140px" },
   {
     key: "status",
-    header: "Status",
+    header: t("common.status"),
     render: (row) => (
       <StatusChip tone={row.status === "Blocked" ? "danger" : row.status === "Review" ? "warning" : "success"}>
-        {row.status}
+        {getStatusLabel(row.status)}
       </StatusChip>
     ),
     width: "140px"
@@ -44,13 +48,14 @@ const columns: DataTableColumn<WorkQueueRow>[] = [
 
 export function ModulePlaceholder({ item, user }: ModulePlaceholderProps) {
   const actions = getVisibleActions(user, moduleActions);
+  const title = getNavigationItemLabel(item);
 
   return (
     <section className="erp-module-page">
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">{item.code}</p>
-          <h1 className="erp-page-title">{item.label}</h1>
+          <h1 className="erp-page-title">{title}</h1>
         </div>
         {actions.length > 0 ? (
           <div className="erp-page-actions">
@@ -60,7 +65,7 @@ export function ModulePlaceholder({ item, user }: ModulePlaceholderProps) {
                 key={action.label}
                 type="button"
               >
-                {action.label}
+                {getActionLabel(action.label)}
               </button>
             ))}
           </div>
@@ -69,20 +74,22 @@ export function ModulePlaceholder({ item, user }: ModulePlaceholderProps) {
 
       <section className="erp-kpi-grid">
         {kpis.map((kpi) => (
-          <article className="erp-card erp-card--padded erp-kpi-card" key={kpi.label}>
-            <div className="erp-kpi-label">{kpi.label}</div>
+          <article className="erp-card erp-card--padded erp-kpi-card" key={kpi.labelKey}>
+            <div className="erp-kpi-label">{t(`common.${kpi.labelKey}`)}</div>
             <strong className="erp-kpi-value">{kpi.value}</strong>
-            <span className={`erp-status-chip erp-status-chip--${kpi.status}`}>{kpi.chip}</span>
+            <span className={`erp-status-chip erp-status-chip--${kpi.status}`}>
+              {t(`common.${kpi.chipKey}`)}
+            </span>
           </article>
         ))}
       </section>
 
       <section className="erp-card erp-card--padded erp-module-table-card">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Work queue</h2>
-          <StatusChip>Mock</StatusChip>
+          <h2 className="erp-section-title">{t("common.workQueue")}</h2>
+          <StatusChip>{t("common.mock")}</StatusChip>
         </div>
-        <DataTable columns={columns} rows={rows} getRowKey={(row) => row.queue} />
+        <DataTable columns={columns} rows={rows} getRowKey={(row) => row.queueKey} />
       </section>
     </section>
   );

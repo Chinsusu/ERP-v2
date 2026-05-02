@@ -1,0 +1,8 @@
+{
+  "required": "Please enter the required information.",
+  "invalid": "The information is invalid.",
+  "decimal": "The value must be a valid number.",
+  "positiveQuantity": "Quantity must be greater than 0.",
+  "date": "The date is invalid.",
+  "uom": "The unit of measure is invalid."
+}
