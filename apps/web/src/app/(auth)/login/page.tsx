@@ -1,12 +1,13 @@
 import { signInAction } from "./actions";
+import { t } from "@/shared/i18n";
 
 type LoginPageProps = {
   searchParams?: Promise<{ error?: string }>;
 };
 
 const errorCopy: Record<string, string> = {
-  invalid_credentials: "Email or password is invalid.",
-  password_policy: "Password does not meet the active policy."
+  invalid_credentials: authCopy("errors.invalidCredentials"),
+  password_policy: authCopy("errors.passwordPolicy")
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
@@ -16,10 +17,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="erp-page erp-page--centered">
       <form action={signInAction} className="erp-card erp-form-card">
-        <h1 className="erp-form-title">ERP Login</h1>
+        <h1 className="erp-form-title">{authCopy("loginTitle")}</h1>
         {error ? <p className="erp-form-error">{error}</p> : null}
         <label className="erp-field">
-          Email
+          {authCopy("email")}
           <input
             className="erp-input"
             name="email"
@@ -28,13 +29,17 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           />
         </label>
         <label className="erp-field">
-          Password
+          {authCopy("password")}
           <input className="erp-input" name="password" type="password" />
         </label>
         <button className="erp-button erp-button--primary erp-button--full" type="submit">
-          Sign in
+          {authCopy("signIn")}
         </button>
       </form>
     </main>
   );
+}
+
+function authCopy(key: string) {
+  return t(`auth.${key}`);
 }
