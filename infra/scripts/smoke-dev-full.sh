@@ -1050,26 +1050,38 @@ EOF
 )"
 
   curl_check "pack_task_start" POST "$api_base/pack-tasks/$pack_id/start" 200 "" auth
-  curl_check "pack_task_exception" POST "$api_base/pack-tasks/$pack_id/exception" 200 "$(printf '{"line_id":"%s","exception_code":"short_pack","investigation":"S14-02-02 pack persistence smoke"}' "$pack_line_id")" auth
-  curl_check "pack_task_read" GET "$api_base/pack-tasks/$pack_id" 200 "" auth
+  curl_check "pack_task_confirm" POST "$api_base/pack-tasks/$pack_id/confirm" 200 "$(printf '{"lines":[{"line_id":"%s","packed_qty":"3.000000"}]}' "$pack_line_id")" auth
   if ! grep -q "\"id\":\"$pack_id\"" "$tmp_body" ||
-    ! grep -q '"status":"pack_exception"' "$tmp_body" ||
-    ! grep -q "\"id\":\"$pack_line_id\"" "$tmp_body"; then
-    echo "persisted_pack_task failed: exception pack task response mismatch" >&2
+    ! grep -q '"status":"packed"' "$tmp_body" ||
+    ! grep -q '"sales_order_status":"packed"' "$tmp_body" ||
+    ! grep -q "\"id\":\"$pack_line_id\"" "$tmp_body" ||
+    ! grep -q '"qty_packed":"3.000000"' "$tmp_body" ||
+    ! grep -q '"packed_by":"user-erp-admin"' "$tmp_body"; then
+    echo "persisted_pack_task failed: confirmed pack task response mismatch" >&2
     sed -n '1,20p' "$tmp_body" >&2
     exit 1
   fi
-  curl_check "pack_task_list" GET "$api_base/pack-tasks?warehouse_id=warehouse_main&status=pack_exception&assigned_to=user-erp-admin" 200 "" auth
+  curl_check "pack_task_read" GET "$api_base/pack-tasks/$pack_id" 200 "" auth
+  if ! grep -q "\"id\":\"$pack_id\"" "$tmp_body" ||
+    ! grep -q '"status":"packed"' "$tmp_body" ||
+    ! grep -q "\"id\":\"$pack_line_id\"" "$tmp_body"; then
+    echo "persisted_pack_task failed: packed task not readable" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+  curl_check "pack_task_list" GET "$api_base/pack-tasks?warehouse_id=warehouse_main&status=packed&assigned_to=user-erp-admin" 200 "" auth
   if ! grep -q "\"id\":\"$pack_id\"" "$tmp_body"; then
-    echo "persisted_pack_task failed: exception pack task not queryable" >&2
+    echo "persisted_pack_task failed: packed task not queryable" >&2
     sed -n '1,20p' "$tmp_body" >&2
     exit 1
   fi
 
-  pack_document_count="$(postgres_scalar "select count(*) from shipping.pack_tasks t join shipping.pack_task_lines l on l.pack_task_id = t.id where t.org_id = '$org_id'::uuid and t.pack_ref = '$pack_id' and t.status = 'pack_exception' and t.assigned_to_ref = 'user-erp-admin' and t.started_by_ref = 'user-erp-admin' and l.line_ref = '$pack_line_id' and l.status = 'pack_exception'")"
-  pack_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$pack_id' and action in ('shipping.pack_task.started', 'shipping.pack_task.exception_reported')")"
-  if [ "$before_pack_count" != "0" ] || [ "$pack_document_count" != "1" ] || [ "$pack_audit_count" != "2" ]; then
-    echo "persisted_pack_task failed: before=$before_pack_count document=$pack_document_count audit=$pack_audit_count" >&2
+  pack_document_count="$(postgres_scalar "select count(*) from shipping.pack_tasks t join shipping.pack_task_lines l on l.pack_task_id = t.id where t.org_id = '$org_id'::uuid and t.pack_ref = '$pack_id' and t.status = 'packed' and t.assigned_to_ref = 'user-erp-admin' and t.started_by_ref = 'user-erp-admin' and t.packed_by_ref = 'user-erp-admin' and l.line_ref = '$pack_line_id' and l.status = 'packed' and l.qty_packed = 3.000000 and l.packed_by_ref = 'user-erp-admin'")"
+  sales_pack_count="$(postgres_scalar "select count(*) from sales.sales_orders o join sales.sales_order_lines l on l.sales_order_id = o.id where o.org_id = '$org_id'::uuid and o.order_ref = '$sales_order_id' and o.status = 'packed' and o.packed_by_ref = 'user-erp-admin' and l.id = '$sales_order_line_uuid'::uuid and l.line_ref = '$sales_order_line_id'")"
+  pack_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$pack_id' and action in ('shipping.pack_task.started', 'shipping.pack_task.confirmed')")"
+  sales_pack_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$sales_order_id' and action = 'sales.order.packed'")"
+  if [ "$before_pack_count" != "0" ] || [ "$pack_document_count" != "1" ] || [ "$sales_pack_count" != "1" ] || [ "$pack_audit_count" != "2" ] || [ "$sales_pack_audit_count" != "1" ]; then
+    echo "persisted_pack_task failed: before=$before_pack_count document=$pack_document_count sales=$sales_pack_count pack_audit=$pack_audit_count sales_audit=$sales_pack_audit_count" >&2
     exit 1
   fi
 
