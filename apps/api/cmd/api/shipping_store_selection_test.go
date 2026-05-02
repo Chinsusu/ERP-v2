@@ -104,3 +104,24 @@ func TestNewRuntimePackTaskStoreUsesPrototypeFallback(t *testing.T) {
 		t.Fatalf("reloaded pack task ID = %q, want %q", reloaded.ID, seed.ID)
 	}
 }
+
+func TestNewRuntimePackTaskStoreUsesPostgresWhenDatabaseURLConfigured(t *testing.T) {
+	store, closeStore, err := newRuntimePackTaskStore(config.Config{
+		AppEnv:      "dev",
+		DatabaseURL: "postgres://erp_dev:erp_dev@postgres:5432/erp_dev?sslmode=disable",
+	})
+	if err != nil {
+		t.Fatalf("newRuntimePackTaskStore() error = %v", err)
+	}
+	if closeStore == nil {
+		t.Fatal("closeStore = nil, want database close function")
+	}
+	defer func() {
+		if err := closeStore(); err != nil {
+			t.Fatalf("closeStore() error = %v", err)
+		}
+	}()
+	if _, ok := store.(shippingapp.PostgresPackTaskStore); !ok {
+		t.Fatalf("store type = %T, want PostgresPackTaskStore", store)
+	}
+}

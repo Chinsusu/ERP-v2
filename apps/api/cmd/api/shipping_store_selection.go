@@ -53,8 +53,22 @@ func newRuntimePickTaskStore(
 }
 
 func newRuntimePackTaskStore(
-	_ config.Config,
+	cfg config.Config,
 	tasks ...shippingdomain.PackTask,
 ) (shippingapp.PackTaskStore, func() error, error) {
-	return shippingapp.NewPrototypePackTaskStore(tasks...), nil, nil
+	if strings.TrimSpace(cfg.DatabaseURL) == "" {
+		return shippingapp.NewPrototypePackTaskStore(tasks...), nil, nil
+	}
+
+	db, err := sql.Open("pgx", cfg.DatabaseURL)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	storeConfig := shippingapp.PostgresPackTaskStoreConfig{}
+	if config.AllowsStaticAuthAccessToken(cfg.AppEnv) {
+		storeConfig.DefaultOrgID = localAuditOrgID
+	}
+
+	return shippingapp.NewPostgresPackTaskStore(db, storeConfig), db.Close, nil
 }
