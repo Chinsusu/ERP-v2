@@ -49,6 +49,40 @@ func TestSessionManagerRefreshRotatesTokens(t *testing.T) {
 	}
 }
 
+func TestSessionManagerWithSharedSessionStoreSurvivesManagerRestart(t *testing.T) {
+	now := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
+	store := NewInMemorySessionStore()
+	managerA, err := NewSessionManagerWithSessionStore(testConfig, func() time.Time { return now }, store)
+	if err != nil {
+		t.Fatalf("NewSessionManagerWithSessionStore(managerA) error = %v", err)
+	}
+	managerB, err := NewSessionManagerWithSessionStore(testConfig, func() time.Time { return now }, store)
+	if err != nil {
+		t.Fatalf("NewSessionManagerWithSessionStore(managerB) error = %v", err)
+	}
+
+	session, failure, ok := managerA.Login("admin@example.local", "local-only-mock-password")
+	if !ok {
+		t.Fatalf("login rejected: %+v", failure)
+	}
+
+	principal, ok := managerB.AuthenticateAccessToken(session.AccessToken)
+	if !ok || principal.Email != "admin@example.local" {
+		t.Fatalf("principal = %+v, authenticated = %v", principal, ok)
+	}
+
+	next, ok := managerB.Refresh(session.RefreshToken)
+	if !ok {
+		t.Fatal("refresh rejected after manager restart")
+	}
+	if next.AccessToken == session.AccessToken || next.RefreshToken == session.RefreshToken {
+		t.Fatalf("tokens were not rotated: old=%+v new=%+v", session, next)
+	}
+	if _, ok := managerA.AuthenticateAccessToken(session.AccessToken); ok {
+		t.Fatal("old access token still authenticates after refresh through shared store")
+	}
+}
+
 func TestSessionManagerLocksAfterFailedLogins(t *testing.T) {
 	now := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
 	manager := NewSessionManager(testConfig, func() time.Time { return now })
