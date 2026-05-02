@@ -1314,6 +1314,103 @@ EOF
   printf '%-28s %s %s\n' "persisted_supplier_rejection" "ok" "$rejection_no"
 }
 
+persisted_subcontract_runtime_check() {
+  org_id="00000000-0000-4000-8000-000000000001"
+  smoke_index="$(postgres_scalar "select count(*) + 1 from subcontract.subcontract_orders where order_ref like 'sco-s16-08-03-smoke-%'")"
+  case "$smoke_index" in
+    ''|*[!0-9]*)
+      echo "persisted_subcontract_runtime failed: invalid smoke index '$smoke_index'" >&2
+      exit 1
+      ;;
+  esac
+
+  suffix="$(printf '%04d' "$smoke_index")"
+  order_id="sco-s16-08-03-smoke-$suffix"
+  order_no="SCO-S16-08-03-SMOKE-$suffix"
+  material_line_id="$order_id-material-01"
+  transfer_id="smt-s16-08-03-smoke-$suffix"
+  transfer_no="SMT-S16-08-03-SMOKE-$suffix"
+  transfer_evidence_id="$transfer_id-handover"
+  milestone_id="spm-s16-08-03-smoke-$suffix"
+  milestone_no="SPM-S16-08-03-SMOKE-$suffix"
+  sample_id="sample-s16-08-03-smoke-$suffix"
+  sample_code="SAMPLE-S16-08-03-SMOKE-$suffix"
+  receipt_id="sfgr-s16-08-03-smoke-$suffix"
+  receipt_no="SFGR-S16-08-03-SMOKE-$suffix"
+  claim_id="sfc-s16-08-03-smoke-$suffix"
+  claim_no="SFC-S16-08-03-SMOKE-$suffix"
+  before_count="$(postgres_scalar "select count(*) from subcontract.subcontract_orders where org_id = '$org_id'::uuid and order_ref = '$order_id'")"
+
+  order_body="$(cat <<EOF
+{"id":"$order_id","order_no":"$order_no","factory_id":"sup-out-lotus","finished_item_id":"item-serum-30ml","planned_qty":"100","uom_code":"EA","currency_code":"VND","spec_summary":"S16-08-03 subcontract persistence smoke","sample_required":true,"claim_window_days":7,"target_start_date":"2026-04-29","expected_receipt_date":"2026-04-29","material_lines":[{"id":"$material_line_id","item_id":"item-cream-50g","planned_qty":"20","uom_code":"EA","unit_cost":"58000","lot_trace_required":true}]}
+EOF
+)"
+  deposit_body="$(cat <<EOF
+{"expected_version":4,"milestone_id":"$milestone_id","milestone_no":"$milestone_no","amount":"250000","recorded_by":"finance-user","recorded_at":"2026-04-29T08:30:00Z","note":"S16-08-03 deposit persistence smoke"}
+EOF
+)"
+  issue_body="$(cat <<EOF
+{"expected_version":5,"transfer_id":"$transfer_id","transfer_no":"$transfer_no","source_warehouse_id":"wh-hcm-rm","source_warehouse_code":"WH-HCM-RM","handover_by":"warehouse-user","handover_at":"2026-04-29T09:30:00Z","received_by":"factory-receiver","receiver_contact":"0988000111","vehicle_no":"51A-12345","lines":[{"order_material_line_id":"$material_line_id","issue_qty":"20","uom_code":"EA","batch_id":"batch-cream-2603b","source_bin_id":"rm-a01"}],"evidence":[{"id":"$transfer_evidence_id","evidence_type":"handover","file_name":"handover.pdf","object_key":"subcontract/$transfer_id/handover.pdf"}]}
+EOF
+)"
+  sample_submit_body="$(cat <<EOF
+{"expected_version":6,"sample_approval_id":"$sample_id","sample_code":"$sample_code","formula_version":"FORMULA-2026.04","spec_version":"SPEC-2026.04","submitted_by":"factory-user","submitted_at":"2026-04-29T10:30:00Z","evidence":[{"evidence_type":"photo","file_name":"sample-front.jpg","object_key":"subcontract/$sample_id/sample-front.jpg"}]}
+EOF
+)"
+  sample_approve_body="$(cat <<EOF
+{"expected_version":7,"sample_approval_id":"$sample_id","reason":"Approved for S16-08-03 smoke","storage_status":"retained_in_qa_cabinet","approved_by":"qa-lead","approved_at":"2026-04-29T11:30:00Z"}
+EOF
+)"
+  receipt_body="$(cat <<EOF
+{"expected_version":9,"receipt_id":"$receipt_id","receipt_no":"$receipt_no","warehouse_id":"wh-hcm-fg","warehouse_code":"WH-HCM-FG","location_id":"loc-hcm-fg-qc","location_code":"FG-QC-01","delivery_note_no":"DN-S16-08-03-$suffix","received_by":"warehouse-user","received_at":"2026-04-29T14:00:00Z","lines":[{"line_no":1,"item_id":"item-serum-30ml","receive_qty":"80","uom_code":"EA","base_receive_qty":"80","base_uom_code":"EA","conversion_factor":"1","batch_id":"batch-fg-s16-08-03-$suffix","batch_no":"LOT-S16-08-03-$suffix","lot_no":"LOT-S16-08-03-$suffix","expiry_date":"2028-04-29","packaging_status":"intact"}],"evidence":[{"id":"$receipt_id-photo","evidence_type":"qc_photo","file_name":"qc-photo.jpg","object_key":"subcontract/$receipt_id/qc-photo.jpg"}]}
+EOF
+)"
+  claim_body="$(cat <<EOF
+{"expected_version":10,"claim_id":"$claim_id","claim_no":"$claim_no","receipt_id":"$receipt_id","receipt_no":"$receipt_no","reason_code":"PACKAGING_DAMAGED","reason":"S16-08-03 factory claim persistence smoke","severity":"P1","affected_qty":"80","uom_code":"EA","base_affected_qty":"80","base_uom_code":"EA","owner_id":"qa-lead","opened_by":"qa-lead","opened_at":"2026-04-29T15:00:00Z","evidence":[{"id":"$claim_id-photo","evidence_type":"photo","file_name":"damaged-carton.jpg","object_key":"subcontract/$claim_id/damaged-carton.jpg"}]}
+EOF
+)"
+
+  curl_check "subcontract_create" POST "$api_base/subcontract-orders" 201 "$order_body" auth
+  curl_check "subcontract_submit" POST "$api_base/subcontract-orders/$order_id/submit" 200 '{"expected_version":1}' auth
+  curl_check "subcontract_approve" POST "$api_base/subcontract-orders/$order_id/approve" 200 '{"expected_version":2}' auth
+  curl_check "subcontract_confirm" POST "$api_base/subcontract-orders/$order_id/confirm-factory" 200 '{"expected_version":3}' auth
+  curl_check "subcontract_deposit" POST "$api_base/subcontract-orders/$order_id/record-deposit" 200 "$deposit_body" auth
+  curl_check "subcontract_issue" POST "$api_base/subcontract-orders/$order_id/issue-materials" 200 "$issue_body" auth
+  curl_check "subcontract_sample_submit" POST "$api_base/subcontract-orders/$order_id/submit-sample" 200 "$sample_submit_body" auth
+  curl_check "subcontract_sample_approve" POST "$api_base/subcontract-orders/$order_id/approve-sample" 200 "$sample_approve_body" auth
+  curl_check "subcontract_mass_start" POST "$api_base/subcontract-orders/$order_id/start-mass-production" 200 '{"expected_version":8}' auth
+  curl_check "subcontract_receive" POST "$api_base/subcontract-orders/$order_id/receive-finished-goods" 200 "$receipt_body" auth
+  curl_check "subcontract_claim" POST "$api_base/subcontract-orders/$order_id/report-factory-defect" 200 "$claim_body" auth
+
+  restart_api_service
+
+  curl_check "subcontract_order_after" GET "$api_base/subcontract-orders/$order_id" 200 "" auth
+  if ! grep -q "\"id\":\"$order_id\"" "$tmp_body" ||
+    ! grep -q '"status":"rejected_factory_issue"' "$tmp_body" ||
+    ! grep -q '"deposit_amount":"250000.00"' "$tmp_body" ||
+    ! grep -q '"received_qty":"80.000000"' "$tmp_body"; then
+    echo "persisted_subcontract_order failed: order not readable after restart" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+  json_check "warehouse_subcontract_after" "$api_base/warehouse/daily-board/subcontract-metrics?business_date=2026-04-29&warehouse_id=wh-hcm-rm"
+
+  order_count="$(postgres_scalar "select count(*) from subcontract.subcontract_orders where org_id = '$org_id'::uuid and order_ref = '$order_id' and status = 'rejected_factory_issue' and deposit_amount = 250000.00 and received_qty = 80.000000")"
+  transfer_count="$(postgres_scalar "select count(*) from subcontract.subcontract_material_transfers t join subcontract.subcontract_material_transfer_evidence e on e.material_transfer_id = t.id where t.org_id = '$org_id'::uuid and t.transfer_ref = '$transfer_id' and t.subcontract_order_ref = '$order_id' and t.status = 'sent_to_factory' and e.evidence_ref = '$transfer_evidence_id'")"
+  sample_count="$(postgres_scalar "select count(*) from subcontract.subcontract_sample_approvals where org_id = '$org_id'::uuid and sample_ref = '$sample_id' and subcontract_order_ref = '$order_id' and status = 'approved' and storage_status = 'retained_in_qa_cabinet'")"
+  receipt_count="$(postgres_scalar "select count(*) from subcontract.subcontract_finished_goods_receipts r join subcontract.subcontract_finished_goods_receipt_lines l on l.finished_goods_receipt_id = r.id where r.org_id = '$org_id'::uuid and r.receipt_ref = '$receipt_id' and r.subcontract_order_ref = '$order_id' and l.receive_qty = 80.000000 and l.packaging_status = 'intact'")"
+  claim_count="$(postgres_scalar "select count(*) from subcontract.subcontract_factory_claims c join subcontract.subcontract_factory_claim_evidence e on e.factory_claim_id = c.id where c.org_id = '$org_id'::uuid and c.claim_ref = '$claim_id' and c.subcontract_order_ref = '$order_id' and c.receipt_ref = '$receipt_id' and c.status = 'open' and c.affected_qty = 80.000000 and e.evidence_ref = '$claim_id-photo'")"
+  milestone_count="$(postgres_scalar "select count(*) from subcontract.subcontract_payment_milestones where org_id = '$org_id'::uuid and milestone_ref = '$milestone_id' and subcontract_order_ref = '$order_id' and kind = 'deposit' and status = 'recorded' and amount = 250000.00")"
+  audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$order_id' and action in ('subcontract.order.created', 'subcontract.order.submitted', 'subcontract.order.approved', 'subcontract.order.factory_confirmed', 'subcontract.deposit_recorded', 'subcontract.materials_issued', 'subcontract.sample_submitted', 'subcontract.sample_approved', 'subcontract.order.mass_production_started', 'subcontract.finished_goods_received', 'subcontract.factory_claim_opened')")"
+  if [ "$before_count" != "0" ] || [ "$order_count" != "1" ] || [ "$transfer_count" != "1" ] || [ "$sample_count" != "1" ] || [ "$receipt_count" != "1" ] || [ "$claim_count" != "1" ] || [ "$milestone_count" != "1" ] || [ "$audit_count" -lt "11" ]; then
+    echo "persisted_subcontract_runtime failed: before=$before_count order=$order_count transfer=$transfer_count sample=$sample_count receipt=$receipt_count claim=$claim_count milestone=$milestone_count audit=$audit_count" >&2
+    exit 1
+  fi
+
+  printf '%-28s %s %s\n' "persisted_subcontract_order" "ok" "$order_no"
+  printf '%-28s %s %s\n' "persisted_subcontract_flow" "ok" "$transfer_no/$receipt_no/$claim_no"
+}
+
 persisted_audit_login_count() {
   postgres_scalar "select count(*) from audit.audit_logs where actor_ref = 'user-erp-admin' and entity_type = 'auth.session' and action = 'auth.login_succeeded'"
 }
@@ -1425,5 +1522,6 @@ persisted_inbound_qc_check
 persisted_carrier_manifest_check
 persisted_pick_pack_check
 persisted_return_rejection_check
+persisted_subcontract_runtime_check
 
 echo "Full ERP dev smoke passed"
