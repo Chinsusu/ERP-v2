@@ -1,32 +1,32 @@
-# S17-07-01 Remaining Prototype Store Ledger
+# S18-06-01 Remaining Prototype Store Ledger
 
 Project: Web ERP for cosmetics operations
-Sprint: Sprint 17 - Master data runtime store persistence
-Task: S17-07-01 Remaining prototype ledger update
+Sprint: Sprint 18 - Auth/session runtime store persistence
+Task: S18-06-01 Remaining prototype ledger update
 Date: 2026-05-02
-Status: Inventory complete; S17-08-01 release evidence can use this ledger
+Status: Inventory complete; S18-07-01 release evidence can use this ledger
 
 ---
 
 ## 1. Purpose
 
-This ledger supersedes the Sprint 16 state recorded in this same file after the Sprint 17 master data runtime persistence work.
+This ledger supersedes the Sprint 17 state recorded in this same file after the Sprint 18 auth/session runtime persistence work.
 
-Sprint 17 closed the highest remaining master data reset risk from the Sprint 16 ledger:
+Sprint 18 closed the highest remaining backend auth/session reset risk from the Sprint 17 ledger:
 
 ```text
-item catalog lifecycle, UOM fields, decimal cost, status, and audit state
-warehouse and location lifecycle, parent relation, status, and audit state
-supplier and customer lifecycle, group/type, terms, metrics, credit fields, and audit state
-UOM definitions and conversion factors
-package-level master data runtime selection and restart smoke
+access session state
+refresh session state and rotation evidence
+failed login attempt and lockout state
+DB-mode runtime selector for auth/session stores
+full dev auth restart smoke
 ```
 
 Prototype fallback still exists for no-DB/local mode. That fallback is intentional and must not be counted as production persistence evidence.
 
 ---
 
-## 2. Stores Persisted Through Sprint 17
+## 2. Stores Persisted Through Sprint 18
 
 | Area | Runtime path | Persistence status | Evidence |
 | --- | --- | --- | --- |
@@ -66,10 +66,31 @@ Prototype fallback still exists for no-DB/local mode. That fallback is intention
 | Warehouse/location catalog | `masterDataStores.warehouses` | PostgreSQL-backed `mdm.warehouses` and `mdm.warehouse_bins` lifecycle, hierarchy, status, and audit when DB config exists | PR #489, PR #492, migration `000034`, store lifecycle tests and full dev smoke |
 | Party catalog | `masterDataStores.parties` | PostgreSQL-backed `mdm.suppliers` and `mdm.customers` lifecycle, group/type, terms, metrics, credit fields, status, and audit when DB config exists | PR #490, PR #492, migration `000034`, store lifecycle tests and full dev smoke |
 | UOM catalog | `masterDataStores.uoms` | PostgreSQL-backed `mdm.uoms` and `mdm.uom_conversions` definitions and conversion factors without float/double | PR #491, PR #492, migration `000034`, UOM conversion tests and full dev smoke |
+| Auth/session runtime package | `newRuntimeSessionManager` | PostgreSQL-backed access/refresh session and login failure stores selected together when DB config exists; in-memory fallback only for no-DB/local | PR #498, PR #499, PR #500, PR #501, PR #502, migration `000035`, full dev smoke checks persisted access/refresh/lockout after API restart |
+| Access/refresh sessions | `auth.PostgresSessionStore` | PostgreSQL-backed `core.auth_sessions` token hashes, principal snapshot, expiry, last-seen, revocation, and rotation state when DB config exists | PR #499, PR #502, migration `000035`, isolated PostgreSQL tests and full dev smoke |
+| Failed login lockout state | `auth.PostgresLoginFailureStore` | PostgreSQL-backed `core.auth_login_failures` attempts, first-failed timestamp, locked-until, and clear behavior by org and normalized email when DB config exists | PR #501, PR #502, migration `000035`, isolated PostgreSQL tests and full dev smoke |
 
 ---
 
-## 3. Sprint 17 Resolution Notes
+## 3. Sprint 18 Resolution Notes
+
+### Auth/session Runtime Stores
+
+| Store / service | Prior Sprint 17 risk | Sprint 18 result |
+| --- | --- | --- |
+| Access sessions | Access tokens issued by login reset on API restart | Persisted by token hash in PostgreSQL, selected in DB mode, and verified by `/me` after API restart |
+| Refresh sessions | Refresh tokens and rotation evidence reset on API restart | Persisted by token hash in PostgreSQL, old refresh tokens are revoked/rotated, and reuse is rejected |
+| Failed login lockout state | Lockout attempts reset on API restart | Persisted in PostgreSQL by org and normalized email, and verified after API restart |
+
+### Auth/session Runtime Package Rule
+
+S18-04-01 made auth/session runtime selection a package-level decision. When DB config exists, access/refresh sessions and login failure lockout state share PostgreSQL-backed stores. When DB config is absent, they fall back together to in-memory stores for no-DB/local use only.
+
+S18 keeps the existing mock/dev login surface. It does not introduce full user administration, OIDC/SAML, MFA, password reset email flows, or production identity-provider integration.
+
+---
+
+## 4. Prior Sprint 17 Resolution Notes
 
 ### Master Data Runtime Stores
 
@@ -88,7 +109,7 @@ S17-06 also seeds the existing prototype baseline into PostgreSQL at startup so 
 
 ---
 
-## 4. Prior Sprint 16 Resolution Notes
+## 5. Prior Sprint 16 Resolution Notes
 
 ### Subcontract Runtime Stores
 
@@ -114,42 +135,48 @@ S16-08 hardening fixed two release risks found during dev smoke:
 
 ---
 
-## 5. Remaining Backend Prototype Stores
+## 6. Remaining Prototype / Fallback Areas
 
-### P1 - Auth, Session, and Dev Fallbacks
+### P1 - Frontend Fallback Cleanup
 
 | Store / service | Current constructor or path | Runtime risk | Recommendation |
 | --- | --- | --- | --- |
-| Access/refresh sessions | `auth.NewSessionManager(...)` | Sessions and lockout state reset | Acceptable for current mock/dev auth; revisit before production auth |
 | Frontend fallback services | `apps/web/src/modules/**/services/*` | Can hide backend failures during UI testing | Keep dev-only; never count frontend fallback as persistence evidence |
+
+### Production Auth Features Outside Runtime Store Scope
+
+```text
+Full user administration, password reset, OIDC/SAML, MFA, and production identity-provider integration remain future product/security work. They are not remaining runtime persistence stores from the Sprint 18 ledger.
+```
 
 ---
 
-## 6. Recommended Post-Sprint-17 Persistence Order
+## 7. Recommended Post-Sprint-18 Persistence Order
 
 ```text
-1. Auth/session hardening.
-2. Remove or gate frontend fallback services where backend coverage is now available.
+1. Remove or gate frontend fallback services where backend coverage is now available.
+2. Plan production identity-provider/user-admin hardening separately from runtime store persistence.
 ```
 
 Rationale:
 
 ```text
-Sprint 17 closed the editable master data reset risk across items, UOMs, warehouses/locations, suppliers, and customers. The next restart risk is production-grade auth/session state; frontend fallback cleanup should follow so UI testing cannot hide backend regressions.
+Sprint 18 closed the remaining P1 backend auth/session runtime reset risk in DB mode. The next persistence-adjacent risk is frontend fallback behavior that can hide backend regressions during UI testing.
 ```
 
 ---
 
-## 7. Verification Notes
+## 8. Verification Notes
 
 Inventory checks performed:
 
 ```text
-- Inspected `newRuntimeMasterDataStores` after PR #492.
-- Confirmed DB mode uses one PostgreSQL `*sql.DB` and selects item, UOM, warehouse/location, and party catalogs together.
-- Confirmed prototype master data catalogs are selected only when DATABASE_URL is empty.
-- Confirmed Sprint 17 migration `000034` covers master data runtime fields, indexes, constraints, and seed-compatible references.
-- Confirmed full dev smoke after PR #492 creates item, warehouse, location, supplier, and customer records, restarts the API service, then reads them back from PostgreSQL.
-- Confirmed PostgreSQL 16.13 isolated migration gate applied 34 up migrations and rolled back 34 down migrations during S17-01-02.
-- No runtime behavior changed in this task.
+- Inspected `newRuntimeSessionManager` after PR #502.
+- Confirmed DB mode uses PostgreSQL `auth.PostgresSessionStore` and `auth.PostgresLoginFailureStore` together.
+- Confirmed no-DB/local mode uses in-memory auth/session stores.
+- Confirmed Sprint 18 migration `000035` covers auth session and login failure runtime tables, indexes, constraints, and rollback.
+- Confirmed isolated PostgreSQL 16 migration gate applied 35 up migrations, rolled back 35 down migrations, and reapplied 35 migrations during S18-01-02.
+- Confirmed isolated PostgreSQL tests cover persisted access sessions, refresh rotation, old refresh rejection, raw-token non-storage, and persisted lockout.
+- Confirmed full dev smoke after PR #503 reports `persisted_auth_session ok access/refresh/lockout`.
+- No runtime behavior changed in this ledger update task.
 ```
