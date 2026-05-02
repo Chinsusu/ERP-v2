@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { DataTable, StatusChip, type DataTableColumn } from "@/shared/design-system/components";
+import { t } from "@/shared/i18n";
 import { useCarrierManifests } from "../hooks/useCarrierManifests";
 import {
   addShipmentToManifest,
@@ -23,6 +24,7 @@ import type {
   CarrierManifestLine,
   CarrierManifestQuery,
   CarrierManifestScanResult,
+  CarrierManifestScanResultCode,
   CarrierManifestStatus
 } from "../types";
 
@@ -33,7 +35,7 @@ function createManifestColumns(
   return [
     {
       key: "manifest",
-      header: "Manifest",
+      header: handoverCopy("columns.manifest"),
       render: (row) => (
         <span className="erp-shipping-manifest-cell">
           <strong>{row.id}</strong>
@@ -44,39 +46,39 @@ function createManifestColumns(
     },
     {
       key: "carrier",
-      header: "Carrier",
+      header: handoverCopy("columns.carrier"),
       render: (row) => row.carrierName,
       width: "150px"
     },
     {
       key: "warehouse",
-      header: "Warehouse",
+      header: handoverCopy("columns.warehouse"),
       render: (row) => row.warehouseCode,
       width: "100px"
     },
     {
       key: "status",
-      header: "Status",
+      header: handoverCopy("columns.status"),
       render: (row) => <StatusChip tone={carrierManifestStatusTone(row.status)}>{statusLabel(row.status)}</StatusChip>,
       width: "130px"
     },
     {
       key: "orders",
-      header: "Orders",
+      header: handoverCopy("columns.orders"),
       render: (row) => row.summary.expectedCount,
       align: "right",
       width: "90px"
     },
     {
       key: "scanned",
-      header: "Scanned",
+      header: handoverCopy("columns.scanned"),
       render: (row) => row.summary.scannedCount,
       align: "right",
       width: "100px"
     },
     {
       key: "missing",
-      header: "Missing",
+      header: handoverCopy("columns.missing"),
       render: (row) => (
         <StatusChip tone={row.summary.missingCount === 0 ? "success" : "danger"}>{row.summary.missingCount}</StatusChip>
       ),
@@ -92,7 +94,7 @@ function createManifestColumns(
           type="button"
           onClick={() => onSelectManifest(row.id)}
         >
-          Select
+          {handoverCopy("actions.select")}
         </button>
       ),
       align: "right",
@@ -106,15 +108,19 @@ function createLineColumns(
   onRemoveLine: (line: CarrierManifestLine) => void
 ): DataTableColumn<CarrierManifestLine>[] {
   return [
-    { key: "order", header: "Order", render: (row) => row.orderNo, width: "150px" },
-    { key: "tracking", header: "Tracking", render: (row) => row.trackingNo, width: "160px" },
-    { key: "package", header: "Package", render: (row) => row.packageCode, width: "120px" },
-    { key: "zone", header: "Zone", render: (row) => row.handoverZoneCode || row.stagingZone, width: "130px" },
-    { key: "bin", header: "Bin", render: (row) => row.handoverBinCode || "-", width: "90px" },
+    { key: "order", header: handoverCopy("columns.order"), render: (row) => row.orderNo, width: "150px" },
+    { key: "tracking", header: handoverCopy("columns.tracking"), render: (row) => row.trackingNo, width: "160px" },
+    { key: "package", header: handoverCopy("columns.package"), render: (row) => row.packageCode, width: "120px" },
+    { key: "zone", header: handoverCopy("columns.zone"), render: (row) => row.handoverZoneCode || row.stagingZone, width: "130px" },
+    { key: "bin", header: handoverCopy("columns.bin"), render: (row) => row.handoverBinCode || "-", width: "90px" },
     {
       key: "scan",
-      header: "Scan state",
-      render: (row) => <StatusChip tone={row.scanned ? "success" : "warning"}>{row.scanned ? "Scanned" : "Missing"}</StatusChip>,
+      header: handoverCopy("columns.scanState"),
+      render: (row) => (
+        <StatusChip tone={row.scanned ? "success" : "warning"}>
+          {handoverCopy(row.scanned ? "scanState.scanned" : "scanState.missing")}
+        </StatusChip>
+      ),
       width: "120px"
     },
     {
@@ -127,7 +133,7 @@ function createLineColumns(
           onClick={() => onRemoveLine(row)}
           disabled={!canRemoveLine}
         >
-          Remove
+          {handoverCopy("actions.remove")}
         </button>
       ),
       align: "right",
@@ -140,25 +146,25 @@ function createMissingLineColumns(
   onMissingAction: (action: "find" | "report", orderNo: string) => void
 ): DataTableColumn<CarrierManifestLine>[] {
   return [
-    { key: "order", header: "Order", render: (row) => row.orderNo, width: "150px" },
-    { key: "tracking", header: "Tracking", render: (row) => row.trackingNo, width: "160px" },
-    { key: "zone", header: "Packing zone", render: (row) => row.handoverZoneCode || row.stagingZone || "handover", width: "140px" },
+    { key: "order", header: handoverCopy("columns.order"), render: (row) => row.orderNo, width: "150px" },
+    { key: "tracking", header: handoverCopy("columns.tracking"), render: (row) => row.trackingNo, width: "160px" },
+    { key: "zone", header: handoverCopy("columns.packingZone"), render: (row) => row.handoverZoneCode || row.stagingZone || "handover", width: "140px" },
     {
       key: "state",
-      header: "State",
-      render: () => <StatusChip tone="danger">Missing</StatusChip>,
+      header: handoverCopy("columns.state"),
+      render: () => <StatusChip tone="danger">{handoverCopy("scanState.missing")}</StatusChip>,
       width: "110px"
     },
     {
       key: "action",
-      header: "Action",
+      header: handoverCopy("columns.action"),
       render: (row) => (
         <div className="erp-shipping-missing-actions">
           <button className="erp-button erp-button--secondary" type="button" onClick={() => onMissingAction("find", row.orderNo)}>
-            Find order
+            {handoverCopy("actions.findOrder")}
           </button>
           <button className="erp-button erp-button--danger" type="button" onClick={() => onMissingAction("report", row.orderNo)}>
-            Report
+            {handoverCopy("actions.report")}
           </button>
         </div>
       ),
@@ -291,7 +297,7 @@ export function CarrierManifestPrototype() {
       });
       patchManifest(created);
       setSelectedManifestId(created.id);
-      setFeedback(`Created ${created.id}`);
+      setFeedback(handoverCopy("feedback.created", { manifestId: created.id }));
     });
   }
 
@@ -302,7 +308,7 @@ export function CarrierManifestPrototype() {
     await runManifestAction(async () => {
       const updated = await addShipmentToManifest(selectedManifest.id, shipmentId.trim());
       patchManifest(updated);
-      setFeedback(`Added ${shipmentId.trim()} to ${updated.id}`);
+      setFeedback(handoverCopy("feedback.added", { shipmentId: shipmentId.trim(), manifestId: updated.id }));
     });
   }
 
@@ -314,7 +320,7 @@ export function CarrierManifestPrototype() {
     await runManifestAction(async () => {
       const updated = await markCarrierManifestReady(selectedManifest.id);
       patchManifest(updated);
-      setFeedback(`${updated.id} is ready to scan`);
+      setFeedback(handoverCopy("feedback.ready", { manifestId: updated.id }));
     });
   }
 
@@ -326,7 +332,7 @@ export function CarrierManifestPrototype() {
     await runManifestAction(async () => {
       const updated = await cancelCarrierManifest(selectedManifest.id, "carrier pickup moved");
       patchManifest(updated);
-      setFeedback(`Cancelled ${updated.id}`);
+      setFeedback(handoverCopy("feedback.cancelled", { manifestId: updated.id }));
     });
   }
 
@@ -338,7 +344,7 @@ export function CarrierManifestPrototype() {
     await runManifestAction(async () => {
       const updated = await removeShipmentFromManifest(selectedManifest.id, line.shipmentId);
       patchManifest(updated);
-      setFeedback(`Removed ${line.orderNo} from ${updated.id}`);
+      setFeedback(handoverCopy("feedback.removed", { orderNo: line.orderNo, manifestId: updated.id }));
     });
   }
 
@@ -363,10 +369,10 @@ export function CarrierManifestPrototype() {
       setSelectedManifestId(result.manifest.id);
       setScanResult(result);
       setRecentScans((current) => [result, ...current].slice(0, 6));
-      setFeedback(`${result.resultCode}: ${result.message}`);
+      setFeedback(`${scanResultLabel(result.resultCode)}: ${scanResultMessage(result)}`);
       return result;
     } catch (cause) {
-      setFeedback(cause instanceof Error ? cause.message : "Scan could not be verified");
+      setFeedback(cause instanceof Error ? cause.message : handoverCopy("scan.failed"));
       return null;
     } finally {
       setScanBusy(false);
@@ -405,16 +411,16 @@ export function CarrierManifestPrototype() {
     await runManifestAction(async () => {
       const handedOver = await confirmCarrierManifestHandover(selectedManifest.id);
       patchManifest(handedOver);
-      setFeedback(`Confirmed handover for ${handedOver.id}`);
+      setFeedback(handoverCopy("feedback.confirmed", { manifestId: handedOver.id }));
     });
   }
 
   function handleMissingAction(action: "find" | "report", orderNo: string) {
-    setFeedback(action === "find" ? `Locate ${orderNo} in packing zone` : `Reported missing ${orderNo}`);
+    setFeedback(handoverCopy(action === "find" ? "feedback.find" : "feedback.report", { orderNo }));
   }
 
   function handleReportManifestMissing() {
-    setFeedback(`Reported missing lines for ${selectedManifest?.id ?? "manifest"}`);
+    setFeedback(handoverCopy("feedback.reportMissing", { manifestId: selectedManifest?.id ?? handoverCopy("columns.manifest") }));
   }
 
   async function runManifestAction(action: () => Promise<void>) {
@@ -426,7 +432,7 @@ export function CarrierManifestPrototype() {
     try {
       await action();
     } catch (cause) {
-      setFeedback(cause instanceof Error ? cause.message : "Manifest action failed");
+      setFeedback(cause instanceof Error ? cause.message : handoverCopy("feedback.actionFailed"));
     } finally {
       setActionBusy(false);
     }
@@ -442,50 +448,50 @@ export function CarrierManifestPrototype() {
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">SHIP</p>
-          <h1 className="erp-page-title">Carrier Manifest</h1>
-          <p className="erp-page-description">Carrier handover batches by warehouse, date, expected count, scanned count, and missing count</p>
+          <h1 className="erp-page-title">{handoverCopy("title")}</h1>
+          <p className="erp-page-description">{handoverCopy("description")}</p>
         </div>
         <div className="erp-page-actions">
           <button className="erp-button erp-button--secondary" type="button" onClick={() => setStatus("exception")}>
-            Exceptions
+            {handoverCopy("actions.exceptions")}
           </button>
           <button className="erp-button erp-button--primary" type="button" onClick={handleCreateManifest} disabled={actionBusy}>
-            Create manifest
+            {handoverCopy("actions.createManifest")}
           </button>
         </div>
       </header>
 
-      <section className="erp-shipping-toolbar" aria-label="Carrier manifest filters">
+      <section className="erp-shipping-toolbar" aria-label={handoverCopy("filters.label")}>
         <label className="erp-field">
-          <span>Warehouse</span>
+          <span>{handoverCopy("filters.warehouse")}</span>
           <select className="erp-input" value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
             {manifestWarehouseOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {manifestWarehouseLabel(option.value, option.label)}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Date</span>
+          <span>{handoverCopy("filters.date")}</span>
           <input className="erp-input" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
         </label>
         <label className="erp-field">
-          <span>Carrier</span>
+          <span>{handoverCopy("filters.carrier")}</span>
           <select className="erp-input" value={carrierCode} onChange={(event) => setCarrierCode(event.target.value)}>
             {carrierOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {carrierOptionLabel(option.value, option.label)}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Status</span>
+          <span>{handoverCopy("filters.status")}</span>
           <select className="erp-input" value={status} onChange={(event) => setStatus(event.target.value as "" | CarrierManifestStatus)}>
             {carrierManifestStatusOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? statusLabel(option.value) : handoverCopy("filters.allStatuses")}
               </option>
             ))}
           </select>
@@ -493,16 +499,18 @@ export function CarrierManifestPrototype() {
       </section>
 
       <section className="erp-kpi-grid erp-shipping-kpis">
-        <ShippingKPI label="Expected" value={totals.expected} tone="info" />
-        <ShippingKPI label="Scanned" value={totals.scanned} tone="success" />
-        <ShippingKPI label="Missing" value={totals.missing} tone={totals.missing === 0 ? "success" : "danger"} />
-        <ShippingKPI label="Manifests" value={displayedManifests.length} tone="normal" />
+        <ShippingKPI label={handoverCopy("kpi.expected")} value={totals.expected} tone="info" />
+        <ShippingKPI label={handoverCopy("kpi.scanned")} value={totals.scanned} tone="success" />
+        <ShippingKPI label={handoverCopy("kpi.missing")} value={totals.missing} tone={totals.missing === 0 ? "success" : "danger"} />
+        <ShippingKPI label={handoverCopy("kpi.manifests")} value={displayedManifests.length} tone="normal" />
       </section>
 
       <section className="erp-card erp-card--padded erp-module-table-card" id="carrier-manifest-list">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Manifest batches</h2>
-          <StatusChip tone={displayedManifests.length === 0 ? "warning" : "info"}>{displayedManifests.length} rows</StatusChip>
+          <h2 className="erp-section-title">{handoverCopy("sections.manifestBatches")}</h2>
+          <StatusChip tone={displayedManifests.length === 0 ? "warning" : "info"}>
+            {handoverCopy("rows", { count: displayedManifests.length })}
+          </StatusChip>
         </div>
         <DataTable
           columns={manifestColumns}
@@ -517,8 +525,8 @@ export function CarrierManifestPrototype() {
         <div className="erp-card erp-card--padded erp-shipping-handover-card">
           <div className="erp-section-header">
             <div>
-              <h2 className="erp-section-title">Carrier handover</h2>
-              <p className="erp-section-description">{selectedManifest?.id ?? "No manifest selected"}</p>
+              <h2 className="erp-section-title">{handoverCopy("sections.carrierHandover")}</h2>
+              <p className="erp-section-description">{selectedManifest?.id ?? handoverCopy("empty.noManifestSelected")}</p>
             </div>
             {selectedManifest ? (
               <StatusChip tone={carrierManifestStatusTone(selectedManifest.status)}>{statusLabel(selectedManifest.status)}</StatusChip>
@@ -527,7 +535,7 @@ export function CarrierManifestPrototype() {
 
           <div className="erp-shipping-handover-meta">
             <label className="erp-field">
-              <span>Manifest</span>
+              <span>{handoverCopy("facts.manifest")}</span>
               <select className="erp-input" value={selectedManifest?.id ?? ""} onChange={(event) => setSelectedManifestId(event.target.value)}>
                 {displayedManifests.map((manifest) => (
                   <option key={manifest.id} value={manifest.id}>
@@ -536,51 +544,67 @@ export function CarrierManifestPrototype() {
                 ))}
               </select>
             </label>
-            <HandoverMetric label="Carrier" value={selectedManifest?.carrierName ?? "-"} />
-            <HandoverMetric label="Zone" value={selectedManifest ? manifestLocationLabel(selectedManifest) : "-"} />
-            <HandoverMetric label="Bin" value={selectedManifest?.handoverBinCode ?? "-"} />
-            <HandoverMetric label="Owner" value={selectedManifest?.owner ?? "-"} />
-            <HandoverMetric label="Expected" value={selectedManifest?.summary.expectedCount ?? 0} />
-            <HandoverMetric label="Scanned" value={selectedManifest?.summary.scannedCount ?? 0} />
-            <HandoverMetric label="Missing" value={selectedManifest?.summary.missingCount ?? 0} tone={(selectedManifest?.summary.missingCount ?? 0) === 0 ? "success" : "danger"} />
+            <HandoverMetric label={handoverCopy("facts.carrier")} value={selectedManifest?.carrierName ?? "-"} />
+            <HandoverMetric label={handoverCopy("facts.zone")} value={selectedManifest ? manifestLocationLabel(selectedManifest) : "-"} />
+            <HandoverMetric label={handoverCopy("facts.bin")} value={selectedManifest?.handoverBinCode ?? "-"} />
+            <HandoverMetric label={handoverCopy("facts.owner")} value={selectedManifest?.owner ?? "-"} />
+            <HandoverMetric label={handoverCopy("facts.expected")} value={selectedManifest?.summary.expectedCount ?? 0} />
+            <HandoverMetric label={handoverCopy("facts.scanned")} value={selectedManifest?.summary.scannedCount ?? 0} />
+            <HandoverMetric label={handoverCopy("facts.missing")} value={selectedManifest?.summary.missingCount ?? 0} tone={(selectedManifest?.summary.missingCount ?? 0) === 0 ? "success" : "danger"} />
           </div>
 
           <label className={`erp-shipping-scan-primary erp-shipping-scan-primary--${scanResult?.severity ?? "normal"}`}>
-            <span>Scan order or tracking</span>
+            <span>{handoverCopy("scan.label")}</span>
             <input
               ref={scanInputRef}
               value={scanCode}
               onChange={(event) => setScanCode(event.target.value)}
               onKeyDown={handleScanKeyDown}
-              placeholder="SO-260426-003 / GHN260426003"
+              placeholder={handoverCopy("scan.placeholder")}
               disabled={!selectedManifest || actionBusy}
             />
             {scanResult ? (
               <small>
-                <strong>{scanResult.resultCode}</strong>
-                <span>{scanResult.message}</span>
-                {scanResult.expectedManifestId ? <span>Related {scanResult.expectedManifestId}</span> : null}
+                <strong>{scanResultLabel(scanResult.resultCode)}</strong>
+                <span>{scanResultMessage(scanResult)}</span>
+                {scanResult.expectedManifestId ? (
+                  <span>{handoverCopy("scan.relatedManifest", { manifestId: scanResult.expectedManifestId })}</span>
+                ) : null}
               </small>
             ) : (
-              <small>{scanBusy ? "Checking code" : selectedManifest ? manifestLocationLabel(selectedManifest) : "No handover zone"}</small>
+              <small>
+                {scanBusy
+                  ? handoverCopy("scan.checkingCode")
+                  : selectedManifest
+                    ? manifestLocationLabel(selectedManifest)
+                    : handoverCopy("scan.noHandoverZone")}
+              </small>
             )}
           </label>
 
           <div className="erp-shipping-scan-actions">
-            <button className="erp-button erp-button--secondary" type="button" onClick={() => setFeedback(`Printed ${selectedManifest?.id ?? "manifest"}`)}>
-              Print manifest
+            <button
+              className="erp-button erp-button--secondary"
+              type="button"
+              onClick={() =>
+                setFeedback(
+                  handoverCopy("feedback.printed", { manifestId: selectedManifest?.id ?? handoverCopy("columns.manifest") })
+                )
+              }
+            >
+              {handoverCopy("actions.printManifest")}
             </button>
             <button className="erp-button erp-button--secondary" type="button" onClick={handleMarkReady} disabled={!canMarkReady}>
-              Ready to scan
+              {handoverCopy("actions.readyToScan")}
             </button>
             <button className="erp-button erp-button--danger" type="button" onClick={handleReportManifestMissing} disabled={missingLines.length === 0}>
-              Report missing
+              {handoverCopy("actions.reportMissing")}
             </button>
             <button className="erp-button erp-button--danger" type="button" onClick={handleCancelManifest} disabled={!canCancel}>
-              Cancel manifest
+              {handoverCopy("actions.cancelManifest")}
             </button>
             <button className="erp-button erp-button--primary" type="button" onClick={handleConfirmHandover} disabled={!canConfirmHandover}>
-              Confirm handover
+              {handoverCopy("actions.confirmHandover")}
             </button>
           </div>
 
@@ -590,10 +614,14 @@ export function CarrierManifestPrototype() {
         <div className="erp-card erp-card--padded erp-shipping-exception-card">
           <div className="erp-section-header">
             <div>
-              <h2 className="erp-section-title">Missing / exception queue</h2>
-              <p className="erp-section-description">{selectedManifest ? manifestLocationLabel(selectedManifest) : "No zone"}</p>
+              <h2 className="erp-section-title">{handoverCopy("sections.missingQueue")}</h2>
+              <p className="erp-section-description">
+                {selectedManifest ? manifestLocationLabel(selectedManifest) : handoverCopy("scan.noHandoverZone")}
+              </p>
             </div>
-            <StatusChip tone={missingLines.length === 0 ? "success" : "danger"}>{missingLines.length} open</StatusChip>
+            <StatusChip tone={missingLines.length === 0 ? "success" : "danger"}>
+              {handoverCopy("open", { count: missingLines.length })}
+            </StatusChip>
           </div>
           <DataTable
             columns={missingColumns}
@@ -601,8 +629,8 @@ export function CarrierManifestPrototype() {
             getRowKey={(row) => row.id}
             emptyState={
               <section className="erp-shipping-empty-state">
-                <StatusChip tone="success">Ready</StatusChip>
-                <strong>All expected lines scanned</strong>
+                <StatusChip tone="success">{handoverCopy("empty.ready")}</StatusChip>
+                <strong>{handoverCopy("empty.allExpectedScanned")}</strong>
               </section>
             }
           />
@@ -612,59 +640,65 @@ export function CarrierManifestPrototype() {
       <section className="erp-shipping-detail-grid">
         <div className="erp-card erp-card--padded">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Recent scans</h2>
-            <StatusChip tone={scanIssues.length === 0 ? "success" : "danger"}>{scanIssues.length} issues</StatusChip>
+            <h2 className="erp-section-title">{handoverCopy("sections.recentScans")}</h2>
+            <StatusChip tone={scanIssues.length === 0 ? "success" : "danger"}>
+              {handoverCopy("issues", { count: scanIssues.length })}
+            </StatusChip>
           </div>
           {scanIssues.length > 0 ? (
             <section className="erp-shipping-scan-panel">
               <div className="erp-shipping-scan-meta">
-                <StatusChip tone="danger">Scan issues</StatusChip>
-                {scanResult ? <StatusChip tone={carrierManifestScanSeverityTone(scanResult.severity)}>{scanResult.resultCode}</StatusChip> : null}
+                <StatusChip tone="danger">{handoverCopy("scan.issues")}</StatusChip>
+                {scanResult ? (
+                  <StatusChip tone={carrierManifestScanSeverityTone(scanResult.severity)}>
+                    {scanResultLabel(scanResult.resultCode)}
+                  </StatusChip>
+                ) : null}
               </div>
-              <ol className="erp-shipping-scan-list" aria-label="Manifest scan issues">
+              <ol className="erp-shipping-scan-list" aria-label={handoverCopy("scan.issuesLabel")}>
                 {scanIssues.map((scan) => (
                   <li key={`issue-${scan.scanEvent.id}`}>
-                    <StatusChip tone={carrierManifestScanSeverityTone(scan.severity)}>{scan.resultCode}</StatusChip>
+                    <StatusChip tone={carrierManifestScanSeverityTone(scan.severity)}>{scanResultLabel(scan.resultCode)}</StatusChip>
                     <strong>{scan.scanEvent.code}</strong>
-                    <span>{scan.expectedManifestId ?? scan.message}</span>
+                    <span>{scan.expectedManifestId ?? scanResultMessage(scan)}</span>
                   </li>
                 ))}
               </ol>
             </section>
           ) : null}
           {recentScans.length > 0 ? (
-            <ol className="erp-shipping-scan-list" aria-label="Recent manifest scans">
+            <ol className="erp-shipping-scan-list" aria-label={handoverCopy("scan.recentLabel")}>
               {recentScans.map((scan) => (
                 <li key={scan.scanEvent.id}>
-                  <StatusChip tone={carrierManifestScanSeverityTone(scan.severity)}>{scan.resultCode}</StatusChip>
+                  <StatusChip tone={carrierManifestScanSeverityTone(scan.severity)}>{scanResultLabel(scan.resultCode)}</StatusChip>
                   <strong>{scan.scanEvent.code}</strong>
-                  <span>{scan.line?.orderNo ?? scan.expectedManifestId ?? scan.message}</span>
+                  <span>{scan.line?.orderNo ?? scan.expectedManifestId ?? scanResultMessage(scan)}</span>
                 </li>
               ))}
             </ol>
           ) : (
             <section className="erp-shipping-empty-state">
-              <StatusChip tone="normal">Idle</StatusChip>
-              <strong>No scans yet</strong>
+              <StatusChip tone="normal">{handoverCopy("empty.idle")}</StatusChip>
+              <strong>{handoverCopy("empty.noScansYet")}</strong>
             </section>
           )}
         </div>
 
         <div className="erp-card erp-card--padded">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Shipment lines</h2>
+            <h2 className="erp-section-title">{handoverCopy("sections.shipmentLines")}</h2>
             <StatusChip tone={(selectedManifest?.summary.missingCount ?? 0) === 0 ? "success" : "danger"}>
-              {selectedManifest?.summary.missingCount ?? 0} missing
+              {handoverCopy("missingCount", { count: selectedManifest?.summary.missingCount ?? 0 })}
             </StatusChip>
           </div>
           <DataTable columns={lineColumns} rows={selectedManifest?.lines ?? []} getRowKey={(row) => row.id} />
           <div className="erp-shipping-add-box">
             <label className="erp-field">
-              <span>Shipment ID</span>
+              <span>{handoverCopy("facts.shipmentId")}</span>
               <input className="erp-input" value={shipmentId} onChange={(event) => setShipmentId(event.target.value)} />
             </label>
             <button className="erp-button erp-button--primary" type="button" onClick={handleAddShipment} disabled={actionBusy || !selectedManifest}>
-              Add shipment
+              {handoverCopy("actions.addShipment")}
             </button>
           </div>
         </div>
@@ -720,24 +754,32 @@ function optionValueFromParam<TValue extends string>(
   return options.some((option) => option.value === value) ? (value as TValue) : null;
 }
 
+function handoverCopy(key: string, values?: Record<string, string | number>) {
+  return t(`shipping.handover.${key}`, { values });
+}
+
 function statusLabel(status: CarrierManifestStatus) {
-  switch (status) {
-    case "cancelled":
-      return "Cancelled";
-    case "completed":
-      return "Completed";
-    case "handed_over":
-      return "Handed over";
-    case "exception":
-      return "Exception";
-    case "scanning":
-      return "Scanning";
-    case "ready":
-      return "Ready";
-    case "draft":
-    default:
-      return "Draft";
+  return handoverCopy(`status.${status}`);
+}
+
+function scanResultLabel(resultCode: CarrierManifestScanResultCode) {
+  return handoverCopy(`scanResult.${resultCode}`);
+}
+
+function scanResultMessage(result: CarrierManifestScanResult) {
+  return t(`shipping.handover.scanMessage.${result.resultCode}`, { fallback: result.message });
+}
+
+function manifestWarehouseLabel(value: string, fallback: string) {
+  if (value === "") {
+    return handoverCopy("warehouse.all");
   }
+
+  return t(`shipping.handover.warehouse.${value}`, { fallback });
+}
+
+function carrierOptionLabel(value: string, fallback: string) {
+  return value === "" ? handoverCopy("filters.allCarriers") : fallback;
 }
 
 function manifestLocationLabel(manifest: CarrierManifest) {

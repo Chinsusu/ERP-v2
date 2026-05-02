@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { t } from "@/shared/i18n";
 import { CarrierManifestPrototype } from "./CarrierManifestPrototype";
 import { PackingPrototype } from "./PackingPrototype";
 import { PickingPrototype } from "./PickingPrototype";
@@ -12,27 +13,27 @@ export function ShippingOperationsPrototype() {
 
   return (
     <section className="erp-shipping-operations">
-      <nav className="erp-shipping-tabs" aria-label="Shipping operation views">
+      <nav className="erp-shipping-tabs" aria-label={t("shipping.operations.label")}>
         <button
           className={`erp-shipping-tab ${view === "picking" ? "erp-shipping-tab--active" : ""}`}
           type="button"
           onClick={() => setView("picking")}
         >
-          Picking
+          {t("shipping.operations.tabs.picking")}
         </button>
         <button
           className={`erp-shipping-tab ${view === "packing" ? "erp-shipping-tab--active" : ""}`}
           type="button"
           onClick={() => setView("packing")}
         >
-          Packing
+          {t("shipping.operations.tabs.packing")}
         </button>
         <button
           className={`erp-shipping-tab ${view === "handover" ? "erp-shipping-tab--active" : ""}`}
           type="button"
           onClick={() => setView("handover")}
         >
-          Carrier handover
+          {t("shipping.operations.tabs.handover")}
         </button>
       </nav>
       {view === "picking" ? <PickingPrototype /> : null}
