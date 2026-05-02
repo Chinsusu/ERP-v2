@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DataTable, EmptyState, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
 import { AttachmentPanel, type AttachmentPanelItem } from "@/shared/design-system/pageTemplates";
+import { t } from "@/shared/i18n";
 import { useGoodsReceipts } from "../../receiving/hooks/useGoodsReceipts";
 import {
   formatReceivingDateTime,
@@ -16,11 +17,8 @@ import {
   createInboundQCInspection,
   defaultInboundQCChecklist,
   failInboundQCInspection,
-  formatChecklistStatus,
   formatInboundQCDateTime,
   formatInboundQCQuantity,
-  formatInboundQCResult,
-  formatInboundQCStatus,
   holdInboundQCInspection,
   inboundQCChecklistStatusOptions,
   inboundQCResultTone,
@@ -99,14 +97,14 @@ export function InboundQCPrototype() {
       splitEvidenceRefs(evidenceRefs).map((ref, index) => ({
         id: `qc-evidence-${index}-${ref}`,
         name: ref,
-        kind: ref.toLowerCase().endsWith(".pdf") ? "Document" : "QC evidence",
+        kind: ref.toLowerCase().endsWith(".pdf") ? qcCopy("inbound.attachments.document") : qcCopy("inbound.attachments.evidence"),
         uploadedBy: inspectorId,
         uploadedAt: selectedInspection?.updatedAt ?? new Date().toISOString(),
         storageKey: selectedInspection ? `inbound-qc/${selectedInspection.id}/${ref}` : ref,
-        status: <StatusChip tone="info">reference</StatusChip>,
+        status: <StatusChip tone="info">{qcCopy("inbound.attachments.reference")}</StatusChip>,
         canDownload: true,
         canDelete: selectedInspection?.status !== "completed",
-        deleteLabel: "Remove",
+        deleteLabel: qcCopy("inbound.actions.remove"),
         onDownload: () => setFeedback({ tone: "info", message: ref }),
         onDelete: () => removeEvidenceRef(ref)
       })),
@@ -116,7 +114,7 @@ export function InboundQCPrototype() {
     () => [
       {
         key: "receipt",
-        header: "Receipt",
+        header: qcCopy("inbound.receivingLines.columns.receipt"),
         render: (row) => (
           <span className="erp-qc-record-cell">
             <strong>{row.receipt.receiptNo}</strong>
@@ -127,7 +125,7 @@ export function InboundQCPrototype() {
       },
       {
         key: "sku",
-        header: "SKU",
+        header: qcCopy("inbound.receivingLines.columns.sku"),
         render: (row) => (
           <span className="erp-qc-record-cell">
             <strong>{row.line.sku}</strong>
@@ -137,7 +135,7 @@ export function InboundQCPrototype() {
       },
       {
         key: "lot",
-        header: "Lot / Expiry",
+        header: qcCopy("inbound.receivingLines.columns.lotExpiry"),
         render: (row) => (
           <span className="erp-qc-record-cell">
             <strong>{row.line.lotNo ?? row.line.batchNo ?? "-"}</strong>
@@ -148,7 +146,7 @@ export function InboundQCPrototype() {
       },
       {
         key: "packaging",
-        header: "Packaging",
+        header: qcCopy("inbound.receivingLines.columns.packaging"),
         render: (row) => (
           <StatusChip tone={row.line.packagingStatus === "intact" ? "success" : "warning"}>
             {formatPackagingStatus(row.line.packagingStatus)}
@@ -158,20 +156,24 @@ export function InboundQCPrototype() {
       },
       {
         key: "quantity",
-        header: "Quantity",
+        header: qcCopy("inbound.receivingLines.columns.quantity"),
         render: (row) => formatReceivingQuantity(row.line.quantity, row.line.baseUomCode),
         align: "right",
         width: "130px"
       },
       {
         key: "action",
-        header: "Action",
+        header: qcCopy("inbound.receivingLines.columns.action"),
         render: (row) => {
           const inspection = findInspectionForLine(visibleInspections, row);
 
           return (
             <button className="erp-button erp-button--secondary" type="button" onClick={() => handleSelectLine(row)}>
-              {inspection ? "Open" : row.key === selectedLine?.key ? "Selected" : "Select"}
+              {inspection
+                ? qcCopy("inbound.actions.open")
+                : row.key === selectedLine?.key
+                  ? qcCopy("inbound.actions.selected")
+                  : qcCopy("inbound.actions.select")}
             </button>
           );
         },
@@ -185,7 +187,7 @@ export function InboundQCPrototype() {
     () => [
       {
         key: "inspection",
-        header: "Inspection",
+        header: qcCopy("inbound.inspections.columns.inspection"),
         render: (row) => (
           <span className="erp-qc-record-cell">
             <strong>{row.id}</strong>
@@ -196,7 +198,7 @@ export function InboundQCPrototype() {
       },
       {
         key: "sku",
-        header: "SKU / Lot",
+        header: qcCopy("inbound.inspections.columns.skuLot"),
         render: (row) => (
           <span className="erp-qc-record-cell">
             <strong>{row.sku}</strong>
@@ -206,35 +208,35 @@ export function InboundQCPrototype() {
       },
       {
         key: "status",
-        header: "Status",
-        render: (row) => <StatusChip tone={inboundQCStatusTone(row.status)}>{formatInboundQCStatus(row.status)}</StatusChip>,
+        header: qcCopy("inbound.inspections.columns.status"),
+        render: (row) => <StatusChip tone={inboundQCStatusTone(row.status)}>{inboundQCStatusLabel(row.status)}</StatusChip>,
         width: "140px"
       },
       {
         key: "result",
-        header: "Result",
-        render: (row) => <StatusChip tone={inboundQCResultTone(row.result)}>{formatInboundQCResult(row.result)}</StatusChip>,
+        header: qcCopy("inbound.inspections.columns.result"),
+        render: (row) => <StatusChip tone={inboundQCResultTone(row.result)}>{inboundQCResultLabel(row.result)}</StatusChip>,
         width: "120px"
       },
       {
         key: "qty",
-        header: "Quantity",
+        header: qcCopy("inbound.inspections.columns.quantity"),
         render: (row) => formatInboundQCQuantity(row.quantity, row.uomCode),
         align: "right",
         width: "130px"
       },
       {
         key: "updated",
-        header: "Updated",
+        header: qcCopy("inbound.inspections.columns.updated"),
         render: (row) => formatInboundQCDateTime(row.updatedAt),
         width: "150px"
       },
       {
         key: "open",
-        header: "Action",
+        header: qcCopy("inbound.inspections.columns.action"),
         render: (row) => (
           <button className="erp-button erp-button--secondary" type="button" onClick={() => setSelectedInspectionId(row.id)}>
-            Open
+            {qcCopy("inbound.actions.open")}
           </button>
         ),
         width: "96px",
@@ -286,7 +288,7 @@ export function InboundQCPrototype() {
     }
     if (existingLineInspection) {
       setSelectedInspectionId(existingLineInspection.id);
-      setFeedback({ tone: "warning", message: `${existingLineInspection.id} already covers this receiving line` });
+      setFeedback({ tone: "warning", message: qcCopy("inbound.feedback.alreadyCovered", { id: existingLineInspection.id }) });
       return;
     }
 
@@ -300,11 +302,11 @@ export function InboundQCPrototype() {
         note: createInspectionNote(selectedLine, evidenceRefs)
       });
       upsertInspection(result.inspection);
-      setFeedback({ tone: "success", message: `${result.inspection.id} created` });
+      setFeedback({ tone: "success", message: qcCopy("inbound.feedback.created", { id: result.inspection.id }) });
     } catch (cause) {
       setFeedback({
         tone: "danger",
-        message: cause instanceof Error ? cause.message : "Inbound QC inspection could not be created"
+        message: cause instanceof Error ? cause.message : qcCopy("inbound.feedback.createFailed")
       });
     } finally {
       setBusyAction("");
@@ -320,11 +322,11 @@ export function InboundQCPrototype() {
     try {
       const result = await startInboundQCInspection(selectedInspection.id);
       upsertInspection(result.inspection);
-      setFeedback({ tone: "success", message: `${result.inspection.id} started` });
+      setFeedback({ tone: "success", message: qcCopy("inbound.feedback.started", { id: result.inspection.id }) });
     } catch (cause) {
       setFeedback({
         tone: "danger",
-        message: cause instanceof Error ? cause.message : "Inbound QC inspection could not be started"
+        message: cause instanceof Error ? cause.message : qcCopy("inbound.feedback.startFailed")
       });
     } finally {
       setBusyAction("");
@@ -336,17 +338,17 @@ export function InboundQCPrototype() {
       return;
     }
     if (selectedInspection.status !== "in_progress") {
-      setFeedback({ tone: "warning", message: "Start the inspection before recording a QC result" });
+      setFeedback({ tone: "warning", message: qcCopy("inbound.feedback.startBeforeDecision") });
       return;
     }
     if (result !== "pass" && reason.trim() === "") {
-      setFeedback({ tone: "warning", message: "Reason is required for fail, hold, and partial results" });
+      setFeedback({ tone: "warning", message: qcCopy("inbound.feedback.reasonRequired") });
       return;
     }
 
     const checklist = checklistForDecision(checklistDraft);
     if (result === "pass" && checklist.some((item) => item.required && item.status === "fail")) {
-      setFeedback({ tone: "warning", message: "A failed required checklist item cannot be passed" });
+      setFeedback({ tone: "warning", message: qcCopy("inbound.feedback.requiredFailBlocksPass") });
       return;
     }
 
@@ -365,12 +367,12 @@ export function InboundQCPrototype() {
       upsertInspection(actionResult.inspection);
       setFeedback({
         tone: inboundQCResultTone(actionResult.inspection.result),
-        message: `${actionResult.inspection.id} / ${formatInboundQCResult(actionResult.inspection.result)}`
+        message: `${actionResult.inspection.id} / ${inboundQCResultLabel(actionResult.inspection.result)}`
       });
     } catch (cause) {
       setFeedback({
         tone: "danger",
-        message: cause instanceof Error ? cause.message : "Inbound QC decision could not be recorded"
+        message: cause instanceof Error ? cause.message : qcCopy("inbound.feedback.decisionFailed")
       });
     } finally {
       setBusyAction("");
@@ -395,25 +397,25 @@ export function InboundQCPrototype() {
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">QC</p>
-          <h1 className="erp-page-title">Inbound QC</h1>
-          <p className="erp-page-description">Receiving inspection for quantity, packaging, lot, expiry, COA/MSDS, and evidence</p>
+          <h1 className="erp-page-title">{qcCopy("inbound.title")}</h1>
+          <p className="erp-page-description">{qcCopy("inbound.description")}</p>
         </div>
         <div className="erp-page-actions">
           <a className="erp-button erp-button--secondary" href="#qc-receiving-lines">
-            Receipts
+            {qcCopy("inbound.nav.receipts")}
           </a>
           <a className="erp-button erp-button--secondary" href="#qc-decision">
-            Decision
+            {qcCopy("inbound.nav.decision")}
           </a>
           <a className="erp-button erp-button--primary" href="#qc-inspections">
-            Inspections
+            {qcCopy("inbound.nav.inspections")}
           </a>
         </div>
       </header>
 
-      <section className="erp-qc-toolbar" aria-label="Inbound QC filters">
+      <section className="erp-qc-toolbar" aria-label={qcCopy("inbound.filters.label")}>
         <label className="erp-field">
-          <span>Warehouse</span>
+          <span>{qcCopy("inbound.filters.warehouse")}</span>
           <select className="erp-input" value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
             {receivingWarehouseOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -423,34 +425,36 @@ export function InboundQCPrototype() {
           </select>
         </label>
         <label className="erp-field">
-          <span>Inspection status</span>
+          <span>{qcCopy("inbound.filters.status")}</span>
           <select className="erp-input" value={status} onChange={(event) => setStatus(event.target.value as StatusFilter)}>
             {inboundQCStatusOptions.map((option) => (
               <option key={option.value || "all"} value={option.value}>
-                {option.label}
+                {option.value ? inboundQCStatusLabel(option.value) : qcCopy("inbound.filters.allStatuses")}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Inspector</span>
+          <span>{qcCopy("inbound.filters.inspector")}</span>
           <input className="erp-input" type="text" value={inspectorId} onChange={(event) => setInspectorId(event.target.value)} />
         </label>
       </section>
 
       <section className="erp-kpi-grid erp-qc-kpis">
-        <QCKPI label="Inspectable lines" value={inspectableLines.length} tone={inspectableLines.length > 0 ? "info" : "normal"} />
-        <QCKPI label="Pending" value={totals.pending} tone={totals.pending > 0 ? "warning" : "normal"} />
-        <QCKPI label="In progress" value={totals.inProgress} tone={totals.inProgress > 0 ? "info" : "normal"} />
-        <QCKPI label="Completed" value={totals.completed} tone="success" />
-        <QCKPI label="Hold / Fail" value={totals.holdOrFail} tone={totals.holdOrFail > 0 ? "danger" : "normal"} />
+        <QCKPI label={qcCopy("inbound.kpi.inspectableLines")} value={inspectableLines.length} tone={inspectableLines.length > 0 ? "info" : "normal"} />
+        <QCKPI label={inboundQCStatusLabel("pending")} value={totals.pending} tone={totals.pending > 0 ? "warning" : "normal"} />
+        <QCKPI label={inboundQCStatusLabel("in_progress")} value={totals.inProgress} tone={totals.inProgress > 0 ? "info" : "normal"} />
+        <QCKPI label={inboundQCStatusLabel("completed")} value={totals.completed} tone="success" />
+        <QCKPI label={qcCopy("inbound.kpi.holdFail")} value={totals.holdOrFail} tone={totals.holdOrFail > 0 ? "danger" : "normal"} />
       </section>
 
       <section className="erp-qc-workspace">
         <div className="erp-card erp-card--padded erp-qc-panel" id="qc-receiving-lines">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Inspectable receiving lines</h2>
-            <StatusChip tone={receiptsLoading ? "warning" : "info"}>{receiptsLoading ? "Loading" : `${inspectableLines.length} lines`}</StatusChip>
+            <h2 className="erp-section-title">{qcCopy("inbound.receivingLines.title")}</h2>
+            <StatusChip tone={receiptsLoading ? "warning" : "info"}>
+              {receiptsLoading ? qcCopy("inbound.feedback.loading") : qcCopy("inbound.receivingLines.lines", { count: inspectableLines.length })}
+            </StatusChip>
           </div>
 
           <DataTable
@@ -461,16 +465,16 @@ export function InboundQCPrototype() {
             error={receiptsError?.message}
             emptyState={
               <EmptyState
-                title="No inspection-ready receiving lines"
-                description="Submit a goods receipt and mark it inspection-ready before QC can start."
+                title={qcCopy("inbound.receivingLines.emptyTitle")}
+                description={qcCopy("inbound.receivingLines.emptyDescription")}
               />
             }
           />
 
           {selectedLine ? (
-            <div className="erp-qc-selected-line" aria-label="Selected receiving line">
+            <div className="erp-qc-selected-line" aria-label={qcCopy("inbound.receivingLines.selectedLabel")}>
               <StatusChip tone={existingLineInspection ? inboundQCStatusTone(existingLineInspection.status) : "info"}>
-                {existingLineInspection ? formatInboundQCStatus(existingLineInspection.status) : "Ready for QC"}
+                {existingLineInspection ? inboundQCStatusLabel(existingLineInspection.status) : qcCopy("inbound.receivingLines.readyForQC")}
               </StatusChip>
               <div>
                 <strong>{selectedLine.receipt.receiptNo}</strong>
@@ -480,7 +484,11 @@ export function InboundQCPrototype() {
                 </span>
               </div>
               <button className="erp-button erp-button--primary" type="button" disabled={busyAction !== ""} onClick={handleCreateInspection}>
-                {existingLineInspection ? "Open inspection" : busyAction === "create" ? "Creating" : "Create inspection"}
+                {existingLineInspection
+                  ? qcCopy("inbound.actions.openInspection")
+                  : busyAction === "create"
+                    ? qcCopy("inbound.actions.creating")
+                    : qcCopy("inbound.actions.createInspection")}
               </button>
             </div>
           ) : null}
@@ -488,9 +496,9 @@ export function InboundQCPrototype() {
 
         <div className="erp-card erp-card--padded erp-qc-panel" id="qc-decision">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Inspection decision</h2>
+            <h2 className="erp-section-title">{qcCopy("inbound.decision.title")}</h2>
             <StatusChip tone={selectedInspection ? inboundQCStatusTone(selectedInspection.status) : "normal"}>
-              {selectedInspection ? formatInboundQCStatus(selectedInspection.status) : "No inspection"}
+              {selectedInspection ? inboundQCStatusLabel(selectedInspection.status) : qcCopy("inbound.empty.noInspection")}
             </StatusChip>
           </div>
 
@@ -498,24 +506,24 @@ export function InboundQCPrototype() {
 
           {selectedInspection ? (
             <>
-              <div className="erp-qc-fact-grid" aria-label="Inbound QC inspection facts">
-                <QCFact label="Receipt" value={selectedInspection.goodsReceiptNo} />
-                <QCFact label="PO" value={selectedInspection.purchaseOrderId ?? "-"} />
-                <QCFact label="SKU" value={selectedInspection.sku} />
-                <QCFact label="Lot / expiry" value={`${selectedInspection.lotNo} / ${selectedInspection.expiryDate}`} />
-                <QCFact label="Quantity" value={formatInboundQCQuantity(selectedInspection.quantity, selectedInspection.uomCode)} />
-                <QCFact label="Inspector" value={selectedInspection.inspectorId} />
-                <QCFact label="Started" value={formatInboundQCDateTime(selectedInspection.startedAt)} />
-                <QCFact label="Decided" value={formatInboundQCDateTime(selectedInspection.decidedAt)} />
+              <div className="erp-qc-fact-grid" aria-label={qcCopy("inbound.decision.factsLabel")}>
+                <QCFact label={qcCopy("inbound.fact.receipt")} value={selectedInspection.goodsReceiptNo} />
+                <QCFact label={qcCopy("inbound.fact.po")} value={selectedInspection.purchaseOrderId ?? "-"} />
+                <QCFact label={qcCopy("inbound.fact.sku")} value={selectedInspection.sku} />
+                <QCFact label={qcCopy("inbound.fact.lotExpiry")} value={`${selectedInspection.lotNo} / ${selectedInspection.expiryDate}`} />
+                <QCFact label={qcCopy("inbound.fact.quantity")} value={formatInboundQCQuantity(selectedInspection.quantity, selectedInspection.uomCode)} />
+                <QCFact label={qcCopy("inbound.fact.inspector")} value={selectedInspection.inspectorId} />
+                <QCFact label={qcCopy("inbound.fact.started")} value={formatInboundQCDateTime(selectedInspection.startedAt)} />
+                <QCFact label={qcCopy("inbound.fact.decided")} value={formatInboundQCDateTime(selectedInspection.decidedAt)} />
               </div>
 
-              <div className="erp-qc-checklist" aria-label="QC checklist">
+              <div className="erp-qc-checklist" aria-label={qcCopy("inbound.checklist.label")}>
                 {checklistDraft.map((item) => (
                   <div className="erp-qc-checklist-item" key={item.id}>
                     <div className="erp-qc-checklist-label">
-                      <strong>{item.label}</strong>
+                      <strong>{checklistItemLabel(item)}</strong>
                       <small>
-                        {item.code} / {item.required ? "Required" : "Optional"}
+                        {item.code} / {item.required ? qcCopy("inbound.checklist.required") : qcCopy("inbound.checklist.optional")}
                       </small>
                     </div>
                     <select
@@ -528,7 +536,7 @@ export function InboundQCPrototype() {
                     >
                       {inboundQCChecklistStatusOptions.map((option) => (
                         <option key={option.value} value={option.value}>
-                          {option.label}
+                          {checklistStatusLabel(option.value)}
                         </option>
                       ))}
                     </select>
@@ -536,18 +544,18 @@ export function InboundQCPrototype() {
                       className="erp-input"
                       type="text"
                       value={item.note ?? ""}
-                      placeholder="Checklist note"
+                      placeholder={qcCopy("inbound.checklist.notePlaceholder")}
                       disabled={selectedInspection.status === "completed"}
                       onChange={(event) => updateChecklistItem(item.id, { note: event.currentTarget.value })}
                     />
-                    <StatusChip tone={checklistStatusTone(item.status)}>{formatChecklistStatus(item.status)}</StatusChip>
+                    <StatusChip tone={checklistStatusTone(item.status)}>{checklistStatusLabel(item.status)}</StatusChip>
                   </div>
                 ))}
               </div>
 
-              <div className="erp-qc-decision-grid" aria-label="QC decision quantities">
+              <div className="erp-qc-decision-grid" aria-label={qcCopy("inbound.decision.quantitiesLabel")}>
                 <label className="erp-field">
-                  <span>Pass qty</span>
+                  <span>{qcCopy("inbound.decision.passQty")}</span>
                   <input
                     className="erp-input"
                     inputMode="decimal"
@@ -558,7 +566,7 @@ export function InboundQCPrototype() {
                   />
                 </label>
                 <label className="erp-field">
-                  <span>Fail qty</span>
+                  <span>{qcCopy("inbound.decision.failQty")}</span>
                   <input
                     className="erp-input"
                     inputMode="decimal"
@@ -569,7 +577,7 @@ export function InboundQCPrototype() {
                   />
                 </label>
                 <label className="erp-field">
-                  <span>Hold qty</span>
+                  <span>{qcCopy("inbound.decision.holdQty")}</span>
                   <input
                     className="erp-input"
                     inputMode="decimal"
@@ -583,17 +591,17 @@ export function InboundQCPrototype() {
 
               <div className="erp-qc-note-grid">
                 <label className="erp-field erp-qc-note-field">
-                  <span>Reason</span>
+                  <span>{qcCopy("inbound.decision.reason")}</span>
                   <textarea
                     className="erp-input"
                     value={reason}
-                    placeholder="Required for fail, hold, or partial"
+                    placeholder={qcCopy("inbound.decision.reasonPlaceholder")}
                     disabled={selectedInspection.status === "completed"}
                     onChange={(event) => setReason(event.currentTarget.value)}
                   />
                 </label>
                 <label className="erp-field erp-qc-note-field">
-                  <span>QC note</span>
+                  <span>{qcCopy("inbound.decision.note")}</span>
                   <textarea
                     className="erp-input"
                     value={decisionNote}
@@ -602,11 +610,11 @@ export function InboundQCPrototype() {
                   />
                 </label>
                 <label className="erp-field erp-qc-note-field">
-                  <span>COA / MSDS / photo refs</span>
+                  <span>{qcCopy("inbound.decision.evidenceRefs")}</span>
                   <textarea
                     className="erp-input"
                     value={evidenceRefs}
-                    placeholder="COA-260429-001, MSDS-SERUM, IMG-..."
+                    placeholder={qcCopy("inbound.decision.evidencePlaceholder")}
                     disabled={selectedInspection.status === "completed"}
                     onChange={(event) => setEvidenceRefs(event.currentTarget.value)}
                   />
@@ -614,9 +622,9 @@ export function InboundQCPrototype() {
               </div>
 
               <AttachmentPanel
-                title="QC attachments"
+                title={qcCopy("inbound.attachments.title")}
                 items={qcAttachmentItems}
-                emptyMessage="No COA, MSDS, or QC evidence refs attached."
+                emptyMessage={qcCopy("inbound.attachments.empty")}
               />
 
               <div className="erp-qc-actions">
@@ -626,7 +634,7 @@ export function InboundQCPrototype() {
                   disabled={busyAction !== "" || selectedInspection.status !== "pending"}
                   onClick={handleStartInspection}
                 >
-                  {busyAction === "start" ? "Starting" : "Start"}
+                  {busyAction === "start" ? qcCopy("inbound.actions.starting") : qcCopy("inbound.actions.start")}
                 </button>
                 <button
                   className="erp-button erp-button--primary"
@@ -634,7 +642,7 @@ export function InboundQCPrototype() {
                   disabled={busyAction !== "" || selectedInspection.status !== "in_progress"}
                   onClick={() => void handleDecision("pass")}
                 >
-                  Pass
+                  {inboundQCResultLabel("pass")}
                 </button>
                 <button
                   className="erp-button erp-button--secondary"
@@ -642,7 +650,7 @@ export function InboundQCPrototype() {
                   disabled={busyAction !== "" || selectedInspection.status !== "in_progress"}
                   onClick={() => void handleDecision("hold")}
                 >
-                  Hold
+                  {inboundQCResultLabel("hold")}
                 </button>
                 <button
                   className="erp-button erp-button--secondary"
@@ -650,7 +658,7 @@ export function InboundQCPrototype() {
                   disabled={busyAction !== "" || selectedInspection.status !== "in_progress"}
                   onClick={() => void handleDecision("partial")}
                 >
-                  Partial
+                  {inboundQCResultLabel("partial")}
                 </button>
                 <button
                   className="erp-button erp-button--danger"
@@ -658,17 +666,17 @@ export function InboundQCPrototype() {
                   disabled={busyAction !== "" || selectedInspection.status !== "in_progress"}
                   onClick={() => void handleDecision("fail")}
                 >
-                  Fail
+                  {inboundQCResultLabel("fail")}
                 </button>
               </div>
             </>
           ) : (
             <>
-              <EmptyState title="No inbound QC inspection selected" description="Create one from an inspection-ready receiving line." />
+              <EmptyState title={qcCopy("inbound.empty.noInspectionSelected")} description={qcCopy("inbound.empty.noInspectionDescription")} />
               <AttachmentPanel
-                title="QC attachments"
+                title={qcCopy("inbound.attachments.title")}
                 items={qcAttachmentItems}
-                emptyMessage="No COA, MSDS, or QC evidence refs attached."
+                emptyMessage={qcCopy("inbound.attachments.empty")}
               />
             </>
           )}
@@ -677,9 +685,9 @@ export function InboundQCPrototype() {
 
       <section className="erp-card erp-card--padded erp-module-table-card" id="qc-inspections">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Inbound QC inspections</h2>
+          <h2 className="erp-section-title">{qcCopy("inbound.inspections.title")}</h2>
           <StatusChip tone={inspectionsLoading ? "warning" : "info"}>
-            {inspectionsLoading ? "Loading" : `${visibleInspections.length} records`}
+            {inspectionsLoading ? qcCopy("inbound.feedback.loading") : qcCopy("inbound.inspections.records", { count: visibleInspections.length })}
           </StatusChip>
         </div>
         <DataTable
@@ -688,7 +696,7 @@ export function InboundQCPrototype() {
           getRowKey={(row) => row.id}
           loading={inspectionsLoading}
           error={inspectionsError?.message}
-          emptyState={<EmptyState title="No inbound QC inspections" description="Create an inspection from a receiving line." />}
+          emptyState={<EmptyState title={qcCopy("inbound.inspections.emptyTitle")} description={qcCopy("inbound.inspections.emptyDescription")} />}
         />
       </section>
     </section>
@@ -763,13 +771,15 @@ function checklistForDecision(items: InboundQCChecklistItem[]) {
 
 function createInspectionNote(row: InspectableReceivingLine, evidenceRefs: string) {
   return decisionNoteWithEvidence(
-    `Packaging: ${formatPackagingStatus(row.line.packagingStatus)}; lot: ${row.line.lotNo ?? row.line.batchNo ?? "-"}; received: ${formatReceivingDateTime(row.receipt.inspectReadyAt)}`,
+    `${qcCopy("inbound.note.packaging")}: ${formatPackagingStatus(row.line.packagingStatus)}; ${qcCopy("inbound.note.lot")}: ${row.line.lotNo ?? row.line.batchNo ?? "-"}; ${qcCopy("inbound.note.received")}: ${formatReceivingDateTime(row.receipt.inspectReadyAt)}`,
     evidenceRefs
   );
 }
 
 function decisionNoteWithEvidence(note: string, evidenceRefs: string) {
-  return [note.trim(), evidenceRefs.trim() ? `Evidence refs: ${evidenceRefs.trim()}` : ""].filter(Boolean).join("\n");
+  return [note.trim(), evidenceRefs.trim() ? `${qcCopy("inbound.decision.evidenceRefs")}: ${evidenceRefs.trim()}` : ""]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function splitEvidenceRefs(value: string) {
@@ -786,15 +796,35 @@ function cloneChecklist(items: InboundQCChecklistItem[]) {
 function formatPackagingStatus(status: ReceivingPackagingStatus) {
   switch (status) {
     case "damaged":
-      return "Damaged";
+      return qcCopy("inbound.packaging.damaged");
     case "missing_label":
-      return "Missing label";
+      return qcCopy("inbound.packaging.missing_label");
     case "leaking":
-      return "Leaking";
+      return qcCopy("inbound.packaging.leaking");
     case "intact":
     default:
-      return "Intact";
+      return qcCopy("inbound.packaging.intact");
   }
+}
+
+function inboundQCStatusLabel(status: InboundQCInspectionStatus) {
+  return qcCopy(`inbound.status.${status}`);
+}
+
+function inboundQCResultLabel(result?: InboundQCResult) {
+  return result ? qcCopy(`inbound.result.${result}`) : "-";
+}
+
+function checklistStatusLabel(status: InboundQCChecklistStatus) {
+  return qcCopy(`inbound.checklist.status.${status}`);
+}
+
+function checklistItemLabel(item: InboundQCChecklistItem) {
+  return qcCopy(`inbound.checklist.item.${item.code}`, undefined, item.label);
+}
+
+function qcCopy(key: string, values?: Record<string, string | number>, fallback?: string) {
+  return t(`qc.${key}`, { values, fallback });
 }
 
 async function runDecisionAction(id: string, result: InboundQCResult, input: Parameters<typeof passInboundQCInspection>[1]) {
