@@ -1,32 +1,34 @@
-# S15-07-01 Remaining Prototype Store Ledger
+# S16-09-01 Remaining Prototype Store Ledger
 
 Project: Web ERP for cosmetics operations
-Sprint: Sprint 15 - Finance runtime store persistence
-Task: S15-07-01 Remaining prototype ledger update
+Sprint: Sprint 16 - Subcontract runtime store persistence
+Task: S16-09-01 Remaining prototype ledger update
 Date: 2026-05-02
-Status: Inventory complete; S15-08-01 release evidence can use this ledger
+Status: Inventory complete; S16-10-01 release evidence can use this ledger
 
 ---
 
 ## 1. Purpose
 
-This ledger supersedes the Sprint 14 state recorded in `docs/qa/S14-04-01_remaining_prototype_store_ledger.md` after the Sprint 15 finance runtime persistence work.
+This ledger supersedes the Sprint 15 state recorded in this same file after the Sprint 16 subcontract runtime persistence work.
 
-Sprint 15 closed the highest remaining finance reset risk from the Sprint 14 ledger:
+Sprint 16 closed the highest remaining subcontract reset risk from the Sprint 15 ledger:
 
 ```text
-customer receivable header, lines, receipts, dispute, void, and status state
-supplier payable header, lines, payment request, approval, payment, void, and status state
-COD remittance header, lines, discrepancy, match, submit, approve, close, and status state
-cash transaction header, allocations, source refs, post/void status, and audit state
-finance dashboard, summary report, and CSV export runtime reads
+subcontract order header, material lines, status transitions, actor refs, quantity fields, amount fields, and audit state
+subcontract material transfer header, transfer lines, source refs, issue evidence, and stock movement refs
+subcontract sample approval submit/approve/reject evidence and reasons
+subcontract finished goods receipt quantities, acceptance/rejection state, and stock movement refs
+subcontract factory claim defect evidence, claim window, status, and quantity impact
+subcontract payment milestone deposit/final-payment readiness and supplier payable link evidence
+warehouse daily board subcontract signals
 ```
 
 Prototype fallback still exists for no-DB/local mode. That fallback is intentional and must not be counted as production persistence evidence.
 
 ---
 
-## 2. Stores Persisted Through Sprint 15
+## 2. Stores Persisted Through Sprint 16
 
 | Area | Runtime path | Persistence status | Evidence |
 | --- | --- | --- | --- |
@@ -53,61 +55,74 @@ Prototype fallback still exists for no-DB/local mode. That fallback is intention
 | COD remittances | `financeStores.codRemittances` | PostgreSQL-backed `finance.cod_remittances` and `finance.cod_remittance_lines` when DB config exists | PR #460, PR #461, PR #464, PR #466, migration `000031`, service/store lifecycle tests |
 | Cash transactions | `financeStores.cashTransactions` | PostgreSQL-backed `finance.cash_transactions` and `finance.cash_transaction_allocations` when DB config exists | PR #462, PR #463, PR #464, PR #466, migration `000031`, service/store lifecycle tests |
 | Finance dashboard/report/export | `NewFinanceDashboardService`, `financeSummaryReportHandler`, `financeSummaryCSVExportHandler` | Reads the selected runtime finance store package instead of independent prototype stores | PR #464, PR #465, PR #466, dashboard/report integration test and full dev smoke |
+| Subcontract runtime package | `newRuntimeSubcontractStores` | PostgreSQL-backed order/transfer/sample/receipt/claim/payment stores selected together when DB config exists; prototype fallback only for no-DB/local | PR #479, PR #480, PR #481, migrations `000032` and `000033`, full dev smoke checks subcontract state after API restart |
+| Subcontract orders | `subcontractStores.orders` | PostgreSQL-backed `production.subcontract_orders`, material lines, documents, status events, and action state when DB config exists | PR #472, PR #473, PR #479, PR #480, migrations `000013`, `000032`, and `000033`, service/store lifecycle tests and full dev smoke |
+| Subcontract material transfers | `subcontractStores.materialTransfers` | PostgreSQL-backed material transfer headers, lines, source refs, and stock movement refs when DB config exists | PR #474, PR #479, migrations `000032` and `000033`, service/store lifecycle tests and full dev smoke |
+| Subcontract sample approvals | `subcontractStores.sampleApprovals` | PostgreSQL-backed sample submit/approve/reject lifecycle when DB config exists | PR #475, PR #479, migrations `000032` and `000033`, service/store lifecycle tests and full dev smoke |
+| Subcontract finished goods receipts | `subcontractStores.finishedGoodsReceipts` | PostgreSQL-backed receipt, line, accept/reject, and stock movement ref lifecycle when DB config exists | PR #476, PR #479, migrations `000032` and `000033`, service/store lifecycle tests and full dev smoke |
+| Subcontract factory claims | `subcontractStores.factoryClaims` | PostgreSQL-backed defect claim evidence, claim window, status, and quantity impact when DB config exists | PR #477, PR #479, migrations `000032` and `000033`, service/store lifecycle tests and full dev smoke |
+| Subcontract payment milestones | `subcontractStores.paymentMilestones` | PostgreSQL-backed deposit/final-payment readiness and supplier payable link evidence when DB config exists | PR #478, PR #479, migrations `000032` and `000033`, service/store lifecycle tests and full dev smoke |
+| Warehouse daily board subcontract signals | Warehouse daily board handlers using `subcontractStores` | Reads the selected DB-backed subcontract stores when DB config exists | PR #479 and PR #481, full dev smoke checks subcontract board evidence after API restart |
 
 ---
 
-## 3. Sprint 15 Resolution Notes
+## 3. Sprint 16 Resolution Notes
 
-### Finance Runtime Stores
+### Subcontract Runtime Stores
 
-| Store / service | Prior Sprint 14 risk | Sprint 15 result |
+| Store / service | Prior Sprint 15 risk | Sprint 16 result |
 | --- | --- | --- |
-| Customer receivables | AR status and receipts reset while sales order documents persist | Persisted with PostgreSQL store, lifecycle tests, runtime selector, and dev smoke |
-| Supplier payables | AP/payment approval state resets while PO, supplier rejection, and subcontract evidence can persist | Persisted with PostgreSQL store, lifecycle tests, runtime selector, and dev smoke |
-| COD remittances | COD match/discrepancy/approval state resets | Persisted with PostgreSQL store, lifecycle tests, runtime selector, and dev smoke |
-| Cash transactions | Cash movement evidence resets | Persisted with PostgreSQL store, lifecycle tests, runtime selector, and dev smoke |
+| Subcontract orders | Subcontract order state reset while stock, finance, PO, inbound QC, shipping, and returns state persisted | Persisted with PostgreSQL store, lifecycle tests, runtime selector, shared transaction fix, and dev smoke |
+| Subcontract material transfers | Material and packaging issue evidence reset | Persisted with PostgreSQL store, lifecycle tests, package runtime selector, and dev smoke |
+| Subcontract sample approvals | Sample approval/rejection evidence reset | Persisted with PostgreSQL store, lifecycle tests, package runtime selector, and dev smoke |
+| Subcontract finished goods receipts | Finished goods receipt and acceptance evidence reset | Persisted with PostgreSQL store, lifecycle tests, package runtime selector, and dev smoke |
+| Subcontract factory claims | Defect claim evidence and quantity impact reset | Persisted with PostgreSQL store, lifecycle tests, package runtime selector, and dev smoke |
+| Subcontract payment milestones | Deposit/final payment readiness and payable link evidence reset | Persisted with PostgreSQL store, lifecycle tests, package runtime selector, and dev smoke |
 
-### Finance Runtime Package Rule
+### Subcontract Runtime Package Rule
 
-S15-06-01 made finance runtime selection a package-level decision. When DB config exists, AR, AP, COD, cash, dashboard, summary report, and CSV export share the PostgreSQL-backed finance stores. When DB config is absent, they fall back together to prototype stores for no-DB/local use only.
+S16-08-01 made subcontract runtime selection a package-level decision. When DB config exists, subcontract order, material transfer, sample approval, finished goods receipt, factory claim, payment milestone, and warehouse daily board subcontract reads share the PostgreSQL-backed subcontract stores. When DB config is absent, they fall back together to prototype stores for no-DB/local use only.
+
+S16-08 hardening fixed two release risks found during dev smoke:
+
+```text
+1. Subcontract order lifecycle now reuses the parent PostgreSQL transaction when child subcontract stores are invoked during order actions, avoiding same-row lock timeouts.
+2. Audit log IDs include a random suffix, avoiding duplicate log_ref conflicts after API restarts with fixed smoke-test business timestamps.
+```
 
 ---
 
 ## 4. Remaining Backend Prototype Stores
 
-### P1 - Subcontract Runtime Stores
+### P1 - Master Data Catalogs
 
 | Store / service | Current constructor | Runtime risk | Recommended handling |
 | --- | --- | --- | --- |
-| Subcontract orders | `productionapp.NewPrototypeSubcontractOrderStore(auditLogStore)` | Subcontract order state resets | Persist before expanding subcontract finance/reporting |
-| Subcontract material transfers | `productionapp.NewPrototypeSubcontractMaterialTransferStore()` | Material and packaging transfer evidence resets | Persist with subcontract order lifecycle |
-| Subcontract samples / receipts / claims / payment milestones | Prototype subcontract stores | Sample/QC/claim/final payment state resets | Persist as one subcontract runtime package or in dependency order |
+| Item catalog | `masterdataapp.NewPrototypeItemCatalog(auditLogStore)` | MDM item edits reset | Persist before MDM editing, pricing, purchasing, or production setup becomes a primary workflow |
+| Warehouse/location catalog | `masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)` | Warehouse layout and location edits reset | Persist before more warehouse layout, location-control, or bin-level operations |
+| Party catalog | `masterdataapp.NewPrototypePartyCatalog(auditLogStore)` | Supplier/customer edits reset | Persist before supplier/customer maintenance workflows move beyond seed/mock data |
+| UOM catalog | `masterdataapp.NewPrototypeUOMCatalog()` | UOM edits reset | Lower risk while standards are mostly static, but persist before editable UOM administration |
 
-### P2 - Master Data, Auth, and Dev Fallbacks
+### P2 - Auth, Session, and Dev Fallbacks
 
 | Store / service | Current constructor or path | Runtime risk | Recommendation |
 | --- | --- | --- | --- |
-| Item catalog | `masterdataapp.NewPrototypeItemCatalog(auditLogStore)` | MDM edits reset | Persist when MDM editing becomes a primary workflow |
-| Warehouse/location catalog | `masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)` | Location edits reset | Persist before more warehouse layout features |
-| Party catalog | `masterdataapp.NewPrototypePartyCatalog(auditLogStore)` | Supplier/customer edits reset | Persist before supplier/customer maintenance workflows |
-| UOM catalog | `masterdataapp.NewPrototypeUOMCatalog()` | UOM edits reset | Lower risk while standards are mostly static |
 | Access/refresh sessions | `auth.NewSessionManager(...)` | Sessions and lockout state reset | Acceptable for current mock/dev auth; revisit before production auth |
 | Frontend fallback services | `apps/web/src/modules/**/services/*` | Can hide backend failures during UI testing | Keep dev-only; never count frontend fallback as persistence evidence |
 
 ---
 
-## 5. Recommended Post-Sprint-15 Persistence Order
+## 5. Recommended Post-Sprint-16 Persistence Order
 
 ```text
-1. Subcontract runtime stores.
-2. Master data catalogs.
-3. Auth/session hardening.
+1. Master data catalogs.
+2. Auth/session hardening.
 ```
 
 Rationale:
 
 ```text
-Sprint 15 closed the finance runtime reset risk across AR, AP, COD, cash, dashboard, and report/export reads. The next restart risks are subcontract lifecycle state, editable catalogs, and production-grade auth/session state.
+Sprint 16 closed the subcontract lifecycle reset risk across orders, material transfers, sample approvals, finished goods receipts, factory claims, payment milestones, and daily board reads. The next restart risks are editable master data catalogs and production-grade auth/session state.
 ```
 
 ---
@@ -117,10 +132,11 @@ Sprint 15 closed the finance runtime reset risk across AR, AP, COD, cash, dashbo
 Inventory checks performed:
 
 ```text
-- Inspected current main.go runtime constructors after PR #466.
-- Confirmed DB mode uses newRuntimeFinanceStores for customer receivables, supplier payables, COD remittances, cash transactions, dashboard, summary report, and CSV export.
-- Confirmed finance runtime selection uses PostgreSQL stores when DATABASE_URL exists and prototype fallback when DATABASE_URL is empty.
-- Confirmed Sprint 15 migration 000031 covers customer receivables, supplier payables, COD remittances, cash transactions, lines, allocations, and source refs.
-- Confirmed full dev smoke creates AR/AP/COD/cash documents, restarts the API service, reads them back, and checks finance DB/audit rows.
+- Inspected `newRuntimeSubcontractStores` after PR #481.
+- Confirmed DB mode uses one PostgreSQL `*sql.DB` and selects subcontract orders, material transfers, sample approvals, finished goods receipts, factory claims, and payment milestones together.
+- Confirmed prototype subcontract stores are selected only when DATABASE_URL is empty.
+- Confirmed Sprint 16 migrations `000032` and `000033` cover subcontract runtime persistence tables, indexes, documents, status/action events, and hardening columns.
+- Confirmed full dev smoke after PR #481 creates subcontract order, material transfer, sample approval, finished goods receipt, factory claim, payment milestone, audit, and daily board evidence, restarts the API service, then reads them back.
+- Confirmed PostgreSQL 16.13 isolated migration gate applied 33 up migrations and rolled back 33 down migrations.
 - No runtime behavior changed in this task.
 ```
