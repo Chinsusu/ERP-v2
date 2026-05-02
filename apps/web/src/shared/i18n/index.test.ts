@@ -75,8 +75,11 @@ describe("Vietnamese-first i18n foundation", () => {
   it("centralizes status, error, validation, and unit labels", () => {
     expect(getStatusLabel("QC_HOLD")).toBe("Đang giữ kiểm");
     expect(getStatusLabel("PACKED")).toBe("Đã đóng hàng");
+    expect(getStatusLabel("RETURN_PENDING_INSPECTION")).toBe("Hàng hoàn chờ kiểm");
     expect(getErrorLabel("INSUFFICIENT_STOCK")).toBe("Tồn khả dụng không đủ.");
+    expect(getErrorLabel("ORDER_NOT_IN_MANIFEST")).toBe("Đơn này không thuộc bảng kê bàn giao hiện tại.");
     expect(getValidationLabel("positiveQuantity")).toBe("Số lượng phải lớn hơn 0.");
+    expect(getValidationLabel("decimal")).toBe("Giá trị phải là số hợp lệ.");
     expect(getUnitLabel("carton")).toBe("thùng");
   });
 

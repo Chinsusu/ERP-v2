@@ -13,6 +13,7 @@
   "HANDED_OVER": "Handed over",
   "DELIVERED": "Delivered",
   "RETURNED": "Returned",
+  "RETURN_PENDING_INSPECTION": "Return pending inspection",
   "QC_HOLD": "QC hold",
   "QC_PASS": "QC pass",
   "QC_FAIL": "QC fail",
