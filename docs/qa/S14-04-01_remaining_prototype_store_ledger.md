@@ -1,34 +1,32 @@
-# S16-09-01 Remaining Prototype Store Ledger
+# S17-07-01 Remaining Prototype Store Ledger
 
 Project: Web ERP for cosmetics operations
-Sprint: Sprint 16 - Subcontract runtime store persistence
-Task: S16-09-01 Remaining prototype ledger update
+Sprint: Sprint 17 - Master data runtime store persistence
+Task: S17-07-01 Remaining prototype ledger update
 Date: 2026-05-02
-Status: Inventory complete; S16-10-01 release evidence can use this ledger
+Status: Inventory complete; S17-08-01 release evidence can use this ledger
 
 ---
 
 ## 1. Purpose
 
-This ledger supersedes the Sprint 15 state recorded in this same file after the Sprint 16 subcontract runtime persistence work.
+This ledger supersedes the Sprint 16 state recorded in this same file after the Sprint 17 master data runtime persistence work.
 
-Sprint 16 closed the highest remaining subcontract reset risk from the Sprint 15 ledger:
+Sprint 17 closed the highest remaining master data reset risk from the Sprint 16 ledger:
 
 ```text
-subcontract order header, material lines, status transitions, actor refs, quantity fields, amount fields, and audit state
-subcontract material transfer header, transfer lines, source refs, issue evidence, and stock movement refs
-subcontract sample approval submit/approve/reject evidence and reasons
-subcontract finished goods receipt quantities, acceptance/rejection state, and stock movement refs
-subcontract factory claim defect evidence, claim window, status, and quantity impact
-subcontract payment milestone deposit/final-payment readiness and supplier payable link evidence
-warehouse daily board subcontract signals
+item catalog lifecycle, UOM fields, decimal cost, status, and audit state
+warehouse and location lifecycle, parent relation, status, and audit state
+supplier and customer lifecycle, group/type, terms, metrics, credit fields, and audit state
+UOM definitions and conversion factors
+package-level master data runtime selection and restart smoke
 ```
 
 Prototype fallback still exists for no-DB/local mode. That fallback is intentional and must not be counted as production persistence evidence.
 
 ---
 
-## 2. Stores Persisted Through Sprint 16
+## 2. Stores Persisted Through Sprint 17
 
 | Area | Runtime path | Persistence status | Evidence |
 | --- | --- | --- | --- |
@@ -63,10 +61,34 @@ Prototype fallback still exists for no-DB/local mode. That fallback is intention
 | Subcontract factory claims | `subcontractStores.factoryClaims` | PostgreSQL-backed defect claim evidence, claim window, status, and quantity impact when DB config exists | PR #477, PR #479, migrations `000032` and `000033`, service/store lifecycle tests and full dev smoke |
 | Subcontract payment milestones | `subcontractStores.paymentMilestones` | PostgreSQL-backed deposit/final-payment readiness and supplier payable link evidence when DB config exists | PR #478, PR #479, migrations `000032` and `000033`, service/store lifecycle tests and full dev smoke |
 | Warehouse daily board subcontract signals | Warehouse daily board handlers using `subcontractStores` | Reads the selected DB-backed subcontract stores when DB config exists | PR #479 and PR #481, full dev smoke checks subcontract board evidence after API restart |
+| Master data runtime package | `newRuntimeMasterDataStores` | PostgreSQL-backed item, UOM, warehouse/location, and party catalogs selected together when DB config exists; prototype fallback only for no-DB/local | PR #488, PR #489, PR #490, PR #491, PR #492, migration `000034`, full dev smoke checks master data state after API restart |
+| Item catalog | `masterDataStores.items` | PostgreSQL-backed `mdm.items` lifecycle, duplicate-code checks, UOM fields, standard cost, status, and audit when DB config exists | PR #488, PR #492, migration `000034`, store lifecycle tests and full dev smoke |
+| Warehouse/location catalog | `masterDataStores.warehouses` | PostgreSQL-backed `mdm.warehouses` and `mdm.warehouse_bins` lifecycle, hierarchy, status, and audit when DB config exists | PR #489, PR #492, migration `000034`, store lifecycle tests and full dev smoke |
+| Party catalog | `masterDataStores.parties` | PostgreSQL-backed `mdm.suppliers` and `mdm.customers` lifecycle, group/type, terms, metrics, credit fields, status, and audit when DB config exists | PR #490, PR #492, migration `000034`, store lifecycle tests and full dev smoke |
+| UOM catalog | `masterDataStores.uoms` | PostgreSQL-backed `mdm.uoms` and `mdm.uom_conversions` definitions and conversion factors without float/double | PR #491, PR #492, migration `000034`, UOM conversion tests and full dev smoke |
 
 ---
 
-## 3. Sprint 16 Resolution Notes
+## 3. Sprint 17 Resolution Notes
+
+### Master Data Runtime Stores
+
+| Store / service | Prior Sprint 16 risk | Sprint 17 result |
+| --- | --- | --- |
+| Item catalog | Item code, SKU, UOM, shelf-life, status, standard cost, and audit edits reset on API restart | Persisted with PostgreSQL store, lifecycle tests, package runtime selector, seed compatibility, and dev smoke |
+| Warehouse/location catalog | Warehouse and bin/location edits reset on API restart | Persisted with PostgreSQL store, lifecycle tests, package runtime selector, seed compatibility, and dev smoke |
+| Party catalog | Supplier/customer edits reset on API restart | Persisted with PostgreSQL store, lifecycle tests, package runtime selector, seed compatibility, and dev smoke |
+| UOM catalog | UOM definitions/conversions reset on API restart | Persisted with PostgreSQL store, conversion tests, package runtime selector, and dev smoke |
+
+### Master Data Runtime Package Rule
+
+S17-06-01 made master data runtime selection a package-level decision. When DB config exists, item, UOM, warehouse/location, and party catalogs share PostgreSQL-backed stores. When DB config is absent, they fall back together to prototype stores for no-DB/local use only.
+
+S17-06 also seeds the existing prototype baseline into PostgreSQL at startup so existing purchase, sales, warehouse, return, subcontract, finance, and reporting flows keep their stable master data references after DB-mode selection changes.
+
+---
+
+## 4. Prior Sprint 16 Resolution Notes
 
 ### Subcontract Runtime Stores
 
@@ -92,18 +114,9 @@ S16-08 hardening fixed two release risks found during dev smoke:
 
 ---
 
-## 4. Remaining Backend Prototype Stores
+## 5. Remaining Backend Prototype Stores
 
-### P1 - Master Data Catalogs
-
-| Store / service | Current constructor | Runtime risk | Recommended handling |
-| --- | --- | --- | --- |
-| Item catalog | `masterdataapp.NewPrototypeItemCatalog(auditLogStore)` | MDM item edits reset | Persist before MDM editing, pricing, purchasing, or production setup becomes a primary workflow |
-| Warehouse/location catalog | `masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)` | Warehouse layout and location edits reset | Persist before more warehouse layout, location-control, or bin-level operations |
-| Party catalog | `masterdataapp.NewPrototypePartyCatalog(auditLogStore)` | Supplier/customer edits reset | Persist before supplier/customer maintenance workflows move beyond seed/mock data |
-| UOM catalog | `masterdataapp.NewPrototypeUOMCatalog()` | UOM edits reset | Lower risk while standards are mostly static, but persist before editable UOM administration |
-
-### P2 - Auth, Session, and Dev Fallbacks
+### P1 - Auth, Session, and Dev Fallbacks
 
 | Store / service | Current constructor or path | Runtime risk | Recommendation |
 | --- | --- | --- | --- |
@@ -112,31 +125,31 @@ S16-08 hardening fixed two release risks found during dev smoke:
 
 ---
 
-## 5. Recommended Post-Sprint-16 Persistence Order
+## 6. Recommended Post-Sprint-17 Persistence Order
 
 ```text
-1. Master data catalogs.
-2. Auth/session hardening.
+1. Auth/session hardening.
+2. Remove or gate frontend fallback services where backend coverage is now available.
 ```
 
 Rationale:
 
 ```text
-Sprint 16 closed the subcontract lifecycle reset risk across orders, material transfers, sample approvals, finished goods receipts, factory claims, payment milestones, and daily board reads. The next restart risks are editable master data catalogs and production-grade auth/session state.
+Sprint 17 closed the editable master data reset risk across items, UOMs, warehouses/locations, suppliers, and customers. The next restart risk is production-grade auth/session state; frontend fallback cleanup should follow so UI testing cannot hide backend regressions.
 ```
 
 ---
 
-## 6. Verification Notes
+## 7. Verification Notes
 
 Inventory checks performed:
 
 ```text
-- Inspected `newRuntimeSubcontractStores` after PR #481.
-- Confirmed DB mode uses one PostgreSQL `*sql.DB` and selects subcontract orders, material transfers, sample approvals, finished goods receipts, factory claims, and payment milestones together.
-- Confirmed prototype subcontract stores are selected only when DATABASE_URL is empty.
-- Confirmed Sprint 16 migrations `000032` and `000033` cover subcontract runtime persistence tables, indexes, documents, status/action events, and hardening columns.
-- Confirmed full dev smoke after PR #481 creates subcontract order, material transfer, sample approval, finished goods receipt, factory claim, payment milestone, audit, and daily board evidence, restarts the API service, then reads them back.
-- Confirmed PostgreSQL 16.13 isolated migration gate applied 33 up migrations and rolled back 33 down migrations.
+- Inspected `newRuntimeMasterDataStores` after PR #492.
+- Confirmed DB mode uses one PostgreSQL `*sql.DB` and selects item, UOM, warehouse/location, and party catalogs together.
+- Confirmed prototype master data catalogs are selected only when DATABASE_URL is empty.
+- Confirmed Sprint 17 migration `000034` covers master data runtime fields, indexes, constraints, and seed-compatible references.
+- Confirmed full dev smoke after PR #492 creates item, warehouse, location, supplier, and customer records, restarts the API service, then reads them back from PostgreSQL.
+- Confirmed PostgreSQL 16.13 isolated migration gate applied 34 up migrations and rolled back 34 down migrations during S17-01-02.
 - No runtime behavior changed in this task.
 ```
