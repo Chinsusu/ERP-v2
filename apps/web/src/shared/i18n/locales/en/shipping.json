@@ -1,1 +1,96 @@
-{ "title": "Shipping", "manifest": "Carrier Manifest" }
+{
+  "title": "Shipping",
+  "manifest": "Carrier Manifest",
+  "picking": {
+    "title": "Picking Station",
+    "description": "Scan-first picking by SKU, batch, location, and base UOM quantity.",
+    "actions": {
+      "start": "Start",
+      "complete": "Complete",
+      "select": "Select"
+    },
+    "filters": {
+      "label": "Picking filters",
+      "warehouse": "Warehouse",
+      "status": "Status",
+      "assignedUser": "Assigned user",
+      "assignedPlaceholder": "user-picker",
+      "allStatuses": "All statuses"
+    },
+    "columns": {
+      "task": "Pick task",
+      "warehouse": "Warehouse",
+      "status": "Status",
+      "lines": "Lines",
+      "batch": "Batch",
+      "location": "Location",
+      "qty": "Qty",
+      "picked": "Picked",
+      "state": "State"
+    },
+    "kpi": {
+      "openTasks": "Open tasks",
+      "pendingLines": "Pending lines",
+      "pickedLines": "Picked lines",
+      "exceptions": "Exceptions"
+    },
+    "sections": {
+      "scanQueue": "Scan queue",
+      "pickTasks": "Pick tasks",
+      "pickLines": "Pick lines",
+      "pickLinesDescription": "SKU, batch, location, base UOM quantity, and picked quantity."
+    },
+    "facts": {
+      "order": "Order",
+      "warehouse": "Warehouse",
+      "nextSku": "Next SKU",
+      "batch": "Batch",
+      "location": "Location",
+      "qty": "Qty"
+    },
+    "scan": {
+      "label": "Scan SKU / batch / location",
+      "placeholderDone": "All lines picked",
+      "readyTitle": "Ready to scan",
+      "readyDetail": "Scan SKU, batch, bin, or pick line code",
+      "cannotAccept": "Task cannot accept scans",
+      "notMatched": "Scan does not match pending line",
+      "picked": "{sku} picked",
+      "started": "Pick task started",
+      "completed": "Pick task completed",
+      "exceptionReported": "Exception reported",
+      "actionFailed": "Picking action failed",
+      "unknownError": "Unknown error"
+    },
+    "exceptionReason": "Reported from picking station: {code}",
+    "empty": {
+      "noTaskSelected": "No pick task selected",
+      "selectTask": "Select a pick task"
+    },
+    "rows": "{count} rows",
+    "status": {
+      "created": "Created",
+      "assigned": "Assigned",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "missing_stock": "Missing stock",
+      "wrong_sku": "Wrong SKU",
+      "wrong_batch": "Wrong batch",
+      "wrong_location": "Wrong location",
+      "cancelled": "Cancelled",
+      "pending": "Pending",
+      "picked": "Picked"
+    },
+    "warehouse": {
+      "all": "All warehouses",
+      "wh-hcm-fg": "Finished Goods HCM"
+    },
+    "exceptions": {
+      "missing_stock": "Missing stock",
+      "wrong_sku": "Wrong SKU",
+      "wrong_batch": "Wrong batch",
+      "wrong_location": "Wrong location",
+      "cancelled": "Cancel task"
+    }
+  }
+}
