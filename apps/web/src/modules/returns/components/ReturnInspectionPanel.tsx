@@ -3,13 +3,11 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { StatusChip, type StatusTone } from "@/shared/design-system/components";
 import { AttachmentPanel, type AttachmentPanelItem } from "@/shared/design-system/pageTemplates";
+import { t } from "@/shared/i18n";
 import {
   applyDispositionToReceipt,
   applyInspectionToReceipt,
   applyReturnDisposition,
-  formatReturnInspectionCondition,
-  formatReturnInspectionDisposition,
-  formatReturnDisposition,
   inspectReturn,
   matchesReturnReceiptCode,
   returnInspectionConditionOptions,
@@ -60,9 +58,9 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
               kind: attachmentResult.mimeType,
               uploadedBy: attachmentResult.uploadedBy,
               uploadedAt: attachmentResult.uploadedAt,
-              detail: `${attachmentResult.fileSizeBytes} bytes`,
+              detail: returnInspectionCopy("fileSize", { bytes: attachmentResult.fileSizeBytes }),
               storageKey: attachmentResult.storageKey,
-              status: <StatusChip tone="success">{attachmentResult.status}</StatusChip>,
+              status: <StatusChip tone="success">{attachmentStatusLabel(attachmentResult.status)}</StatusChip>,
               canDownload: true,
               onDownload: () =>
                 setLookupFeedback({
@@ -89,12 +87,12 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
 
     const match = receipts.find((receipt) => matchesReturnReceiptCode(receipt, code));
     if (!match) {
-      setLookupFeedback({ tone: "danger", message: "Return receipt was not found" });
+      setLookupFeedback({ tone: "danger", message: returnInspectionCopy("feedback.notFound") });
       return;
     }
 
     setSelectedReceiptId(match.id);
-    setLookupFeedback({ tone: "success", message: `${match.receiptNo} selected` });
+    setLookupFeedback({ tone: "success", message: returnInspectionCopy("feedback.selected", { receiptNo: match.receiptNo }) });
   }
 
   function handleLookupKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -144,7 +142,7 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
     } catch (cause) {
       setLookupFeedback({
         tone: "danger",
-        message: cause instanceof Error ? cause.message : "Return inspection could not be recorded"
+        message: cause instanceof Error ? cause.message : returnInspectionCopy("feedback.couldNotRecord")
       });
     } finally {
       setBusyAction(null);
@@ -174,12 +172,12 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
       setDispositionAction(action);
       setLookupFeedback({
         tone: returnInspectionDispositionTone(action.disposition),
-        message: `${action.receiptNo} / ${action.actionCode}`
+        message: `${action.receiptNo} / ${returnActionCodeLabel(action.actionCode)}`
       });
     } catch (cause) {
       setLookupFeedback({
         tone: "danger",
-        message: cause instanceof Error ? cause.message : "Return disposition could not be applied"
+        message: cause instanceof Error ? cause.message : returnInspectionCopy("feedback.couldNotApplyDisposition")
       });
     } finally {
       setBusyAction(null);
@@ -203,12 +201,12 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
       setEvidenceLabel(attachment.fileName);
       setLookupFeedback({
         tone: "success",
-        message: `${attachment.receiptNo} / attachment uploaded`
+        message: returnInspectionCopy("feedback.attachmentUploaded", { receiptNo: attachment.receiptNo })
       });
     } catch (cause) {
       setLookupFeedback({
         tone: "danger",
-        message: cause instanceof Error ? cause.message : "Return attachment could not be uploaded"
+        message: cause instanceof Error ? cause.message : returnInspectionCopy("feedback.couldNotUploadAttachment")
       });
     } finally {
       setBusyAction(null);
@@ -219,53 +217,53 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
     <section className="erp-returns-inspection-grid" id="return-inspection">
       <div className="erp-card erp-card--padded erp-returns-inspection-card">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Return inspection</h2>
+          <h2 className="erp-section-title">{returnInspectionCopy("title")}</h2>
           <StatusChip tone={selectedReceipt?.unknownCase ? "danger" : "info"}>
-            {selectedReceipt?.receiptNo ?? "No receipt"}
+            {selectedReceipt?.receiptNo ?? returnInspectionCopy("empty.noReceipt")}
           </StatusChip>
         </div>
 
         <div className="erp-returns-inspection-lookup">
           <label className="erp-field">
-            <span>Receipt / order / tracking</span>
+            <span>{returnInspectionCopy("lookupLabel")}</span>
             <input
               className="erp-input"
               type="text"
               value={lookupCode}
-              placeholder="RR-260426-0001 / SO-260425-099 / GHN260425099"
+              placeholder={returnInspectionCopy("lookupPlaceholder")}
               onChange={(event) => setLookupCode(event.target.value)}
               onKeyDown={handleLookupKeyDown}
             />
           </label>
           <button className="erp-button erp-button--secondary" type="button" onClick={handleLookup}>
-            Find receipt
+            {returnInspectionCopy("actions.findReceipt")}
           </button>
         </div>
         {lookupFeedback ? <StatusChip tone={lookupFeedback.tone}>{lookupFeedback.message}</StatusChip> : null}
 
         {selectedReceipt ? (
-          <div className="erp-returns-order-grid" aria-label="Return order information">
-            <ReturnInspectionFact label="Order" value={selectedReceipt.originalOrderNo ?? "Unknown"} />
-            <ReturnInspectionFact label="Customer" value={selectedReceipt.customerName} />
-            <ReturnInspectionFact label="Channel" value={selectedReceipt.channel ?? "Unknown"} />
-            <ReturnInspectionFact label="SKU" value={selectedReceipt.lines[0]?.productName ?? "-"} />
-            <ReturnInspectionFact label="Batch" value={selectedReceipt.batchNo ?? "-"} />
-            <ReturnInspectionFact label="Delivered" value={selectedReceipt.deliveredAt ?? "-"} />
-            <ReturnInspectionFact label="Reason" value={selectedReceipt.returnReason ?? selectedReceipt.investigationNote ?? "-"} />
-            <ReturnInspectionFact label="Received condition" value={selectedReceipt.packageCondition} />
+          <div className="erp-returns-order-grid" aria-label={returnInspectionCopy("orderInfoLabel")}>
+            <ReturnInspectionFact label={returnInspectionCopy("facts.order")} value={selectedReceipt.originalOrderNo ?? returnInspectionCopy("empty.unknown")} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.customer")} value={selectedReceipt.customerName} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.channel")} value={selectedReceipt.channel ?? returnInspectionCopy("empty.unknown")} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.sku")} value={selectedReceipt.lines[0]?.productName ?? "-"} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.batch")} value={selectedReceipt.batchNo ?? "-"} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.delivered")} value={selectedReceipt.deliveredAt ?? "-"} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.reason")} value={selectedReceipt.returnReason ?? selectedReceipt.investigationNote ?? "-"} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.receivedCondition")} value={selectedReceipt.packageCondition} />
           </div>
         ) : (
-          <div className="erp-returns-empty-state">No return receipt selected</div>
+          <div className="erp-returns-empty-state">{returnInspectionCopy("empty.noReceiptSelected")}</div>
         )}
       </div>
 
       <div className="erp-card erp-card--padded erp-returns-inspection-card">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Condition</h2>
-          <StatusChip tone={returnInspectionConditionTone(condition)}>{formatReturnInspectionCondition(condition)}</StatusChip>
+          <h2 className="erp-section-title">{returnInspectionCopy("sections.condition")}</h2>
+          <StatusChip tone={returnInspectionConditionTone(condition)}>{returnConditionLabel(condition)}</StatusChip>
         </div>
 
-        <div className="erp-returns-condition-options" aria-label="Return condition">
+        <div className="erp-returns-condition-options" aria-label={returnInspectionCopy("sections.condition")}>
           {returnInspectionConditionOptions.map((option) => (
             <button
               aria-pressed={condition === option.value}
@@ -275,18 +273,18 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
               type="button"
               onClick={() => handleConditionChange(option.value)}
             >
-              {option.label}
+              {returnConditionLabel(option.value)}
             </button>
           ))}
         </div>
 
         <div className="erp-section-header erp-section-header--compact erp-returns-inspection-subheader">
-          <h3 className="erp-subsection-title">Disposition</h3>
+          <h3 className="erp-subsection-title">{returnInspectionCopy("sections.disposition")}</h3>
           <StatusChip tone={returnInspectionDispositionTone(disposition)}>
-            {formatReturnInspectionDisposition(disposition)}
+            {returnInspectionDispositionLabel(disposition)}
           </StatusChip>
         </div>
-        <div className="erp-returns-disposition-options" aria-label="Inspection disposition">
+        <div className="erp-returns-disposition-options" aria-label={returnInspectionCopy("sections.disposition")}>
           {returnInspectionDispositionOptions.map((option) => (
             <button
               aria-pressed={disposition === option.value}
@@ -296,14 +294,14 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
               type="button"
               onClick={() => setDisposition(option.value)}
             >
-              {option.label}
+              {returnInspectionDispositionLabel(option.value)}
             </button>
           ))}
         </div>
 
         <div className="erp-returns-note-grid">
           <label className="erp-field">
-            <span>Evidence</span>
+            <span>{returnInspectionCopy("fields.evidence")}</span>
             <input
               className="erp-input"
               type="text"
@@ -313,7 +311,7 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
             />
           </label>
           <label className="erp-field">
-            <span>Evidence file</span>
+            <span>{returnInspectionCopy("fields.evidenceFile")}</span>
             <input
               className="erp-input"
               type="file"
@@ -322,7 +320,7 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
             />
           </label>
           <label className="erp-field">
-            <span>Note</span>
+            <span>{returnInspectionCopy("fields.note")}</span>
             <textarea
               className="erp-input erp-returns-textarea"
               value={note}
@@ -338,7 +336,7 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
             disabled={!selectedReceipt || busyAction !== null || selectedReceipt.status !== "pending_inspection"}
             onClick={() => handleConfirmInspection()}
           >
-            {busyAction === "inspect" ? "Recording..." : "Confirm inspection"}
+            {busyAction === "inspect" ? returnInspectionCopy("actions.recording") : returnInspectionCopy("actions.confirmInspection")}
           </button>
           <button
             className="erp-button erp-button--secondary"
@@ -346,7 +344,7 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
             disabled={!selectedReceipt || busyAction !== null || selectedReceipt.status !== "pending_inspection"}
             onClick={() => handleConfirmInspection("needs_inspection")}
           >
-            Escalate QA
+            {returnInspectionCopy("actions.escalateQA")}
           </button>
           <button
             className="erp-button erp-button--secondary"
@@ -359,7 +357,7 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
             }
             onClick={() => void handleApplyDisposition()}
           >
-            {busyAction === "dispose" ? "Applying..." : "Apply routing"}
+            {busyAction === "dispose" ? returnInspectionCopy("actions.applying") : returnInspectionCopy("actions.applyRouting")}
           </button>
           <button
             className="erp-button erp-button--secondary"
@@ -367,44 +365,44 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
             disabled={!selectedReceipt || !inspectionResult || !attachmentFile || busyAction !== null}
             onClick={() => void handleUploadAttachment()}
           >
-            {busyAction === "attach" ? "Uploading..." : "Attach evidence"}
+            {busyAction === "attach" ? returnInspectionCopy("actions.uploading") : returnInspectionCopy("actions.attachEvidence")}
           </button>
         </div>
       </div>
 
       <div className="erp-card erp-card--padded erp-returns-inspection-card erp-returns-inspection-result">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Inspection result</h2>
+          <h2 className="erp-section-title">{returnInspectionCopy("sections.result")}</h2>
           {inspectionResult ? (
-            <StatusChip tone={returnInspectionStatusTone(inspectionResult.status)}>{inspectionResult.status}</StatusChip>
+            <StatusChip tone={returnInspectionStatusTone(inspectionResult.status)}>{inspectionStatusLabel(inspectionResult.status)}</StatusChip>
           ) : null}
         </div>
 
         {inspectionResult ? (
           <div className="erp-returns-result-grid">
-            <ReturnInspectionFact label="Receipt" value={inspectionResult.receiptNo} />
-            <ReturnInspectionFact label="Condition" value={formatReturnInspectionCondition(inspectionResult.condition)} />
-            <ReturnInspectionFact label="Disposition" value={formatReturnInspectionDisposition(inspectionResult.disposition)} />
-            <ReturnInspectionFact label="Target" value={inspectionResult.targetLocation} />
-            <ReturnInspectionFact label="Risk" value={inspectionResult.riskLevel} />
-            <ReturnInspectionFact label="Evidence" value={inspectionResult.evidenceLabel ?? "-"} />
-            <ReturnInspectionFact label="Inspector" value={inspectionResult.inspectorId} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.receipt")} value={inspectionResult.receiptNo} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.condition")} value={returnConditionLabel(inspectionResult.condition)} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.disposition")} value={returnInspectionDispositionLabel(inspectionResult.disposition)} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.target")} value={returnInspectionTargetLabel(inspectionResult.targetLocation)} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.risk")} value={returnRiskLabel(inspectionResult.riskLevel)} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.evidence")} value={inspectionResult.evidenceLabel ?? "-"} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.inspector")} value={inspectionResult.inspectorId} />
           </div>
         ) : (
-          <div className="erp-returns-empty-state">No inspection result recorded</div>
+          <div className="erp-returns-empty-state">{returnInspectionCopy("empty.noResult")}</div>
         )}
         {dispositionAction ? (
           <div className="erp-returns-result-grid erp-returns-disposition-result">
-            <ReturnInspectionFact label="Routing" value={formatReturnDisposition(dispositionAction.disposition)} />
-            <ReturnInspectionFact label="Target" value={dispositionAction.targetLocation} />
-            <ReturnInspectionFact label="Stock status" value={dispositionAction.targetStockStatus} />
-            <ReturnInspectionFact label="Action" value={dispositionAction.actionCode} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.routing")} value={returnInspectionDispositionLabel(dispositionAction.disposition)} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.target")} value={returnInspectionTargetLabel(dispositionAction.targetLocation)} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.stockStatus")} value={returnStockStatusLabel(dispositionAction.targetStockStatus)} />
+            <ReturnInspectionFact label={returnInspectionCopy("facts.action")} value={returnActionCodeLabel(dispositionAction.actionCode)} />
           </div>
         ) : null}
         <AttachmentPanel
-          title="Inspection attachments"
+          title={returnInspectionCopy("sections.attachments")}
           items={attachmentItems}
-          emptyMessage="Attach inspection evidence after recording the result."
+          emptyMessage={returnInspectionCopy("empty.attachmentEmpty")}
         />
       </div>
     </section>
@@ -412,11 +410,39 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
 }
 
 function inspectionStatusLabel(status: ReturnInspectionResult["status"]) {
-  if (status === "return_qa_hold") {
-    return "QA hold";
-  }
+  return returnInspectionCopy(`status.${status}`);
+}
 
-  return "Inspection recorded";
+function returnInspectionCopy(key: string, values?: Record<string, string | number>) {
+  return t(`returns.inspection.${key}`, { values });
+}
+
+function returnConditionLabel(condition: ReturnInspectionCondition) {
+  return returnInspectionCopy(`condition.${condition}`);
+}
+
+function returnInspectionDispositionLabel(disposition: ReturnInspectionDisposition) {
+  return returnInspectionCopy(`disposition.${disposition}`);
+}
+
+function returnRiskLabel(riskLevel: ReturnInspectionResult["riskLevel"]) {
+  return returnInspectionCopy(`risk.${riskLevel}`);
+}
+
+function returnActionCodeLabel(actionCode: ReturnDispositionAction["actionCode"]) {
+  return returnInspectionCopy(`actionCode.${actionCode}`);
+}
+
+function returnStockStatusLabel(stockStatus: ReturnDispositionAction["targetStockStatus"]) {
+  return returnInspectionCopy(`stockStatus.${stockStatus}`);
+}
+
+function returnInspectionTargetLabel(targetLocation: string) {
+  return t(`returns.inspection.targetLocation.${targetLocation}`, { fallback: targetLocation });
+}
+
+function attachmentStatusLabel(status: ReturnAttachment["status"]) {
+  return returnInspectionCopy(`attachmentStatus.${status}`);
 }
 
 function ReturnInspectionFact({ label, value }: { label: string; value: string }) {

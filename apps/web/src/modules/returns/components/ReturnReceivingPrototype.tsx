@@ -63,7 +63,7 @@ const receiptColumns: DataTableColumn<ReturnReceipt>[] = [
   {
     key: "target",
     header: returnReceivingCopy("columns.target"),
-    render: (row) => row.targetLocation,
+    render: (row) => returnReceivingTargetLabel(row.targetLocation),
     width: "210px"
   },
   {
@@ -309,7 +309,7 @@ export function ReturnReceivingPrototype() {
               <ReturnFact label={returnReceivingCopy("facts.receipt")} value={latestReceipt.receiptNo} />
               <ReturnFact label={returnReceivingCopy("facts.order")} value={latestReceipt.originalOrderNo ?? returnReceivingCopy("empty.unknown")} />
               <ReturnFact label={returnReceivingCopy("facts.tracking")} value={latestReceipt.trackingNo ?? latestReceipt.scanCode} />
-              <ReturnFact label={returnReceivingCopy("facts.target")} value={latestReceipt.targetLocation} />
+              <ReturnFact label={returnReceivingCopy("facts.target")} value={returnReceivingTargetLabel(latestReceipt.targetLocation)} />
               <ReturnFact label={returnReceivingCopy("facts.sku")} value={latestReceipt.lines[0]?.sku ?? "-"} />
               <ReturnFact label={returnReceivingCopy("facts.movement")} value={returnMovementLabel(latestReceipt.stockMovement?.movementType)} />
             </div>
@@ -415,4 +415,8 @@ function returnScanResultLabel(result: ScanFeedback["result"]) {
 
 function returnMovementLabel(movementType: string | undefined) {
   return movementType ? t(`returns.receiving.movementType.${movementType}`, { fallback: movementType }) : "-";
+}
+
+function returnReceivingTargetLabel(targetLocation: string) {
+  return t(`returns.receiving.targetLocation.${targetLocation}`, { fallback: targetLocation });
 }

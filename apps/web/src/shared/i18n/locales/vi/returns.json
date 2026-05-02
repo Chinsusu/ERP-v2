@@ -84,9 +84,121 @@
     "movementType": {
       "RETURN_RECEIPT": "Nhận hàng hoàn"
     },
+    "targetLocation": {
+      "return-inspection-queue": "Khu hàng hoàn chờ kiểm",
+      "return-area-pending-inspection": "Khu hàng hoàn chờ kiểm",
+      "lab-damaged-placeholder": "Lab/kho hỏng"
+    },
     "warehouse": {
       "wh-hcm": "HCM",
       "wh-hn": "HN"
+    }
+  },
+  "inspection": {
+    "title": "Kiểm hàng hoàn",
+    "lookupLabel": "Phiếu nhận / đơn / mã vận đơn",
+    "lookupPlaceholder": "RR-260426-0001 / SO-260425-099 / GHN260425099",
+    "orderInfoLabel": "Thông tin đơn hàng hoàn",
+    "actions": {
+      "findReceipt": "Tìm phiếu",
+      "recording": "Đang ghi...",
+      "confirmInspection": "Xác nhận kiểm tra",
+      "escalateQA": "Chuyển QA",
+      "applying": "Đang xử lý...",
+      "applyRouting": "Áp dụng hướng xử lý",
+      "uploading": "Đang tải...",
+      "attachEvidence": "Đính kèm bằng chứng"
+    },
+    "sections": {
+      "condition": "Tình trạng hàng",
+      "disposition": "Hướng xử lý",
+      "result": "Kết quả kiểm tra",
+      "attachments": "Tệp kiểm hàng hoàn"
+    },
+    "fields": {
+      "evidence": "Bằng chứng",
+      "evidenceFile": "Tệp bằng chứng",
+      "note": "Ghi chú"
+    },
+    "facts": {
+      "order": "Đơn",
+      "customer": "Khách hàng",
+      "channel": "Kênh",
+      "sku": "SKU",
+      "batch": "Lô",
+      "delivered": "Ngày giao",
+      "reason": "Lý do",
+      "receivedCondition": "Tình trạng khi nhận",
+      "receipt": "Phiếu nhận",
+      "condition": "Tình trạng",
+      "disposition": "Hướng xử lý",
+      "target": "Nơi chuyển đến",
+      "risk": "Rủi ro",
+      "evidence": "Bằng chứng",
+      "inspector": "Người kiểm",
+      "routing": "Điều hướng",
+      "stockStatus": "Trạng thái tồn",
+      "action": "Thao tác"
+    },
+    "feedback": {
+      "notFound": "Không tìm thấy phiếu nhận hàng hoàn",
+      "selected": "Đã chọn {receiptNo}",
+      "couldNotRecord": "Không ghi được kết quả kiểm hàng hoàn",
+      "couldNotApplyDisposition": "Không áp dụng được hướng xử lý hàng hoàn",
+      "attachmentUploaded": "{receiptNo} / đã tải bằng chứng",
+      "couldNotUploadAttachment": "Không tải được bằng chứng hàng hoàn"
+    },
+    "empty": {
+      "noReceipt": "Chưa chọn phiếu nhận",
+      "noReceiptSelected": "Chưa chọn phiếu nhận hàng hoàn",
+      "noResult": "Chưa ghi kết quả kiểm tra",
+      "attachmentEmpty": "Đính kèm bằng chứng sau khi ghi kết quả kiểm tra.",
+      "unknown": "Chưa xác định"
+    },
+    "fileSize": "{bytes} byte",
+    "condition": {
+      "intact": "Nguyên vẹn",
+      "dented_box": "Móp hộp",
+      "seal_torn": "Rách seal",
+      "used": "Đã sử dụng",
+      "damaged": "Hỏng/đổ vỡ",
+      "missing_accessory": "Thiếu phụ kiện"
+    },
+    "disposition": {
+      "reusable": "Còn sử dụng",
+      "not_reusable": "Không sử dụng",
+      "needs_inspection": "Cần QA kiểm tra"
+    },
+    "status": {
+      "inspection_recorded": "Đã ghi kiểm tra",
+      "return_qa_hold": "Giữ QA"
+    },
+    "risk": {
+      "low": "Thấp",
+      "medium": "Trung bình",
+      "high": "Cao"
+    },
+    "actionCode": {
+      "route_to_putaway": "Chuyển vào kho",
+      "route_to_lab_or_damaged": "Chuyển Lab/kho hỏng",
+      "route_to_quarantine_hold": "Giữ kiểm"
+    },
+    "stockStatus": {
+      "return_pending": "Chờ xử lý hàng hoàn",
+      "damaged": "Hàng hỏng",
+      "qc_hold": "Giữ kiểm"
+    },
+    "targetLocation": {
+      "return-area-qc-release": "Khu hàng hoàn đạt kiểm",
+      "return-putaway-ready": "Chờ nhập kho",
+      "return-qa-hold": "Giữ QA",
+      "return-quarantine-hold": "Giữ kiểm hàng hoàn",
+      "lab-damaged-placeholder": "Lab/kho hỏng"
+    },
+    "attachmentStatus": {
+      "active": "Đang dùng",
+      "deleted": "Đã xóa",
+      "quarantined": "Cách ly"
     }
   }
 }

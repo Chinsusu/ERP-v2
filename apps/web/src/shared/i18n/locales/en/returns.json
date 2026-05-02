@@ -84,9 +84,121 @@
     "movementType": {
       "RETURN_RECEIPT": "Return receipt"
     },
+    "targetLocation": {
+      "return-inspection-queue": "Return inspection queue",
+      "return-area-pending-inspection": "Return area pending inspection",
+      "lab-damaged-placeholder": "Lab or damaged placeholder"
+    },
     "warehouse": {
       "wh-hcm": "HCM",
       "wh-hn": "HN"
+    }
+  },
+  "inspection": {
+    "title": "Return inspection",
+    "lookupLabel": "Receipt / order / tracking",
+    "lookupPlaceholder": "RR-260426-0001 / SO-260425-099 / GHN260425099",
+    "orderInfoLabel": "Return order information",
+    "actions": {
+      "findReceipt": "Find receipt",
+      "recording": "Recording...",
+      "confirmInspection": "Confirm inspection",
+      "escalateQA": "Escalate QA",
+      "applying": "Applying...",
+      "applyRouting": "Apply routing",
+      "uploading": "Uploading...",
+      "attachEvidence": "Attach evidence"
+    },
+    "sections": {
+      "condition": "Condition",
+      "disposition": "Disposition",
+      "result": "Inspection result",
+      "attachments": "Inspection attachments"
+    },
+    "fields": {
+      "evidence": "Evidence",
+      "evidenceFile": "Evidence file",
+      "note": "Note"
+    },
+    "facts": {
+      "order": "Order",
+      "customer": "Customer",
+      "channel": "Channel",
+      "sku": "SKU",
+      "batch": "Batch",
+      "delivered": "Delivered",
+      "reason": "Reason",
+      "receivedCondition": "Received condition",
+      "receipt": "Receipt",
+      "condition": "Condition",
+      "disposition": "Disposition",
+      "target": "Target",
+      "risk": "Risk",
+      "evidence": "Evidence",
+      "inspector": "Inspector",
+      "routing": "Routing",
+      "stockStatus": "Stock status",
+      "action": "Action"
+    },
+    "feedback": {
+      "notFound": "Return receipt was not found",
+      "selected": "{receiptNo} selected",
+      "couldNotRecord": "Return inspection could not be recorded",
+      "couldNotApplyDisposition": "Return disposition could not be applied",
+      "attachmentUploaded": "{receiptNo} / attachment uploaded",
+      "couldNotUploadAttachment": "Return attachment could not be uploaded"
+    },
+    "empty": {
+      "noReceipt": "No receipt",
+      "noReceiptSelected": "No return receipt selected",
+      "noResult": "No inspection result recorded",
+      "attachmentEmpty": "Attach inspection evidence after recording the result.",
+      "unknown": "Unknown"
+    },
+    "fileSize": "{bytes} bytes",
+    "condition": {
+      "intact": "Intact",
+      "dented_box": "Dented box",
+      "seal_torn": "Seal torn",
+      "used": "Used",
+      "damaged": "Damaged",
+      "missing_accessory": "Missing accessory"
+    },
+    "disposition": {
+      "reusable": "Reusable",
+      "not_reusable": "Not reusable",
+      "needs_inspection": "Needs QA"
+    },
+    "status": {
+      "inspection_recorded": "Inspection recorded",
+      "return_qa_hold": "QA hold"
+    },
+    "risk": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "actionCode": {
+      "route_to_putaway": "Route to putaway",
+      "route_to_lab_or_damaged": "Route to lab or damaged",
+      "route_to_quarantine_hold": "Route to quarantine hold"
+    },
+    "stockStatus": {
+      "return_pending": "Return pending",
+      "damaged": "Damaged",
+      "qc_hold": "QC hold"
+    },
+    "targetLocation": {
+      "return-area-qc-release": "Return area QC release",
+      "return-putaway-ready": "Return putaway ready",
+      "return-qa-hold": "Return QA hold",
+      "return-quarantine-hold": "Return quarantine hold",
+      "lab-damaged-placeholder": "Lab or damaged placeholder"
+    },
+    "attachmentStatus": {
+      "active": "Active",
+      "deleted": "Deleted",
+      "quarantined": "Quarantined"
     }
   }
 }
