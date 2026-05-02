@@ -83,6 +83,41 @@ func TestSessionManagerWithSharedSessionStoreSurvivesManagerRestart(t *testing.T
 	}
 }
 
+func TestSessionManagerWithSharedLoginFailureStoreSurvivesManagerRestart(t *testing.T) {
+	now := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
+	failureStore := NewInMemoryLoginFailureStore()
+	managerA, err := NewSessionManagerWithStores(
+		testConfig,
+		func() time.Time { return now },
+		NewInMemorySessionStore(),
+		failureStore,
+	)
+	if err != nil {
+		t.Fatalf("NewSessionManagerWithStores(managerA) error = %v", err)
+	}
+	managerB, err := NewSessionManagerWithStores(
+		testConfig,
+		func() time.Time { return now },
+		NewInMemorySessionStore(),
+		failureStore,
+	)
+	if err != nil {
+		t.Fatalf("NewSessionManagerWithStores(managerB) error = %v", err)
+	}
+
+	for range defaultMaxFailedLogins {
+		_, _, _ = managerA.Login("admin@example.local", "wrong-password!")
+	}
+
+	_, failure, ok := managerB.Login("admin@example.local", "local-only-mock-password")
+	if ok {
+		t.Fatal("login accepted while shared failure store is locked")
+	}
+	if failure.Code != LoginFailureLocked {
+		t.Fatalf("failure code = %q, want locked", failure.Code)
+	}
+}
+
 func TestSessionManagerLocksAfterFailedLogins(t *testing.T) {
 	now := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
 	manager := NewSessionManager(testConfig, func() time.Time { return now })
