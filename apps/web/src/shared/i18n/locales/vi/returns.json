@@ -1,1 +1,92 @@
-{ "title": "Hàng hoàn", "receiving": "Nhận hàng hoàn" }
+{
+  "title": "Hàng hoàn",
+  "receiving": {
+    "title": "Nhận hàng hoàn",
+    "description": "Quét đơn, mã vận đơn hoặc mã hoàn để đưa hàng vào khu hàng hoàn và chờ kiểm tra.",
+    "actions": {
+      "receive": "Nhận hàng hoàn",
+      "inspect": "Kiểm hàng hoàn",
+      "supplierRejects": "Trả NCC",
+      "receipts": "Phiếu nhận",
+      "confirmReceipt": "Xác nhận nhận hàng",
+      "clear": "Xóa"
+    },
+    "filters": {
+      "context": "Thông tin nhận hàng hoàn",
+      "warehouse": "Kho",
+      "source": "Nguồn trả",
+      "packageCondition": "Tình trạng bao bì"
+    },
+    "kpi": {
+      "pendingInspection": "Chờ kiểm tra",
+      "unknownCases": "Chưa xác định",
+      "returnReceiptMoves": "Phiếu có chuyển kho",
+      "labPlaceholders": "Chờ Lab/kho hỏng"
+    },
+    "sections": {
+      "returnScan": "Quét hàng hoàn",
+      "latestReceipt": "Phiếu nhận mới nhất",
+      "returnReceipts": "Phiếu nhận hàng hoàn"
+    },
+    "columns": {
+      "receipt": "Phiếu nhận",
+      "tracking": "Mã vận đơn",
+      "source": "Nguồn",
+      "status": "Trạng thái",
+      "disposition": "Hướng xử lý",
+      "target": "Nơi chuyển đến",
+      "movement": "Biến động tồn"
+    },
+    "facts": {
+      "receipt": "Phiếu nhận",
+      "order": "Đơn",
+      "tracking": "Mã vận đơn",
+      "target": "Nơi chuyển đến",
+      "sku": "SKU",
+      "movement": "Biến động tồn"
+    },
+    "scan": {
+      "label": "Mã đơn / mã vận đơn / mã hoàn",
+      "placeholder": "SO-260426-001 / GHN260426001 / RET-260426-001",
+      "defaultHint": "{disposition} / {source}",
+      "unknown": "{receiptNo} / cần kiểm tra hàng hoàn chưa xác định",
+      "matched": "{receiptNo} / {code}",
+      "failed": "Không tạo được phiếu nhận hàng hoàn"
+    },
+    "empty": {
+      "unknownOrder": "Chưa xác định đơn",
+      "unknown": "Chưa xác định",
+      "noReceiptSelected": "Chưa chọn phiếu nhận hàng hoàn"
+    },
+    "rows": "{count} dòng",
+    "result": {
+      "PASS": "Đạt",
+      "CHECK": "Cần kiểm",
+      "FAIL": "Lỗi"
+    },
+    "status": {
+      "pending_inspection": "Chờ kiểm tra",
+      "inspected": "Đã kiểm tra",
+      "dispositioned": "Đã xử lý"
+    },
+    "disposition": {
+      "reusable": "Còn sử dụng",
+      "not_reusable": "Không sử dụng",
+      "needs_inspection": "Cần kiểm tra"
+    },
+    "source": {
+      "CARRIER": "ĐVVC",
+      "SHIPPER": "Nhân viên giao hàng",
+      "CUSTOMER": "Khách hàng",
+      "MARKETPLACE": "Sàn TMĐT",
+      "UNKNOWN": "Không rõ"
+    },
+    "movementType": {
+      "RETURN_RECEIPT": "Nhận hàng hoàn"
+    },
+    "warehouse": {
+      "wh-hcm": "HCM",
+      "wh-hn": "HN"
+    }
+  }
+}

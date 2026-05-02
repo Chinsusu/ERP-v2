@@ -1,1 +1,92 @@
-{ "title": "Returns", "receiving": "Return Receiving" }
+{
+  "title": "Returns",
+  "receiving": {
+    "title": "Return Receiving",
+    "description": "Scan order, tracking, or return codes to move returned goods into the returns area for inspection.",
+    "actions": {
+      "receive": "Receive",
+      "inspect": "Inspect",
+      "supplierRejects": "Supplier rejects",
+      "receipts": "Receipts",
+      "confirmReceipt": "Confirm receipt",
+      "clear": "Clear"
+    },
+    "filters": {
+      "context": "Return receiving context",
+      "warehouse": "Warehouse",
+      "source": "Source",
+      "packageCondition": "Package condition"
+    },
+    "kpi": {
+      "pendingInspection": "Pending inspection",
+      "unknownCases": "Unknown cases",
+      "returnReceiptMoves": "Return receipt moves",
+      "labPlaceholders": "Lab placeholders"
+    },
+    "sections": {
+      "returnScan": "Return scan",
+      "latestReceipt": "Latest receipt",
+      "returnReceipts": "Return receipts"
+    },
+    "columns": {
+      "receipt": "Receipt",
+      "tracking": "Tracking",
+      "source": "Source",
+      "status": "Status",
+      "disposition": "Disposition",
+      "target": "Target",
+      "movement": "Movement"
+    },
+    "facts": {
+      "receipt": "Receipt",
+      "order": "Order",
+      "tracking": "Tracking",
+      "target": "Target",
+      "sku": "SKU",
+      "movement": "Movement"
+    },
+    "scan": {
+      "label": "Order / tracking / return code",
+      "placeholder": "SO-260426-001 / GHN260426001 / RET-260426-001",
+      "defaultHint": "{disposition} / {source}",
+      "unknown": "{receiptNo} / investigate unknown return",
+      "matched": "{receiptNo} / {code}",
+      "failed": "Return receipt could not be created"
+    },
+    "empty": {
+      "unknownOrder": "Unknown order",
+      "unknown": "Unknown",
+      "noReceiptSelected": "No return receipt selected"
+    },
+    "rows": "{count} rows",
+    "result": {
+      "PASS": "PASS",
+      "CHECK": "CHECK",
+      "FAIL": "FAIL"
+    },
+    "status": {
+      "pending_inspection": "Pending inspection",
+      "inspected": "Inspected",
+      "dispositioned": "Dispositioned"
+    },
+    "disposition": {
+      "reusable": "Reusable",
+      "not_reusable": "Not reusable",
+      "needs_inspection": "Needs inspection"
+    },
+    "source": {
+      "CARRIER": "Carrier",
+      "SHIPPER": "Shipper",
+      "CUSTOMER": "Customer",
+      "MARKETPLACE": "Marketplace",
+      "UNKNOWN": "Unknown"
+    },
+    "movementType": {
+      "RETURN_RECEIPT": "Return receipt"
+    },
+    "warehouse": {
+      "wh-hcm": "HCM",
+      "wh-hn": "HN"
+    }
+  }
+}
