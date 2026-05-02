@@ -1,32 +1,32 @@
-# S14-04-01 Remaining Prototype Store Ledger
+# S15-07-01 Remaining Prototype Store Ledger
 
 Project: Web ERP for cosmetics operations
-Sprint: Sprint 14 - Shipping pick/pack persistence
-Task: S14-04-01 Remaining prototype ledger update
+Sprint: Sprint 15 - Finance runtime store persistence
+Task: S15-07-01 Remaining prototype ledger update
 Date: 2026-05-02
-Status: Inventory complete; S14-05-01 release evidence can use this ledger
+Status: Inventory complete; S15-08-01 release evidence can use this ledger
 
 ---
 
 ## 1. Purpose
 
-This ledger supersedes `docs/qa/S13-03-01_remaining_prototype_store_ledger.md` after the Sprint 14 shipping execution persistence work.
+This ledger supersedes the Sprint 14 state recorded in `docs/qa/S14-04-01_remaining_prototype_store_ledger.md` after the Sprint 15 finance runtime persistence work.
 
-Sprint 14 closed the highest remaining warehouse execution reset risk from the Sprint 13 ledger:
+Sprint 15 closed the highest remaining finance reset risk from the Sprint 14 ledger:
 
 ```text
-carrier manifest header, shipments, scan evidence, exception evidence, and handover state
-pick task header, line progress, exception evidence, assignment, and completion state
-pack task header, line progress, exception evidence, assignment, and packed state
-shipping audit evidence for manifest, pick, and pack lifecycle events
-sales order handover/pack integration while shipping evidence persists
+customer receivable header, lines, receipts, dispute, void, and status state
+supplier payable header, lines, payment request, approval, payment, void, and status state
+COD remittance header, lines, discrepancy, match, submit, approve, close, and status state
+cash transaction header, allocations, source refs, post/void status, and audit state
+finance dashboard, summary report, and CSV export runtime reads
 ```
 
 Prototype fallback still exists for no-DB/local mode. That fallback is intentional and must not be counted as production persistence evidence.
 
 ---
 
-## 2. Stores Persisted Through Sprint 14
+## 2. Stores Persisted Through Sprint 15
 
 | Area | Runtime path | Persistence status | Evidence |
 | --- | --- | --- | --- |
@@ -47,37 +47,33 @@ Prototype fallback still exists for no-DB/local mode. That fallback is intention
 | Carrier manifests | `newRuntimeCarrierManifestStore` | PostgreSQL-backed `shipping.carrier_manifests`, shipments, scans, and exceptions when DB config exists; prototype fallback for no-DB/local | PR #443, PR #447, migration `000027`, full dev smoke checks persisted handover/scan evidence |
 | Pick tasks | `newRuntimePickTaskStore` | PostgreSQL-backed `shipping.pick_tasks`, pick lines, and exceptions when DB config exists; prototype fallback for no-DB/local | PR #444, PR #446, PR #448, migrations `000028` and `000030`, full dev smoke checks persisted pick completion |
 | Pack tasks | `newRuntimePackTaskStore` | PostgreSQL-backed `shipping.pack_tasks`, pack lines, and exceptions when DB config exists; prototype fallback for no-DB/local | PR #445, PR #446, PR #448, PR #449, migrations `000029` and `000030`, full dev smoke checks persisted pack confirmation and sales order packed state |
+| Finance runtime package | `newRuntimeFinanceStores` | PostgreSQL-backed AR/AP/COD/cash stores selected together when DB config exists; prototype fallback only for no-DB/local | PR #464, migration `000031`, full dev smoke checks finance state after API restart |
+| Customer receivables | `financeStores.customerReceivables` | PostgreSQL-backed `finance.customer_receivables` and `finance.customer_receivable_lines` when DB config exists | PR #456, PR #457, PR #464, PR #466, migration `000031`, service/store lifecycle tests |
+| Supplier payables | `financeStores.supplierPayables` | PostgreSQL-backed `finance.supplier_payables` and `finance.supplier_payable_lines` when DB config exists | PR #458, PR #459, PR #464, PR #466, migration `000031`, service/store lifecycle tests |
+| COD remittances | `financeStores.codRemittances` | PostgreSQL-backed `finance.cod_remittances` and `finance.cod_remittance_lines` when DB config exists | PR #460, PR #461, PR #464, PR #466, migration `000031`, service/store lifecycle tests |
+| Cash transactions | `financeStores.cashTransactions` | PostgreSQL-backed `finance.cash_transactions` and `finance.cash_transaction_allocations` when DB config exists | PR #462, PR #463, PR #464, PR #466, migration `000031`, service/store lifecycle tests |
+| Finance dashboard/report/export | `NewFinanceDashboardService`, `financeSummaryReportHandler`, `financeSummaryCSVExportHandler` | Reads the selected runtime finance store package instead of independent prototype stores | PR #464, PR #465, PR #466, dashboard/report integration test and full dev smoke |
 
 ---
 
-## 3. Sprint 14 Resolution Notes
+## 3. Sprint 15 Resolution Notes
 
-### Warehouse Execution Stores
+### Finance Runtime Stores
 
-| Store / service | Prior Sprint 13 risk | Sprint 14 result |
+| Store / service | Prior Sprint 14 risk | Sprint 15 result |
 | --- | --- | --- |
-| Carrier manifests | Handover and scan evidence reset | Persisted with PostgreSQL runtime selector, migration, store tests, and dev smoke |
-| Pick tasks | Pick progress reset while sales orders and reservations persisted | Persisted with PostgreSQL runtime selector, migration, store tests, and dev smoke |
-| Pack tasks | Pack progress reset while sales orders and reservations persisted | Persisted with PostgreSQL runtime selector, migration, store tests, dev smoke, and sales order pack integration hardening |
+| Customer receivables | AR status and receipts reset while sales order documents persist | Persisted with PostgreSQL store, lifecycle tests, runtime selector, and dev smoke |
+| Supplier payables | AP/payment approval state resets while PO, supplier rejection, and subcontract evidence can persist | Persisted with PostgreSQL store, lifecycle tests, runtime selector, and dev smoke |
+| COD remittances | COD match/discrepancy/approval state resets | Persisted with PostgreSQL store, lifecycle tests, runtime selector, and dev smoke |
+| Cash transactions | Cash movement evidence resets | Persisted with PostgreSQL store, lifecycle tests, runtime selector, and dev smoke |
 
-### Sales Order Integration
+### Finance Runtime Package Rule
 
-S14-03-01 changed the sales order PostgreSQL store to preserve existing sales order line row IDs when saving order state from the pack adapter. This keeps shipping pick/pack evidence references valid while still deleting intentionally removed stale lines.
+S15-06-01 made finance runtime selection a package-level decision. When DB config exists, AR, AP, COD, cash, dashboard, summary report, and CSV export share the PostgreSQL-backed finance stores. When DB config is absent, they fall back together to prototype stores for no-DB/local use only.
 
 ---
 
 ## 4. Remaining Backend Prototype Stores
-
-### P1 - Finance Runtime Stores
-
-Finance runtime stores should be promoted together enough to avoid partial financial truth.
-
-| Store / service | Current constructor | Runtime risk | Recommended handling |
-| --- | --- | --- | --- |
-| Customer receivables | `financeapp.NewPrototypeCustomerReceivableStore()` | AR status and receipts reset while sales order documents persist | Persist with sales AR flow |
-| Supplier payables | `financeapp.NewPrototypeSupplierPayableStore()` | AP/payment approval state resets while PO, supplier rejection, and subcontract evidence can persist | Persist with PO/subcontract payable flows |
-| COD remittances | `financeapp.NewPrototypeCODRemittanceStore()` | COD match/discrepancy/approval state resets | Persist after receivables foundation |
-| Cash transactions | `financeapp.NewPrototypeCashTransactionStore()` | Cash movement evidence resets | Persist with finance audit/reporting gate |
 
 ### P1 - Subcontract Runtime Stores
 
@@ -100,19 +96,18 @@ Finance runtime stores should be promoted together enough to avoid partial finan
 
 ---
 
-## 5. Recommended Post-Sprint-14 Persistence Order
+## 5. Recommended Post-Sprint-15 Persistence Order
 
 ```text
-1. Finance AR/AP/COD/cash runtime stores.
-2. Subcontract runtime stores.
-3. Master data catalogs.
-4. Auth/session hardening.
+1. Subcontract runtime stores.
+2. Master data catalogs.
+3. Auth/session hardening.
 ```
 
 Rationale:
 
 ```text
-Sprint 14 closed the shipping execution reset risk between sales reservation and carrier handover. The next restart risks are finance state, subcontract lifecycle state, editable catalogs, and production-grade auth/session state.
+Sprint 15 closed the finance runtime reset risk across AR, AP, COD, cash, dashboard, and report/export reads. The next restart risks are subcontract lifecycle state, editable catalogs, and production-grade auth/session state.
 ```
 
 ---
@@ -122,10 +117,10 @@ Sprint 14 closed the shipping execution reset risk between sales reservation and
 Inventory checks performed:
 
 ```text
-- Inspected current main.go runtime constructors after PR #449.
-- Confirmed shipping DB mode uses newRuntimeCarrierManifestStore, newRuntimePickTaskStore, and newRuntimePackTaskStore.
-- Confirmed those runtime selectors use PostgreSQL stores when DATABASE_URL exists and prototype fallback when DATABASE_URL is empty.
-- Confirmed Sprint 14 migrations 000027, 000028, 000029, and 000030 cover manifest, pick, pack, and actor-reference hardening.
-- Confirmed full dev smoke records persisted carrier manifest, pick task, pack task, and sales order pack integration evidence.
+- Inspected current main.go runtime constructors after PR #466.
+- Confirmed DB mode uses newRuntimeFinanceStores for customer receivables, supplier payables, COD remittances, cash transactions, dashboard, summary report, and CSV export.
+- Confirmed finance runtime selection uses PostgreSQL stores when DATABASE_URL exists and prototype fallback when DATABASE_URL is empty.
+- Confirmed Sprint 15 migration 000031 covers customer receivables, supplier payables, COD remittances, cash transactions, lines, allocations, and source refs.
+- Confirmed full dev smoke creates AR/AP/COD/cash documents, restarts the API service, reads them back, and checks finance DB/audit rows.
 - No runtime behavior changed in this task.
 ```
