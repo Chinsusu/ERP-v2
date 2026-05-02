@@ -125,5 +125,173 @@
       "semi_finished": "Semi finished",
       "service": "Service"
     }
+  },
+  "party": {
+    "page": {
+      "title": "Supplier Customer Master Data",
+      "description": "Party catalog for purchasing, sales, and channel setup",
+      "activeCustomers": "{count} active customers"
+    },
+    "filters": {
+      "label": "Party master data filters",
+      "search": "Search",
+      "supplierStatus": "Supplier status",
+      "supplierGroup": "Supplier group",
+      "customerStatus": "Customer status",
+      "customerType": "Customer type",
+      "allSupplierStatuses": "All supplier statuses",
+      "allSupplierGroups": "All supplier groups",
+      "allCustomerStatuses": "All customer statuses",
+      "allCustomerTypes": "All customer types"
+    },
+    "columns": {
+      "status": "Status"
+    },
+    "list": {
+      "rows": "{count} rows"
+    },
+    "kpi": {
+      "suppliers": "Suppliers",
+      "activeSuppliers": "Active suppliers",
+      "customers": "Customers",
+      "activeCustomers": "Active customers"
+    },
+    "fields": {
+      "contact": "Contact",
+      "phone": "Phone",
+      "email": "Email",
+      "tax": "Tax",
+      "taxCode": "Tax code",
+      "address": "Address",
+      "terms": "Terms",
+      "paymentTerms": "Payment terms"
+    },
+    "detail": {
+      "code": "Code",
+      "status": "Status",
+      "updated": "Updated",
+      "audit": "Audit",
+      "auditFallback": "Tracked on write"
+    },
+    "errors": {
+      "loadTitle": "Party master data could not load",
+      "requestFailed": "Party master data request failed"
+    },
+    "toast": {
+      "detailFailed": "Detail failed",
+      "statusFailed": "Status failed",
+      "saved": "{code} saved",
+      "statusChangedDescription": "{code} is {status}"
+    },
+    "supplier": {
+      "columns": {
+        "supplier": "Supplier",
+        "group": "Group",
+        "terms": "Terms",
+        "lead": "Lead",
+        "score": "Score"
+      },
+      "list": {
+        "title": "Supplier master"
+      },
+      "empty": {
+        "title": "No suppliers",
+        "description": "Adjust the filters or create a supplier."
+      },
+      "form": {
+        "createTitle": "Create supplier",
+        "updateTitle": "Update supplier",
+        "description": "Supplier identity, tax, contact, terms, and operational score fields",
+        "supplierCode": "Supplier code",
+        "supplierName": "Supplier name",
+        "group": "Group",
+        "status": "Status",
+        "leadDays": "Lead days",
+        "moq": "MOQ",
+        "qualityScore": "Quality score",
+        "deliveryScore": "Delivery score"
+      },
+      "detail": {
+        "title": "Supplier detail",
+        "group": "Group",
+        "lead": "Lead",
+        "days": "{count} days",
+        "shortDays": "{count}d",
+        "moq": "MOQ",
+        "scores": "Scores"
+      },
+      "toast": {
+        "created": "Supplier created",
+        "updated": "Supplier updated",
+        "statusChanged": "Supplier status changed"
+      },
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "inactive": "Inactive",
+        "blacklisted": "Blacklisted"
+      },
+      "group": {
+        "raw_material": "Raw material",
+        "packaging": "Packaging",
+        "service": "Service",
+        "logistics": "Logistics",
+        "outsource": "Outsource"
+      }
+    },
+    "customer": {
+      "columns": {
+        "customer": "Customer",
+        "type": "Type",
+        "channel": "Channel",
+        "priceList": "Price list",
+        "credit": "Credit"
+      },
+      "list": {
+        "title": "Customer master"
+      },
+      "empty": {
+        "title": "No customers",
+        "description": "Adjust the filters or create a customer."
+      },
+      "form": {
+        "createTitle": "Create customer",
+        "updateTitle": "Update customer",
+        "description": "Customer identity, channel, tax, price list, credit, and payment terms",
+        "customerCode": "Customer code",
+        "customerName": "Customer name",
+        "type": "Type",
+        "status": "Status",
+        "channel": "Channel",
+        "priceList": "Price list",
+        "discountGroup": "Discount group",
+        "creditLimit": "Credit limit"
+      },
+      "detail": {
+        "title": "Customer detail",
+        "type": "Type",
+        "channel": "Channel",
+        "priceList": "Price list",
+        "credit": "Credit"
+      },
+      "toast": {
+        "created": "Customer created",
+        "updated": "Customer updated",
+        "statusChanged": "Customer status changed"
+      },
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "inactive": "Inactive",
+        "blocked": "Blocked"
+      },
+      "type": {
+        "distributor": "Distributor",
+        "dealer": "Dealer",
+        "retail_customer": "Retail customer",
+        "marketplace": "Marketplace",
+        "internal_store": "Internal store"
+      }
+    }
   }
 }

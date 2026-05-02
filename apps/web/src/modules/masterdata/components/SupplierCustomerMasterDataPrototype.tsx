@@ -14,18 +14,15 @@ import {
   type ToastMessage
 } from "@/shared/design-system/components";
 import { decimalScales, formatMoney, formatQuantity, formatRate } from "@/shared/format/numberFormat";
+import { t } from "@/shared/i18n";
 import { usePartyMasterData } from "../hooks/usePartyMasterData";
 import {
-  customerStatusLabel,
   customerStatusOptions,
-  customerTypeLabel,
   customerTypeOptions,
   emptyCustomerInput,
   emptySupplierInput,
   partyStatusTone,
-  supplierGroupLabel,
   supplierGroupOptions,
-  supplierStatusLabel,
   supplierStatusOptions,
   toCustomerInput,
   toSupplierInput
@@ -35,16 +32,18 @@ import type {
   CustomerMasterDataItem,
   CustomerMasterDataQuery,
   CustomerStatus,
+  CustomerType,
   SupplierMasterDataInput,
   SupplierMasterDataItem,
   SupplierMasterDataQuery,
+  SupplierGroup,
   SupplierStatus
 } from "../types";
 
-const allSupplierStatusOptions = [{ label: "All supplier statuses", value: "" }, ...supplierStatusOptions] as const;
-const allSupplierGroupOptions = [{ label: "All supplier groups", value: "" }, ...supplierGroupOptions] as const;
-const allCustomerStatusOptions = [{ label: "All customer statuses", value: "" }, ...customerStatusOptions] as const;
-const allCustomerTypeOptions = [{ label: "All customer types", value: "" }, ...customerTypeOptions] as const;
+const allSupplierStatusOptions = [{ label: partyCopy("filters.allSupplierStatuses"), value: "" }, ...supplierStatusOptions] as const;
+const allSupplierGroupOptions = [{ label: partyCopy("filters.allSupplierGroups"), value: "" }, ...supplierGroupOptions] as const;
+const allCustomerStatusOptions = [{ label: partyCopy("filters.allCustomerStatuses"), value: "" }, ...customerStatusOptions] as const;
+const allCustomerTypeOptions = [{ label: partyCopy("filters.allCustomerTypes"), value: "" }, ...customerTypeOptions] as const;
 
 export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embedded?: boolean }) {
   const [search, setSearch] = useState("");
@@ -100,7 +99,7 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
   const supplierColumns: DataTableColumn<SupplierMasterDataItem>[] = [
     {
       key: "supplier",
-      header: "Supplier",
+      header: partyCopy("supplier.columns.supplier"),
       render: (row) => (
         <div className="erp-masterdata-product-cell">
           <strong>{row.supplierCode}</strong>
@@ -109,19 +108,19 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
       ),
       width: "240px"
     },
-    { key: "group", header: "Group", render: (row) => supplierGroupLabel(row.supplierGroup), width: "130px" },
-    { key: "terms", header: "Terms", render: (row) => row.paymentTerms || "-", width: "90px" },
-    { key: "lead", header: "Lead", render: (row) => `${row.leadTimeDays ?? 0}d`, width: "70px" },
+    { key: "group", header: partyCopy("supplier.columns.group"), render: (row) => supplierGroupDisplay(row.supplierGroup), width: "130px" },
+    { key: "terms", header: partyCopy("supplier.columns.terms"), render: (row) => row.paymentTerms || "-", width: "90px" },
+    { key: "lead", header: partyCopy("supplier.columns.lead"), render: (row) => partyCopy("supplier.detail.shortDays", { count: row.leadTimeDays ?? 0 }), width: "70px" },
     {
       key: "score",
-      header: "Score",
+      header: partyCopy("supplier.columns.score"),
       render: (row) => `${formatRate(row.qualityScore ?? "0.0000")}/${formatRate(row.deliveryScore ?? "0.0000")}`,
       width: "90px"
     },
     {
       key: "status",
-      header: "Status",
-      render: (row) => <StatusChip tone={partyStatusTone(row.status)}>{supplierStatusLabel(row.status)}</StatusChip>,
+      header: partyCopy("columns.status"),
+      render: (row) => <StatusChip tone={partyStatusTone(row.status)}>{supplierStatusDisplay(row.status)}</StatusChip>,
       width: "115px"
     },
     {
@@ -132,10 +131,10 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
       render: (row) => (
         <div className="erp-masterdata-row-actions">
           <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => openSupplierDetail(row.id)}>
-            Detail
+            {commonAction("detail")}
           </button>
           <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => startSupplierEdit(row)}>
-            Edit
+            {commonAction("edit")}
           </button>
           <button
             className="erp-button erp-button--secondary erp-button--compact"
@@ -143,7 +142,7 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
             disabled={saving || row.status === "blacklisted"}
             onClick={() => toggleSupplierStatus(row)}
           >
-            {row.status === "active" ? "Inactivate" : "Activate"}
+            {row.status === "active" ? commonAction("inactivate") : commonAction("activate")}
           </button>
         </div>
       )
@@ -153,7 +152,7 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
   const customerColumns: DataTableColumn<CustomerMasterDataItem>[] = [
     {
       key: "customer",
-      header: "Customer",
+      header: partyCopy("customer.columns.customer"),
       render: (row) => (
         <div className="erp-masterdata-product-cell">
           <strong>{row.customerCode}</strong>
@@ -162,14 +161,14 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
       ),
       width: "240px"
     },
-    { key: "type", header: "Type", render: (row) => customerTypeLabel(row.customerType), width: "135px" },
-    { key: "channel", header: "Channel", render: (row) => row.channelCode || "-", width: "100px" },
-    { key: "price", header: "Price list", render: (row) => row.priceListCode || "-", width: "130px" },
-    { key: "credit", header: "Credit", render: (row) => formatMoney(row.creditLimit ?? "0.00"), width: "110px" },
+    { key: "type", header: partyCopy("customer.columns.type"), render: (row) => customerTypeDisplay(row.customerType), width: "135px" },
+    { key: "channel", header: partyCopy("customer.columns.channel"), render: (row) => row.channelCode || "-", width: "100px" },
+    { key: "price", header: partyCopy("customer.columns.priceList"), render: (row) => row.priceListCode || "-", width: "130px" },
+    { key: "credit", header: partyCopy("customer.columns.credit"), render: (row) => formatMoney(row.creditLimit ?? "0.00"), width: "110px" },
     {
       key: "status",
-      header: "Status",
-      render: (row) => <StatusChip tone={partyStatusTone(row.status)}>{customerStatusLabel(row.status)}</StatusChip>,
+      header: partyCopy("columns.status"),
+      render: (row) => <StatusChip tone={partyStatusTone(row.status)}>{customerStatusDisplay(row.status)}</StatusChip>,
       width: "115px"
     },
     {
@@ -180,10 +179,10 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
       render: (row) => (
         <div className="erp-masterdata-row-actions">
           <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => openCustomerDetail(row.id)}>
-            Detail
+            {commonAction("detail")}
           </button>
           <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => startCustomerEdit(row)}>
-            Edit
+            {commonAction("edit")}
           </button>
           <button
             className="erp-button erp-button--secondary erp-button--compact"
@@ -191,7 +190,7 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
             disabled={saving || row.status === "blocked"}
             onClick={() => toggleCustomerStatus(row)}
           >
-            {row.status === "active" ? "Inactivate" : "Activate"}
+            {row.status === "active" ? commonAction("inactivate") : commonAction("activate")}
           </button>
         </div>
       )
@@ -200,47 +199,47 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
 
   const content = (
     <>
-      <section className="erp-masterdata-toolbar erp-masterdata-toolbar--wide" aria-label="Party master data filters">
+      <section className="erp-masterdata-toolbar erp-masterdata-toolbar--wide" aria-label={partyCopy("filters.label")}>
         <label className="erp-field">
-          <span>Search</span>
+          <span>{partyCopy("filters.search")}</span>
           <input className="erp-input" type="search" value={search} placeholder="SUP-RM-BIO" onChange={(event) => setSearch(event.target.value.toUpperCase())} />
         </label>
         <label className="erp-field">
-          <span>Supplier status</span>
+          <span>{partyCopy("filters.supplierStatus")}</span>
           <select className="erp-input" value={supplierStatus} onChange={(event) => setSupplierStatus(event.target.value as SupplierStatus | "")}>
             {allSupplierStatusOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? supplierStatusDisplay(option.value) : option.label}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Supplier group</span>
+          <span>{partyCopy("filters.supplierGroup")}</span>
           <select className="erp-input" value={supplierGroup} onChange={(event) => setSupplierGroup(event.target.value as SupplierMasterDataQuery["supplierGroup"])}>
             {allSupplierGroupOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? supplierGroupDisplay(option.value) : option.label}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Customer status</span>
+          <span>{partyCopy("filters.customerStatus")}</span>
           <select className="erp-input" value={customerStatus} onChange={(event) => setCustomerStatus(event.target.value as CustomerStatus | "")}>
             {allCustomerStatusOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? customerStatusDisplay(option.value) : option.label}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Customer type</span>
+          <span>{partyCopy("filters.customerType")}</span>
           <select className="erp-input" value={customerType} onChange={(event) => setCustomerType(event.target.value as CustomerMasterDataQuery["customerType"])}>
             {allCustomerTypeOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? customerTypeDisplay(option.value) : option.label}
               </option>
             ))}
           </select>
@@ -248,17 +247,17 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
       </section>
 
       <section className="erp-kpi-grid erp-masterdata-kpis">
-        <MasterDataKPI label="Suppliers" value={summary.suppliers} tone="normal" />
-        <MasterDataKPI label="Active suppliers" value={summary.activeSuppliers} tone="success" />
-        <MasterDataKPI label="Customers" value={summary.customers} tone="info" />
-        <MasterDataKPI label="Active customers" value={summary.activeCustomers} tone="success" />
+        <MasterDataKPI label={partyCopy("kpi.suppliers")} value={summary.suppliers} tone="normal" />
+        <MasterDataKPI label={partyCopy("kpi.activeSuppliers")} value={summary.activeSuppliers} tone="success" />
+        <MasterDataKPI label={partyCopy("kpi.customers")} value={summary.customers} tone="info" />
+        <MasterDataKPI label={partyCopy("kpi.activeCustomers")} value={summary.activeCustomers} tone="success" />
       </section>
 
       <section className="erp-masterdata-workspace">
         <section className="erp-card erp-card--padded erp-masterdata-list-card">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Supplier master</h2>
-            <StatusChip tone={suppliers.length === 0 ? "warning" : "info"}>{suppliers.length} rows</StatusChip>
+            <h2 className="erp-section-title">{partyCopy("supplier.list.title")}</h2>
+            <StatusChip tone={suppliers.length === 0 ? "warning" : "info"}>{partyCopy("list.rows", { count: suppliers.length })}</StatusChip>
           </div>
           <DataTable
             columns={supplierColumns}
@@ -266,14 +265,14 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
             getRowKey={(row) => row.id}
             loading={loading}
             error={tableError(error, clearError)}
-            emptyState={<EmptyState title="No suppliers" description="Adjust the filters or create a supplier." />}
+            emptyState={<EmptyState title={partyCopy("supplier.empty.title")} description={partyCopy("supplier.empty.description")} />}
           />
         </section>
 
         <section className="erp-card erp-card--padded erp-masterdata-list-card">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Customer master</h2>
-            <StatusChip tone={customers.length === 0 ? "warning" : "info"}>{customers.length} rows</StatusChip>
+            <h2 className="erp-section-title">{partyCopy("customer.list.title")}</h2>
+            <StatusChip tone={customers.length === 0 ? "warning" : "info"}>{partyCopy("list.rows", { count: customers.length })}</StatusChip>
           </div>
           <DataTable
             columns={customerColumns}
@@ -281,7 +280,7 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
             getRowKey={(row) => row.id}
             loading={loading}
             error={tableError(error, clearError)}
-            emptyState={<EmptyState title="No customers" description="Adjust the filters or create a customer." />}
+            emptyState={<EmptyState title={partyCopy("customer.empty.title")} description={partyCopy("customer.empty.description")} />}
           />
         </section>
       </section>
@@ -309,13 +308,13 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
 
       <DetailDrawer
         open={Boolean(selectedSupplier)}
-        title={selectedSupplier?.supplierCode ?? "Supplier detail"}
+        title={selectedSupplier?.supplierCode ?? partyCopy("supplier.detail.title")}
         subtitle={selectedSupplier?.supplierName}
         onClose={clearSelectedSupplier}
         footer={
           selectedSupplier ? (
             <button className="erp-button erp-button--secondary" type="button" onClick={() => startSupplierEdit(selectedSupplier)}>
-              Edit
+              {commonAction("edit")}
             </button>
           ) : null
         }
@@ -324,13 +323,13 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
       </DetailDrawer>
       <DetailDrawer
         open={Boolean(selectedCustomer)}
-        title={selectedCustomer?.customerCode ?? "Customer detail"}
+        title={selectedCustomer?.customerCode ?? partyCopy("customer.detail.title")}
         subtitle={selectedCustomer?.customerName}
         onClose={clearSelectedCustomer}
         footer={
           selectedCustomer ? (
             <button className="erp-button erp-button--secondary" type="button" onClick={() => startCustomerEdit(selectedCustomer)}>
-              Edit
+              {commonAction("edit")}
             </button>
           ) : null
         }
@@ -350,10 +349,10 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">MD</p>
-          <h1 className="erp-page-title">Supplier Customer Master Data</h1>
-          <p className="erp-page-description">Party catalog for purchasing, sales, and channel setup</p>
+          <h1 className="erp-page-title">{partyCopy("page.title")}</h1>
+          <p className="erp-page-description">{partyCopy("page.description")}</p>
         </div>
-        <StatusChip tone="info">{summary.activeCustomers} active customers</StatusChip>
+        <StatusChip tone="info">{partyCopy("page.activeCustomers", { count: summary.activeCustomers })}</StatusChip>
       </header>
       {content}
     </section>
@@ -363,7 +362,7 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
     try {
       await loadSupplierDetail(supplierId);
     } catch (detailError) {
-      pushToast("Detail failed", errorText(detailError), "danger");
+      pushToast(partyCopy("toast.detailFailed"), errorText(detailError), "danger");
     }
   }
 
@@ -371,7 +370,7 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
     try {
       await loadCustomerDetail(customerId);
     } catch (detailError) {
-      pushToast("Detail failed", errorText(detailError), "danger");
+      pushToast(partyCopy("toast.detailFailed"), errorText(detailError), "danger");
     }
   }
 
@@ -404,7 +403,7 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
     setFormError(undefined);
     try {
       const result = editingSupplierId ? await saveSupplier(editingSupplierId, supplierForm) : await saveNewSupplier(supplierForm);
-      pushToast(editingSupplierId ? "Supplier updated" : "Supplier created", `${result.supplierCode} saved`, "success");
+      pushToast(editingSupplierId ? partyCopy("supplier.toast.updated") : partyCopy("supplier.toast.created"), partyCopy("toast.saved", { code: result.supplierCode }), "success");
       resetSupplierForm();
     } catch (saveError) {
       setFormError(errorText(saveError));
@@ -416,7 +415,7 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
     setFormError(undefined);
     try {
       const result = editingCustomerId ? await saveCustomer(editingCustomerId, customerForm) : await saveNewCustomer(customerForm);
-      pushToast(editingCustomerId ? "Customer updated" : "Customer created", `${result.customerCode} saved`, "success");
+      pushToast(editingCustomerId ? partyCopy("customer.toast.updated") : partyCopy("customer.toast.created"), partyCopy("toast.saved", { code: result.customerCode }), "success");
       resetCustomerForm();
     } catch (saveError) {
       setFormError(errorText(saveError));
@@ -427,9 +426,9 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
     const nextStatus: SupplierStatus = item.status === "active" ? "inactive" : "active";
     try {
       const result = await saveSupplierStatus(item.id, nextStatus);
-      pushToast("Supplier status changed", `${result.supplierCode} is ${supplierStatusLabel(result.status)}`, "success");
+      pushToast(partyCopy("supplier.toast.statusChanged"), partyCopy("toast.statusChangedDescription", { code: result.supplierCode, status: supplierStatusDisplay(result.status) }), "success");
     } catch (statusError) {
-      pushToast("Status failed", errorText(statusError), "danger");
+      pushToast(partyCopy("toast.statusFailed"), errorText(statusError), "danger");
     }
   }
 
@@ -437,9 +436,9 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
     const nextStatus: CustomerStatus = item.status === "active" ? "inactive" : "active";
     try {
       const result = await saveCustomerStatus(item.id, nextStatus);
-      pushToast("Customer status changed", `${result.customerCode} is ${customerStatusLabel(result.status)}`, "success");
+      pushToast(partyCopy("customer.toast.statusChanged"), partyCopy("toast.statusChangedDescription", { code: result.customerCode, status: customerStatusDisplay(result.status) }), "success");
     } catch (statusError) {
-      pushToast("Status failed", errorText(statusError), "danger");
+      pushToast(partyCopy("toast.statusFailed"), errorText(statusError), "danger");
     }
   }
 
@@ -468,53 +467,53 @@ function SupplierForm({
   return (
     <form onSubmit={onSubmit}>
       <FormSection
-        title={editingId ? "Update supplier" : "Create supplier"}
-        description="Supplier identity, tax, contact, terms, and operational score fields"
+        title={editingId ? partyCopy("supplier.form.updateTitle") : partyCopy("supplier.form.createTitle")}
+        description={partyCopy("supplier.form.description")}
         footer={
           <>
             <button className="erp-button erp-button--secondary" type="button" onClick={onClear}>
-              Clear
+              {commonAction("clear")}
             </button>
             <button className="erp-button erp-button--primary" type="submit" disabled={saving}>
-              {saving ? "Saving" : editingId ? "Update" : "Create"}
+              {saving ? commonAction("saving") : editingId ? commonAction("update") : commonAction("create")}
             </button>
           </>
         }
       >
         {formError ? <p className="erp-form-error">{formError}</p> : null}
         <div className="erp-masterdata-form-grid">
-          <TextField label="Supplier code" value={form.supplierCode} onChange={(value) => onChange({ supplierCode: value.toUpperCase() })} />
-          <TextField label="Supplier name" value={form.supplierName} onChange={(value) => onChange({ supplierName: value })} />
+          <TextField label={partyCopy("supplier.form.supplierCode")} value={form.supplierCode} onChange={(value) => onChange({ supplierCode: value.toUpperCase() })} />
+          <TextField label={partyCopy("supplier.form.supplierName")} value={form.supplierName} onChange={(value) => onChange({ supplierName: value })} />
           <label className="erp-field">
-            <span>Group</span>
+            <span>{partyCopy("supplier.form.group")}</span>
             <select className="erp-input" value={form.supplierGroup} onChange={(event) => onChange({ supplierGroup: event.target.value as SupplierMasterDataInput["supplierGroup"] })}>
               {supplierGroupOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {supplierGroupDisplay(option.value)}
                 </option>
               ))}
             </select>
           </label>
           <label className="erp-field">
-            <span>Status</span>
+            <span>{partyCopy("supplier.form.status")}</span>
             <select className="erp-input" value={form.status} onChange={(event) => onChange({ status: event.target.value as SupplierStatus })}>
               {supplierStatusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {supplierStatusDisplay(option.value)}
                 </option>
               ))}
             </select>
           </label>
-          <TextField label="Contact" value={form.contactName} onChange={(value) => onChange({ contactName: value })} />
-          <TextField label="Phone" value={form.phone} onChange={(value) => onChange({ phone: value })} />
-          <TextField label="Email" value={form.email} onChange={(value) => onChange({ email: value })} />
-          <TextField label="Tax code" value={form.taxCode} onChange={(value) => onChange({ taxCode: value.toUpperCase() })} />
-          <TextField label="Address" value={form.address} onChange={(value) => onChange({ address: value })} />
-          <TextField label="Payment terms" value={form.paymentTerms} onChange={(value) => onChange({ paymentTerms: value.toUpperCase() })} />
-          <NumberField label="Lead days" value={form.leadTimeDays} onChange={(value) => onChange({ leadTimeDays: value })} />
-          <DecimalInput label="MOQ" scale={decimalScales.quantity} value={form.moq} onChange={(value) => onChange({ moq: value })} />
-          <DecimalInput label="Quality score" scale={decimalScales.rate} suffix="%" value={form.qualityScore} onChange={(value) => onChange({ qualityScore: value })} />
-          <DecimalInput label="Delivery score" scale={decimalScales.rate} suffix="%" value={form.deliveryScore} onChange={(value) => onChange({ deliveryScore: value })} />
+          <TextField label={partyCopy("fields.contact")} value={form.contactName} onChange={(value) => onChange({ contactName: value })} />
+          <TextField label={partyCopy("fields.phone")} value={form.phone} onChange={(value) => onChange({ phone: value })} />
+          <TextField label={partyCopy("fields.email")} value={form.email} onChange={(value) => onChange({ email: value })} />
+          <TextField label={partyCopy("fields.taxCode")} value={form.taxCode} onChange={(value) => onChange({ taxCode: value.toUpperCase() })} />
+          <TextField label={partyCopy("fields.address")} value={form.address} onChange={(value) => onChange({ address: value })} />
+          <TextField label={partyCopy("fields.paymentTerms")} value={form.paymentTerms} onChange={(value) => onChange({ paymentTerms: value.toUpperCase() })} />
+          <NumberField label={partyCopy("supplier.form.leadDays")} value={form.leadTimeDays} onChange={(value) => onChange({ leadTimeDays: value })} />
+          <DecimalInput label={partyCopy("supplier.form.moq")} scale={decimalScales.quantity} value={form.moq} onChange={(value) => onChange({ moq: value })} />
+          <DecimalInput label={partyCopy("supplier.form.qualityScore")} scale={decimalScales.rate} suffix="%" value={form.qualityScore} onChange={(value) => onChange({ qualityScore: value })} />
+          <DecimalInput label={partyCopy("supplier.form.deliveryScore")} scale={decimalScales.rate} suffix="%" value={form.deliveryScore} onChange={(value) => onChange({ deliveryScore: value })} />
         </div>
       </FormSection>
     </form>
@@ -541,53 +540,53 @@ function CustomerForm({
   return (
     <form onSubmit={onSubmit}>
       <FormSection
-        title={editingId ? "Update customer" : "Create customer"}
-        description="Customer identity, channel, tax, price list, credit, and payment terms"
+        title={editingId ? partyCopy("customer.form.updateTitle") : partyCopy("customer.form.createTitle")}
+        description={partyCopy("customer.form.description")}
         footer={
           <>
             <button className="erp-button erp-button--secondary" type="button" onClick={onClear}>
-              Clear
+              {commonAction("clear")}
             </button>
             <button className="erp-button erp-button--primary" type="submit" disabled={saving}>
-              {saving ? "Saving" : editingId ? "Update" : "Create"}
+              {saving ? commonAction("saving") : editingId ? commonAction("update") : commonAction("create")}
             </button>
           </>
         }
       >
         {formError ? <p className="erp-form-error">{formError}</p> : null}
         <div className="erp-masterdata-form-grid">
-          <TextField label="Customer code" value={form.customerCode} onChange={(value) => onChange({ customerCode: value.toUpperCase() })} />
-          <TextField label="Customer name" value={form.customerName} onChange={(value) => onChange({ customerName: value })} />
+          <TextField label={partyCopy("customer.form.customerCode")} value={form.customerCode} onChange={(value) => onChange({ customerCode: value.toUpperCase() })} />
+          <TextField label={partyCopy("customer.form.customerName")} value={form.customerName} onChange={(value) => onChange({ customerName: value })} />
           <label className="erp-field">
-            <span>Type</span>
+            <span>{partyCopy("customer.form.type")}</span>
             <select className="erp-input" value={form.customerType} onChange={(event) => onChange({ customerType: event.target.value as CustomerMasterDataInput["customerType"] })}>
               {customerTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {customerTypeDisplay(option.value)}
                 </option>
               ))}
             </select>
           </label>
           <label className="erp-field">
-            <span>Status</span>
+            <span>{partyCopy("customer.form.status")}</span>
             <select className="erp-input" value={form.status} onChange={(event) => onChange({ status: event.target.value as CustomerStatus })}>
               {customerStatusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {customerStatusDisplay(option.value)}
                 </option>
               ))}
             </select>
           </label>
-          <TextField label="Channel" value={form.channelCode} onChange={(value) => onChange({ channelCode: value.toUpperCase() })} />
-          <TextField label="Price list" value={form.priceListCode} onChange={(value) => onChange({ priceListCode: value.toUpperCase() })} />
-          <TextField label="Discount group" value={form.discountGroup} onChange={(value) => onChange({ discountGroup: value })} />
-          <DecimalInput label="Credit limit" scale={decimalScales.money} suffix="VND" value={form.creditLimit} onChange={(value) => onChange({ creditLimit: value })} />
-          <TextField label="Payment terms" value={form.paymentTerms} onChange={(value) => onChange({ paymentTerms: value.toUpperCase() })} />
-          <TextField label="Contact" value={form.contactName} onChange={(value) => onChange({ contactName: value })} />
-          <TextField label="Phone" value={form.phone} onChange={(value) => onChange({ phone: value })} />
-          <TextField label="Email" value={form.email} onChange={(value) => onChange({ email: value })} />
-          <TextField label="Tax code" value={form.taxCode} onChange={(value) => onChange({ taxCode: value.toUpperCase() })} />
-          <TextField label="Address" value={form.address} onChange={(value) => onChange({ address: value })} />
+          <TextField label={partyCopy("customer.form.channel")} value={form.channelCode} onChange={(value) => onChange({ channelCode: value.toUpperCase() })} />
+          <TextField label={partyCopy("customer.form.priceList")} value={form.priceListCode} onChange={(value) => onChange({ priceListCode: value.toUpperCase() })} />
+          <TextField label={partyCopy("customer.form.discountGroup")} value={form.discountGroup} onChange={(value) => onChange({ discountGroup: value })} />
+          <DecimalInput label={partyCopy("customer.form.creditLimit")} scale={decimalScales.money} suffix="VND" value={form.creditLimit} onChange={(value) => onChange({ creditLimit: value })} />
+          <TextField label={partyCopy("fields.paymentTerms")} value={form.paymentTerms} onChange={(value) => onChange({ paymentTerms: value.toUpperCase() })} />
+          <TextField label={partyCopy("fields.contact")} value={form.contactName} onChange={(value) => onChange({ contactName: value })} />
+          <TextField label={partyCopy("fields.phone")} value={form.phone} onChange={(value) => onChange({ phone: value })} />
+          <TextField label={partyCopy("fields.email")} value={form.email} onChange={(value) => onChange({ email: value })} />
+          <TextField label={partyCopy("fields.taxCode")} value={form.taxCode} onChange={(value) => onChange({ taxCode: value.toUpperCase() })} />
+          <TextField label={partyCopy("fields.address")} value={form.address} onChange={(value) => onChange({ address: value })} />
         </div>
       </FormSection>
     </form>
@@ -597,19 +596,19 @@ function CustomerForm({
 function SupplierDetail({ item }: { item: SupplierMasterDataItem }) {
   return (
     <div className="erp-masterdata-detail-grid">
-      <MasterDataFact label="Code" value={item.supplierCode} />
-      <MasterDataFact label="Group" value={supplierGroupLabel(item.supplierGroup)} />
-      <MasterDataFact label="Status" value={supplierStatusLabel(item.status)} />
-      <MasterDataFact label="Contact" value={item.contactName || "-"} />
-      <MasterDataFact label="Phone" value={item.phone || "-"} />
-      <MasterDataFact label="Email" value={item.email || "-"} />
-      <MasterDataFact label="Tax" value={item.taxCode || "-"} />
-      <MasterDataFact label="Terms" value={item.paymentTerms || "-"} />
-      <MasterDataFact label="Lead" value={`${item.leadTimeDays ?? 0} days`} />
-      <MasterDataFact label="MOQ" value={formatQuantity(item.moq ?? "0.000000")} />
-      <MasterDataFact label="Scores" value={`${formatRate(item.qualityScore ?? "0.0000")}/${formatRate(item.deliveryScore ?? "0.0000")}`} />
-      <MasterDataFact label="Updated" value={formatDate(item.updatedAt)} />
-      <MasterDataFact label="Audit" value={item.auditLogId || "Tracked on write"} />
+      <MasterDataFact label={partyCopy("detail.code")} value={item.supplierCode} />
+      <MasterDataFact label={partyCopy("supplier.detail.group")} value={supplierGroupDisplay(item.supplierGroup)} />
+      <MasterDataFact label={partyCopy("detail.status")} value={supplierStatusDisplay(item.status)} />
+      <MasterDataFact label={partyCopy("fields.contact")} value={item.contactName || "-"} />
+      <MasterDataFact label={partyCopy("fields.phone")} value={item.phone || "-"} />
+      <MasterDataFact label={partyCopy("fields.email")} value={item.email || "-"} />
+      <MasterDataFact label={partyCopy("fields.tax")} value={item.taxCode || "-"} />
+      <MasterDataFact label={partyCopy("fields.terms")} value={item.paymentTerms || "-"} />
+      <MasterDataFact label={partyCopy("supplier.detail.lead")} value={partyCopy("supplier.detail.days", { count: item.leadTimeDays ?? 0 })} />
+      <MasterDataFact label={partyCopy("supplier.detail.moq")} value={formatQuantity(item.moq ?? "0.000000")} />
+      <MasterDataFact label={partyCopy("supplier.detail.scores")} value={`${formatRate(item.qualityScore ?? "0.0000")}/${formatRate(item.deliveryScore ?? "0.0000")}`} />
+      <MasterDataFact label={partyCopy("detail.updated")} value={formatDate(item.updatedAt)} />
+      <MasterDataFact label={partyCopy("detail.audit")} value={item.auditLogId || partyCopy("detail.auditFallback")} />
     </div>
   );
 }
@@ -617,18 +616,18 @@ function SupplierDetail({ item }: { item: SupplierMasterDataItem }) {
 function CustomerDetail({ item }: { item: CustomerMasterDataItem }) {
   return (
     <div className="erp-masterdata-detail-grid">
-      <MasterDataFact label="Code" value={item.customerCode} />
-      <MasterDataFact label="Type" value={customerTypeLabel(item.customerType)} />
-      <MasterDataFact label="Status" value={customerStatusLabel(item.status)} />
-      <MasterDataFact label="Channel" value={item.channelCode || "-"} />
-      <MasterDataFact label="Price list" value={item.priceListCode || "-"} />
-      <MasterDataFact label="Credit" value={formatMoney(item.creditLimit ?? "0.00")} />
-      <MasterDataFact label="Contact" value={item.contactName || "-"} />
-      <MasterDataFact label="Phone" value={item.phone || "-"} />
-      <MasterDataFact label="Email" value={item.email || "-"} />
-      <MasterDataFact label="Tax" value={item.taxCode || "-"} />
-      <MasterDataFact label="Updated" value={formatDate(item.updatedAt)} />
-      <MasterDataFact label="Audit" value={item.auditLogId || "Tracked on write"} />
+      <MasterDataFact label={partyCopy("detail.code")} value={item.customerCode} />
+      <MasterDataFact label={partyCopy("customer.detail.type")} value={customerTypeDisplay(item.customerType)} />
+      <MasterDataFact label={partyCopy("detail.status")} value={customerStatusDisplay(item.status)} />
+      <MasterDataFact label={partyCopy("customer.detail.channel")} value={item.channelCode || "-"} />
+      <MasterDataFact label={partyCopy("customer.detail.priceList")} value={item.priceListCode || "-"} />
+      <MasterDataFact label={partyCopy("customer.detail.credit")} value={formatMoney(item.creditLimit ?? "0.00")} />
+      <MasterDataFact label={partyCopy("fields.contact")} value={item.contactName || "-"} />
+      <MasterDataFact label={partyCopy("fields.phone")} value={item.phone || "-"} />
+      <MasterDataFact label={partyCopy("fields.email")} value={item.email || "-"} />
+      <MasterDataFact label={partyCopy("fields.tax")} value={item.taxCode || "-"} />
+      <MasterDataFact label={partyCopy("detail.updated")} value={formatDate(item.updatedAt)} />
+      <MasterDataFact label={partyCopy("detail.audit")} value={item.auditLogId || partyCopy("detail.auditFallback")} />
     </div>
   );
 }
@@ -673,11 +672,11 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
 function tableError(error: string | undefined, clearError: () => void) {
   return error ? (
     <ErrorState
-      title="Party master data could not load"
+      title={partyCopy("errors.loadTitle")}
       description={error}
       action={
         <button className="erp-button erp-button--secondary" type="button" onClick={clearError}>
-          Dismiss
+          {commonAction("dismiss")}
         </button>
       }
     />
@@ -686,9 +685,33 @@ function tableError(error: string | undefined, clearError: () => void) {
 
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" }).format(new Date(value));
+  return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(new Date(value));
 }
 
 function errorText(error: unknown) {
-  return error instanceof Error ? error.message : "Party master data request failed";
+  return error instanceof Error ? error.message : partyCopy("errors.requestFailed");
+}
+
+function supplierGroupDisplay(group: SupplierGroup) {
+  return partyCopy(`supplier.group.${group}`);
+}
+
+function supplierStatusDisplay(status: SupplierStatus) {
+  return partyCopy(`supplier.status.${status}`);
+}
+
+function customerTypeDisplay(type: CustomerType) {
+  return partyCopy(`customer.type.${type}`);
+}
+
+function customerStatusDisplay(status: CustomerStatus) {
+  return partyCopy(`customer.status.${status}`);
+}
+
+function commonAction(key: string, values?: Record<string, string | number>, fallback?: string) {
+  return t(`masterdata.actions.${key}`, { values, fallback });
+}
+
+function partyCopy(key: string, values?: Record<string, string | number>, fallback?: string) {
+  return t(`masterdata.party.${key}`, { values, fallback });
 }

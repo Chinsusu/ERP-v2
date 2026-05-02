@@ -125,5 +125,173 @@
       "semi_finished": "Bán thành phẩm",
       "service": "Dịch vụ"
     }
+  },
+  "party": {
+    "page": {
+      "title": "Dữ liệu nhà cung cấp và khách hàng",
+      "description": "Danh mục đối tác cho mua hàng, bán hàng và kênh phân phối",
+      "activeCustomers": "{count} khách hàng đang dùng"
+    },
+    "filters": {
+      "label": "Bộ lọc dữ liệu đối tác",
+      "search": "Tìm kiếm",
+      "supplierStatus": "Trạng thái nhà cung cấp",
+      "supplierGroup": "Nhóm nhà cung cấp",
+      "customerStatus": "Trạng thái khách hàng",
+      "customerType": "Loại khách hàng",
+      "allSupplierStatuses": "Tất cả trạng thái NCC",
+      "allSupplierGroups": "Tất cả nhóm NCC",
+      "allCustomerStatuses": "Tất cả trạng thái khách hàng",
+      "allCustomerTypes": "Tất cả loại khách hàng"
+    },
+    "columns": {
+      "status": "Trạng thái"
+    },
+    "list": {
+      "rows": "{count} dòng"
+    },
+    "kpi": {
+      "suppliers": "Nhà cung cấp",
+      "activeSuppliers": "NCC đang dùng",
+      "customers": "Khách hàng",
+      "activeCustomers": "Khách hàng đang dùng"
+    },
+    "fields": {
+      "contact": "Liên hệ",
+      "phone": "Điện thoại",
+      "email": "Email",
+      "tax": "Mã thuế",
+      "taxCode": "Mã thuế",
+      "address": "Địa chỉ",
+      "terms": "Điều khoản",
+      "paymentTerms": "Điều khoản thanh toán"
+    },
+    "detail": {
+      "code": "Mã",
+      "status": "Trạng thái",
+      "updated": "Cập nhật",
+      "audit": "Nhật ký",
+      "auditFallback": "Theo dõi khi ghi"
+    },
+    "errors": {
+      "loadTitle": "Không thể tải dữ liệu đối tác",
+      "requestFailed": "Yêu cầu dữ liệu đối tác thất bại"
+    },
+    "toast": {
+      "detailFailed": "Tải chi tiết thất bại",
+      "statusFailed": "Đổi trạng thái thất bại",
+      "saved": "Đã lưu {code}",
+      "statusChangedDescription": "{code} đang ở trạng thái {status}"
+    },
+    "supplier": {
+      "columns": {
+        "supplier": "Nhà cung cấp",
+        "group": "Nhóm",
+        "terms": "Điều khoản",
+        "lead": "Thời gian",
+        "score": "Điểm"
+      },
+      "list": {
+        "title": "Dữ liệu nhà cung cấp"
+      },
+      "empty": {
+        "title": "Chưa có nhà cung cấp",
+        "description": "Đổi bộ lọc hoặc tạo nhà cung cấp mới."
+      },
+      "form": {
+        "createTitle": "Tạo nhà cung cấp",
+        "updateTitle": "Cập nhật nhà cung cấp",
+        "description": "Thông tin định danh, thuế, liên hệ, điều khoản và điểm vận hành của NCC",
+        "supplierCode": "Mã nhà cung cấp",
+        "supplierName": "Tên nhà cung cấp",
+        "group": "Nhóm",
+        "status": "Trạng thái",
+        "leadDays": "Số ngày lead",
+        "moq": "MOQ",
+        "qualityScore": "Điểm chất lượng",
+        "deliveryScore": "Điểm giao hàng"
+      },
+      "detail": {
+        "title": "Chi tiết nhà cung cấp",
+        "group": "Nhóm",
+        "lead": "Thời gian",
+        "days": "{count} ngày",
+        "shortDays": "{count}n",
+        "moq": "MOQ",
+        "scores": "Điểm"
+      },
+      "toast": {
+        "created": "Đã tạo nhà cung cấp",
+        "updated": "Đã cập nhật nhà cung cấp",
+        "statusChanged": "Đã đổi trạng thái nhà cung cấp"
+      },
+      "status": {
+        "draft": "Nháp",
+        "active": "Đang dùng",
+        "inactive": "Ngưng dùng",
+        "blacklisted": "Danh sách cấm"
+      },
+      "group": {
+        "raw_material": "Nguyên liệu",
+        "packaging": "Bao bì",
+        "service": "Dịch vụ",
+        "logistics": "Vận chuyển",
+        "outsource": "Gia công ngoài"
+      }
+    },
+    "customer": {
+      "columns": {
+        "customer": "Khách hàng",
+        "type": "Loại",
+        "channel": "Kênh",
+        "priceList": "Bảng giá",
+        "credit": "Công nợ"
+      },
+      "list": {
+        "title": "Dữ liệu khách hàng"
+      },
+      "empty": {
+        "title": "Chưa có khách hàng",
+        "description": "Đổi bộ lọc hoặc tạo khách hàng mới."
+      },
+      "form": {
+        "createTitle": "Tạo khách hàng",
+        "updateTitle": "Cập nhật khách hàng",
+        "description": "Thông tin định danh, kênh, thuế, bảng giá, hạn mức và điều khoản thanh toán",
+        "customerCode": "Mã khách hàng",
+        "customerName": "Tên khách hàng",
+        "type": "Loại",
+        "status": "Trạng thái",
+        "channel": "Kênh",
+        "priceList": "Bảng giá",
+        "discountGroup": "Nhóm chiết khấu",
+        "creditLimit": "Hạn mức công nợ"
+      },
+      "detail": {
+        "title": "Chi tiết khách hàng",
+        "type": "Loại",
+        "channel": "Kênh",
+        "priceList": "Bảng giá",
+        "credit": "Công nợ"
+      },
+      "toast": {
+        "created": "Đã tạo khách hàng",
+        "updated": "Đã cập nhật khách hàng",
+        "statusChanged": "Đã đổi trạng thái khách hàng"
+      },
+      "status": {
+        "draft": "Nháp",
+        "active": "Đang dùng",
+        "inactive": "Ngưng dùng",
+        "blocked": "Bị chặn"
+      },
+      "type": {
+        "distributor": "Nhà phân phối",
+        "dealer": "Đại lý",
+        "retail_customer": "Khách lẻ",
+        "marketplace": "Sàn TMĐT",
+        "internal_store": "Cửa hàng nội bộ"
+      }
+    }
   }
 }
