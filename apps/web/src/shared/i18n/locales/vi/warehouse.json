@@ -1,1 +1,268 @@
-{ "title": "Kho", "dailyBoard": "Bảng công việc kho" }
+{
+  "title": "Kho",
+  "dailyBoard": "Bảng công việc kho",
+  "dailyBoardDescription": "Theo dõi việc kho trong ngày, bàn giao, hàng hoàn và lệch tồn.",
+  "scan": "Quét mã",
+  "shiftClosing": "Đóng ca",
+  "context": {
+    "date": "Ngày",
+    "shift": "Ca",
+    "warehouse": "Kho",
+    "carrier": "ĐVVC",
+    "owner": "Phụ trách",
+    "shiftStatus": "Trạng thái ca"
+  },
+  "filters": {
+    "label": "Bộ lọc bảng công việc kho",
+    "warehouse": "Kho",
+    "date": "Ngày",
+    "shift": "Ca",
+    "carrier": "ĐVVC",
+    "queue": "Hàng chờ"
+  },
+  "allWarehouses": "Tất cả kho",
+  "allCarriers": "Tất cả ĐVVC",
+  "warehouseLead": "Trưởng kho",
+  "shift": {
+    "day": "Ca ngày",
+    "night": "Ca đêm"
+  },
+  "queue": {
+    "allActiveQueues": "Tất cả hàng chờ đang mở",
+    "newOrders": "Đơn mới",
+    "picking": "Đang soạn",
+    "packed": "Đã đóng",
+    "handover": "Chờ bàn giao",
+    "returns": "Hàng hoàn",
+    "qaHold": "Đang giữ kiểm",
+    "adjustment": "Chờ điều chỉnh",
+    "stockVariance": "Lệch tồn",
+    "closing": "Đóng ca",
+    "p0Exceptions": "Ngoại lệ P0"
+  },
+  "columns": {
+    "type": "Loại việc",
+    "reference": "Mã tham chiếu",
+    "status": "Trạng thái",
+    "source": "Nguồn",
+    "owner": "Phụ trách",
+    "sla": "SLA",
+    "action": "Thao tác",
+    "sku": "SKU",
+    "batch": "Lô",
+    "bin": "Vị trí",
+    "system": "Hệ thống",
+    "counted": "Kiểm thực tế",
+    "variance": "Lệch"
+  },
+  "reports": {
+    "inventoryReport": "Báo cáo tồn kho",
+    "operationsReport": "Báo cáo vận hành",
+    "financeReport": "Báo cáo tài chính",
+    "inventory": "Tồn kho",
+    "operations": "Vận hành",
+    "finance": "Tài chính",
+    "allStatuses": "Tất cả trạng thái",
+    "arApCod": "AR / AP / COD",
+    "report": "Báo cáo"
+  },
+  "signals": {
+    "inbound": "Hàng nhập",
+    "outbound": "Hàng xuất",
+    "returns": "Hàng hoàn",
+    "stockCount": "Kiểm kê",
+    "qc": "QC",
+    "subcontract": "Gia công"
+  },
+  "inventoryStatus": {
+    "available": "Tồn khả dụng",
+    "reserved": "Tồn đã giữ",
+    "quarantine": "Tồn giữ kiểm",
+    "blocked": "Tồn bị chặn"
+  },
+  "operationStatus": {
+    "pending": "Chờ xử lý",
+    "inProgress": "Đang xử lý",
+    "completed": "Hoàn tất",
+    "blocked": "Bị chặn",
+    "exception": "Ngoại lệ"
+  },
+  "metrics": {
+    "inboundControl": "Kiểm soát hàng nhập",
+    "subcontractManufacturing": "Gia công ngoài",
+    "fulfillmentStatus": "Trạng thái xử lý đơn",
+    "incomingPO": "{count} PO sắp về",
+    "receivingPending": "{count} phiếu nhận chờ xử lý",
+    "openOrders": "{count} đơn đang mở",
+    "factoryClaims": "{count} khiếu nại nhà máy",
+    "ordersCarrier": "{count} đơn / {carrier}"
+  },
+  "fulfillment": {
+    "new": "Đơn mới",
+    "reserved": "Đã giữ tồn",
+    "picking": "Đang soạn",
+    "packed": "Đã đóng",
+    "waitingHandover": "Chờ bàn giao",
+    "missing": "Thiếu đơn",
+    "handover": "Đã bàn giao",
+    "order": "Đơn",
+    "exception": "Ngoại lệ"
+  },
+  "inbound": {
+    "purchaseOrdersIncoming": "PO sắp về",
+    "receivingPending": "Chờ nhận hàng",
+    "qcHold": "Giữ kiểm QC",
+    "qcFail": "Không đạt QC",
+    "qcPass": "Đạt QC",
+    "qcPartial": "Đạt một phần",
+    "supplierRejections": "Trả NCC"
+  },
+  "subcontract": {
+    "openOrders": "Đơn đang mở",
+    "materialIssued": "Đã chuyển NVL",
+    "samplePending": "Chờ mẫu",
+    "factoryClaims": "Khiếu nại nhà máy",
+    "finalReady": "Sẵn sàng tất toán",
+    "orders": "Đơn",
+    "transfers": "{count} lần chuyển",
+    "sample": "Mẫu",
+    "overdue": "{count} quá hạn",
+    "pay": "Thanh toán"
+  },
+  "queueCards": {
+    "receive": "Nhận hàng",
+    "pick": "Soạn",
+    "pack": "Đóng",
+    "scan": "Quét",
+    "inspect": "Kiểm",
+    "release": "Gỡ giữ",
+    "approve": "Duyệt",
+    "reconcile": "Đối soát",
+    "close": "Đóng",
+    "resolve": "Xử lý",
+    "openQueue": "Mở hàng chờ",
+    "openReturns": "Mở hàng hoàn",
+    "openInventory": "Mở tồn kho",
+    "openCounts": "Mở kiểm kê",
+    "openClosing": "Mở đóng ca"
+  },
+  "source": {
+    "receiving": "Nhập kho",
+    "shipping": "Giao hàng",
+    "returns": "Hàng hoàn",
+    "adjustment": "Điều chỉnh",
+    "closing": "Đóng ca",
+    "stockMovement": "Biến động tồn",
+    "reconciliation": "Đối soát",
+    "orderQueue": "Hàng chờ đơn"
+  },
+  "taskType": {
+    "handover": "Bàn giao",
+    "mismatch": "Lệch tồn",
+    "picking": "Đang soạn",
+    "packed": "Đã đóng",
+    "returns": "Hàng hoàn",
+    "qaHold": "Giữ kiểm",
+    "adjustment": "Điều chỉnh",
+    "closing": "Đóng ca",
+    "waiting": "Đơn mới"
+  },
+  "taskSummary": {
+    "handover": "Chờ quét bàn giao ĐVVC",
+    "mismatch": "Cần xử lý lệch tồn",
+    "picking": "Đơn đang soạn",
+    "packed": "Đơn đã đóng chờ bàn giao",
+    "returns": "Hàng hoàn chờ kiểm",
+    "qaHold": "Hàng đang giữ kiểm",
+    "adjustment": "Chờ duyệt điều chỉnh tồn",
+    "closingBlocked": "Ca còn điểm chặn",
+    "closingReady": "Ca sẵn sàng đóng",
+    "waiting": "Đơn chờ xử lý"
+  },
+  "taskAction": {
+    "scan": "Quét",
+    "reconcile": "Đối soát",
+    "continue": "Tiếp tục",
+    "review": "Kiểm tra",
+    "inspect": "Kiểm",
+    "approve": "Duyệt",
+    "close": "Đóng",
+    "start": "Bắt đầu"
+  },
+  "status": {
+    "handover": "Chờ bàn giao",
+    "mismatch": "Lệch",
+    "picking": "Đang soạn",
+    "packed": "Đã đóng",
+    "returns": "Hàng hoàn",
+    "qaHold": "Giữ kiểm",
+    "adjustment": "Điều chỉnh",
+    "closing": "Đang đóng",
+    "closed": "Đã đóng",
+    "open": "Đang mở",
+    "waiting": "Đang chờ",
+    "inReview": "Đang xem xét",
+    "done": "Xong",
+    "resolve": "Cần xử lý",
+    "exception": "Ngoại lệ",
+    "loading": "Đang tải"
+  },
+  "scanStation": {
+    "title": "Trạm quét",
+    "label": "Quét mã kho",
+    "placeholder": "Mã đơn, bảng kê, hàng hoàn hoặc lệch tồn",
+    "queued": "Đã đưa {code} vào hàng chờ"
+  },
+  "exceptions": {
+    "title": "Ngoại lệ",
+    "open": "{count} đang mở",
+    "none": "Không có ngoại lệ P0"
+  },
+  "taskBoard": {
+    "title": "Bảng việc",
+    "rows": "{count} dòng",
+    "emptyTitle": "Không có việc trong hàng chờ này",
+    "emptyDescription": "Thay đổi kho, ngày hoặc bộ lọc hàng chờ."
+  },
+  "shiftClosingPanel": {
+    "title": "Đối soát cuối ca",
+    "noSession": "Chưa có phiên",
+    "summaryLabel": "Tóm tắt đối soát cuối ca",
+    "operationsLabel": "Chỉ số vận hành đóng ca",
+    "system": "Hệ thống",
+    "counted": "Đếm thực tế",
+    "variance": "Lệch",
+    "checklist": "Checklist",
+    "orders": "Đơn",
+    "handover": "Bàn giao",
+    "returns": "Hàng hoàn",
+    "movements": "Biến động",
+    "stockCount": "Kiểm kê",
+    "issues": "Vấn đề",
+    "blockers": "{count} điểm chặn",
+    "exceptionNote": "Ghi chú ngoại lệ",
+    "requiredVarianceException": "Bắt buộc nhập khi chấp nhận ngoại lệ lệch tồn",
+    "noExceptionNeeded": "Không cần ghi chú ngoại lệ",
+    "closeShift": "Đóng ca",
+    "resolveOperationalBlockers": "Cần xử lý hàng hoàn, bảng kê, điều chỉnh tồn hoặc vấn đề vận hành trước khi đóng ca.",
+    "shiftClosed": "Đã đóng ca",
+    "auditLog": "Nhật ký {id}",
+    "closeFailed": "Đóng ca thất bại",
+    "systemVsCounted": "Số lượng hệ thống so với kiểm thực tế",
+    "varianceLines": "{count} dòng lệch",
+    "ops": "Vận hành",
+    "checklistItems": {
+      "manifests": "Đã quét bảng kê ĐVVC",
+      "returns": "Đã phân loại hàng hoàn",
+      "stock_count": "Đã gửi kiểm kê",
+      "adjustments": "Đã duyệt điều chỉnh",
+      "pending_tasks": "Đã xử lý vấn đề phát sinh",
+      "variance": "Đã kiểm tra lệch tồn"
+    },
+    "checklistNotes": {
+      "adjustments": "Còn điều chỉnh lệch tồn chờ duyệt",
+      "pending_tasks": "Còn vấn đề cần trưởng ca xác nhận",
+      "variance": "Còn lệch tồn cần xử lý"
+    }
+  }
+}
