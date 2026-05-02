@@ -1223,26 +1223,6 @@ func main() {
 		warehouseCatalog,
 		purchaseOrderUOMConverterAdapter{catalog: uomCatalog},
 	)
-	subcontractOrderStore := productionapp.NewPrototypeSubcontractOrderStore(auditLogStore)
-	subcontractMaterialTransferStore := productionapp.NewPrototypeSubcontractMaterialTransferStore()
-	subcontractSampleApprovalStore := productionapp.NewPrototypeSubcontractSampleApprovalStore()
-	subcontractFinishedGoodsReceiptStore := productionapp.NewPrototypeSubcontractFinishedGoodsReceiptStore()
-	subcontractFactoryClaimStore := productionapp.NewPrototypeSubcontractFactoryClaimStore()
-	subcontractPaymentMilestoneStore := productionapp.NewPrototypeSubcontractPaymentMilestoneStore()
-	supplierPayableStore := financeapp.NewPrototypeSupplierPayableStore()
-	supplierPayableService := financeapp.NewSupplierPayableService(supplierPayableStore, auditLogStore)
-	subcontractOrderService := productionapp.NewSubcontractOrderService(
-		subcontractOrderStore,
-		partyCatalog,
-		itemCatalog,
-		subcontractOrderUOMConverterAdapter{catalog: uomCatalog},
-	).
-		WithMaterialIssueStores(subcontractMaterialTransferStore, stockMovementStore).
-		WithSampleApprovalStore(subcontractSampleApprovalStore).
-		WithFinishedGoodsReceiptStores(subcontractFinishedGoodsReceiptStore, stockMovementStore).
-		WithFactoryClaimStore(subcontractFactoryClaimStore).
-		WithPaymentMilestoneStore(subcontractPaymentMilestoneStore).
-		WithSubcontractPayableCreator(subcontractSupplierPayableAdapter{service: supplierPayableService})
 	salesOrderStore, closeSalesOrderStore, err := newRuntimeSalesOrderStore(cfg, auditLogStore)
 	if err != nil {
 		if closeBatchCatalogStore != nil {
@@ -1318,18 +1298,6 @@ func main() {
 	}
 	salesOrderService := salesapp.NewSalesOrderService(salesOrderStore, partyCatalog, itemCatalog, warehouseCatalog).
 		WithStockReserver(salesOrderReservationStore)
-	customerReceivableStore := financeapp.NewPrototypeCustomerReceivableStore()
-	customerReceivableService := financeapp.NewCustomerReceivableService(customerReceivableStore, auditLogStore)
-	codRemittanceStore := financeapp.NewPrototypeCODRemittanceStore()
-	codRemittanceService := financeapp.NewCODRemittanceService(codRemittanceStore, auditLogStore)
-	cashTransactionStore := financeapp.NewPrototypeCashTransactionStore()
-	cashTransactionService := financeapp.NewCashTransactionService(cashTransactionStore, auditLogStore)
-	financeDashboardService := financeapp.NewFinanceDashboardService(
-		customerReceivableStore,
-		supplierPayableStore,
-		codRemittanceStore,
-		cashTransactionStore,
-	)
 	warehouseReceivingStore, closeWarehouseReceivingStore, err := newRuntimeWarehouseReceivingStore(cfg)
 	if err != nil {
 		if closeBatchCatalogStore != nil {
@@ -1751,6 +1719,38 @@ func main() {
 	uploadReturnAttachment := returnsapp.NewUploadReturnAttachment(returnReceiptStore, auditLogStore).
 		WithObjectStore(attachmentObjectStore).
 		WithStorageBucket(cfg.S3Bucket)
+	financeStores, closeFinanceStores, err := newRuntimeFinanceStores(cfg)
+	if err != nil {
+		log.Fatalf("configure finance stores: %v", err)
+	}
+	customerReceivableService := financeapp.NewCustomerReceivableService(financeStores.customerReceivables, auditLogStore)
+	supplierPayableService := financeapp.NewSupplierPayableService(financeStores.supplierPayables, auditLogStore)
+	codRemittanceService := financeapp.NewCODRemittanceService(financeStores.codRemittances, auditLogStore)
+	cashTransactionService := financeapp.NewCashTransactionService(financeStores.cashTransactions, auditLogStore)
+	financeDashboardService := financeapp.NewFinanceDashboardService(
+		financeStores.customerReceivables,
+		financeStores.supplierPayables,
+		financeStores.codRemittances,
+		financeStores.cashTransactions,
+	)
+	subcontractOrderStore := productionapp.NewPrototypeSubcontractOrderStore(auditLogStore)
+	subcontractMaterialTransferStore := productionapp.NewPrototypeSubcontractMaterialTransferStore()
+	subcontractSampleApprovalStore := productionapp.NewPrototypeSubcontractSampleApprovalStore()
+	subcontractFinishedGoodsReceiptStore := productionapp.NewPrototypeSubcontractFinishedGoodsReceiptStore()
+	subcontractFactoryClaimStore := productionapp.NewPrototypeSubcontractFactoryClaimStore()
+	subcontractPaymentMilestoneStore := productionapp.NewPrototypeSubcontractPaymentMilestoneStore()
+	subcontractOrderService := productionapp.NewSubcontractOrderService(
+		subcontractOrderStore,
+		partyCatalog,
+		itemCatalog,
+		subcontractOrderUOMConverterAdapter{catalog: uomCatalog},
+	).
+		WithMaterialIssueStores(subcontractMaterialTransferStore, stockMovementStore).
+		WithSampleApprovalStore(subcontractSampleApprovalStore).
+		WithFinishedGoodsReceiptStores(subcontractFinishedGoodsReceiptStore, stockMovementStore).
+		WithFactoryClaimStore(subcontractFactoryClaimStore).
+		WithPaymentMilestoneStore(subcontractPaymentMilestoneStore).
+		WithSubcontractPayableCreator(subcontractSupplierPayableAdapter{service: supplierPayableService})
 	operationsDailySignals := operationsDailyRuntimeSignalSource{
 		receivings:           warehouseReceiving,
 		inboundQC:            inboundQCInspections,
@@ -2321,10 +2321,10 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(financeSummaryReportHandler(
-				customerReceivableStore,
-				supplierPayableStore,
-				codRemittanceStore,
-				cashTransactionStore,
+				financeStores.customerReceivables,
+				financeStores.supplierPayables,
+				financeStores.codRemittances,
+				financeStores.cashTransactions,
 			)),
 		),
 	)
@@ -2333,10 +2333,10 @@ func main() {
 		auth.RequireSessionToken(
 			authSessions,
 			http.HandlerFunc(financeSummaryCSVExportHandler(
-				customerReceivableStore,
-				supplierPayableStore,
-				codRemittanceStore,
-				cashTransactionStore,
+				financeStores.customerReceivables,
+				financeStores.supplierPayables,
+				financeStores.codRemittances,
+				financeStores.cashTransactions,
 			)),
 		),
 	)
@@ -2857,6 +2857,11 @@ func main() {
 		if closeAuditLogStore != nil {
 			if closeErr := closeAuditLogStore(); closeErr != nil {
 				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		if closeFinanceStores != nil {
+			if closeErr := closeFinanceStores(); closeErr != nil {
+				log.Printf("close finance stores: %v", closeErr)
 			}
 		}
 		if closeStockMovementStore != nil {
