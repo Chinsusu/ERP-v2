@@ -28,32 +28,37 @@ Start with:
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md`
 - `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
 
-## Sprint 2 Kickoff
+## Current Status
 
-Sprint 1 foundation is tagged as `v0.1.0-foundation`.
+Current `main`: Sprint 18 completed.
 
-Sprint 2 is **Order Fulfillment Core**. The target demo flow is:
-
-```text
-Sales Order
-→ Reserve Stock
-→ Pick
-→ Pack
-→ Carrier Manifest
-→ Scan Handover ĐVVC
-→ Warehouse Daily Board cập nhật dữ liệu thật
-```
-
-Sprint 2 branch:
+Latest release candidate:
 
 ```text
-sprint/2-order-fulfillment-core
+v0.18.0-auth-session-runtime-store-persistence
 ```
 
-Sprint 2 source documents:
+Latest verified cloud gate:
 
-- `docs/41_ERP_Coding_Task_Board_Sprint2_Order_Fulfillment_Core_MyPham_v1.md`
-- `docs/42_ERP_Sprint2_Changelog_Order_Fulfillment_Core_MyPham_v1.md`
+```text
+required-ci #981 on main commit 9112c399: success
+required-api, required-web, required-openapi, required-migration: pass
+required-migration: PostgreSQL 16 apply plus rollback passed
+```
+
+Completed focus through Sprint 18:
+
+- Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
+- Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
+- Manual PR review and merge flow, without GitHub auto-review or auto-merge
+
+Current hardening focus:
+
+- Release hygiene for tags, changelogs, and README status
+- Migration CI apply, rollback, and reapply proof
+- GitHub Actions Node.js 24 compatibility
+- API route registration modularization
+- Production gating for frontend fallback services
 
 ## Local Setup
 
@@ -109,14 +114,14 @@ Local test data:
 
 ## Development Flow
 
-1. Create a task branch from `develop`.
-2. Follow branch naming from `docs/38`: `feature/<task-id>-short-name`, `fix/<task-id>-short-name`, `hotfix/<incident-id>-short-name`, or `chore/<short-name>`.
+1. Create a task branch from `main`.
+2. Follow the local Codex branch prefix plus task naming, for example `codex/feature-S19-01-short-name`, `codex/fix-S19-01-short-name`, or `codex/docs-S19-01-short-name`.
 3. Keep changes inside the official workspace structure.
 4. Run the relevant checks before opening a pull request.
 5. Open a pull request with `Primary Ref` and `Task Ref`.
 6. Self-review the full diff for title/reference quality, generated-code notes, credential guardrails, tests, and docs.
 7. Merge manually only after validation evidence is recorded.
-8. Promote manually from `develop` to `main`; do not rely on GitHub auto-review or auto-merge.
+8. Do not rely on GitHub auto-review or auto-merge.
 
 ## Verification
 
