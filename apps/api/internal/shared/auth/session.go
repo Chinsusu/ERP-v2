@@ -136,20 +136,98 @@ func (s *InMemorySessionStore) RotateRefreshToken(
 	return session, true, nil
 }
 
-type SessionManager struct {
-	cfg          MockConfig
-	password     PasswordPolicy
-	lockout      LockoutPolicy
-	accessTTL    time.Duration
-	refreshTTL   time.Duration
-	now          func() time.Time
-	sessionStore SessionStore
+type LoginFailureStore interface {
+	LockedUntil(email string, now time.Time) (time.Time, bool, error)
+	RecordFailure(email string, now time.Time, policy LockoutPolicy) (time.Time, error)
+	Clear(email string) error
+}
+
+type InMemoryLoginFailureStore struct {
 	mu           sync.Mutex
 	failedLogins map[string]failedLoginState
 }
 
+func NewInMemoryLoginFailureStore() *InMemoryLoginFailureStore {
+	return &InMemoryLoginFailureStore{
+		failedLogins: make(map[string]failedLoginState),
+	}
+}
+
+func (s *InMemoryLoginFailureStore) LockedUntil(email string, now time.Time) (time.Time, bool, error) {
+	if s == nil {
+		return time.Time{}, false, errors.New("auth login failure store is required")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	state, ok := s.failedLogins[email]
+	if !ok || state.LockedUntil.IsZero() {
+		return time.Time{}, false, nil
+	}
+	if state.LockedUntil.After(now) {
+		return state.LockedUntil, true, nil
+	}
+
+	delete(s.failedLogins, email)
+	return time.Time{}, false, nil
+}
+
+func (s *InMemoryLoginFailureStore) RecordFailure(
+	email string,
+	now time.Time,
+	policy LockoutPolicy,
+) (time.Time, error) {
+	if s == nil {
+		return time.Time{}, errors.New("auth login failure store is required")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	state := s.failedLogins[email]
+	if state.FirstFailed.IsZero() || now.Sub(state.FirstFailed) > policy.Window {
+		state = failedLoginState{FirstFailed: now}
+	}
+
+	state.Attempts++
+	if state.Attempts >= policy.MaxFailedAttempts {
+		state.LockedUntil = now.Add(policy.Duration)
+	}
+
+	s.failedLogins[email] = state
+	return state.LockedUntil, nil
+}
+
+func (s *InMemoryLoginFailureStore) Clear(email string) error {
+	if s == nil {
+		return errors.New("auth login failure store is required")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.failedLogins, email)
+	return nil
+}
+
+type SessionManager struct {
+	cfg               MockConfig
+	password          PasswordPolicy
+	lockout           LockoutPolicy
+	accessTTL         time.Duration
+	refreshTTL        time.Duration
+	now               func() time.Time
+	sessionStore      SessionStore
+	loginFailureStore LoginFailureStore
+}
+
 func NewSessionManager(cfg MockConfig, now func() time.Time) *SessionManager {
-	manager, err := NewSessionManagerWithSessionStore(cfg, now, NewInMemorySessionStore())
+	manager, err := NewSessionManagerWithStores(
+		cfg,
+		now,
+		NewInMemorySessionStore(),
+		NewInMemoryLoginFailureStore(),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -158,11 +236,23 @@ func NewSessionManager(cfg MockConfig, now func() time.Time) *SessionManager {
 }
 
 func NewSessionManagerWithSessionStore(cfg MockConfig, now func() time.Time, sessionStore SessionStore) (*SessionManager, error) {
+	return NewSessionManagerWithStores(cfg, now, sessionStore, NewInMemoryLoginFailureStore())
+}
+
+func NewSessionManagerWithStores(
+	cfg MockConfig,
+	now func() time.Time,
+	sessionStore SessionStore,
+	loginFailureStore LoginFailureStore,
+) (*SessionManager, error) {
 	if now == nil {
 		now = time.Now
 	}
 	if sessionStore == nil {
 		return nil, errors.New("auth session store is required")
+	}
+	if loginFailureStore == nil {
+		return nil, errors.New("auth login failure store is required")
 	}
 
 	manager := &SessionManager{
@@ -178,11 +268,11 @@ func NewSessionManagerWithSessionStore(cfg MockConfig, now func() time.Time, ses
 			Window:            defaultLockoutWindow,
 			Duration:          defaultLockoutDuration,
 		},
-		accessTTL:    defaultAccessTokenTTL,
-		refreshTTL:   defaultRefreshTokenTTL,
-		now:          now,
-		sessionStore: sessionStore,
-		failedLogins: make(map[string]failedLoginState),
+		accessTTL:         defaultAccessTokenTTL,
+		refreshTTL:        defaultRefreshTokenTTL,
+		now:               now,
+		sessionStore:      sessionStore,
+		loginFailureStore: loginFailureStore,
 	}
 
 	if err := manager.seedStaticAccessToken(); err != nil {
@@ -208,19 +298,22 @@ func (m *SessionManager) LoginWithError(email string, password string) (Session,
 	normalizedEmail := normalizeEmail(email)
 	now := m.now().UTC()
 
-	m.mu.Lock()
-	if lockedUntil, locked := m.lockedUntil(normalizedEmail, now); locked {
-		m.mu.Unlock()
+	lockedUntil, locked, err := m.loginFailureStore.LockedUntil(normalizedEmail, now)
+	if err != nil {
+		return Session{}, LoginFailure{}, false, err
+	}
+	if locked {
 		return Session{}, LoginFailure{
 			Code:        LoginFailureLocked,
 			Message:     "Account temporarily locked after repeated failed login attempts",
 			LockedUntil: lockedUntil,
 		}, false, nil
 	}
-	m.mu.Unlock()
 
 	if failure := ValidatePasswordPolicy(password, m.password); failure != "" {
-		m.recordFailedLogin(normalizedEmail, now)
+		if _, err := m.loginFailureStore.RecordFailure(normalizedEmail, now, m.lockout); err != nil {
+			return Session{}, LoginFailure{}, false, err
+		}
 		return Session{}, LoginFailure{
 			Code:    LoginFailurePasswordPolicy,
 			Message: failure,
@@ -229,7 +322,10 @@ func (m *SessionManager) LoginWithError(email string, password string) (Session,
 
 	principal, ok := ValidateMockLogin(m.cfg, email, password)
 	if !ok {
-		lockedUntil := m.recordFailedLogin(normalizedEmail, now)
+		lockedUntil, err := m.loginFailureStore.RecordFailure(normalizedEmail, now, m.lockout)
+		if err != nil {
+			return Session{}, LoginFailure{}, false, err
+		}
 		failure := LoginFailure{
 			Code:    LoginFailureInvalidCredentials,
 			Message: "Invalid email or password",
@@ -246,7 +342,9 @@ func (m *SessionManager) LoginWithError(email string, password string) (Session,
 	if err != nil {
 		return Session{}, LoginFailure{}, false, err
 	}
-	m.clearFailedLogin(normalizedEmail)
+	if err := m.loginFailureStore.Clear(normalizedEmail); err != nil {
+		return Session{}, LoginFailure{}, false, err
+	}
 	return session, LoginFailure{}, true, nil
 }
 
@@ -311,43 +409,6 @@ func (m *SessionManager) seedStaticAccessToken() error {
 	}
 
 	return m.sessionStore.StoreSession(session, now)
-}
-
-func (m *SessionManager) lockedUntil(email string, now time.Time) (time.Time, bool) {
-	state, ok := m.failedLogins[email]
-	if !ok || state.LockedUntil.IsZero() {
-		return time.Time{}, false
-	}
-	if state.LockedUntil.After(now) {
-		return state.LockedUntil, true
-	}
-
-	delete(m.failedLogins, email)
-	return time.Time{}, false
-}
-
-func (m *SessionManager) recordFailedLogin(email string, now time.Time) time.Time {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	state := m.failedLogins[email]
-	if state.FirstFailed.IsZero() || now.Sub(state.FirstFailed) > m.lockout.Window {
-		state = failedLoginState{FirstFailed: now}
-	}
-
-	state.Attempts++
-	if state.Attempts >= m.lockout.MaxFailedAttempts {
-		state.LockedUntil = now.Add(m.lockout.Duration)
-	}
-
-	m.failedLogins[email] = state
-	return state.LockedUntil
-}
-
-func (m *SessionManager) clearFailedLogin(email string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.failedLogins, email)
 }
 
 func ValidatePasswordPolicy(password string, policy PasswordPolicy) string {
