@@ -261,6 +261,289 @@ persisted_inbound_qc_check() {
   printf '%-28s %s %s\n' "persisted_inbound_qc" "ok" "$receipt_no"
 }
 
+persisted_carrier_manifest_check() {
+  smoke_index="$(postgres_scalar "select greatest((select count(*) from shipping.carrier_manifests where manifest_ref like 'manifest-s14-02-01-smoke-%'), (select count(*) from shipping.shipments where shipment_no like 'SHP-S14-02-01-SMOKE-%'), (select count(*) from sales.sales_orders where order_ref like 'so-s14-02-01-smoke-%')) + 1")"
+  case "$smoke_index" in
+    ''|*[!0-9]*)
+      echo "persisted_carrier_manifest failed: invalid smoke index '$smoke_index'" >&2
+      exit 1
+      ;;
+  esac
+
+  suffix="$(printf '%04d' "$smoke_index")"
+  org_id="00000000-0000-4000-8000-000000000001"
+  user_id="00000000-0000-4000-8000-000000000101"
+  customer_id="00000000-0000-4000-8000-000000000601"
+  carrier_id="00000000-0000-4000-8000-00000044$suffix"
+  warehouse_id="00000000-0000-4000-8000-000000000801"
+  item_id="00000000-0000-4000-8000-000000001101"
+  unit_id="00000000-0000-4000-8000-000000000401"
+  sales_order_uuid="00000000-0000-4000-8000-00000041$suffix"
+  sales_order_line_uuid="00000000-0000-4000-8000-00000043$suffix"
+  shipment_uuid="00000000-0000-4000-8000-00000042$suffix"
+  sales_order_id="so-s14-02-01-smoke-$suffix"
+  sales_order_line_id="so-line-s14-02-01-smoke-$suffix"
+  sales_order_no="SO-S14-02-01-SMOKE-$suffix"
+  shipment_no="SHP-S14-02-01-SMOKE-$suffix"
+  tracking_no="TRK-S14-02-01-SMOKE-$suffix"
+  manifest_id="manifest-s14-02-01-smoke-$suffix"
+
+  before_count="$(postgres_scalar "select count(*) from shipping.carrier_manifests where org_id = '$org_id'::uuid and manifest_ref = '$manifest_id'")"
+  postgres_exec "$(cat <<EOF
+INSERT INTO mdm.carriers (
+  id,
+  org_id,
+  code,
+  name,
+  contact_name,
+  phone,
+  status,
+  created_by,
+  updated_by
+) VALUES (
+  '$carrier_id'::uuid,
+  '$org_id'::uuid,
+  'GHN',
+  'GHN Express',
+  'GHN Dispatcher',
+  '0900000014',
+  'active',
+  '$user_id'::uuid,
+  '$user_id'::uuid
+) ON CONFLICT (org_id, code) DO UPDATE
+SET name = EXCLUDED.name,
+    contact_name = EXCLUDED.contact_name,
+    phone = EXCLUDED.phone,
+    status = EXCLUDED.status,
+    updated_at = now(),
+    updated_by = EXCLUDED.updated_by;
+
+INSERT INTO sales.sales_orders (
+  id,
+  org_id,
+  order_ref,
+  org_ref,
+  order_no,
+  customer_id,
+  customer_ref,
+  customer_code,
+  customer_name,
+  order_date,
+  channel,
+  status,
+  currency_code,
+  subtotal_amount,
+  discount_amount,
+  tax_amount,
+  shipping_fee_amount,
+  net_amount,
+  total_amount,
+  warehouse_id,
+  warehouse_ref,
+  warehouse_code,
+  note,
+  created_at,
+  created_by,
+  created_by_ref,
+  updated_at,
+  updated_by,
+  updated_by_ref,
+  confirmed_at,
+  confirmed_by_ref,
+  reserved_at,
+  reserved_by_ref,
+  picking_started_at,
+  picking_started_by_ref,
+  picked_at,
+  picked_by_ref,
+  packing_started_at,
+  packing_started_by_ref,
+  packed_at,
+  packed_by_ref,
+  waiting_handover_at,
+  waiting_handover_by_ref,
+  version
+) VALUES (
+  '$sales_order_uuid'::uuid,
+  '$org_id'::uuid,
+  '$sales_order_id',
+  'org-my-pham',
+  '$sales_order_no',
+  '$customer_id'::uuid,
+  'cus-local-001',
+  'CUS-LOCAL-001',
+  'Local Retail Customer',
+  '2026-05-02',
+  'internal',
+  'waiting_handover',
+  'VND',
+  125000.00,
+  0.00,
+  0.00,
+  0.00,
+  125000.00,
+  125000.00,
+  '$warehouse_id'::uuid,
+  'warehouse_main',
+  'warehouse_main',
+  'S14-02-01 manifest persistence smoke fixture',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  '$user_id'::uuid,
+  'user-erp-admin',
+  now(),
+  'user-erp-admin',
+  now(),
+  'user-erp-admin',
+  now(),
+  'user-erp-admin',
+  now(),
+  'user-erp-admin',
+  now(),
+  'user-erp-admin',
+  now(),
+  'user-erp-admin',
+  now(),
+  'user-erp-admin',
+  1
+) ON CONFLICT (org_id, order_ref) DO NOTHING;
+
+INSERT INTO sales.sales_order_lines (
+  id,
+  org_id,
+  sales_order_id,
+  line_ref,
+  line_no,
+  item_id,
+  item_ref,
+  sku_code,
+  item_name,
+  unit_id,
+  ordered_qty,
+  reserved_qty,
+  shipped_qty,
+  unit_price,
+  uom_code,
+  base_ordered_qty,
+  base_uom_code,
+  conversion_factor,
+  currency_code,
+  line_discount_amount,
+  line_amount,
+  created_at,
+  created_by,
+  updated_at,
+  updated_by
+) VALUES (
+  '$sales_order_line_uuid'::uuid,
+  '$org_id'::uuid,
+  '$sales_order_uuid'::uuid,
+  '$sales_order_line_id',
+  1,
+  '$item_id'::uuid,
+  'item-lipstick-matte',
+  'FG-LIP-001',
+  'Matte Lipstick',
+  '$unit_id'::uuid,
+  1.000000,
+  1.000000,
+  1.000000,
+  125000.0000,
+  'PCS',
+  1.000000,
+  'PCS',
+  1.000000,
+  'VND',
+  0.00,
+  125000.00,
+  now(),
+  '$user_id'::uuid,
+  now(),
+  '$user_id'::uuid
+) ON CONFLICT (sales_order_id, line_ref) DO NOTHING;
+
+INSERT INTO shipping.shipments (
+  id,
+  org_id,
+  shipment_no,
+  sales_order_id,
+  warehouse_id,
+  carrier_id,
+  tracking_no,
+  status,
+  packed_at,
+  packed_by,
+  created_at,
+  created_by,
+  updated_at,
+  updated_by
+) VALUES (
+  '$shipment_uuid'::uuid,
+  '$org_id'::uuid,
+  '$shipment_no',
+  '$sales_order_uuid'::uuid,
+  '$warehouse_id'::uuid,
+  (SELECT id FROM mdm.carriers WHERE org_id = '$org_id'::uuid AND code = 'GHN'),
+  '$tracking_no',
+  'packed',
+  now(),
+  '$user_id'::uuid,
+  now(),
+  '$user_id'::uuid,
+  now(),
+  '$user_id'::uuid
+) ON CONFLICT (org_id, shipment_no) DO UPDATE
+SET sales_order_id = EXCLUDED.sales_order_id,
+    warehouse_id = EXCLUDED.warehouse_id,
+    carrier_id = EXCLUDED.carrier_id,
+    tracking_no = EXCLUDED.tracking_no,
+    status = EXCLUDED.status,
+    packed_at = EXCLUDED.packed_at,
+    packed_by = EXCLUDED.packed_by,
+    updated_at = now(),
+    updated_by = EXCLUDED.updated_by;
+EOF
+)"
+
+  manifest_body="$(printf '{"id":"%s","carrier_code":"GHN","carrier_name":"GHN Express","warehouse_id":"warehouse_main","warehouse_code":"warehouse_main","date":"2026-05-02","handover_batch":"s14-smoke","staging_zone":"handover","owner":"user-erp-admin"}' "$manifest_id")"
+  curl_check "carrier_manifest_create" POST "$api_base/shipping/manifests" 201 "$manifest_body" auth
+  curl_check "carrier_manifest_add" POST "$api_base/shipping/manifests/$manifest_id/shipments" 200 "$(printf '{"shipment_id":"%s"}' "$shipment_no")" auth
+  curl_check "carrier_manifest_ready" POST "$api_base/shipping/manifests/$manifest_id/ready" 200 '{}' auth
+  curl_check "carrier_manifest_scan" POST "$api_base/shipping/manifests/$manifest_id/scan" 200 "$(printf '{"code":"%s","station_id":"dock-s14-02-01","device_id":"scanner-s14-02-01","source":"smoke"}' "$tracking_no")" auth
+  if ! grep -q '"result_code":"MATCHED"' "$tmp_body" ||
+    ! grep -q "\"id\":\"$manifest_id\"" "$tmp_body" ||
+    ! grep -q "\"tracking_no\":\"$tracking_no\"" "$tmp_body"; then
+    echo "persisted_carrier_manifest failed: scan response mismatch" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  curl_check "carrier_manifest_handover" POST "$api_base/shipping/manifests/$manifest_id/confirm-handover" 200 '{"reason":"S14-02-01 manifest persistence smoke"}' auth
+  curl_check "carrier_manifest_read" GET "$api_base/shipping/manifests?warehouse_id=warehouse_main&date=2026-05-02&carrier_code=GHN&status=handed_over" 200 "" auth
+  if ! grep -q "\"id\":\"$manifest_id\"" "$tmp_body" ||
+    ! grep -q '"status":"handed_over"' "$tmp_body" ||
+    ! grep -q "\"tracking_no\":\"$tracking_no\"" "$tmp_body"; then
+    echo "persisted_carrier_manifest failed: handed-over manifest not queryable" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  document_count="$(postgres_scalar "select count(*) from shipping.carrier_manifests m join shipping.carrier_manifest_orders l on l.carrier_manifest_id = m.id where m.org_id = '$org_id'::uuid and m.manifest_ref = '$manifest_id' and m.status = 'handed_over' and m.expected_count = 1 and m.scanned_count = 1 and m.missing_count = 0 and l.manifest_ref = '$manifest_id' and l.shipment_ref = '$shipment_no' and l.order_no = '$sales_order_no' and l.tracking_no = '$tracking_no' and l.scan_status = 'scanned'")"
+  scan_count="$(postgres_scalar "select count(*) from shipping.scan_events where org_id = '$org_id'::uuid and manifest_ref = '$manifest_id' and shipment_ref = '$shipment_no' and barcode = '$tracking_no' and scan_context = 'handover' and scan_result = 'matched' and actor_ref = 'user-erp-admin'")"
+  sales_order_count="$(postgres_scalar "select count(*) from sales.sales_orders where org_id = '$org_id'::uuid and order_ref = '$sales_order_id' and order_no = '$sales_order_no' and status = 'handed_over' and handed_over_by_ref = 'user-erp-admin'")"
+  manifest_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$manifest_id' and action in ('shipping.manifest.created', 'shipping.manifest.shipment_added', 'shipping.manifest.ready_to_scan', 'shipping.manifest.handed_over')")"
+  scan_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and action = 'shipping.manifest.scan_recorded' and after_data->>'manifest_id' = '$manifest_id' and actor_ref = 'user-erp-admin'")"
+  sales_audit_count="$(postgres_scalar "select count(*) from audit.audit_logs where org_id = '$org_id'::uuid and entity_ref = '$sales_order_id' and action = 'sales.order.handed_over'")"
+  if [ "$before_count" != "0" ] || [ "$document_count" != "1" ] || [ "$scan_count" != "1" ] || [ "$sales_order_count" != "1" ] || [ "$manifest_audit_count" != "4" ] || [ "$scan_audit_count" != "1" ] || [ "$sales_audit_count" != "1" ]; then
+    echo "persisted_carrier_manifest failed: before=$before_count document=$document_count scan=$scan_count sales=$sales_order_count manifest_audit=$manifest_audit_count scan_audit=$scan_audit_count sales_audit=$sales_audit_count" >&2
+    exit 1
+  fi
+
+  printf '%-28s %s %s\n' "persisted_carrier_manifest" "ok" "$manifest_id"
+}
+
 persisted_return_rejection_check() {
   org_id="00000000-0000-4000-8000-000000000001"
 
@@ -455,6 +738,7 @@ persisted_sales_reservation_check
 persisted_stock_movement_check
 persisted_stock_count_check
 persisted_inbound_qc_check
+persisted_carrier_manifest_check
 persisted_return_rejection_check
 
 echo "Full ERP dev smoke passed"
