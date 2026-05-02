@@ -1,4 +1,5 @@
-import { ApiError, apiGet, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
+import { apiGet, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import { decimalScales, isNegativeDecimal, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type {
@@ -262,7 +263,7 @@ export async function getSuppliers(query: SupplierMasterDataQuery = {}): Promise
 
     return items.map(fromSupplierApiItem);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -278,7 +279,7 @@ export async function getSupplier(supplierId: string): Promise<SupplierMasterDat
 
     return fromSupplierApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -302,7 +303,7 @@ export async function createSupplier(input: SupplierMasterDataInput): Promise<Su
 
     return fromSupplierApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -336,7 +337,7 @@ export async function updateSupplier(supplierId: string, input: SupplierMasterDa
 
     return fromSupplierApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -369,7 +370,7 @@ export async function changeSupplierStatus(supplierId: string, status: SupplierS
 
     return fromSupplierApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -401,7 +402,7 @@ export async function getCustomers(query: CustomerMasterDataQuery = {}): Promise
 
     return items.map(fromCustomerApiItem);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -417,7 +418,7 @@ export async function getCustomer(customerId: string): Promise<CustomerMasterDat
 
     return fromCustomerApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -441,7 +442,7 @@ export async function createCustomer(input: CustomerMasterDataInput): Promise<Cu
 
     return fromCustomerApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -475,7 +476,7 @@ export async function updateCustomer(customerId: string, input: CustomerMasterDa
 
     return fromCustomerApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -508,7 +509,7 @@ export async function changeCustomerStatus(customerId: string, status: CustomerS
 
     return fromCustomerApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 

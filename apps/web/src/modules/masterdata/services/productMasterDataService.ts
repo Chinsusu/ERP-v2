@@ -1,4 +1,5 @@
-import { ApiError, apiGet, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
+import { apiGet, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import { decimalScales, isNegativeDecimal, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type {
@@ -140,7 +141,11 @@ export async function getProducts(query: ProductMasterDataQuery = {}): Promise<P
     });
 
     return items.map(fromApiItem);
-  } catch {
+  } catch (reason) {
+    if (!shouldUsePrototypeFallback(reason)) {
+      throw reason;
+    }
+
     return filterProducts(localProducts, query);
   }
 }
@@ -153,7 +158,7 @@ export async function getProduct(productId: string): Promise<ProductMasterDataIt
 
     return fromApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -177,7 +182,7 @@ export async function createProduct(input: ProductMasterDataInput): Promise<Prod
 
     return fromApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -211,7 +216,7 @@ export async function updateProduct(productId: string, input: ProductMasterDataI
 
     return fromApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 
@@ -244,7 +249,7 @@ export async function changeProductStatus(productId: string, status: ProductStat
 
     return fromApiItem(item);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (!shouldUsePrototypeFallback(error)) {
       throw error;
     }
 

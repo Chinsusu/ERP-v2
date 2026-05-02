@@ -1,4 +1,5 @@
-import { ApiError, apiGet, apiPatch, apiPost } from "../../../shared/api/client";
+import { apiGet, apiPatch, apiPost } from "../../../shared/api/client";
+import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import {
   decimalScales,
@@ -219,13 +220,6 @@ export function resetPrototypeSalesOrdersForTest() {
   prototypeSalesOrders = createPrototypeSalesOrders();
 }
 
-function shouldUsePrototypeFallback(reason: unknown) {
-  if (reason instanceof ApiError) {
-    return false;
-  }
-
-  return !(reason instanceof Error && reason.message.startsWith("API request failed:"));
-}
 
 export function salesOrderStatusTone(status: SalesOrderStatus): "success" | "warning" | "danger" | "info" | "normal" {
   switch (status) {
