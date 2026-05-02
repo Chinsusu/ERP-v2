@@ -1,4 +1,4 @@
-# 76_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1
+# 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1
 
 Project: Web ERP for cosmetics operations
 Phase: Phase 1
