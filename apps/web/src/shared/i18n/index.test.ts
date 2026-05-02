@@ -54,6 +54,8 @@ describe("Vietnamese-first i18n foundation", () => {
     expect(t("purchase.receiving.packaging.missing_label")).toBe("Thiếu nhãn");
     expect(t("qc.inbound.title")).toBe("QC hàng nhập");
     expect(t("qc.inbound.result.partial")).toBe("Đạt một phần");
+    expect(t("masterdata.views.products")).toBe("Mã hàng / SKU");
+    expect(t("masterdata.product.type.raw_material")).toBe("Nguyên liệu");
   });
 
   it("centralizes status, error, validation, and unit labels", () => {

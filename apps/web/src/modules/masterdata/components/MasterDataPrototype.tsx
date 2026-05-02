@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { StatusChip } from "@/shared/design-system/components";
+import { t } from "@/shared/i18n";
 import { ProductMasterDataPrototype } from "./ProductMasterDataPrototype";
 import { SupplierCustomerMasterDataPrototype } from "./SupplierCustomerMasterDataPrototype";
 import { WarehouseLocationMasterDataPrototype } from "./WarehouseLocationMasterDataPrototype";
@@ -9,9 +10,9 @@ import { WarehouseLocationMasterDataPrototype } from "./WarehouseLocationMasterD
 type MasterDataView = "products" | "warehouses" | "parties";
 
 const masterDataViews: { label: string; value: MasterDataView }[] = [
-  { label: "Items / SKU", value: "products" },
-  { label: "Warehouses / Locations", value: "warehouses" },
-  { label: "Suppliers / Customers", value: "parties" }
+  { label: masterDataCopy("views.products"), value: "products" },
+  { label: masterDataCopy("views.warehouses"), value: "warehouses" },
+  { label: masterDataCopy("views.parties"), value: "parties" }
 ];
 
 export function MasterDataPrototype() {
@@ -22,13 +23,13 @@ export function MasterDataPrototype() {
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">MD</p>
-          <h1 className="erp-page-title">Master Data</h1>
-          <p className="erp-page-description">Operational master data for SKU, warehouse, location, supplier, and customer setup</p>
+          <h1 className="erp-page-title">{masterDataCopy("title")}</h1>
+          <p className="erp-page-description">{masterDataCopy("description")}</p>
         </div>
         <StatusChip tone="info">{viewLabel(view)}</StatusChip>
       </header>
 
-      <nav className="erp-masterdata-tabs" aria-label="Master data sections">
+      <nav className="erp-masterdata-tabs" aria-label={masterDataCopy("sectionsLabel")}>
         {masterDataViews.map((item) => (
           <button
             className="erp-masterdata-tab"
@@ -52,12 +53,16 @@ export function MasterDataPrototype() {
 function viewLabel(view: MasterDataView) {
   switch (view) {
     case "products":
-      return "Item setup";
+      return masterDataCopy("viewStatus.products");
     case "warehouses":
-      return "Warehouse setup";
+      return masterDataCopy("viewStatus.warehouses");
     case "parties":
-      return "Party setup";
+      return masterDataCopy("viewStatus.parties");
     default:
-      return "Master data";
+      return masterDataCopy("title");
   }
+}
+
+function masterDataCopy(key: string, values?: Record<string, string | number>, fallback?: string) {
+  return t(`masterdata.${key}`, { values, fallback });
 }
