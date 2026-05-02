@@ -250,7 +250,7 @@ S15-06-03 finance persistence smoke
 | S15-06-02 | Finance dashboard/report integration check | Dashboard/report read the same DB-backed finance stores and keep existing response shape | `apps/api/internal/modules/finance/application/finance_dashboard_service.go` |
 | S15-06-03 | Finance persistence smoke | Full dev smoke proves AR/AP/COD/cash state survives restart/redeploy | `infra/scripts/smoke-dev-full.sh` |
 | S15-07-01 | Remaining prototype ledger update | Remaining prototype ledger supersedes S14 and removes finance stores from production persistence gaps | `docs/qa/S14-04-01_remaining_prototype_store_ledger.md` |
-| S15-08-01 | Sprint 15 release evidence | Changelog records PRs, migrations, verification, persisted stores, remaining prototype stores, dev deploy, CI, and tag status | `docs/66_ERP_Sprint14_Changelog_Shipping_Pick_Pack_Persistence_MyPham_v1.md` |
+| S15-08-01 | Sprint 15 release evidence | Changelog records PRs, migrations, verification, persisted stores, remaining prototype stores, dev deploy, CI, and tag status | `docs/68_ERP_Sprint15_Changelog_Finance_Runtime_Store_Persistence_MyPham_v1.md` |
 
 ---
 
