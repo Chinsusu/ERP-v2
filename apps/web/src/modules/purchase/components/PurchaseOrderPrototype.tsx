@@ -609,7 +609,7 @@ export function PurchaseOrderPrototype() {
                       type="submit"
                       disabled={!selectedOrder || selectedOrder.status === "cancelled"}
                     >
-                      {purchaseCopy("actions.add")}
+                      {purchaseCopy("attachments.upload")}
                     </button>
                   </form>
                 }

@@ -29,6 +29,7 @@ describe("Vietnamese-first i18n foundation", () => {
     expect(getActionLabel("Download")).toBe("Tải xuống");
     expect(t("common.noRecordsYet")).toBe("Chưa có dữ liệu.");
     expect(t("common.scanCode")).toBe("Quét mã");
+    expect(t("common.deleteAttachment")).toBe("Xóa tệp");
     expect(t("warehouse.dailyBoard")).toBe("Bảng công việc kho");
     expect(t("warehouse.taskBoard.rows", { values: { count: 3 } })).toBe("3 dòng");
     expect(t("warehouse.shiftClosingPanel.closeShift")).toBe("Đóng ca");
@@ -45,6 +46,9 @@ describe("Vietnamese-first i18n foundation", () => {
     expect(t("returns.receiving.disposition.needs_inspection")).toBe("Cần kiểm tra");
     expect(t("returns.inspection.condition.seal_torn")).toBe("Rách seal");
     expect(t("returns.inspection.actionCode.route_to_lab_or_damaged")).toBe("Chuyển Lab/kho hỏng");
+    expect(t("returns.inspection.attachmentKind.image")).toBe("Ảnh chứng từ");
+    expect(t("returns.supplierRejection.attachments.title")).toBe("Tệp trả NCC");
+    expect(t("returns.supplierRejection.status.confirmed")).toBe("Đã xác nhận");
     expect(t("inventory.stockCount.status.variance_review")).toBe("Chờ xử lý lệch");
     expect(t("inventory.stockAdjustment.actions.approve")).toBe("Duyệt");
     expect(t("purchase.order.title")).toBe("Đơn mua hàng");

@@ -39,5 +39,7 @@
   "noAuditEvents": "Chưa có sự kiện thao tác.",
   "attachments": "Tệp đính kèm",
   "attachmentDescription": "Tệp liên kết với bản ghi này",
-  "noAttachments": "Chưa có tệp đính kèm."
+  "noAttachments": "Chưa có tệp đính kèm.",
+  "downloadAttachment": "Tải tệp",
+  "deleteAttachment": "Xóa tệp"
 }

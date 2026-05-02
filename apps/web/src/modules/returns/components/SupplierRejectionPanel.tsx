@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { DataTable, EmptyState, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
 import { AttachmentPanel, type AttachmentPanelItem } from "@/shared/design-system/pageTemplates";
+import { t } from "@/shared/i18n";
 import { getAuditLogs, auditActionTone, compactAuditPayload } from "@/modules/audit/services/auditLogService";
 import type { AuditLogItem } from "@/modules/audit/types";
 import { useSupplierRejections } from "../hooks/useSupplierRejections";
@@ -11,7 +12,6 @@ import {
   createSupplierRejection,
   formatSupplierRejectionDateTime,
   formatSupplierRejectionQuantity,
-  formatSupplierRejectionStatus,
   submitSupplierRejection,
   supplierRejectionSampleLines,
   supplierRejectionStatusOptions,
@@ -26,7 +26,7 @@ type StatusFilter = "" | SupplierRejectionStatus;
 const rejectionColumns: DataTableColumn<SupplierRejection>[] = [
   {
     key: "rejection",
-    header: "Reject record",
+    header: supplierRejectionCopy("columns.rejection"),
     render: (row) => (
       <span className="erp-supplier-rejection-record-cell">
         <strong>{row.rejectionNo}</strong>
@@ -37,26 +37,26 @@ const rejectionColumns: DataTableColumn<SupplierRejection>[] = [
   },
   {
     key: "supplier",
-    header: "Supplier",
+    header: supplierRejectionCopy("columns.supplier"),
     render: (row) => row.supplierCode ?? row.supplierName ?? row.supplierId,
     width: "160px"
   },
   {
     key: "status",
-    header: "Status",
-    render: (row) => <StatusChip tone={supplierRejectionStatusTone(row.status)}>{formatSupplierRejectionStatus(row.status)}</StatusChip>,
+    header: supplierRejectionCopy("columns.status"),
+    render: (row) => <StatusChip tone={supplierRejectionStatusTone(row.status)}>{supplierRejectionStatusLabel(row.status)}</StatusChip>,
     width: "130px"
   },
   {
     key: "qty",
-    header: "Rejected qty",
+    header: supplierRejectionCopy("columns.rejectedQty"),
     render: (row) => formatSupplierRejectionQuantity(totalRejectedQuantity(row), row.lines[0]?.baseUOMCode),
     align: "right",
     width: "140px"
   },
   {
     key: "batch",
-    header: "Batch / reason",
+    header: supplierRejectionCopy("columns.batchReason"),
     render: (row) => (
       <span className="erp-supplier-rejection-record-cell">
         <strong>{row.lines[0]?.lotNo ?? "-"}</strong>
@@ -66,13 +66,18 @@ const rejectionColumns: DataTableColumn<SupplierRejection>[] = [
   },
   {
     key: "attachments",
-    header: "Evidence",
-    render: (row) => (row.attachments.length > 0 ? <StatusChip tone="info">{row.attachments.length} files</StatusChip> : "-"),
+    header: supplierRejectionCopy("columns.evidence"),
+    render: (row) =>
+      row.attachments.length > 0 ? (
+        <StatusChip tone="info">{supplierRejectionCopy("attachments.fileCount", { count: row.attachments.length })}</StatusChip>
+      ) : (
+        "-"
+      ),
     width: "120px"
   },
   {
     key: "updated",
-    header: "Updated",
+    header: supplierRejectionCopy("columns.updated"),
     render: (row) => formatSupplierRejectionDateTime(row.updatedAt),
     width: "150px"
   }
@@ -81,24 +86,24 @@ const rejectionColumns: DataTableColumn<SupplierRejection>[] = [
 const auditColumns: DataTableColumn<AuditLogItem>[] = [
   {
     key: "action",
-    header: "Action",
+    header: supplierRejectionCopy("audit.columns.action"),
     render: (row) => <StatusChip tone={auditActionTone(row.action)}>{row.action}</StatusChip>
   },
   {
     key: "actor",
-    header: "Actor",
+    header: supplierRejectionCopy("audit.columns.actor"),
     render: (row) => row.actorId,
     width: "170px"
   },
   {
     key: "payload",
-    header: "Change",
+    header: supplierRejectionCopy("audit.columns.change"),
     render: (row) => compactAuditPayload(row.afterData),
     width: "240px"
   },
   {
     key: "time",
-    header: "Time",
+    header: supplierRejectionCopy("audit.columns.time"),
     render: (row) => formatSupplierRejectionDateTime(row.createdAt),
     width: "150px"
   }
@@ -147,14 +152,14 @@ export function SupplierRejectionPanel() {
       selectedRejection?.attachments.map((attachment) => ({
         id: attachment.id,
         name: attachment.fileName,
-        kind: attachment.contentType ?? "Evidence",
+        kind: supplierRejectionAttachmentKindLabel(attachment.contentType),
         uploadedBy: attachment.uploadedBy ?? selectedRejection.updatedBy,
         uploadedAt: attachment.uploadedAt ?? selectedRejection.updatedAt,
         storageKey: attachment.objectKey,
-        status: <StatusChip tone="info">{attachment.source ?? "rejection"}</StatusChip>,
+        status: <StatusChip tone="info">{supplierRejectionAttachmentSourceLabel(attachment.source)}</StatusChip>,
         canDownload: true,
         canDelete: selectedRejection.status === "draft",
-        deleteLabel: "Remove",
+        deleteLabel: supplierRejectionCopy("attachments.remove"),
         onDownload: () => setFeedback({ tone: "info", message: attachment.objectKey }),
         onDelete: () => removeSelectedAttachment(attachment.id)
       })) ?? [],
@@ -197,7 +202,7 @@ export function SupplierRejectionPanel() {
       })
       .catch((cause) => {
         if (active) {
-          setAuditError(cause instanceof Error ? cause.message : "Audit trail could not be loaded");
+          setAuditError(cause instanceof Error ? cause.message : supplierRejectionCopy("feedback.auditLoadFailed"));
         }
       })
       .finally(() => {
@@ -254,9 +259,9 @@ export function SupplierRejectionPanel() {
       setLocalRejections((current) => upsertSupplierRejection(current, rejection));
       setSelectedRejectionId(rejection.id);
       setAuditRefreshKey((current) => current + 1);
-      setFeedback({ tone: "success", message: `${rejection.rejectionNo} created` });
+      setFeedback({ tone: "success", message: supplierRejectionCopy("feedback.created", { rejectionNo: rejection.rejectionNo }) });
     } catch (cause) {
-      setFeedback({ tone: "danger", message: cause instanceof Error ? cause.message : "Supplier rejection could not be created" });
+      setFeedback({ tone: "danger", message: cause instanceof Error ? cause.message : supplierRejectionCopy("feedback.createFailed") });
     } finally {
       setBusyAction("");
     }
@@ -280,10 +285,13 @@ export function SupplierRejectionPanel() {
       setAuditRefreshKey((current) => current + 1);
       setFeedback({
         tone: "success",
-        message: `${result.rejection.rejectionNo} ${formatSupplierRejectionStatus(result.currentStatus).toLowerCase()}`
+        message: supplierRejectionCopy("feedback.transitioned", {
+          rejectionNo: result.rejection.rejectionNo,
+          status: supplierRejectionStatusLabel(result.currentStatus).toLowerCase()
+        })
       });
     } catch (cause) {
-      setFeedback({ tone: "danger", message: cause instanceof Error ? cause.message : "Supplier rejection could not be updated" });
+      setFeedback({ tone: "danger", message: cause instanceof Error ? cause.message : supplierRejectionCopy("feedback.updateFailed") });
     } finally {
       setBusyAction("");
     }
@@ -299,20 +307,20 @@ export function SupplierRejectionPanel() {
       attachments: selectedRejection.attachments.filter((attachment) => attachment.id !== attachmentId)
     };
     setLocalRejections((current) => upsertSupplierRejection(current, updated));
-    setFeedback({ tone: "warning", message: "Attachment removed from draft view" });
+    setFeedback({ tone: "warning", message: supplierRejectionCopy("feedback.attachmentRemoved") });
   }
 
   return (
     <section className="erp-supplier-rejection-panel" id="supplier-rejections">
       <div className="erp-card erp-card--padded erp-supplier-rejection-form-card">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Supplier rejection</h2>
+          <h2 className="erp-section-title">{supplierRejectionCopy("title")}</h2>
           <StatusChip tone={feedback?.tone ?? "info"}>{feedback?.message ?? selectedWarehouse.code}</StatusChip>
         </div>
 
         <form className="erp-supplier-rejection-form" onSubmit={(event) => void handleCreate(event)}>
           <label className="erp-field">
-            <span>Warehouse</span>
+            <span>{supplierRejectionCopy("fields.warehouse")}</span>
             <select className="erp-input" value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
               {supplierRejectionWarehouseOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -322,7 +330,7 @@ export function SupplierRejectionPanel() {
             </select>
           </label>
           <label className="erp-field">
-            <span>Supplier</span>
+            <span>{supplierRejectionCopy("fields.supplier")}</span>
             <select className="erp-input" value={supplierId} onChange={(event) => setSupplierId(event.target.value)}>
               {supplierRejectionSupplierOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -332,7 +340,7 @@ export function SupplierRejectionPanel() {
             </select>
           </label>
           <label className="erp-field">
-            <span>Rejected inbound line</span>
+            <span>{supplierRejectionCopy("fields.rejectedLine")}</span>
             <select className="erp-input" value={selectedSampleLabel} onChange={(event) => setSelectedSampleLabel(event.target.value)}>
               {supplierRejectionSampleLines.map((option) => (
                 <option key={option.label} value={option.label}>
@@ -342,7 +350,7 @@ export function SupplierRejectionPanel() {
             </select>
           </label>
           <label className="erp-field">
-            <span>Rejected quantity</span>
+            <span>{supplierRejectionCopy("fields.rejectedQuantity")}</span>
             <input
               className="erp-input"
               inputMode="decimal"
@@ -352,11 +360,11 @@ export function SupplierRejectionPanel() {
             />
           </label>
           <label className="erp-field">
-            <span>Reason</span>
+            <span>{supplierRejectionCopy("fields.reason")}</span>
             <input className="erp-input" type="text" value={reason} onChange={(event) => setReason(event.target.value)} />
           </label>
           <label className="erp-field">
-            <span>Evidence file</span>
+            <span>{supplierRejectionCopy("fields.evidenceFile")}</span>
             <input
               className="erp-input"
               type="text"
@@ -366,7 +374,7 @@ export function SupplierRejectionPanel() {
           </label>
           <footer className="erp-supplier-rejection-actions">
             <button className="erp-button erp-button--primary" disabled={busyAction === "create"} type="submit">
-              Create reject
+              {supplierRejectionCopy("actions.create")}
             </button>
             <button
               className="erp-button erp-button--secondary"
@@ -374,7 +382,7 @@ export function SupplierRejectionPanel() {
               type="button"
               onClick={() => void handleAction("submit")}
             >
-              Submit
+              {supplierRejectionCopy("actions.submit")}
             </button>
             <button
               className="erp-button erp-button--secondary"
@@ -382,7 +390,7 @@ export function SupplierRejectionPanel() {
               type="button"
               onClick={() => void handleAction("confirm")}
             >
-              Confirm
+              {supplierRejectionCopy("actions.confirm")}
             </button>
           </footer>
         </form>
@@ -390,39 +398,39 @@ export function SupplierRejectionPanel() {
 
       <div className="erp-card erp-card--padded erp-supplier-rejection-detail-card">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Reject detail</h2>
+          <h2 className="erp-section-title">{supplierRejectionCopy("detail.title")}</h2>
           {selectedRejection ? (
             <StatusChip tone={supplierRejectionStatusTone(selectedRejection.status)}>
-              {formatSupplierRejectionStatus(selectedRejection.status)}
+              {supplierRejectionStatusLabel(selectedRejection.status)}
             </StatusChip>
           ) : null}
         </div>
         {selectedRejection ? (
           <>
             <div className="erp-supplier-rejection-facts">
-              <SupplierRejectFact label="Supplier" value={selectedRejection.supplierName ?? selectedRejection.supplierId} />
+              <SupplierRejectFact label={supplierRejectionCopy("facts.supplier")} value={selectedRejection.supplierName ?? selectedRejection.supplierId} />
               <SupplierRejectFact label="PO" value={selectedRejection.purchaseOrderNo ?? selectedRejection.purchaseOrderId ?? "-"} />
-              <SupplierRejectFact label="Goods receipt" value={selectedRejection.goodsReceiptNo ?? selectedRejection.goodsReceiptId} />
-              <SupplierRejectFact label="QC inspection" value={selectedRejection.inboundQCInspectionId} />
-              <SupplierRejectFact label="Batch" value={selectedRejection.lines[0]?.lotNo ?? "-"} />
+              <SupplierRejectFact label={supplierRejectionCopy("facts.goodsReceipt")} value={selectedRejection.goodsReceiptNo ?? selectedRejection.goodsReceiptId} />
+              <SupplierRejectFact label={supplierRejectionCopy("facts.qcInspection")} value={selectedRejection.inboundQCInspectionId} />
+              <SupplierRejectFact label={supplierRejectionCopy("facts.batch")} value={selectedRejection.lines[0]?.lotNo ?? "-"} />
               <SupplierRejectFact
-                label="Rejected"
+                label={supplierRejectionCopy("facts.rejected")}
                 value={formatSupplierRejectionQuantity(totalRejectedQuantity(selectedRejection), selectedRejection.lines[0]?.baseUOMCode)}
               />
             </div>
             <AttachmentPanel
-              title="Supplier rejection attachments"
+              title={supplierRejectionCopy("attachments.title")}
               items={selectedAttachmentItems}
-              emptyMessage="No supplier rejection evidence attached."
+              emptyMessage={supplierRejectionCopy("attachments.empty")}
             />
           </>
         ) : (
           <>
-            <EmptyState title="No supplier rejection selected" />
+            <EmptyState title={supplierRejectionCopy("empty.noSelection")} />
             <AttachmentPanel
-              title="Supplier rejection attachments"
+              title={supplierRejectionCopy("attachments.title")}
               items={[]}
-              emptyMessage="No supplier rejection evidence attached."
+              emptyMessage={supplierRejectionCopy("attachments.empty")}
             />
           </>
         )}
@@ -430,9 +438,9 @@ export function SupplierRejectionPanel() {
 
       <section className="erp-card erp-card--padded erp-module-table-card erp-supplier-rejection-table-card">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Rejected inbound goods</h2>
+          <h2 className="erp-section-title">{supplierRejectionCopy("list.title")}</h2>
           <StatusChip tone={totals.confirmed > 0 ? "success" : "warning"}>
-            {totals.total} rows / {totals.confirmed} confirmed
+            {supplierRejectionCopy("list.summary", { total: totals.total, confirmed: totals.confirmed })}
           </StatusChip>
         </div>
         <DataTable
@@ -440,10 +448,10 @@ export function SupplierRejectionPanel() {
             ...rejectionColumns,
             {
               key: "open",
-              header: "Action",
+              header: supplierRejectionCopy("columns.action"),
               render: (row) => (
                 <button className="erp-button erp-button--secondary" type="button" onClick={() => setSelectedRejectionId(row.id)}>
-                  Open
+                  {supplierRejectionCopy("actions.open")}
                 </button>
               ),
               width: "96px",
@@ -454,15 +462,15 @@ export function SupplierRejectionPanel() {
           getRowKey={(row) => row.id}
           loading={loading}
           error={error?.message}
-          emptyState={<EmptyState title="No rejected inbound goods" description="Create a supplier rejection from a failed QC line." />}
+          emptyState={<EmptyState title={supplierRejectionCopy("empty.noRows")} description={supplierRejectionCopy("empty.noRowsDescription")} />}
           toolbar={
             <div className="erp-supplier-rejection-table-toolbar">
               <label className="erp-field">
-                <span>Status</span>
+                <span>{supplierRejectionCopy("fields.status")}</span>
                 <select className="erp-input" value={status} onChange={(event) => setStatus(event.target.value as StatusFilter)}>
                   {supplierRejectionStatusOptions.map((option) => (
                     <option key={option.value || "all"} value={option.value}>
-                      {option.label}
+                      {option.value ? supplierRejectionStatusLabel(option.value) : supplierRejectionCopy("filters.allStatuses")}
                     </option>
                   ))}
                 </select>
@@ -474,8 +482,10 @@ export function SupplierRejectionPanel() {
 
       <section className="erp-card erp-card--padded erp-module-table-card erp-supplier-rejection-audit-card">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Audit trail</h2>
-          <StatusChip tone={auditLogs.length > 0 ? "info" : "warning"}>{auditLogs.length} events</StatusChip>
+          <h2 className="erp-section-title">{supplierRejectionCopy("audit.title")}</h2>
+          <StatusChip tone={auditLogs.length > 0 ? "info" : "warning"}>
+            {supplierRejectionCopy("audit.events", { count: auditLogs.length })}
+          </StatusChip>
         </div>
         <DataTable
           columns={auditColumns}
@@ -483,11 +493,41 @@ export function SupplierRejectionPanel() {
           getRowKey={(row) => row.id}
           loading={auditLoading}
           error={auditError ?? undefined}
-          emptyState={<EmptyState title="No audit events loaded" description="Create, submit, or confirm a supplier rejection to populate audit." />}
+          emptyState={<EmptyState title={supplierRejectionCopy("audit.emptyTitle")} description={supplierRejectionCopy("audit.emptyDescription")} />}
         />
       </section>
     </section>
   );
+}
+
+function supplierRejectionCopy(key: string, values?: Record<string, string | number>, fallback?: string) {
+  return t(`returns.supplierRejection.${key}`, { values, fallback });
+}
+
+function supplierRejectionStatusLabel(status: SupplierRejectionStatus) {
+  return supplierRejectionCopy(`status.${status}`);
+}
+
+function supplierRejectionAttachmentSourceLabel(source: string | undefined) {
+  if (!source) {
+    return supplierRejectionCopy("attachments.source.rejection");
+  }
+
+  return supplierRejectionCopy(`attachments.source.${source}`, undefined, source);
+}
+
+function supplierRejectionAttachmentKindLabel(contentType: string | undefined) {
+  if (!contentType) {
+    return supplierRejectionCopy("attachments.evidence");
+  }
+  if (contentType.toLowerCase().startsWith("image/")) {
+    return supplierRejectionCopy("attachments.kind.image");
+  }
+  if (contentType.toLowerCase() === "application/pdf") {
+    return supplierRejectionCopy("attachments.kind.pdf");
+  }
+
+  return supplierRejectionCopy("attachments.evidence");
 }
 
 function SupplierRejectFact({ label, value }: { label: string; value: string }) {
