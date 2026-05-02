@@ -19,7 +19,7 @@ import (
 )
 
 type subcontractOrderUOMConverterAdapter struct {
-	catalog *masterdataapp.UOMCatalog
+	catalog uomCatalog
 }
 
 type subcontractOrderMaterialLineRequest struct {
