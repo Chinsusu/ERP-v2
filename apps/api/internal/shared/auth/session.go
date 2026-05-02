@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"strings"
 	"sync"
 	"time"
@@ -59,22 +60,109 @@ type failedLoginState struct {
 	LockedUntil time.Time
 }
 
-type SessionManager struct {
-	cfg           MockConfig
-	password      PasswordPolicy
-	lockout       LockoutPolicy
-	accessTTL     time.Duration
-	refreshTTL    time.Duration
-	now           func() time.Time
+type SessionStore interface {
+	StoreSession(session Session, now time.Time) error
+	FindByAccessToken(accessToken string, now time.Time) (Session, bool, error)
+	RotateRefreshToken(refreshToken string, now time.Time, buildNext func(Session) Session) (Session, bool, error)
+}
+
+type InMemorySessionStore struct {
 	mu            sync.Mutex
 	accessTokens  map[string]Session
 	refreshTokens map[string]Session
-	failedLogins  map[string]failedLoginState
+}
+
+func NewInMemorySessionStore() *InMemorySessionStore {
+	return &InMemorySessionStore{
+		accessTokens:  make(map[string]Session),
+		refreshTokens: make(map[string]Session),
+	}
+}
+
+func (s *InMemorySessionStore) StoreSession(session Session, _ time.Time) error {
+	if s == nil {
+		return errors.New("auth session store is required")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.accessTokens[session.AccessToken] = session
+	s.refreshTokens[session.RefreshToken] = session
+	return nil
+}
+
+func (s *InMemorySessionStore) FindByAccessToken(accessToken string, now time.Time) (Session, bool, error) {
+	if s == nil {
+		return Session{}, false, errors.New("auth session store is required")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	session, ok := s.accessTokens[strings.TrimSpace(accessToken)]
+	if !ok || !session.AccessExpiresAt.After(now) {
+		return Session{}, false, nil
+	}
+
+	return session, true, nil
+}
+
+func (s *InMemorySessionStore) RotateRefreshToken(
+	refreshToken string,
+	now time.Time,
+	buildNext func(Session) Session,
+) (Session, bool, error) {
+	if s == nil {
+		return Session{}, false, errors.New("auth session store is required")
+	}
+	if buildNext == nil {
+		return Session{}, false, errors.New("auth session rotation builder is required")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing, ok := s.refreshTokens[strings.TrimSpace(refreshToken)]
+	if !ok || !existing.RefreshExpiresAt.After(now) {
+		return Session{}, false, nil
+	}
+
+	session := buildNext(existing)
+	delete(s.refreshTokens, existing.RefreshToken)
+	delete(s.accessTokens, existing.AccessToken)
+	s.accessTokens[session.AccessToken] = session
+	s.refreshTokens[session.RefreshToken] = session
+	return session, true, nil
+}
+
+type SessionManager struct {
+	cfg          MockConfig
+	password     PasswordPolicy
+	lockout      LockoutPolicy
+	accessTTL    time.Duration
+	refreshTTL   time.Duration
+	now          func() time.Time
+	sessionStore SessionStore
+	mu           sync.Mutex
+	failedLogins map[string]failedLoginState
 }
 
 func NewSessionManager(cfg MockConfig, now func() time.Time) *SessionManager {
+	manager, err := NewSessionManagerWithSessionStore(cfg, now, NewInMemorySessionStore())
+	if err != nil {
+		panic(err)
+	}
+
+	return manager
+}
+
+func NewSessionManagerWithSessionStore(cfg MockConfig, now func() time.Time, sessionStore SessionStore) (*SessionManager, error) {
 	if now == nil {
 		now = time.Now
+	}
+	if sessionStore == nil {
+		return nil, errors.New("auth session store is required")
 	}
 
 	manager := &SessionManager{
@@ -90,16 +178,17 @@ func NewSessionManager(cfg MockConfig, now func() time.Time) *SessionManager {
 			Window:            defaultLockoutWindow,
 			Duration:          defaultLockoutDuration,
 		},
-		accessTTL:     defaultAccessTokenTTL,
-		refreshTTL:    defaultRefreshTokenTTL,
-		now:           now,
-		accessTokens:  make(map[string]Session),
-		refreshTokens: make(map[string]Session),
-		failedLogins:  make(map[string]failedLoginState),
+		accessTTL:    defaultAccessTokenTTL,
+		refreshTTL:   defaultRefreshTokenTTL,
+		now:          now,
+		sessionStore: sessionStore,
+		failedLogins: make(map[string]failedLoginState),
 	}
 
-	manager.seedStaticAccessToken()
-	return manager
+	if err := manager.seedStaticAccessToken(); err != nil {
+		return nil, err
+	}
+	return manager, nil
 }
 
 func (m *SessionManager) PasswordPolicy() PasswordPolicy {
@@ -111,6 +200,11 @@ func (m *SessionManager) LockoutPolicy() LockoutPolicy {
 }
 
 func (m *SessionManager) Login(email string, password string) (Session, LoginFailure, bool) {
+	session, failure, ok, _ := m.LoginWithError(email, password)
+	return session, failure, ok
+}
+
+func (m *SessionManager) LoginWithError(email string, password string) (Session, LoginFailure, bool, error) {
 	normalizedEmail := normalizeEmail(email)
 	now := m.now().UTC()
 
@@ -121,7 +215,7 @@ func (m *SessionManager) Login(email string, password string) (Session, LoginFai
 			Code:        LoginFailureLocked,
 			Message:     "Account temporarily locked after repeated failed login attempts",
 			LockedUntil: lockedUntil,
-		}, false
+		}, false, nil
 	}
 	m.mu.Unlock()
 
@@ -130,7 +224,7 @@ func (m *SessionManager) Login(email string, password string) (Session, LoginFai
 		return Session{}, LoginFailure{
 			Code:    LoginFailurePasswordPolicy,
 			Message: failure,
-		}, false
+		}, false, nil
 	}
 
 	principal, ok := ValidateMockLogin(m.cfg, email, password)
@@ -145,57 +239,54 @@ func (m *SessionManager) Login(email string, password string) (Session, LoginFai
 			failure.Message = "Account temporarily locked after repeated failed login attempts"
 			failure.LockedUntil = lockedUntil
 		}
-		return Session{}, failure, false
+		return Session{}, failure, false, nil
 	}
 
-	session := m.issueSession(principal, now)
+	session, err := m.issueSession(principal, now)
+	if err != nil {
+		return Session{}, LoginFailure{}, false, err
+	}
 	m.clearFailedLogin(normalizedEmail)
-	return session, LoginFailure{}, true
+	return session, LoginFailure{}, true, nil
 }
 
 func (m *SessionManager) Refresh(refreshToken string) (Session, bool) {
+	session, ok, _ := m.RefreshWithError(refreshToken)
+	return session, ok
+}
+
+func (m *SessionManager) RefreshWithError(refreshToken string) (Session, bool, error) {
 	now := m.now().UTC()
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	existing, ok := m.refreshTokens[strings.TrimSpace(refreshToken)]
-	if !ok || !existing.RefreshExpiresAt.After(now) {
-		return Session{}, false
-	}
-
-	delete(m.refreshTokens, existing.RefreshToken)
-	delete(m.accessTokens, existing.AccessToken)
-
-	session := m.newSessionLocked(existing.Principal, now)
-	m.storeSessionLocked(session)
-	return session, true
+	return m.sessionStore.RotateRefreshToken(refreshToken, now, func(existing Session) Session {
+		return m.newSession(existing.Principal, now)
+	})
 }
 
 func (m *SessionManager) AuthenticateAccessToken(accessToken string) (Principal, bool) {
+	principal, ok, _ := m.AuthenticateAccessTokenWithError(accessToken)
+	return principal, ok
+}
+
+func (m *SessionManager) AuthenticateAccessTokenWithError(accessToken string) (Principal, bool, error) {
 	now := m.now().UTC()
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	session, ok := m.accessTokens[strings.TrimSpace(accessToken)]
-	if !ok || !session.AccessExpiresAt.After(now) {
-		return Principal{}, false
+	session, ok, err := m.sessionStore.FindByAccessToken(accessToken, now)
+	if err != nil || !ok {
+		return Principal{}, false, err
 	}
 
-	return session.Principal, true
+	return session.Principal, true, nil
 }
 
-func (m *SessionManager) issueSession(principal Principal, now time.Time) Session {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	session := m.newSessionLocked(principal, now)
-	m.storeSessionLocked(session)
-	return session
+func (m *SessionManager) issueSession(principal Principal, now time.Time) (Session, error) {
+	session := m.newSession(principal, now)
+	if err := m.sessionStore.StoreSession(session, now); err != nil {
+		return Session{}, err
+	}
+	return session, nil
 }
 
-func (m *SessionManager) newSessionLocked(principal Principal, now time.Time) Session {
+func (m *SessionManager) newSession(principal Principal, now time.Time) Session {
 	return Session{
 		AccessToken:      "local-at-" + randomToken(),
 		RefreshToken:     "local-rt-" + randomToken(),
@@ -205,14 +296,9 @@ func (m *SessionManager) newSessionLocked(principal Principal, now time.Time) Se
 	}
 }
 
-func (m *SessionManager) storeSessionLocked(session Session) {
-	m.accessTokens[session.AccessToken] = session
-	m.refreshTokens[session.RefreshToken] = session
-}
-
-func (m *SessionManager) seedStaticAccessToken() {
+func (m *SessionManager) seedStaticAccessToken() error {
 	if strings.TrimSpace(m.cfg.AccessToken) == "" {
-		return
+		return nil
 	}
 
 	now := m.now().UTC()
@@ -224,8 +310,7 @@ func (m *SessionManager) seedStaticAccessToken() {
 		Principal:        MockPrincipal(m.cfg),
 	}
 
-	m.accessTokens[session.AccessToken] = session
-	m.refreshTokens[session.RefreshToken] = session
+	return m.sessionStore.StoreSession(session, now)
 }
 
 func (m *SessionManager) lockedUntil(email string, now time.Time) (time.Time, bool) {
