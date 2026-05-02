@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { DataTable, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
+import { t } from "@/shared/i18n";
 import { useReturnReceipts } from "../hooks/useReturnReceipts";
 import {
-  formatReturnDisposition,
   receiveReturn,
   returnDispositionOptions,
   returnDispositionTone,
@@ -25,51 +25,51 @@ type ScanFeedback = {
 const receiptColumns: DataTableColumn<ReturnReceipt>[] = [
   {
     key: "receipt",
-    header: "Receipt",
+    header: returnReceivingCopy("columns.receipt"),
     render: (row) => (
       <span className="erp-returns-receipt-cell">
         <strong>{row.receiptNo}</strong>
-        <small>{row.originalOrderNo ?? "Unknown order"}</small>
+        <small>{row.originalOrderNo ?? returnReceivingCopy("empty.unknownOrder")}</small>
       </span>
     ),
     width: "190px"
   },
   {
     key: "tracking",
-    header: "Tracking",
+    header: returnReceivingCopy("columns.tracking"),
     render: (row) => row.trackingNo ?? row.scanCode,
     width: "160px"
   },
   {
     key: "source",
-    header: "Source",
-    render: (row) => row.source,
+    header: returnReceivingCopy("columns.source"),
+    render: (row) => returnSourceLabel(row.source),
     width: "120px"
   },
   {
     key: "status",
-    header: "Status",
+    header: returnReceivingCopy("columns.status"),
     render: (row) => <StatusChip tone={returnReceiptStatusTone(row.status)}>{statusLabel(row.status)}</StatusChip>,
     width: "160px"
   },
   {
     key: "disposition",
-    header: "Disposition",
+    header: returnReceivingCopy("columns.disposition"),
     render: (row) => (
-      <StatusChip tone={returnDispositionTone(row.disposition)}>{formatReturnDisposition(row.disposition)}</StatusChip>
+      <StatusChip tone={returnDispositionTone(row.disposition)}>{returnDispositionLabel(row.disposition)}</StatusChip>
     ),
     width: "150px"
   },
   {
     key: "target",
-    header: "Target",
+    header: returnReceivingCopy("columns.target"),
     render: (row) => row.targetLocation,
     width: "210px"
   },
   {
     key: "movement",
-    header: "Movement",
-    render: (row) => (row.stockMovement ? <StatusChip tone="success">{row.stockMovement.movementType}</StatusChip> : "-"),
+    header: returnReceivingCopy("columns.movement"),
+    render: (row) => (row.stockMovement ? <StatusChip tone="success">{returnMovementLabel(row.stockMovement.movementType)}</StatusChip> : "-"),
     width: "150px"
   }
 ];
@@ -134,8 +134,11 @@ export function ReturnReceivingPrototype() {
         tone: receipt.unknownCase ? "warning" : "success",
         result: receipt.unknownCase ? "CHECK" : "PASS",
         message: receipt.unknownCase
-          ? `${receipt.receiptNo} / investigate unknown return`
-          : `${receipt.receiptNo} / ${receipt.originalOrderNo ?? receipt.trackingNo ?? receipt.scanCode}`
+          ? returnReceivingCopy("scan.unknown", { receiptNo: receipt.receiptNo })
+          : returnReceivingCopy("scan.matched", {
+              receiptNo: receipt.receiptNo,
+              code: receipt.originalOrderNo ?? receipt.trackingNo ?? receipt.scanCode
+            })
       });
       setScanCode("");
       window.setTimeout(() => scanInputRef.current?.focus(), 0);
@@ -143,7 +146,7 @@ export function ReturnReceivingPrototype() {
       setFeedback({
         tone: "danger",
         result: "FAIL",
-        message: error instanceof Error ? error.message : "Return receipt could not be created"
+        message: error instanceof Error ? error.message : returnReceivingCopy("scan.failed")
       });
       window.setTimeout(() => scanInputRef.current?.select(), 0);
     } finally {
@@ -162,48 +165,48 @@ export function ReturnReceivingPrototype() {
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">RT</p>
-          <h1 className="erp-page-title">Returns</h1>
-          <p className="erp-page-description">Return receiving, pending inspection, and disposition routing</p>
+          <h1 className="erp-page-title">{returnReceivingCopy("title")}</h1>
+          <p className="erp-page-description">{returnReceivingCopy("description")}</p>
         </div>
         <div className="erp-page-actions">
           <a className="erp-button erp-button--secondary" href="#return-receiving">
-            Receive
+            {returnReceivingCopy("actions.receive")}
           </a>
           <a className="erp-button erp-button--secondary" href="#return-inspection">
-            Inspect
+            {returnReceivingCopy("actions.inspect")}
           </a>
           <a className="erp-button erp-button--secondary" href="#supplier-rejections">
-            Supplier rejects
+            {returnReceivingCopy("actions.supplierRejects")}
           </a>
           <a className="erp-button erp-button--primary" href="#return-receipts">
-            Receipts
+            {returnReceivingCopy("actions.receipts")}
           </a>
         </div>
       </header>
 
-      <section className="erp-returns-toolbar" aria-label="Return receiving context">
+      <section className="erp-returns-toolbar" aria-label={returnReceivingCopy("filters.context")}>
         <label className="erp-field">
-          <span>Warehouse</span>
+          <span>{returnReceivingCopy("filters.warehouse")}</span>
           <select className="erp-input" value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
             {returnWarehouseOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {returnWarehouseLabel(option.value, option.label)}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Source</span>
+          <span>{returnReceivingCopy("filters.source")}</span>
           <select className="erp-input" value={source} onChange={(event) => setSource(event.target.value as ReturnSource)}>
             {returnSourceOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {returnSourceLabel(option.value)}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Package condition</span>
+          <span>{returnReceivingCopy("filters.packageCondition")}</span>
           <input
             className="erp-input"
             type="text"
@@ -214,20 +217,20 @@ export function ReturnReceivingPrototype() {
       </section>
 
       <section className="erp-kpi-grid erp-returns-kpis">
-        <ReturnKPI label="Pending inspection" value={totals.pending} tone="warning" />
-        <ReturnKPI label="Unknown cases" value={totals.unknown} tone={totals.unknown > 0 ? "danger" : "normal"} />
-        <ReturnKPI label="Return receipt moves" value={totals.movements} tone="success" />
-        <ReturnKPI label="Lab placeholders" value={totals.lab} tone={totals.lab > 0 ? "danger" : "normal"} />
+        <ReturnKPI label={returnReceivingCopy("kpi.pendingInspection")} value={totals.pending} tone="warning" />
+        <ReturnKPI label={returnReceivingCopy("kpi.unknownCases")} value={totals.unknown} tone={totals.unknown > 0 ? "danger" : "normal"} />
+        <ReturnKPI label={returnReceivingCopy("kpi.returnReceiptMoves")} value={totals.movements} tone="success" />
+        <ReturnKPI label={returnReceivingCopy("kpi.labPlaceholders")} value={totals.lab} tone={totals.lab > 0 ? "danger" : "normal"} />
       </section>
 
       <section className="erp-returns-receiving-grid" id="return-receiving">
         <div className="erp-card erp-card--padded erp-returns-receiving-card">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Return scan</h2>
+            <h2 className="erp-section-title">{returnReceivingCopy("sections.returnScan")}</h2>
             <StatusChip tone={busy ? "warning" : "info"}>{warehouse.code}</StatusChip>
           </div>
 
-          <div className="erp-returns-disposition-options" aria-label="Return disposition">
+          <div className="erp-returns-disposition-options" aria-label={returnReceivingCopy("columns.disposition")}>
             {returnDispositionOptions.map((option) => (
               <button
                 aria-pressed={disposition === option.value}
@@ -237,13 +240,13 @@ export function ReturnReceivingPrototype() {
                 type="button"
                 onClick={() => setDisposition(option.value)}
               >
-                {option.label}
+                {returnDispositionLabel(option.value)}
               </button>
             ))}
           </div>
 
           <label className={`erp-returns-scan-primary erp-returns-scan-primary--${feedback?.tone ?? "normal"}`}>
-            <span>Order / tracking / return code</span>
+            <span>{returnReceivingCopy("scan.label")}</span>
             <input
               ref={scanInputRef}
               type="text"
@@ -251,13 +254,20 @@ export function ReturnReceivingPrototype() {
               autoComplete="off"
               disabled={busy}
               aria-invalid={feedback?.result === "FAIL" ? "true" : undefined}
-              placeholder="SO-260426-001 / GHN260426001 / RET-260426-001"
+              placeholder={returnReceivingCopy("scan.placeholder")}
               onChange={(event) => setScanCode(event.target.value)}
               onKeyDown={handleScanKeyDown}
             />
             <span className="erp-returns-scan-feedback" role="status" aria-live="polite">
-              {feedback ? <StatusChip tone={feedback.tone}>{feedback.result}</StatusChip> : null}
-              <small>{feedback ? feedback.message : `${formatReturnDisposition(disposition)} / ${source}`}</small>
+              {feedback ? <StatusChip tone={feedback.tone}>{returnScanResultLabel(feedback.result)}</StatusChip> : null}
+              <small>
+                {feedback
+                  ? feedback.message
+                  : returnReceivingCopy("scan.defaultHint", {
+                      disposition: returnDispositionLabel(disposition),
+                      source: returnSourceLabel(source)
+                    })}
+              </small>
             </span>
           </label>
 
@@ -268,7 +278,7 @@ export function ReturnReceivingPrototype() {
               disabled={scanCode.trim() === "" || busy}
               onClick={() => void handleConfirmReceipt()}
             >
-              Confirm receipt
+              {returnReceivingCopy("actions.confirmReceipt")}
             </button>
             <button
               className="erp-button erp-button--secondary"
@@ -279,32 +289,32 @@ export function ReturnReceivingPrototype() {
                 scanInputRef.current?.focus();
               }}
             >
-              Clear
+              {returnReceivingCopy("actions.clear")}
             </button>
           </div>
         </div>
 
         <div className="erp-card erp-card--padded erp-returns-result-card">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Latest receipt</h2>
+            <h2 className="erp-section-title">{returnReceivingCopy("sections.latestReceipt")}</h2>
             {latestReceipt ? (
               <StatusChip tone={returnDispositionTone(latestReceipt.disposition)}>
-                {formatReturnDisposition(latestReceipt.disposition)}
+                {returnDispositionLabel(latestReceipt.disposition)}
               </StatusChip>
             ) : null}
           </div>
 
           {latestReceipt ? (
             <div className="erp-returns-result-grid">
-              <ReturnFact label="Receipt" value={latestReceipt.receiptNo} />
-              <ReturnFact label="Order" value={latestReceipt.originalOrderNo ?? "Unknown"} />
-              <ReturnFact label="Tracking" value={latestReceipt.trackingNo ?? latestReceipt.scanCode} />
-              <ReturnFact label="Target" value={latestReceipt.targetLocation} />
-              <ReturnFact label="SKU" value={latestReceipt.lines[0]?.sku ?? "-"} />
-              <ReturnFact label="Movement" value={latestReceipt.stockMovement?.movementType ?? "-"} />
+              <ReturnFact label={returnReceivingCopy("facts.receipt")} value={latestReceipt.receiptNo} />
+              <ReturnFact label={returnReceivingCopy("facts.order")} value={latestReceipt.originalOrderNo ?? returnReceivingCopy("empty.unknown")} />
+              <ReturnFact label={returnReceivingCopy("facts.tracking")} value={latestReceipt.trackingNo ?? latestReceipt.scanCode} />
+              <ReturnFact label={returnReceivingCopy("facts.target")} value={latestReceipt.targetLocation} />
+              <ReturnFact label={returnReceivingCopy("facts.sku")} value={latestReceipt.lines[0]?.sku ?? "-"} />
+              <ReturnFact label={returnReceivingCopy("facts.movement")} value={returnMovementLabel(latestReceipt.stockMovement?.movementType)} />
             </div>
           ) : (
-            <div className="erp-returns-empty-state">No return receipt selected</div>
+            <div className="erp-returns-empty-state">{returnReceivingCopy("empty.noReceiptSelected")}</div>
           )}
         </div>
       </section>
@@ -320,8 +330,10 @@ export function ReturnReceivingPrototype() {
 
       <section className="erp-card erp-card--padded erp-module-table-card" id="return-receipts">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Return receipts</h2>
-          <StatusChip tone={displayedReceipts.length === 0 ? "warning" : "info"}>{displayedReceipts.length} rows</StatusChip>
+          <h2 className="erp-section-title">{returnReceivingCopy("sections.returnReceipts")}</h2>
+          <StatusChip tone={displayedReceipts.length === 0 ? "warning" : "info"}>
+            {returnReceivingCopy("rows", { count: displayedReceipts.length })}
+          </StatusChip>
         </div>
         <DataTable
           columns={receiptColumns}
@@ -374,19 +386,33 @@ function matchesReceiptQuery(receipt: ReturnReceipt, query: ReturnReceiptQuery) 
 }
 
 function statusLabel(status: string) {
-  if (status === "pending_inspection") {
-    return "Pending inspection";
-  }
-  if (status === "inspected") {
-    return "Inspected";
-  }
-  if (status === "dispositioned") {
-    return "Dispositioned";
-  }
-
-  return status;
+  return returnReceivingCopy(`status.${status}`);
 }
 
 function formatQuantity(value: number) {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(value);
+}
+
+function returnReceivingCopy(key: string, values?: Record<string, string | number>) {
+  return t(`returns.receiving.${key}`, { values });
+}
+
+function returnDispositionLabel(disposition: ReturnDisposition) {
+  return returnReceivingCopy(`disposition.${disposition}`);
+}
+
+function returnSourceLabel(source: ReturnSource) {
+  return returnReceivingCopy(`source.${source}`);
+}
+
+function returnWarehouseLabel(value: string, fallback: string) {
+  return t(`returns.receiving.warehouse.${value}`, { fallback });
+}
+
+function returnScanResultLabel(result: ScanFeedback["result"]) {
+  return returnReceivingCopy(`result.${result}`);
+}
+
+function returnMovementLabel(movementType: string | undefined) {
+  return movementType ? t(`returns.receiving.movementType.${movementType}`, { fallback: movementType }) : "-";
 }
