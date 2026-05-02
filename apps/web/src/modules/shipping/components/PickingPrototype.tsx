@@ -8,6 +8,7 @@ import {
   type DataTableColumn,
   type StatusTone
 } from "@/shared/design-system/components";
+import { t } from "@/shared/i18n";
 import { usePickTasks } from "../hooks/usePickTasks";
 import {
   completePickTask,
@@ -29,7 +30,7 @@ function createTaskColumns(
   return [
     {
       key: "task",
-      header: "Pick task",
+      header: pickingCopy("columns.task"),
       render: (row) => (
         <span className="erp-picking-task-cell">
           <strong>{row.pickTaskNo}</strong>
@@ -40,19 +41,19 @@ function createTaskColumns(
     },
     {
       key: "warehouse",
-      header: "Warehouse",
+      header: pickingCopy("columns.warehouse"),
       render: (row) => row.warehouseCode,
       width: "120px"
     },
     {
       key: "status",
-      header: "Status",
+      header: pickingCopy("columns.status"),
       render: (row) => <StatusChip tone={pickTaskStatusTone(row.status)}>{pickTaskStatusLabel(row.status)}</StatusChip>,
       width: "140px"
     },
     {
       key: "lines",
-      header: "Lines",
+      header: pickingCopy("columns.lines"),
       render: (row) => `${pickedLineCount(row)}/${row.lines.length}`,
       align: "right",
       width: "90px"
@@ -66,7 +67,7 @@ function createTaskColumns(
           type="button"
           onClick={() => onSelectTask(row.id)}
         >
-          Select
+          {pickingCopy("actions.select")}
         </button>
       ),
       align: "right",
@@ -89,7 +90,7 @@ const lineColumns: DataTableColumn<PickTaskLine>[] = [
   },
   {
     key: "batch",
-    header: "Batch",
+    header: pickingCopy("columns.batch"),
     render: (row) => (
       <span className="erp-picking-line-cell">
         <strong>{row.batchNo}</strong>
@@ -100,7 +101,7 @@ const lineColumns: DataTableColumn<PickTaskLine>[] = [
   },
   {
     key: "location",
-    header: "Location",
+    header: pickingCopy("columns.location"),
     render: (row) => (
       <span className="erp-picking-line-cell">
         <strong>{row.binCode}</strong>
@@ -111,21 +112,21 @@ const lineColumns: DataTableColumn<PickTaskLine>[] = [
   },
   {
     key: "qty",
-    header: "Qty",
+    header: pickingCopy("columns.qty"),
     render: (row) => <QuantityDisplay value={row.qtyToPick} uomCode={row.baseUOMCode} />,
     align: "right",
     width: "120px"
   },
   {
     key: "picked",
-    header: "Picked",
+    header: pickingCopy("columns.picked"),
     render: (row) => <QuantityDisplay value={row.qtyPicked} uomCode={row.baseUOMCode} />,
     align: "right",
     width: "120px"
   },
   {
     key: "state",
-    header: "State",
+    header: pickingCopy("columns.state"),
     render: (row) => <StatusChip tone={pickTaskLineStatusTone(row.status)}>{pickTaskLineStatusLabel(row.status)}</StatusChip>,
     width: "130px"
   }
@@ -146,8 +147,8 @@ export function PickingPrototype() {
   const [scanValue, setScanValue] = useState("");
   const [feedback, setFeedback] = useState<ScanFeedback>({
     tone: "info",
-    title: "Ready to scan",
-    detail: "Scan SKU, batch, bin, or pick line code"
+    title: pickingCopy("scan.readyTitle"),
+    detail: pickingCopy("scan.readyDetail")
   });
   const [busy, setBusy] = useState(false);
   const [localTasks, setLocalTasks] = useState<PickTask[]>([]);
@@ -198,8 +199,8 @@ export function PickingPrototype() {
     setScanValue("");
     setFeedback({
       tone: "info",
-      title: "Ready to scan",
-      detail: "Scan SKU, batch, bin, or pick line code"
+      title: pickingCopy("scan.readyTitle"),
+      detail: pickingCopy("scan.readyDetail")
     });
   }
 
@@ -210,7 +211,7 @@ export function PickingPrototype() {
     await runPickAction(async () => {
       const task = await startPickTask(selectedTask.id);
       patchTask(task);
-      setFeedback({ tone: "success", title: "Pick task started", detail: task.pickTaskNo });
+      setFeedback({ tone: "success", title: pickingCopy("scan.started"), detail: task.pickTaskNo });
     });
   }
 
@@ -230,13 +231,13 @@ export function PickingPrototype() {
         patchTask(task);
       }
       if (task.status !== "in_progress") {
-        setFeedback({ tone: "danger", title: "Task cannot accept scans", detail: pickTaskStatusLabel(task.status) });
+        setFeedback({ tone: "danger", title: pickingCopy("scan.cannotAccept"), detail: pickTaskStatusLabel(task.status) });
         return;
       }
 
       const matchedLine = task.lines.find((line) => line.status === "pending" && matchesPickScan(line, code));
       if (!matchedLine) {
-        setFeedback({ tone: "danger", title: "Scan does not match pending line", detail: code.toUpperCase() });
+        setFeedback({ tone: "danger", title: pickingCopy("scan.notMatched"), detail: code.toUpperCase() });
         window.setTimeout(() => scanInputRef.current?.select(), 0);
         return;
       }
@@ -246,7 +247,7 @@ export function PickingPrototype() {
       setScanValue("");
       setFeedback({
         tone: updated.lines.every((line) => line.status === "picked") ? "success" : "info",
-        title: `${matchedLine.skuCode} picked`,
+        title: pickingCopy("scan.picked", { sku: matchedLine.skuCode }),
         detail: `${matchedLine.batchNo} / ${matchedLine.binCode}`
       });
       window.setTimeout(() => scanInputRef.current?.focus(), 0);
@@ -260,7 +261,7 @@ export function PickingPrototype() {
     await runPickAction(async () => {
       const task = await completePickTask(selectedTask.id);
       patchTask(task);
-      setFeedback({ tone: "success", title: "Pick task completed", detail: task.pickTaskNo });
+      setFeedback({ tone: "success", title: pickingCopy("scan.completed"), detail: task.pickTaskNo });
     });
   }
 
@@ -269,9 +270,9 @@ export function PickingPrototype() {
       return;
     }
     await runPickAction(async () => {
-      const task = await reportPickTaskException(selectedTask.id, code, `Reported from picking station: ${code}`);
+      const task = await reportPickTaskException(selectedTask.id, code, pickingCopy("exceptionReason", { code }));
       patchTask(task);
-      setFeedback({ tone: "danger", title: "Exception reported", detail: pickTaskStatusLabel(task.status) });
+      setFeedback({ tone: "danger", title: pickingCopy("scan.exceptionReported"), detail: pickTaskStatusLabel(task.status) });
     });
   }
 
@@ -282,8 +283,8 @@ export function PickingPrototype() {
     } catch (cause) {
       setFeedback({
         tone: "danger",
-        title: "Picking action failed",
-        detail: cause instanceof Error ? cause.message : "Unknown error"
+        title: pickingCopy("scan.actionFailed"),
+        detail: cause instanceof Error ? cause.message : pickingCopy("scan.unknownError")
       });
     } finally {
       setBusy(false);
@@ -300,84 +301,93 @@ export function PickingPrototype() {
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">PICK</p>
-          <h1 className="erp-page-title">Picking Station</h1>
-          <p className="erp-page-description">Scan-first picking by SKU, batch, location, and base UOM quantity</p>
+          <h1 className="erp-page-title">{pickingCopy("title")}</h1>
+          <p className="erp-page-description">{pickingCopy("description")}</p>
         </div>
         <div className="erp-page-actions">
           <button className="erp-button erp-button--secondary" type="button" onClick={handleStartTask} disabled={!canStart}>
-            Start
+            {pickingCopy("actions.start")}
           </button>
           <button className="erp-button erp-button--primary" type="button" onClick={handleCompleteTask} disabled={!canComplete || busy}>
-            Complete
+            {pickingCopy("actions.complete")}
           </button>
         </div>
       </header>
 
-      <section className="erp-picking-toolbar" aria-label="Picking filters">
+      <section className="erp-picking-toolbar" aria-label={pickingCopy("filters.label")}>
         <label className="erp-field">
-          <span>Warehouse</span>
+          <span>{pickingCopy("filters.warehouse")}</span>
           <select className="erp-input" value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
             {pickTaskWarehouseOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {pickingWarehouseLabel(option.value, option.label)}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Status</span>
+          <span>{pickingCopy("filters.status")}</span>
           <select className="erp-input" value={status} onChange={(event) => setStatus(event.target.value as "" | PickTaskStatus)}>
             {pickTaskStatusOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {option.value ? pickTaskStatusLabel(option.value) : pickingCopy("filters.allStatuses")}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Assigned user</span>
-          <input className="erp-input" value={assignedTo} onChange={(event) => setAssignedTo(event.target.value)} placeholder="user-picker" />
+          <span>{pickingCopy("filters.assignedUser")}</span>
+          <input
+            className="erp-input"
+            value={assignedTo}
+            onChange={(event) => setAssignedTo(event.target.value)}
+            placeholder={pickingCopy("filters.assignedPlaceholder")}
+          />
         </label>
       </section>
 
       <section className="erp-kpi-grid erp-picking-kpis">
-        <PickingKPI label="Open tasks" value={totals.open} tone="info" />
-        <PickingKPI label="Pending lines" value={totals.pending} tone={totals.pending === 0 ? "success" : "warning"} />
-        <PickingKPI label="Picked lines" value={totals.picked} tone="success" />
-        <PickingKPI label="Exceptions" value={totals.exceptions} tone={totals.exceptions === 0 ? "normal" : "danger"} />
+        <PickingKPI label={pickingCopy("kpi.openTasks")} value={totals.open} tone="info" />
+        <PickingKPI label={pickingCopy("kpi.pendingLines")} value={totals.pending} tone={totals.pending === 0 ? "success" : "warning"} />
+        <PickingKPI label={pickingCopy("kpi.pickedLines")} value={totals.picked} tone="success" />
+        <PickingKPI label={pickingCopy("kpi.exceptions")} value={totals.exceptions} tone={totals.exceptions === 0 ? "normal" : "danger"} />
       </section>
 
       <section className="erp-picking-workspace">
         <div className="erp-card erp-card--padded erp-picking-station-card">
           <div className="erp-section-header">
             <div>
-              <h2 className="erp-section-title">Scan queue</h2>
-              <p className="erp-section-description">{selectedTask?.pickTaskNo ?? "No pick task selected"}</p>
+              <h2 className="erp-section-title">{pickingCopy("sections.scanQueue")}</h2>
+              <p className="erp-section-description">{selectedTask?.pickTaskNo ?? pickingCopy("empty.noTaskSelected")}</p>
             </div>
             {selectedTask ? <StatusChip tone={pickTaskStatusTone(selectedTask.status)}>{pickTaskStatusLabel(selectedTask.status)}</StatusChip> : null}
           </div>
 
           <div className="erp-picking-meta-grid">
-            <PickingFact label="Order" value={selectedTask?.orderNo ?? "-"} />
-            <PickingFact label="Warehouse" value={selectedTask?.warehouseCode ?? "-"} />
-            <PickingFact label="Next SKU" value={pendingLine?.skuCode ?? "-"} />
-            <PickingFact label="Batch" value={pendingLine?.batchNo ?? "-"} />
-            <PickingFact label="Location" value={pendingLine?.binCode ?? "-"} />
+            <PickingFact label={pickingCopy("facts.order")} value={selectedTask?.orderNo ?? "-"} />
+            <PickingFact label={pickingCopy("facts.warehouse")} value={selectedTask?.warehouseCode ?? "-"} />
+            <PickingFact label={pickingCopy("facts.nextSku")} value={pendingLine?.skuCode ?? "-"} />
+            <PickingFact label={pickingCopy("facts.batch")} value={pendingLine?.batchNo ?? "-"} />
+            <PickingFact label={pickingCopy("facts.location")} value={pendingLine?.binCode ?? "-"} />
             <PickingFact
-              label="Qty"
+              label={pickingCopy("facts.qty")}
               value={pendingLine ? `${pendingLine.qtyToPick} ${pendingLine.baseUOMCode}` : "-"}
               tone={pendingLine ? "info" : "success"}
             />
           </div>
 
           <label className={`erp-picking-scan-primary erp-picking-scan-primary--${feedback.tone}`}>
-            <span>Scan SKU / batch / location</span>
+            <span>{pickingCopy("scan.label")}</span>
             <input
               ref={scanInputRef}
               value={scanValue}
               onChange={(event) => setScanValue(event.target.value)}
               onKeyDown={handleScanKeyDown}
-              placeholder={pendingLine ? `${pendingLine.skuCode} / ${pendingLine.batchNo} / ${pendingLine.binCode}` : "All lines picked"}
+              placeholder={
+                pendingLine
+                  ? `${pendingLine.skuCode} / ${pendingLine.batchNo} / ${pendingLine.binCode}`
+                  : pickingCopy("scan.placeholderDone")
+              }
               disabled={!selectedTask || busy || !pendingLine || selectedTask.status === "completed" || exceptionOpen}
             />
             <small>
@@ -395,7 +405,7 @@ export function PickingPrototype() {
                 onClick={() => handleException(option.value)}
                 disabled={!selectedTask || busy || selectedTask.status === "completed" || exceptionOpen}
               >
-                {option.label}
+                {pickingExceptionLabel(option.value)}
               </button>
             ))}
           </div>
@@ -403,8 +413,10 @@ export function PickingPrototype() {
 
         <div className="erp-card erp-card--padded erp-picking-queue-card">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Pick tasks</h2>
-            <StatusChip tone={displayedTasks.length === 0 ? "warning" : "info"}>{displayedTasks.length} rows</StatusChip>
+            <h2 className="erp-section-title">{pickingCopy("sections.pickTasks")}</h2>
+            <StatusChip tone={displayedTasks.length === 0 ? "warning" : "info"}>
+              {pickingCopy("rows", { count: displayedTasks.length })}
+            </StatusChip>
           </div>
           <DataTable
             columns={taskColumns}
@@ -419,8 +431,8 @@ export function PickingPrototype() {
       <section className="erp-card erp-card--padded erp-module-table-card">
         <div className="erp-section-header">
           <div>
-            <h2 className="erp-section-title">Pick lines</h2>
-            <p className="erp-section-description">SKU, batch, location, base UOM quantity, and picked quantity</p>
+            <h2 className="erp-section-title">{pickingCopy("sections.pickLines")}</h2>
+            <p className="erp-section-description">{pickingCopy("sections.pickLinesDescription")}</p>
           </div>
           <StatusChip tone={selectedTask && selectedTask.lines.every((line) => line.status === "picked") ? "success" : "warning"}>
             {selectedTask ? `${pickedLineCount(selectedTask)}/${selectedTask.lines.length}` : "0/0"}
@@ -432,8 +444,8 @@ export function PickingPrototype() {
           getRowKey={(row) => row.id}
           emptyState={
             <section className="erp-shipping-empty-state">
-              <StatusChip tone="warning">No task</StatusChip>
-              <strong>Select a pick task</strong>
+              <StatusChip tone="warning">{pickingCopy("empty.noTaskSelected")}</StatusChip>
+              <strong>{pickingCopy("empty.selectTask")}</strong>
             </section>
           }
         />
@@ -503,48 +515,26 @@ function isExceptionStatus(status: PickTaskStatus) {
   return ["missing_stock", "wrong_sku", "wrong_batch", "wrong_location", "cancelled"].includes(status);
 }
 
-function pickTaskStatusLabel(status: PickTaskStatus) {
-  switch (status) {
-    case "created":
-      return "Created";
-    case "assigned":
-      return "Assigned";
-    case "in_progress":
-      return "In progress";
-    case "completed":
-      return "Completed";
-    case "missing_stock":
-      return "Missing stock";
-    case "wrong_sku":
-      return "Wrong SKU";
-    case "wrong_batch":
-      return "Wrong batch";
-    case "wrong_location":
-      return "Wrong location";
-    case "cancelled":
-      return "Cancelled";
-    default:
-      return status;
+function pickingCopy(key: string, values?: Record<string, string | number>) {
+  return t(`shipping.picking.${key}`, { values });
+}
+
+function pickingWarehouseLabel(value: string, fallback: string) {
+  if (value === "") {
+    return pickingCopy("warehouse.all");
   }
+
+  return t(`shipping.picking.warehouse.${value}`, { fallback });
+}
+
+function pickingExceptionLabel(value: PickTaskExceptionCode) {
+  return pickingCopy(`exceptions.${value}`);
+}
+
+function pickTaskStatusLabel(status: PickTaskStatus) {
+  return pickingCopy(`status.${status}`);
 }
 
 function pickTaskLineStatusLabel(status: PickTaskLine["status"]) {
-  switch (status) {
-    case "pending":
-      return "Pending";
-    case "picked":
-      return "Picked";
-    case "missing_stock":
-      return "Missing stock";
-    case "wrong_sku":
-      return "Wrong SKU";
-    case "wrong_batch":
-      return "Wrong batch";
-    case "wrong_location":
-      return "Wrong location";
-    case "cancelled":
-      return "Cancelled";
-    default:
-      return status;
-  }
+  return pickingCopy(`status.${status}`);
 }

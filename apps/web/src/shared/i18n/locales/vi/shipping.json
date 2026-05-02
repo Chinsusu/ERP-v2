@@ -1,1 +1,96 @@
-{ "title": "Giao hàng", "manifest": "Bảng kê bàn giao ĐVVC" }
+{
+  "title": "Giao hàng",
+  "manifest": "Bảng kê bàn giao ĐVVC",
+  "picking": {
+    "title": "Trạm soạn hàng",
+    "description": "Soạn hàng bằng quét mã SKU, lô, vị trí và số lượng theo đơn vị cơ sở.",
+    "actions": {
+      "start": "Bắt đầu",
+      "complete": "Hoàn tất",
+      "select": "Chọn"
+    },
+    "filters": {
+      "label": "Bộ lọc soạn hàng",
+      "warehouse": "Kho",
+      "status": "Trạng thái",
+      "assignedUser": "Người phụ trách",
+      "assignedPlaceholder": "user-picker",
+      "allStatuses": "Tất cả trạng thái"
+    },
+    "columns": {
+      "task": "Phiếu soạn",
+      "warehouse": "Kho",
+      "status": "Trạng thái",
+      "lines": "Dòng",
+      "batch": "Lô",
+      "location": "Vị trí",
+      "qty": "Số lượng cần lấy",
+      "picked": "Đã lấy",
+      "state": "Tình trạng"
+    },
+    "kpi": {
+      "openTasks": "Phiếu đang mở",
+      "pendingLines": "Dòng chờ lấy",
+      "pickedLines": "Dòng đã lấy",
+      "exceptions": "Ngoại lệ"
+    },
+    "sections": {
+      "scanQueue": "Hàng chờ quét",
+      "pickTasks": "Phiếu soạn",
+      "pickLines": "Dòng soạn hàng",
+      "pickLinesDescription": "SKU, lô, vị trí, số lượng cơ sở và số lượng đã lấy."
+    },
+    "facts": {
+      "order": "Đơn",
+      "warehouse": "Kho",
+      "nextSku": "SKU kế tiếp",
+      "batch": "Lô",
+      "location": "Vị trí",
+      "qty": "Số lượng"
+    },
+    "scan": {
+      "label": "Quét SKU / lô / vị trí",
+      "placeholderDone": "Đã lấy đủ các dòng",
+      "readyTitle": "Sẵn sàng quét",
+      "readyDetail": "Quét SKU, lô, vị trí hoặc mã dòng soạn hàng",
+      "cannotAccept": "Phiếu chưa nhận quét",
+      "notMatched": "Mã quét không khớp dòng đang chờ",
+      "picked": "Đã lấy {sku}",
+      "started": "Đã bắt đầu soạn hàng",
+      "completed": "Đã hoàn tất soạn hàng",
+      "exceptionReported": "Đã ghi nhận ngoại lệ",
+      "actionFailed": "Thao tác soạn hàng thất bại",
+      "unknownError": "Lỗi không xác định"
+    },
+    "exceptionReason": "Ghi nhận từ trạm soạn hàng: {code}",
+    "empty": {
+      "noTaskSelected": "Chưa chọn phiếu soạn",
+      "selectTask": "Chọn một phiếu soạn"
+    },
+    "rows": "{count} dòng",
+    "status": {
+      "created": "Mới tạo",
+      "assigned": "Đã giao việc",
+      "in_progress": "Đang soạn",
+      "completed": "Hoàn tất",
+      "missing_stock": "Thiếu tồn",
+      "wrong_sku": "Sai SKU",
+      "wrong_batch": "Sai lô",
+      "wrong_location": "Sai vị trí",
+      "cancelled": "Đã hủy",
+      "pending": "Chờ lấy",
+      "picked": "Đã lấy"
+    },
+    "warehouse": {
+      "all": "Tất cả kho",
+      "wh-hcm-fg": "Kho thành phẩm HCM"
+    },
+    "exceptions": {
+      "missing_stock": "Thiếu tồn",
+      "wrong_sku": "Sai SKU",
+      "wrong_batch": "Sai lô",
+      "wrong_location": "Sai vị trí",
+      "cancelled": "Hủy phiếu"
+    }
+  }
+}
