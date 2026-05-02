@@ -92,5 +92,91 @@
       "wrong_location": "Sai vị trí",
       "cancelled": "Hủy phiếu"
     }
+  },
+  "packing": {
+    "title": "Trạm đóng hàng",
+    "description": "Kiểm SKU, lô và số lượng theo đơn vị cơ sở trước khi bàn giao ĐVVC.",
+    "actions": {
+      "start": "Bắt đầu",
+      "confirmPack": "Xác nhận đóng hàng",
+      "select": "Chọn"
+    },
+    "filters": {
+      "label": "Bộ lọc đóng hàng",
+      "warehouse": "Kho",
+      "status": "Trạng thái",
+      "assignedUser": "Người phụ trách",
+      "assignedPlaceholder": "user-packer",
+      "allStatuses": "Tất cả trạng thái"
+    },
+    "columns": {
+      "task": "Phiếu đóng",
+      "warehouse": "Kho",
+      "status": "Trạng thái",
+      "lines": "Dòng",
+      "batch": "Lô",
+      "qty": "Số lượng cần đóng",
+      "packed": "Đã đóng",
+      "state": "Tình trạng"
+    },
+    "kpi": {
+      "openTasks": "Phiếu đang mở",
+      "pendingLines": "Dòng chờ đóng",
+      "packedLines": "Dòng đã đóng",
+      "exceptions": "Ngoại lệ"
+    },
+    "sections": {
+      "packingQueue": "Hàng chờ đóng",
+      "packTasks": "Phiếu đóng",
+      "packLines": "Dòng đóng hàng",
+      "packLinesDescription": "SKU, lô, số lượng cơ sở và số lượng đã đóng."
+    },
+    "facts": {
+      "order": "Đơn",
+      "pickTask": "Phiếu soạn",
+      "warehouse": "Kho",
+      "nextSku": "SKU kế tiếp",
+      "batch": "Lô",
+      "qty": "Số lượng"
+    },
+    "scan": {
+      "label": "Quét SKU / lô / dòng đóng",
+      "placeholderDone": "Đã đóng đủ các dòng",
+      "readyTitle": "Sẵn sàng đóng hàng",
+      "readyDetail": "Quét SKU, lô hoặc mã dòng đóng hàng",
+      "cannotAccept": "Phiếu chưa nhận quét",
+      "notMatched": "Mã quét không khớp dòng đang chờ",
+      "verified": "Đã kiểm {sku}",
+      "started": "Đã bắt đầu đóng hàng",
+      "confirmed": "Đã xác nhận đóng hàng",
+      "exceptionReported": "Đã ghi nhận ngoại lệ",
+      "actionFailed": "Thao tác đóng hàng thất bại",
+      "unknownError": "Lỗi không xác định"
+    },
+    "note": {
+      "label": "Ghi chú đóng hàng",
+      "placeholder": "Hư seal, thiếu hàng, sai mã hàng hoặc ghi chú bao bì"
+    },
+    "exceptionReason": "Ghi nhận từ trạm đóng hàng: {code}",
+    "empty": {
+      "noTaskSelected": "Chưa chọn phiếu đóng",
+      "selectTask": "Chọn một phiếu đóng"
+    },
+    "rows": "{count} dòng",
+    "status": {
+      "created": "Mới tạo",
+      "in_progress": "Đang đóng",
+      "packed": "Đã đóng",
+      "pack_exception": "Lỗi đóng hàng",
+      "cancelled": "Đã hủy",
+      "pending": "Chờ đóng"
+    },
+    "warehouse": {
+      "all": "Tất cả kho",
+      "wh-hcm-fg": "Kho thành phẩm HCM"
+    },
+    "exceptions": {
+      "pack_exception": "Lỗi đóng hàng"
+    }
   }
 }
