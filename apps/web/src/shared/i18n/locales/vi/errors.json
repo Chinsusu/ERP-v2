@@ -1,0 +1,17 @@
+{
+  "INSUFFICIENT_STOCK": "Tồn khả dụng không đủ.",
+  "INVALID_BATCH_STATUS": "Lô này chưa đạt QC, không được phép sử dụng.",
+  "ORDER_NOT_PACKED": "Đơn hàng chưa đóng gói, không thể bàn giao.",
+  "MANIFEST_ORDER_MISSING": "Bảng kê còn thiếu đơn chưa quét.",
+  "ORDER_NOT_IN_MANIFEST": "Đơn này không thuộc bảng kê bàn giao hiện tại.",
+  "RETURN_ALREADY_RECEIVED": "Hàng hoàn này đã được tiếp nhận.",
+  "RETURN_NOT_INSPECTED": "Hàng hoàn chưa được kiểm tra tình trạng.",
+  "SHIFT_HAS_UNRESOLVED_ISSUES": "Ca làm còn vấn đề chưa xử lý, chưa thể đóng ca.",
+  "QC_REQUIRED": "Hàng này cần QC trước khi nhập tồn khả dụng.",
+  "INVALID_UOM_CONVERSION": "Quy đổi đơn vị tính không hợp lệ.",
+  "REQUIRED_FIELD": "Vui lòng nhập thông tin bắt buộc.",
+  "PERMISSION_DENIED": "Bạn không có quyền thực hiện thao tác này.",
+  "SESSION_EXPIRED": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+  "VALIDATION_DECIMAL": "Giá trị phải là số hợp lệ.",
+  "VALIDATION_POSITIVE_QTY": "Số lượng phải lớn hơn 0."
+}

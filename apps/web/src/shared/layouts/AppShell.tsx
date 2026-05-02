@@ -4,6 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { MockUser } from "@/shared/auth/mockSession";
+import { getActionLabel } from "@/shared/i18n/action-labels";
+import { t } from "@/shared/i18n";
+import { getNavigationGroupLabel, getNavigationItemLabel } from "@/shared/i18n/navigation-labels";
 import { getVisibleActions, getVisibleMenuGroups, topbarActions } from "@/shared/permissions/menu";
 
 type AppShellProps = {
@@ -23,33 +26,33 @@ export function AppShell({ children, user }: AppShellProps) {
   return (
     <div className="erp-shell">
       <header className="erp-topbar">
-        <Link className="erp-brand" href="/dashboard" aria-label="ERP dashboard">
+        <Link className="erp-brand" href="/dashboard" aria-label={t("navigation.items.dashboard")}>
           <span className="erp-brand-mark" aria-hidden="true">
             ERP
           </span>
-          <span className="erp-brand-text">ERP Platform</span>
+          <span className="erp-brand-text">{t("common.appName")}</span>
         </Link>
 
         <label className="erp-global-search">
-          <span className="erp-sr-only">Global search</span>
+          <span className="erp-sr-only">{t("common.globalSearch")}</span>
           <input
             className="erp-global-search-input"
             type="search"
-            placeholder="Search order, SKU, batch, receipt, tracking code..."
+            placeholder={t("common.searchPlaceholder")}
           />
         </label>
 
-        <div className="erp-topbar-actions" aria-label="Quick actions">
+        <div className="erp-topbar-actions" aria-label={t("common.quickActions")}>
           {actions.map((action) => (
             <button
               className={`erp-button erp-button--${action.variant}`}
               key={action.label}
               type="button"
             >
-              {action.label}
+              {getActionLabel(action.label)}
             </button>
           ))}
-          <div className="erp-user-badge" aria-label={`Signed in as ${user.name}`}>
+          <div className="erp-user-badge" aria-label={t("common.signedInAs", { values: { name: user.name } })}>
             <span className="erp-user-avatar" aria-hidden="true">
               {user.name.slice(0, 2).toUpperCase()}
             </span>
@@ -62,7 +65,7 @@ export function AppShell({ children, user }: AppShellProps) {
       </header>
 
       <div className="erp-shell-body">
-        <aside className="erp-sidebar" aria-label="ERP navigation">
+        <aside className="erp-sidebar" aria-label={t("common.navigation")}>
           {groups.map((group) => (
             <nav
               className="erp-sidebar-group"
@@ -70,7 +73,7 @@ export function AppShell({ children, user }: AppShellProps) {
               aria-labelledby={`menu-${group.label}`}
             >
               <h2 className="erp-sidebar-heading" id={`menu-${group.label}`}>
-                {group.label}
+                {getNavigationGroupLabel(group.label)}
               </h2>
               <ul className="erp-sidebar-list">
                 {group.items.map((item) => {
@@ -87,7 +90,7 @@ export function AppShell({ children, user }: AppShellProps) {
                         <span className="erp-sidebar-code" aria-hidden="true">
                           {item.code}
                         </span>
-                        <span>{item.label}</span>
+                        <span>{getNavigationItemLabel(item)}</span>
                       </Link>
                     </li>
                   );

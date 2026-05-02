@@ -1,6 +1,7 @@
 "use client";
 
 import { ConfigProvider } from "antd";
+import viVN from "antd/locale/vi_VN";
 import type { ReactNode } from "react";
 import { erpTheme } from "./theme";
 
@@ -9,5 +10,9 @@ type DesignSystemProviderProps = {
 };
 
 export function DesignSystemProvider({ children }: DesignSystemProviderProps) {
-  return <ConfigProvider theme={erpTheme}>{children}</ConfigProvider>;
+  return (
+    <ConfigProvider locale={viVN} theme={erpTheme}>
+      {children}
+    </ConfigProvider>
+  );
 }

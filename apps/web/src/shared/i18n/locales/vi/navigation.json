@@ -1,0 +1,31 @@
+{
+  "groups": {
+    "Overview": "Tổng quan",
+    "Operations": "Vận hành",
+    "Data": "Dữ liệu gốc",
+    "Control": "Kiểm soát"
+  },
+  "items": {
+    "dashboard": "Tổng quan",
+    "alerts": "Trung tâm cảnh báo",
+    "warehouse": "Bảng công việc kho",
+    "receiving": "Nhập kho",
+    "inventory": "Kho hàng",
+    "purchase": "Mua hàng",
+    "qc": "Kiểm chất lượng",
+    "production": "Sản xuất",
+    "subcontract": "Gia công ngoài",
+    "sales": "Đơn bán hàng",
+    "shipping": "Giao hàng",
+    "returns": "Hàng hoàn",
+    "masterData": "Dữ liệu gốc",
+    "skuBatch": "SKU / Lô",
+    "suppliers": "Nhà cung cấp / Nhà máy",
+    "customers": "Khách hàng",
+    "approvals": "Phê duyệt",
+    "finance": "Tài chính",
+    "auditLog": "Nhật ký thao tác",
+    "reports": "Báo cáo",
+    "settings": "Cài đặt"
+  }
+}
