@@ -4,9 +4,9 @@ Project: Web ERP for cosmetics operations
 Phase: Phase 1
 Sprint: Sprint 20 - Release hygiene, API modularization, and fallback cleanup
 Document role: Coding task board
-Version: v1.0
+Version: v1.1
 Date: 2026-05-02
-Status: Planned after Sprint 19 Vietnamese UI Localization
+Status: Implemented on main through S20-08
 
 ---
 
@@ -81,3 +81,24 @@ release tag points to the intended main commit
 ```
 
 For S20-06 and S20-07, add targeted backend/web tests as needed and run the relevant local/dev checks before PR.
+
+---
+
+## 6. Completion Notes
+
+Sprint 20 follows Sprint 19 in the release order. It is a hardening sprint, not a product-workflow sprint.
+
+Completed outputs:
+
+```text
+S20-01 README current status updated.
+S20-02 Sprint 19 changelog updated after CI rerun.
+S20-03 Sprint 19 release tag v0.19.0-vietnamese-ui-localization pushed.
+S20-04 Migration CI now validates apply -> rollback -> reapply.
+S20-05 GitHub Actions run with Node 24 compatibility enabled.
+S20-06 API route registration is split by module.
+S20-07 Frontend prototype fallback is blocked in production mode.
+S20-08 Production runtime mode checklist added in docs/78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md.
+```
+
+Next sprint should not start until the latest `main` required-ci run is green after S20-08 merge.
