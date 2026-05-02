@@ -6,7 +6,7 @@ Sprint: Sprint 18 - Auth/session runtime store persistence v1
 Document role: Sprint changelog and release evidence
 Version: v1.0
 Date: 2026-05-02
-Status: Release evidence complete except cloud CI; production tag is on hold while GitHub Actions minutes are exhausted
+Status: Release gate green after cloud CI rerun; production/dev tag target is ready for `v0.18.0-auth-session-runtime-store-persistence`
 
 ---
 
@@ -163,9 +163,11 @@ The same full smoke also passed the previously persisted master data, finance, s
 GitHub Actions status:
 
 ```text
-Cloud CI is blocked for Sprint 18 PRs because the GitHub Actions plan has used 100% of the included monthly minutes.
-Quota message: 2,000 min used / 2,000 min included.
-Do not treat Sprint 18 as production-tagged while this CI gate is blocked.
+Cloud CI was rerun after the GitHub Actions minutes blocker was cleared.
+Main required-ci #981: success on 2026-05-02 for commit 9112c399.
+Jobs passed: required-api, required-web, required-openapi, required-migration.
+required-migration used PostgreSQL 16-alpine and passed migration apply plus rollback.
+Production/dev tag target: ready for v0.18.0-auth-session-runtime-store-persistence after tag push.
 ```
 
 Local/dev verification highlights:
@@ -182,7 +184,7 @@ S18-04-02: smoke script syntax check passed; merged full dev smoke passed.
 S18-05-01: backend auth/audit regression tests passed.
 S18-05-01: web permission/audit regression tests passed, 19 tests.
 S18-06-01: remaining prototype ledger updated; documentation-only change.
-S18-07-01: changelog created with CI blocked and tag hold recorded.
+S18-07-01: changelog created with CI blocked and tag hold recorded, then updated after CI rerun green.
 ```
 
 Migration runtime gate:
@@ -231,23 +233,17 @@ production identity-provider integration
 Sprint 18 release gate status:
 
 ```text
-Task PRs: merged through S18-06-01 PR #504; this changelog is S18-07-01 PR #505
-Main cloud CI: blocked by exhausted GitHub Actions minutes
+Task PRs: merged through S18-07-01 PR #505
+Main cloud CI: green after rerun on required-ci #981 at commit 9112c399
 Dev runtime smoke: green at runtime commit be417d23
-Docs-only main sync: pending after this changelog merge
+Docs-only main sync: completed through PR #505
 Migration apply/down/reapply: green on PostgreSQL 16 isolated instance
-Production tag: HOLD
+Required migration CI: apply plus rollback green on PostgreSQL 16-alpine
+Production/dev tag: ready for v0.18.0-auth-session-runtime-store-persistence after tag push
 ```
 
-Recommended production tag after CI is available and green:
+Recommended production/dev tag:
 
 ```text
 v0.18.0-auth-session-runtime-store-persistence
-```
-
-Do not create the tag until either:
-
-```text
-1. GitHub Actions minutes reset or billing is fixed, required checks run, and the checks are green; or
-2. the team explicitly accepts a manual-only release gate for this sprint.
 ```
