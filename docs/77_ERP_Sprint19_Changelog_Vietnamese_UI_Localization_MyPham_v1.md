@@ -6,7 +6,7 @@ Sprint: Sprint 19 - Vietnamese UI Localization
 Document role: Sprint changelog and release evidence
 Version: v1.0
 Date: 2026-05-02
-Status: Release candidate ready after cloud CI passed; production/dev tag target is `v0.19.0-vietnamese-ui-localization`
+Status: Released as `v0.19.0-vietnamese-ui-localization` after cloud CI passed on the Sprint 19 release commit
 
 ---
 
@@ -62,7 +62,7 @@ Full multi-language admin switching
 | S19-09 master data and inventory localization | #523, #524, #525, #526 | Localized product, party, warehouse/location master data, inventory, available stock, and batch QC audit UI |
 | S19-10 auth, audit, and attachment localization | #527, #528, #529 | Localized login, audit log, attachment panels, return evidence, and supplier rejection evidence UI |
 | S19-11 localization tests/checklist | #530 | Added i18n smoke tests, hardcoded-English checklist, and broader label mapping test coverage |
-| S19-12 README and changelog | this PR | Updated README current status and created this Sprint 19 changelog |
+| S19-12 README and changelog | #531 | Updated README current status and created this Sprint 19 changelog |
 
 All PRs used the manual review and merge flow. GitHub auto review and auto merge were not used.
 
@@ -114,12 +114,12 @@ Cloud PR checks:
 #530 required-ci, web-ci, e2e-ci: success after import fix
 ```
 
-Latest verified main gate after Sprint 19 tests:
+Latest verified Sprint 19 release gate:
 
 ```text
-main commit c4315109
-required-ci run 25259832451: success
-web-ci run 25259832472: success
+release commit df9b9567
+release tag v0.19.0-vietnamese-ui-localization
+required-ci run 25259927794: success
 required-api: success
 required-web: success
 required-openapi: success
@@ -148,13 +148,10 @@ Frontend test execution was verified by GitHub Actions web-ci/required-web.
 
 ## 5. Release Recommendation
 
-Recommended Sprint 19 tag after this changelog PR merges and main checks pass:
+Sprint 19 tag:
 
-```bash
-git checkout main
-git pull origin main
-git tag v0.19.0-vietnamese-ui-localization
-git push origin v0.19.0-vietnamese-ui-localization
+```text
+v0.19.0-vietnamese-ui-localization -> df9b9567
 ```
 
 Do not treat this as a backend persistence release. Sprint 19 is a UI localization release on top of the Sprint 18 runtime persistence baseline.
