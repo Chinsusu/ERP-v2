@@ -32,7 +32,7 @@ Start with:
 
 Current `main`: Sprint 19 completed.
 
-Latest release candidate:
+Latest release tag:
 
 ```text
 v0.19.0-vietnamese-ui-localization
@@ -41,8 +41,7 @@ v0.19.0-vietnamese-ui-localization
 Latest verified cloud gate:
 
 ```text
-required-ci on main commit c4315109: success
-web-ci on main commit c4315109: success
+required-ci on main commit df9b9567: success
 required-api, required-web, required-openapi, required-migration: pass
 required-migration: PostgreSQL 16 apply plus rollback passed
 ```
