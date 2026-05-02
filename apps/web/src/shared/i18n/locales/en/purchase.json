@@ -112,5 +112,154 @@
   "empty": {
     "noSelection": "No purchase order selected",
     "noMatches": "No purchase orders match the filters"
+  },
+  "receiving": {
+    "title": "Warehouse Receiving",
+    "description": "Goods receipt draft, delivery document, lot, expiry, packaging check, and movement evidence",
+    "status": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "inspect_ready": "Inspect ready",
+      "posted": "Posted"
+    },
+    "filters": {
+      "label": "Goods receipt filters",
+      "warehouse": "Warehouse",
+      "status": "Status",
+      "allStatuses": "All statuses"
+    },
+    "columns": {
+      "receipt": "Receipt",
+      "po": "PO",
+      "warehouse": "Warehouse",
+      "status": "Status",
+      "sku": "SKU",
+      "quantity": "Quantity",
+      "movement": "Movement",
+      "action": "Action"
+    },
+    "draft": {
+      "title": "New receipt draft"
+    },
+    "po": {
+      "context": "PO context",
+      "openCount": "{count} open",
+      "openPO": "Open PO",
+      "manualReference": "Manual reference",
+      "reference": "PO reference",
+      "line": "PO line",
+      "of": "of"
+    },
+    "delivery": {
+      "title": "Delivery check",
+      "note": "Delivery note",
+      "packaging": "Packaging"
+    },
+    "fields": {
+      "supplier": "Supplier",
+      "location": "Location",
+      "note": "Receiving note"
+    },
+    "line": {
+      "check": "Line check",
+      "batchSku": "Batch / SKU",
+      "quantity": "Quantity",
+      "uom": "UOM",
+      "baseUom": "Base UOM",
+      "lot": "Lot",
+      "expiry": "Expiry",
+      "lines": "Lines",
+      "columns": {
+        "sku": "SKU",
+        "poLine": "PO line",
+        "lotExpiry": "Lot / Expiry",
+        "packaging": "Packaging",
+        "qc": "QC",
+        "quantity": "Quantity"
+      }
+    },
+    "packaging": {
+      "intact": "Intact",
+      "damaged": "Damaged",
+      "missing_label": "Missing label",
+      "leaking": "Leaking"
+    },
+    "qcStatus": {
+      "hold": "Hold",
+      "pass": "Pass",
+      "fail": "Fail",
+      "quarantine": "Quarantine",
+      "retest_required": "Retest"
+    },
+    "stockStatus": {
+      "available": "Available",
+      "qc_hold": "QC hold"
+    },
+    "movement": {
+      "title": "Stock movements",
+      "postedCount": "{count} posted",
+      "emptyTitle": "No stock movement posted",
+      "emptyDescription": "Post the receipt after inspection.",
+      "columns": {
+        "movement": "Movement",
+        "stock": "Stock",
+        "quantity": "Quantity"
+      }
+    },
+    "attachments": {
+      "title": "Receiving attachments",
+      "empty": "No delivery evidence attached.",
+      "deliveryNote": "Delivery note",
+      "supplier": "supplier",
+      "document": "document",
+      "receivingEvidence": "Receiving evidence",
+      "warehouse": "warehouse",
+      "draftReference": "Draft reference",
+      "reference": "Attachment ref",
+      "placeholder": "DN scan, COA, packaging photo"
+    },
+    "detail": {
+      "title": "Receipt detail",
+      "receipt": "Receipt",
+      "deliveryNote": "Delivery note",
+      "po": "PO",
+      "supplier": "Supplier",
+      "warehouse": "Warehouse",
+      "location": "Location",
+      "updated": "Updated",
+      "audit": "Audit"
+    },
+    "list": {
+      "title": "Goods receipts",
+      "rows": "{count} rows"
+    },
+    "actions": {
+      "remove": "Remove",
+      "submit": "Submit",
+      "inspectReady": "Inspect ready",
+      "post": "Post",
+      "view": "View",
+      "creating": "Creating",
+      "createDraft": "Create draft"
+    },
+    "feedback": {
+      "ready": "Ready",
+      "loading": "Loading",
+      "purchaseOrdersLoadFailed": "Purchase orders could not be loaded",
+      "purchaseOrderLoadFailed": "Purchase order could not be loaded",
+      "created": "{receiptNo} created",
+      "createFailed": "Goods receipt could not be created",
+      "actionFailed": "Goods receipt action failed"
+    },
+    "empty": {
+      "noSelection": "No goods receipt selected",
+      "noSelectionDescription": "Create or select a receipt.",
+      "noReceipts": "No goods receipts",
+      "changeFilters": "Change warehouse or status filter."
+    },
+    "confirmPost": {
+      "title": "Post goods receipt",
+      "description": "{receiptNo} will create stock movement records."
+    }
   }
 }

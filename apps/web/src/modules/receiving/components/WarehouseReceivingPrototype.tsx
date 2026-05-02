@@ -10,8 +10,8 @@ import {
   type StatusTone
 } from "@/shared/design-system/components";
 import { AttachmentPanel, type AttachmentPanelItem } from "@/shared/design-system/pageTemplates";
+import { t } from "@/shared/i18n";
 import {
-  formatPurchaseOrderStatus,
   formatPurchaseQuantity,
   getPurchaseOrder,
   getPurchaseOrders,
@@ -22,8 +22,6 @@ import type { PurchaseOrder, PurchaseOrderLine } from "../../purchase/types";
 import { useGoodsReceipts } from "../hooks/useGoodsReceipts";
 import {
   createGoodsReceipt,
-  formatGoodsReceiptStatus,
-  formatQCStatus,
   formatReceivingDateTime,
   formatReceivingQuantity,
   goodsReceiptStatusTone,
@@ -37,6 +35,7 @@ import {
   submitGoodsReceipt
 } from "../services/warehouseReceivingService";
 import type {
+  BatchQCStatus,
   GoodsReceipt,
   GoodsReceiptLine,
   GoodsReceiptQuery,
@@ -48,11 +47,11 @@ import type {
 type StatusFilter = "" | GoodsReceiptStatus;
 
 const statusOptions: { label: string; value: StatusFilter }[] = [
-  { label: "All statuses", value: "" },
-  { label: "Draft", value: "draft" },
-  { label: "Submitted", value: "submitted" },
-  { label: "Inspect ready", value: "inspect_ready" },
-  { label: "Posted", value: "posted" }
+  { label: receivingCopy("filters.allStatuses"), value: "" },
+  { label: goodsReceiptStatusLabel("draft"), value: "draft" },
+  { label: goodsReceiptStatusLabel("submitted"), value: "submitted" },
+  { label: goodsReceiptStatusLabel("inspect_ready"), value: "inspect_ready" },
+  { label: goodsReceiptStatusLabel("posted"), value: "posted" }
 ];
 
 const defaultBatch = receivingBatchOptions[1] ?? receivingBatchOptions[0];
@@ -60,7 +59,7 @@ const defaultBatch = receivingBatchOptions[1] ?? receivingBatchOptions[0];
 const receiptColumns: DataTableColumn<GoodsReceipt>[] = [
   {
     key: "receipt",
-    header: "Receipt",
+    header: receivingCopy("columns.receipt"),
     render: (row) => (
       <span className="erp-receiving-receipt-cell">
         <strong>{row.receiptNo}</strong>
@@ -71,39 +70,44 @@ const receiptColumns: DataTableColumn<GoodsReceipt>[] = [
   },
   {
     key: "reference",
-    header: "PO",
+    header: receivingCopy("columns.po"),
     render: (row) => row.referenceDocId,
     width: "170px"
   },
   {
     key: "warehouse",
-    header: "Warehouse",
+    header: receivingCopy("columns.warehouse"),
     render: (row) => row.warehouseCode,
     width: "150px"
   },
   {
     key: "status",
-    header: "Status",
-    render: (row) => <StatusChip tone={goodsReceiptStatusTone(row.status)}>{formatGoodsReceiptStatus(row.status)}</StatusChip>,
+    header: receivingCopy("columns.status"),
+    render: (row) => <StatusChip tone={goodsReceiptStatusTone(row.status)}>{goodsReceiptStatusLabel(row.status)}</StatusChip>,
     width: "150px"
   },
   {
     key: "sku",
-    header: "SKU",
+    header: receivingCopy("columns.sku"),
     render: (row) => row.lines[0]?.sku ?? "-",
     width: "160px"
   },
   {
     key: "quantity",
-    header: "Quantity",
+    header: receivingCopy("columns.quantity"),
     render: (row) => formatReceivingQuantity(row.lines[0]?.quantity ?? "0", row.lines[0]?.baseUomCode),
     align: "right",
     width: "140px"
   },
   {
     key: "movement",
-    header: "Movement",
-    render: (row) => (row.stockMovements?.length ? <StatusChip tone="success">{row.stockMovements.length} posted</StatusChip> : "-"),
+    header: receivingCopy("columns.movement"),
+    render: (row) =>
+      row.stockMovements?.length ? (
+        <StatusChip tone="success">{receivingCopy("movement.postedCount", { count: row.stockMovements.length })}</StatusChip>
+      ) : (
+        "-"
+      ),
     width: "130px"
   }
 ];
@@ -111,7 +115,7 @@ const receiptColumns: DataTableColumn<GoodsReceipt>[] = [
 const lineColumns: DataTableColumn<GoodsReceiptLine>[] = [
   {
     key: "sku",
-    header: "SKU",
+    header: receivingCopy("line.columns.sku"),
     render: (row) => (
       <span className="erp-receiving-receipt-cell">
         <strong>{row.sku}</strong>
@@ -121,13 +125,13 @@ const lineColumns: DataTableColumn<GoodsReceiptLine>[] = [
   },
   {
     key: "poLine",
-    header: "PO line",
+    header: receivingCopy("line.columns.poLine"),
     render: (row) => row.purchaseOrderLineId ?? "-",
     width: "180px"
   },
   {
     key: "lot",
-    header: "Lot / Expiry",
+    header: receivingCopy("line.columns.lotExpiry"),
     render: (row) => (
       <span className="erp-receiving-receipt-cell">
         <strong>{row.lotNo ?? row.batchNo ?? row.batchId ?? "-"}</strong>
@@ -138,19 +142,19 @@ const lineColumns: DataTableColumn<GoodsReceiptLine>[] = [
   },
   {
     key: "packaging",
-    header: "Packaging",
+    header: receivingCopy("line.columns.packaging"),
     render: (row) => <StatusChip tone={row.packagingStatus === "intact" ? "success" : "warning"}>{formatPackagingStatus(row.packagingStatus)}</StatusChip>,
     width: "150px"
   },
   {
     key: "qc",
-    header: "QC",
-    render: (row) => <StatusChip tone={qcStatusTone(row.qcStatus)}>{formatQCStatus(row.qcStatus)}</StatusChip>,
+    header: receivingCopy("line.columns.qc"),
+    render: (row) => <StatusChip tone={qcStatusTone(row.qcStatus)}>{qcStatusLabel(row.qcStatus)}</StatusChip>,
     width: "130px"
   },
   {
     key: "quantity",
-    header: "Quantity",
+    header: receivingCopy("line.columns.quantity"),
     render: (row) => formatReceivingQuantity(row.quantity, row.baseUomCode),
     align: "right",
     width: "130px"
@@ -160,18 +164,18 @@ const lineColumns: DataTableColumn<GoodsReceiptLine>[] = [
 const movementColumns: DataTableColumn<GoodsReceiptStockMovement>[] = [
   {
     key: "movement",
-    header: "Movement",
+    header: receivingCopy("movement.columns.movement"),
     render: (row) => row.movementNo
   },
   {
     key: "status",
-    header: "Stock",
-    render: (row) => <StatusChip tone={row.stockStatus === "available" ? "success" : "warning"}>{row.stockStatus}</StatusChip>,
+    header: receivingCopy("movement.columns.stock"),
+    render: (row) => <StatusChip tone={row.stockStatus === "available" ? "success" : "warning"}>{stockStatusLabel(row.stockStatus)}</StatusChip>,
     width: "120px"
   },
   {
     key: "quantity",
-    header: "Quantity",
+    header: receivingCopy("movement.columns.quantity"),
     render: (row) => formatReceivingQuantity(row.quantity, row.baseUomCode),
     align: "right",
     width: "130px"
@@ -232,11 +236,11 @@ export function WarehouseReceivingPrototype() {
       items.push({
         id: `${selectedReceipt.id}:delivery-note`,
         name: selectedReceipt.deliveryNoteNo,
-        kind: "Delivery note",
-        uploadedBy: selectedReceipt.supplierId ?? "supplier",
+        kind: receivingCopy("attachments.deliveryNote"),
+        uploadedBy: selectedReceipt.supplierId ?? receivingCopy("attachments.supplier"),
         uploadedAt: selectedReceipt.updatedAt,
         storageKey: `receiving/${selectedReceipt.id}/${selectedReceipt.deliveryNoteNo}`,
-        status: <StatusChip tone="info">document</StatusChip>,
+        status: <StatusChip tone="info">{receivingCopy("attachments.document")}</StatusChip>,
         canDownload: true,
         onDownload: () => setFeedback({ tone: "info", message: selectedReceipt.deliveryNoteNo ?? "" })
       });
@@ -245,13 +249,13 @@ export function WarehouseReceivingPrototype() {
       items.push({
         id: "draft-attachment-ref",
         name: attachmentRef.trim(),
-        kind: "Receiving evidence",
-        uploadedBy: "warehouse",
+        kind: receivingCopy("attachments.receivingEvidence"),
+        uploadedBy: receivingCopy("attachments.warehouse"),
         uploadedAt: selectedReceipt?.updatedAt ?? new Date().toISOString(),
-        detail: "Draft reference",
-        status: <StatusChip tone="warning">draft</StatusChip>,
+        detail: receivingCopy("attachments.draftReference"),
+        status: <StatusChip tone="warning">{goodsReceiptStatusLabel("draft")}</StatusChip>,
         canDelete: true,
-        deleteLabel: "Remove",
+        deleteLabel: receivingCopy("actions.remove"),
         onDelete: () => setAttachmentRef("")
       });
     }
@@ -275,7 +279,7 @@ export function WarehouseReceivingPrototype() {
       })
       .catch((reason) => {
         if (active) {
-          setPurchaseOrderError(reason instanceof Error ? reason.message : "Purchase orders could not be loaded");
+          setPurchaseOrderError(reason instanceof Error ? reason.message : receivingCopy("feedback.purchaseOrdersLoadFailed"));
         }
       })
       .finally(() => {
@@ -314,7 +318,7 @@ export function WarehouseReceivingPrototype() {
       applyPurchaseOrder(order, order.lines[0]?.id);
     } catch (reason) {
       setPurchaseOrderDetail(null);
-      setPurchaseOrderError(reason instanceof Error ? reason.message : "Purchase order could not be loaded");
+      setPurchaseOrderError(reason instanceof Error ? reason.message : receivingCopy("feedback.purchaseOrderLoadFailed"));
     } finally {
       setPurchaseOrdersLoading(false);
     }
@@ -396,9 +400,9 @@ export function WarehouseReceivingPrototype() {
       });
       upsertLocalReceipt(receipt);
       setSelectedReceiptId(receipt.id);
-      setFeedback({ tone: "success", message: `${receipt.receiptNo} created` });
+      setFeedback({ tone: "success", message: receivingCopy("feedback.created", { receiptNo: receipt.receiptNo }) });
     } catch (reason) {
-      setFeedback({ tone: "danger", message: reason instanceof Error ? reason.message : "Goods receipt could not be created" });
+      setFeedback({ tone: "danger", message: reason instanceof Error ? reason.message : receivingCopy("feedback.createFailed") });
     } finally {
       setBusyAction("");
     }
@@ -420,9 +424,9 @@ export function WarehouseReceivingPrototype() {
             : await postGoodsReceipt(receipt.id);
       upsertLocalReceipt(updated);
       setSelectedReceiptId(updated.id);
-      setFeedback({ tone: "success", message: `${updated.receiptNo} / ${formatGoodsReceiptStatus(updated.status)}` });
+      setFeedback({ tone: "success", message: `${updated.receiptNo} / ${goodsReceiptStatusLabel(updated.status)}` });
     } catch (reason) {
-      setFeedback({ tone: "danger", message: reason instanceof Error ? reason.message : "Goods receipt action failed" });
+      setFeedback({ tone: "danger", message: reason instanceof Error ? reason.message : receivingCopy("feedback.actionFailed") });
     } finally {
       setBusyAction("");
       setConfirmPostId(null);
@@ -438,25 +442,25 @@ export function WarehouseReceivingPrototype() {
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">RC</p>
-          <h1 className="erp-page-title">Warehouse Receiving</h1>
-          <p className="erp-page-description">Goods receipt draft, delivery document, lot, expiry, packaging check, and movement evidence</p>
+          <h1 className="erp-page-title">{receivingCopy("title")}</h1>
+          <p className="erp-page-description">{receivingCopy("description")}</p>
         </div>
         <div className="erp-page-actions">
           <a className="erp-button erp-button--secondary" href="#receiving-draft">
-            Draft
+            {goodsReceiptStatusLabel("draft")}
           </a>
           <a className="erp-button erp-button--secondary" href="#receiving-detail">
-            Detail
+            {receivingCopy("detail.title")}
           </a>
           <a className="erp-button erp-button--primary" href="#receiving-list">
-            Receipts
+            {receivingCopy("list.title")}
           </a>
         </div>
       </header>
 
-      <section className="erp-receiving-toolbar" aria-label="Goods receipt filters">
+      <section className="erp-receiving-toolbar" aria-label={receivingCopy("filters.label")}>
         <label className="erp-field">
-          <span>Warehouse</span>
+          <span>{receivingCopy("filters.warehouse")}</span>
           <select className="erp-input" value={warehouseId} onChange={(event) => handleWarehouseChange(event.target.value)}>
             {receivingWarehouseOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -466,7 +470,7 @@ export function WarehouseReceivingPrototype() {
           </select>
         </label>
         <label className="erp-field">
-          <span>Status</span>
+          <span>{receivingCopy("filters.status")}</span>
           <select className="erp-input" value={status} onChange={(event) => setStatus(event.target.value as StatusFilter)}>
             {statusOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -478,37 +482,37 @@ export function WarehouseReceivingPrototype() {
       </section>
 
       <section className="erp-kpi-grid erp-receiving-kpis">
-        <ReceivingKPI label="Draft" tone="warning" value={totals.draft} />
-        <ReceivingKPI label="Submitted" tone="info" value={totals.submitted} />
-        <ReceivingKPI label="Inspect ready" tone="warning" value={totals.inspectReady} />
-        <ReceivingKPI label="Posted" tone="success" value={totals.posted} />
+        <ReceivingKPI label={goodsReceiptStatusLabel("draft")} tone="warning" value={totals.draft} />
+        <ReceivingKPI label={goodsReceiptStatusLabel("submitted")} tone="info" value={totals.submitted} />
+        <ReceivingKPI label={goodsReceiptStatusLabel("inspect_ready")} tone="warning" value={totals.inspectReady} />
+        <ReceivingKPI label={goodsReceiptStatusLabel("posted")} tone="success" value={totals.posted} />
       </section>
 
       <section className="erp-receiving-workspace">
         <form className="erp-card erp-card--padded erp-receiving-draft" id="receiving-draft" onSubmit={handleCreateDraft}>
           <div className="erp-section-header">
-            <h2 className="erp-section-title">New receipt draft</h2>
+            <h2 className="erp-section-title">{receivingCopy("draft.title")}</h2>
             <StatusChip tone={feedback?.tone ?? (purchaseOrderError ? "danger" : "info")}>
-              {feedback?.message ?? purchaseOrderError ?? "Ready"}
+              {feedback?.message ?? purchaseOrderError ?? receivingCopy("feedback.ready")}
             </StatusChip>
           </div>
 
           <div className="erp-receiving-form-section">
             <div className="erp-receiving-section-label">
-              <strong>PO context</strong>
+              <strong>{receivingCopy("po.context")}</strong>
               <StatusChip tone={purchaseOrdersLoading ? "info" : purchaseOrders.length > 0 ? "success" : "warning"}>
-                {purchaseOrdersLoading ? "Loading" : `${purchaseOrders.length} open`}
+                {purchaseOrdersLoading ? receivingCopy("feedback.loading") : receivingCopy("po.openCount", { count: purchaseOrders.length })}
               </StatusChip>
             </div>
             <div className="erp-receiving-form-grid">
               <label className="erp-field">
-                <span>Open PO</span>
+                <span>{receivingCopy("po.openPO")}</span>
                 <select
                   className="erp-input"
                   value={selectedPurchaseOrderId}
                   onChange={(event) => void handlePurchaseOrderChange(event.target.value)}
                 >
-                  <option value="">Manual reference</option>
+                  <option value="">{receivingCopy("po.manualReference")}</option>
                   {purchaseOrders.map((order) => (
                     <option key={order.id} value={order.id}>
                       {order.poNo} / {order.supplierCode ?? order.supplierName}
@@ -517,7 +521,7 @@ export function WarehouseReceivingPrototype() {
                 </select>
               </label>
               <label className="erp-field">
-                <span>PO reference</span>
+                <span>{receivingCopy("po.reference")}</span>
                 <input
                   className="erp-input"
                   type="text"
@@ -527,7 +531,7 @@ export function WarehouseReceivingPrototype() {
                 />
               </label>
               <label className="erp-field">
-                <span>Supplier</span>
+                <span>{receivingCopy("fields.supplier")}</span>
                 <select className="erp-input" value={supplierId} onChange={(event) => setSupplierId(event.target.value)} required>
                   {purchaseSupplierOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -537,7 +541,7 @@ export function WarehouseReceivingPrototype() {
                 </select>
               </label>
               <label className="erp-field">
-                <span>PO line</span>
+                <span>{receivingCopy("po.line")}</span>
                 {purchaseOrderDetail?.lines.length ? (
                   <select
                     className="erp-input"
@@ -547,7 +551,7 @@ export function WarehouseReceivingPrototype() {
                   >
                     {purchaseOrderDetail.lines.map((line) => (
                       <option key={line.id} value={line.id}>
-                        {line.lineNo} / {line.skuCode} / {formatPurchaseQuantity(line.receivedQty, line.baseUomCode)} of{" "}
+                        {line.lineNo} / {line.skuCode} / {formatPurchaseQuantity(line.receivedQty, line.baseUomCode)} {receivingCopy("po.of")}{" "}
                         {formatPurchaseQuantity(line.orderedQty, line.baseUomCode)}
                       </option>
                     ))}
@@ -566,7 +570,7 @@ export function WarehouseReceivingPrototype() {
             {purchaseOrderDetail ? (
               <div className="erp-receiving-po-summary">
                 <StatusChip tone={purchaseOrderStatusTone(purchaseOrderDetail.status)}>
-                  {formatPurchaseOrderStatus(purchaseOrderDetail.status)}
+                  {purchaseStatusLabel(purchaseOrderDetail.status)}
                 </StatusChip>
                 <span>{purchaseOrderDetail.poNo}</span>
                 <strong>{purchaseOrderDetail.supplierName}</strong>
@@ -576,12 +580,12 @@ export function WarehouseReceivingPrototype() {
 
           <div className="erp-receiving-form-section">
             <div className="erp-receiving-section-label">
-              <strong>Delivery check</strong>
+              <strong>{receivingCopy("delivery.title")}</strong>
               <StatusChip tone={packagingStatus === "intact" ? "success" : "warning"}>{formatPackagingStatus(packagingStatus)}</StatusChip>
             </div>
             <div className="erp-receiving-form-grid">
               <label className="erp-field">
-                <span>Delivery note</span>
+                <span>{receivingCopy("delivery.note")}</span>
                 <input
                   className="erp-input"
                   type="text"
@@ -591,7 +595,7 @@ export function WarehouseReceivingPrototype() {
                 />
               </label>
               <label className="erp-field">
-                <span>Location</span>
+                <span>{receivingCopy("fields.location")}</span>
                 <select className="erp-input" value={locationId} onChange={(event) => setLocationId(event.target.value)} required>
                   {locationOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -601,7 +605,7 @@ export function WarehouseReceivingPrototype() {
                 </select>
               </label>
               <label className="erp-field">
-                <span>Packaging</span>
+                <span>{receivingCopy("delivery.packaging")}</span>
                 <select
                   className="erp-input"
                   value={packagingStatus}
@@ -610,19 +614,19 @@ export function WarehouseReceivingPrototype() {
                 >
                   {receivingPackagingStatusOptions.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {packagingStatusLabel(option.value)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="erp-field">
-                <span>Attachment ref</span>
+                <span>{receivingCopy("attachments.reference")}</span>
                 <input
                   className="erp-input"
                   type="text"
                   value={attachmentRef}
                   onChange={(event) => setAttachmentRef(event.target.value)}
-                  placeholder="DN scan, COA, packaging photo"
+                  placeholder={receivingCopy("attachments.placeholder")}
                 />
               </label>
             </div>
@@ -630,12 +634,12 @@ export function WarehouseReceivingPrototype() {
 
           <div className="erp-receiving-form-section">
             <div className="erp-receiving-section-label">
-              <strong>Line check</strong>
-              <StatusChip tone={qcStatusTone(selectedBatch.qcStatus)}>{formatQCStatus(selectedBatch.qcStatus)}</StatusChip>
+              <strong>{receivingCopy("line.check")}</strong>
+              <StatusChip tone={qcStatusTone(selectedBatch.qcStatus)}>{qcStatusLabel(selectedBatch.qcStatus)}</StatusChip>
             </div>
             <div className="erp-receiving-form-grid">
               <label className="erp-field">
-                <span>Batch / SKU</span>
+                <span>{receivingCopy("line.batchSku")}</span>
                 <select className="erp-input" value={batchId} onChange={(event) => applyBatch(event.target.value)} required>
                   {availableBatchOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -645,7 +649,7 @@ export function WarehouseReceivingPrototype() {
                 </select>
               </label>
               <label className="erp-field">
-                <span>Quantity</span>
+                <span>{receivingCopy("line.quantity")}</span>
                 <input
                   className="erp-input"
                   min="0.000001"
@@ -657,11 +661,11 @@ export function WarehouseReceivingPrototype() {
                 />
               </label>
               <label className="erp-field">
-                <span>UOM</span>
+                <span>{receivingCopy("line.uom")}</span>
                 <input className="erp-input" type="text" value={uomCode} onChange={(event) => setUomCode(event.target.value.toUpperCase())} required />
               </label>
               <label className="erp-field">
-                <span>Base UOM</span>
+                <span>{receivingCopy("line.baseUom")}</span>
                 <input
                   className="erp-input"
                   type="text"
@@ -671,22 +675,22 @@ export function WarehouseReceivingPrototype() {
                 />
               </label>
               <label className="erp-field">
-                <span>Lot</span>
+                <span>{receivingCopy("line.lot")}</span>
                 <input className="erp-input" type="text" value={lotNo} onChange={(event) => setLotNo(event.target.value.toUpperCase())} required />
               </label>
               <label className="erp-field">
-                <span>Expiry</span>
+                <span>{receivingCopy("line.expiry")}</span>
                 <input className="erp-input" type="date" value={expiryDate} onChange={(event) => setExpiryDate(event.target.value)} required />
               </label>
             </div>
             <label className="erp-field erp-receiving-note-field">
-              <span>Receiving note</span>
+              <span>{receivingCopy("fields.note")}</span>
               <textarea className="erp-input" value={receivingNote} onChange={(event) => setReceivingNote(event.target.value)} rows={3} />
             </label>
           </div>
 
           <div className="erp-receiving-selected-line">
-            <StatusChip tone={qcStatusTone(selectedBatch.qcStatus)}>{formatQCStatus(selectedBatch.qcStatus)}</StatusChip>
+            <StatusChip tone={qcStatusTone(selectedBatch.qcStatus)}>{qcStatusLabel(selectedBatch.qcStatus)}</StatusChip>
             <span>
               {selectedPurchaseOrderLine?.skuCode ?? selectedBatch.sku} / {lotNo} / {expiryDate}
             </span>
@@ -695,17 +699,17 @@ export function WarehouseReceivingPrototype() {
 
           <div className="erp-receiving-actions">
             <button className="erp-button erp-button--primary" type="submit" disabled={busyAction === "create"}>
-              {busyAction === "create" ? "Creating" : "Create draft"}
+              {busyAction === "create" ? receivingCopy("actions.creating") : receivingCopy("actions.createDraft")}
             </button>
           </div>
         </form>
 
         <section className="erp-card erp-card--padded erp-receiving-detail" id="receiving-detail">
           <div className="erp-section-header">
-            <h2 className="erp-section-title">Receipt detail</h2>
+            <h2 className="erp-section-title">{receivingCopy("detail.title")}</h2>
             {selectedReceipt ? (
               <StatusChip tone={goodsReceiptStatusTone(selectedReceipt.status)}>
-                {formatGoodsReceiptStatus(selectedReceipt.status)}
+                {goodsReceiptStatusLabel(selectedReceipt.status)}
               </StatusChip>
             ) : null}
           </div>
@@ -713,14 +717,14 @@ export function WarehouseReceivingPrototype() {
           {selectedReceipt ? (
             <>
               <div className="erp-receiving-detail-grid">
-                <ReceivingFact label="Receipt" value={selectedReceipt.receiptNo} />
-                <ReceivingFact label="Delivery note" value={selectedReceipt.deliveryNoteNo ?? "-"} />
-                <ReceivingFact label="PO" value={selectedReceipt.referenceDocId} />
-                <ReceivingFact label="Supplier" value={selectedReceipt.supplierId ?? "-"} />
-                <ReceivingFact label="Warehouse" value={selectedReceipt.warehouseCode} />
-                <ReceivingFact label="Location" value={selectedReceipt.locationCode} />
-                <ReceivingFact label="Updated" value={formatReceivingDateTime(selectedReceipt.updatedAt)} />
-                <ReceivingFact label="Audit" value={selectedReceipt.auditLogId ?? "-"} />
+                <ReceivingFact label={receivingCopy("detail.receipt")} value={selectedReceipt.receiptNo} />
+                <ReceivingFact label={receivingCopy("detail.deliveryNote")} value={selectedReceipt.deliveryNoteNo ?? "-"} />
+                <ReceivingFact label={receivingCopy("detail.po")} value={selectedReceipt.referenceDocId} />
+                <ReceivingFact label={receivingCopy("detail.supplier")} value={selectedReceipt.supplierId ?? "-"} />
+                <ReceivingFact label={receivingCopy("detail.warehouse")} value={selectedReceipt.warehouseCode} />
+                <ReceivingFact label={receivingCopy("detail.location")} value={selectedReceipt.locationCode} />
+                <ReceivingFact label={receivingCopy("detail.updated")} value={formatReceivingDateTime(selectedReceipt.updatedAt)} />
+                <ReceivingFact label={receivingCopy("detail.audit")} value={selectedReceipt.auditLogId ?? "-"} />
               </div>
 
               <div className="erp-receiving-actions">
@@ -730,7 +734,7 @@ export function WarehouseReceivingPrototype() {
                   disabled={selectedReceipt.status !== "draft" || Boolean(busyAction)}
                   onClick={() => void runAction(selectedReceipt, "submit")}
                 >
-                  Submit
+                  {receivingCopy("actions.submit")}
                 </button>
                 <button
                   className="erp-button erp-button--secondary"
@@ -738,7 +742,7 @@ export function WarehouseReceivingPrototype() {
                   disabled={selectedReceipt.status !== "submitted" || Boolean(busyAction)}
                   onClick={() => void runAction(selectedReceipt, "inspect")}
                 >
-                  Inspect ready
+                  {receivingCopy("actions.inspectReady")}
                 </button>
                 <button
                   className="erp-button erp-button--primary"
@@ -746,55 +750,62 @@ export function WarehouseReceivingPrototype() {
                   disabled={selectedReceipt.status !== "inspect_ready" || Boolean(busyAction)}
                   onClick={() => setConfirmPostId(selectedReceipt.id)}
                 >
-                  Post
+                  {receivingCopy("actions.post")}
                 </button>
               </div>
 
               <AttachmentPanel
-                title="Receiving attachments"
+                title={receivingCopy("attachments.title")}
                 items={receivingAttachmentItems}
-                emptyMessage="No delivery evidence attached."
+                emptyMessage={receivingCopy("attachments.empty")}
               />
 
               <div className="erp-receiving-subsection">
-                <h3 className="erp-section-title">Lines</h3>
+                <h3 className="erp-section-title">{receivingCopy("line.lines")}</h3>
                 <DataTable columns={lineColumns} rows={selectedReceipt.lines} getRowKey={(row) => row.id} />
               </div>
 
               <div className="erp-receiving-subsection">
-                <h3 className="erp-section-title">Stock movements</h3>
+                <h3 className="erp-section-title">{receivingCopy("movement.title")}</h3>
                 <DataTable
                   columns={movementColumns}
                   rows={selectedReceipt.stockMovements ?? []}
                   getRowKey={(row) => row.movementNo}
-                  emptyState={<EmptyState title="No stock movement posted" description="Post the receipt after inspection." />}
+                  emptyState={
+                    <EmptyState
+                      title={receivingCopy("movement.emptyTitle")}
+                      description={receivingCopy("movement.emptyDescription")}
+                    />
+                  }
                 />
               </div>
             </>
           ) : (
-            <EmptyState title="No goods receipt selected" description="Create or select a receipt." />
+            <EmptyState title={receivingCopy("empty.noSelection")} description={receivingCopy("empty.noSelectionDescription")} />
           )}
         </section>
       </section>
 
       <section className="erp-card erp-card--padded erp-module-table-card" id="receiving-list">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Goods receipts</h2>
-          <StatusChip tone={visibleReceipts.length === 0 ? "warning" : "info"}>{visibleReceipts.length} rows</StatusChip>
+          <h2 className="erp-section-title">{receivingCopy("list.title")}</h2>
+          <StatusChip tone={visibleReceipts.length === 0 ? "warning" : "info"}>
+            {receivingCopy("list.rows", { count: visibleReceipts.length })}
+          </StatusChip>
         </div>
         <DataTable
           columns={[
             ...receiptColumns,
             {
               key: "action",
-              header: "Action",
+              header: receivingCopy("columns.action"),
               render: (row) => (
                 <button
                   className="erp-button erp-button--secondary erp-button--compact"
                   type="button"
                   onClick={() => setSelectedReceiptId(row.id)}
                 >
-                  View
+                  {receivingCopy("actions.view")}
                 </button>
               ),
               width: "110px"
@@ -804,15 +815,15 @@ export function WarehouseReceivingPrototype() {
           getRowKey={(row) => row.id}
           loading={loading}
           error={error?.message}
-          emptyState={<EmptyState title="No goods receipts" description="Change warehouse or status filter." />}
+          emptyState={<EmptyState title={receivingCopy("empty.noReceipts")} description={receivingCopy("empty.changeFilters")} />}
         />
       </section>
 
       <ConfirmDialog
         open={Boolean(confirmPostId && selectedReceipt)}
-        title="Post goods receipt"
-        description={`${selectedReceipt?.receiptNo ?? "Receipt"} will create stock movement records.`}
-        confirmLabel="Post"
+        title={receivingCopy("confirmPost.title")}
+        description={receivingCopy("confirmPost.description", { receiptNo: selectedReceipt?.receiptNo ?? receivingCopy("detail.receipt") })}
+        confirmLabel={receivingCopy("actions.post")}
         onCancel={() => setConfirmPostId(null)}
         onConfirm={() => {
           if (selectedReceipt) {
@@ -852,7 +863,31 @@ function ReceivingFact({ label, value }: { label: string; value: string }) {
 }
 
 function formatPackagingStatus(status: ReceivingPackagingStatus) {
-  return receivingPackagingStatusOptions.find((option) => option.value === status)?.label ?? status;
+  return packagingStatusLabel(status);
+}
+
+function goodsReceiptStatusLabel(status: GoodsReceiptStatus) {
+  return receivingCopy(`status.${status}`);
+}
+
+function purchaseStatusLabel(status: PurchaseOrder["status"]) {
+  return t(`purchase.status.${status}`);
+}
+
+function packagingStatusLabel(status: ReceivingPackagingStatus) {
+  return receivingCopy(`packaging.${status}`);
+}
+
+function qcStatusLabel(status?: BatchQCStatus) {
+  return status ? receivingCopy(`qcStatus.${status}`) : "-";
+}
+
+function stockStatusLabel(status: GoodsReceiptStockMovement["stockStatus"]) {
+  return receivingCopy(`stockStatus.${status}`);
+}
+
+function receivingCopy(key: string, values?: Record<string, string | number>) {
+  return t(`purchase.receiving.${key}`, { values });
 }
 
 function uniquePurchaseOrders(orders: PurchaseOrder[]) {

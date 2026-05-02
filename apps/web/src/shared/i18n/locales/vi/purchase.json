@@ -112,5 +112,154 @@
   "empty": {
     "noSelection": "Chưa chọn đơn mua hàng",
     "noMatches": "Không có đơn mua hàng khớp bộ lọc"
+  },
+  "receiving": {
+    "title": "Nhập kho",
+    "description": "Tạo phiếu nhận, kiểm chứng từ giao hàng, lô, hạn dùng, bao bì và bằng chứng nhập kho",
+    "status": {
+      "draft": "Nháp",
+      "submitted": "Đã gửi",
+      "inspect_ready": "Sẵn sàng QC",
+      "posted": "Đã ghi sổ"
+    },
+    "filters": {
+      "label": "Bộ lọc phiếu nhận hàng",
+      "warehouse": "Kho",
+      "status": "Trạng thái",
+      "allStatuses": "Tất cả trạng thái"
+    },
+    "columns": {
+      "receipt": "Phiếu nhận",
+      "po": "PO",
+      "warehouse": "Kho",
+      "status": "Trạng thái",
+      "sku": "SKU",
+      "quantity": "Số lượng",
+      "movement": "Biến động",
+      "action": "Thao tác"
+    },
+    "draft": {
+      "title": "Tạo phiếu nhận nháp"
+    },
+    "po": {
+      "context": "Thông tin PO",
+      "openCount": "{count} PO đang mở",
+      "openPO": "PO đang mở",
+      "manualReference": "Nhập tham chiếu thủ công",
+      "reference": "Tham chiếu PO",
+      "line": "Dòng PO",
+      "of": "trên"
+    },
+    "delivery": {
+      "title": "Kiểm tra giao hàng",
+      "note": "Chứng từ giao hàng",
+      "packaging": "Bao bì"
+    },
+    "fields": {
+      "supplier": "Nhà cung cấp",
+      "location": "Vị trí",
+      "note": "Ghi chú nhận hàng"
+    },
+    "line": {
+      "check": "Kiểm tra dòng hàng",
+      "batchSku": "Lô / SKU",
+      "quantity": "Số lượng",
+      "uom": "Đơn vị",
+      "baseUom": "Đơn vị gốc",
+      "lot": "Lô",
+      "expiry": "Hạn dùng",
+      "lines": "Dòng hàng",
+      "columns": {
+        "sku": "SKU",
+        "poLine": "Dòng PO",
+        "lotExpiry": "Lô / HSD",
+        "packaging": "Bao bì",
+        "qc": "QC",
+        "quantity": "Số lượng"
+      }
+    },
+    "packaging": {
+      "intact": "Nguyên vẹn",
+      "damaged": "Hư hỏng",
+      "missing_label": "Thiếu nhãn",
+      "leaking": "Rò rỉ"
+    },
+    "qcStatus": {
+      "hold": "Giữ kiểm",
+      "pass": "Đạt",
+      "fail": "Không đạt",
+      "quarantine": "Cách ly",
+      "retest_required": "Cần kiểm lại"
+    },
+    "stockStatus": {
+      "available": "Khả dụng",
+      "qc_hold": "Giữ QC"
+    },
+    "movement": {
+      "title": "Biến động tồn",
+      "postedCount": "{count} đã ghi",
+      "emptyTitle": "Chưa ghi biến động tồn",
+      "emptyDescription": "Ghi sổ phiếu nhận sau khi kiểm tra.",
+      "columns": {
+        "movement": "Biến động",
+        "stock": "Tồn",
+        "quantity": "Số lượng"
+      }
+    },
+    "attachments": {
+      "title": "Tệp nhập kho",
+      "empty": "Chưa đính kèm bằng chứng giao hàng.",
+      "deliveryNote": "Chứng từ giao hàng",
+      "supplier": "nhà cung cấp",
+      "document": "chứng từ",
+      "receivingEvidence": "Bằng chứng nhập kho",
+      "warehouse": "kho",
+      "draftReference": "Tham chiếu nháp",
+      "reference": "Tham chiếu tệp",
+      "placeholder": "Scan chứng từ, COA, ảnh bao bì"
+    },
+    "detail": {
+      "title": "Chi tiết phiếu nhận",
+      "receipt": "Phiếu nhận",
+      "deliveryNote": "Chứng từ giao hàng",
+      "po": "PO",
+      "supplier": "Nhà cung cấp",
+      "warehouse": "Kho",
+      "location": "Vị trí",
+      "updated": "Cập nhật",
+      "audit": "Nhật ký"
+    },
+    "list": {
+      "title": "Phiếu nhận hàng",
+      "rows": "{count} dòng"
+    },
+    "actions": {
+      "remove": "Xóa",
+      "submit": "Gửi",
+      "inspectReady": "Sẵn sàng QC",
+      "post": "Ghi sổ",
+      "view": "Xem",
+      "creating": "Đang tạo",
+      "createDraft": "Tạo nháp"
+    },
+    "feedback": {
+      "ready": "Sẵn sàng",
+      "loading": "Đang tải",
+      "purchaseOrdersLoadFailed": "Không thể tải PO",
+      "purchaseOrderLoadFailed": "Không thể tải đơn mua hàng",
+      "created": "Đã tạo {receiptNo}",
+      "createFailed": "Không thể tạo phiếu nhận",
+      "actionFailed": "Không thể xử lý phiếu nhận"
+    },
+    "empty": {
+      "noSelection": "Chưa chọn phiếu nhận",
+      "noSelectionDescription": "Tạo hoặc chọn một phiếu nhận.",
+      "noReceipts": "Chưa có phiếu nhận",
+      "changeFilters": "Đổi kho hoặc bộ lọc trạng thái."
+    },
+    "confirmPost": {
+      "title": "Ghi sổ phiếu nhận",
+      "description": "{receiptNo} sẽ tạo biến động tồn kho."
+    }
   }
 }
