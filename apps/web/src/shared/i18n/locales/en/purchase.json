@@ -81,6 +81,7 @@
     "title": "PO attachments",
     "empty": "No supplier documents linked.",
     "file": "PO attachment file",
+    "upload": "Upload file",
     "supplierDocument": "Supplier document",
     "poEvidence": "PO evidence"
   },

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { getActionLabel } from "../i18n/action-labels";
+import { formatDateTimeVI } from "../format/numberFormat";
 import { t } from "../i18n";
 import type { StatusTone } from "./components";
 
@@ -342,7 +342,7 @@ export function AttachmentPanel({
               </div>
               <div>
                 <span>{item.uploadedBy}</span>
-                <time dateTime={item.uploadedAt}>{item.uploadedAt}</time>
+                <time dateTime={item.uploadedAt}>{formatDateTimeVI(item.uploadedAt)}</time>
                 {item.detail ? <small>{item.detail}</small> : null}
               </div>
               {item.status ? <div className="erp-ds-attachment-status">{item.status}</div> : null}
@@ -351,12 +351,12 @@ export function AttachmentPanel({
                   {item.action}
                   {item.canDownload ? (
                     <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={item.onDownload}>
-                      {item.downloadLabel ?? getActionLabel("Download")}
+                      {item.downloadLabel ?? t("common.downloadAttachment")}
                     </button>
                   ) : null}
                   {item.canDelete ? (
                     <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={item.onDelete}>
-                      {item.deleteLabel ?? getActionLabel("Delete")}
+                      {item.deleteLabel ?? t("common.deleteAttachment")}
                     </button>
                   ) : null}
                 </div>

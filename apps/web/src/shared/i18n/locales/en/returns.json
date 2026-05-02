@@ -199,6 +199,102 @@
       "active": "Active",
       "deleted": "Deleted",
       "quarantined": "Quarantined"
+    },
+    "attachmentKind": {
+      "image": "Evidence photo",
+      "pdf": "PDF document",
+      "evidence": "Evidence"
+    }
+  },
+  "supplierRejection": {
+    "title": "Supplier rejection",
+    "columns": {
+      "rejection": "Reject record",
+      "supplier": "Supplier",
+      "status": "Status",
+      "rejectedQty": "Rejected qty",
+      "batchReason": "Batch / reason",
+      "evidence": "Evidence",
+      "updated": "Updated",
+      "action": "Action"
+    },
+    "status": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled"
+    },
+    "fields": {
+      "warehouse": "Warehouse",
+      "supplier": "Supplier",
+      "rejectedLine": "Rejected inbound line",
+      "rejectedQuantity": "Rejected quantity",
+      "reason": "Reason",
+      "evidenceFile": "Evidence file",
+      "status": "Status"
+    },
+    "actions": {
+      "create": "Create reject",
+      "submit": "Submit",
+      "confirm": "Confirm",
+      "open": "Open"
+    },
+    "feedback": {
+      "created": "{rejectionNo} created",
+      "createFailed": "Supplier rejection could not be created",
+      "transitioned": "{rejectionNo} {status}",
+      "updateFailed": "Supplier rejection could not be updated",
+      "attachmentRemoved": "Attachment removed from draft view",
+      "auditLoadFailed": "Audit trail could not be loaded"
+    },
+    "detail": {
+      "title": "Reject detail"
+    },
+    "facts": {
+      "supplier": "Supplier",
+      "goodsReceipt": "Goods receipt",
+      "qcInspection": "QC inspection",
+      "batch": "Batch",
+      "rejected": "Rejected"
+    },
+    "attachments": {
+      "title": "Supplier rejection attachments",
+      "empty": "No supplier rejection evidence attached.",
+      "evidence": "Evidence",
+      "fileCount": "{count} files",
+      "remove": "Remove",
+      "kind": {
+        "image": "Evidence photo",
+        "pdf": "PDF document"
+      },
+      "source": {
+        "inbound_qc": "Inbound QC",
+        "rejection": "Rejection"
+      }
+    },
+    "list": {
+      "title": "Rejected inbound goods",
+      "summary": "{total} rows / {confirmed} confirmed"
+    },
+    "filters": {
+      "allStatuses": "All statuses"
+    },
+    "empty": {
+      "noSelection": "No supplier rejection selected",
+      "noRows": "No rejected inbound goods",
+      "noRowsDescription": "Create a supplier rejection from a failed QC line."
+    },
+    "audit": {
+      "title": "Audit trail",
+      "events": "{count} events",
+      "emptyTitle": "No audit events loaded",
+      "emptyDescription": "Create, submit, or confirm a supplier rejection to populate audit.",
+      "columns": {
+        "action": "Action",
+        "actor": "Actor",
+        "change": "Change",
+        "time": "Time"
+      }
     }
   }
 }

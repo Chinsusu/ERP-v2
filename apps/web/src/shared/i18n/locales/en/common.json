@@ -39,5 +39,7 @@
   "noAuditEvents": "No audit events recorded.",
   "attachments": "Attachments",
   "attachmentDescription": "Files linked to this record",
-  "noAttachments": "No attachments uploaded."
+  "noAttachments": "No attachments uploaded.",
+  "downloadAttachment": "Download file",
+  "deleteAttachment": "Delete file"
 }

@@ -199,6 +199,102 @@
       "active": "Đang dùng",
       "deleted": "Đã xóa",
       "quarantined": "Cách ly"
+    },
+    "attachmentKind": {
+      "image": "Ảnh chứng từ",
+      "pdf": "Tệp PDF",
+      "evidence": "Bằng chứng"
+    }
+  },
+  "supplierRejection": {
+    "title": "Trả hàng nhà cung cấp",
+    "columns": {
+      "rejection": "Phiếu trả NCC",
+      "supplier": "Nhà cung cấp",
+      "status": "Trạng thái",
+      "rejectedQty": "SL trả",
+      "batchReason": "Lô / lý do",
+      "evidence": "Bằng chứng",
+      "updated": "Cập nhật",
+      "action": "Thao tác"
+    },
+    "status": {
+      "draft": "Nháp",
+      "submitted": "Đã gửi",
+      "confirmed": "Đã xác nhận",
+      "cancelled": "Đã hủy"
+    },
+    "fields": {
+      "warehouse": "Kho",
+      "supplier": "Nhà cung cấp",
+      "rejectedLine": "Dòng hàng nhập lỗi",
+      "rejectedQuantity": "Số lượng trả",
+      "reason": "Lý do",
+      "evidenceFile": "Tệp bằng chứng",
+      "status": "Trạng thái"
+    },
+    "actions": {
+      "create": "Tạo phiếu trả",
+      "submit": "Gửi",
+      "confirm": "Xác nhận",
+      "open": "Mở"
+    },
+    "feedback": {
+      "created": "Đã tạo {rejectionNo}",
+      "createFailed": "Không thể tạo phiếu trả NCC",
+      "transitioned": "{rejectionNo} {status}",
+      "updateFailed": "Không thể cập nhật phiếu trả NCC",
+      "attachmentRemoved": "Đã xóa tệp khỏi bản nháp",
+      "auditLoadFailed": "Không thể tải nhật ký thao tác"
+    },
+    "detail": {
+      "title": "Chi tiết phiếu trả"
+    },
+    "facts": {
+      "supplier": "Nhà cung cấp",
+      "goodsReceipt": "Phiếu nhận",
+      "qcInspection": "Phiếu QC",
+      "batch": "Lô",
+      "rejected": "Đã trả"
+    },
+    "attachments": {
+      "title": "Tệp trả NCC",
+      "empty": "Chưa đính kèm bằng chứng trả NCC.",
+      "evidence": "Bằng chứng",
+      "fileCount": "{count} tệp",
+      "remove": "Xóa tệp",
+      "kind": {
+        "image": "Ảnh chứng từ",
+        "pdf": "Tệp PDF"
+      },
+      "source": {
+        "inbound_qc": "QC hàng nhập",
+        "rejection": "Phiếu trả"
+      }
+    },
+    "list": {
+      "title": "Hàng nhập trả NCC",
+      "summary": "{total} dòng / {confirmed} đã xác nhận"
+    },
+    "filters": {
+      "allStatuses": "Tất cả trạng thái"
+    },
+    "empty": {
+      "noSelection": "Chưa chọn phiếu trả NCC",
+      "noRows": "Chưa có hàng nhập trả NCC",
+      "noRowsDescription": "Tạo phiếu trả NCC từ dòng QC không đạt."
+    },
+    "audit": {
+      "title": "Nhật ký thao tác",
+      "events": "{count} sự kiện",
+      "emptyTitle": "Chưa tải nhật ký thao tác",
+      "emptyDescription": "Tạo, gửi hoặc xác nhận phiếu trả NCC để ghi nhật ký.",
+      "columns": {
+        "action": "Thao tác",
+        "actor": "Người thao tác",
+        "change": "Thay đổi",
+        "time": "Thời gian"
+      }
     }
   }
 }

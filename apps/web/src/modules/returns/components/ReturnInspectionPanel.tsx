@@ -55,7 +55,7 @@ export function ReturnInspectionPanel({ receipts, onReceiptChange }: ReturnInspe
             {
               id: attachmentResult.id,
               name: attachmentResult.fileName,
-              kind: attachmentResult.mimeType,
+              kind: returnAttachmentKindLabel(attachmentResult.mimeType),
               uploadedBy: attachmentResult.uploadedBy,
               uploadedAt: attachmentResult.uploadedAt,
               detail: returnInspectionCopy("fileSize", { bytes: attachmentResult.fileSizeBytes }),
@@ -443,6 +443,17 @@ function returnInspectionTargetLabel(targetLocation: string) {
 
 function attachmentStatusLabel(status: ReturnAttachment["status"]) {
   return returnInspectionCopy(`attachmentStatus.${status}`);
+}
+
+function returnAttachmentKindLabel(mimeType: string) {
+  if (mimeType.toLowerCase().startsWith("image/")) {
+    return returnInspectionCopy("attachmentKind.image");
+  }
+  if (mimeType.toLowerCase() === "application/pdf") {
+    return returnInspectionCopy("attachmentKind.pdf");
+  }
+
+  return returnInspectionCopy("attachmentKind.evidence");
 }
 
 function ReturnInspectionFact({ label, value }: { label: string; value: string }) {
