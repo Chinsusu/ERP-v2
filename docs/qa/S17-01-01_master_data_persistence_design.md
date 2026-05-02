@@ -78,32 +78,38 @@ apps/api/migrations/000034_persist_master_data_runtime_foundation.down.sql
 Schema:
 
 ```text
-masterdata
+mdm
 ```
 
 Tables:
 
 | Table | Purpose |
 | --- | --- |
-| `masterdata.items` | Item/SKU catalog state |
-| `masterdata.warehouses` | Warehouse header state |
-| `masterdata.warehouse_locations` | Location/bin state under warehouse |
-| `masterdata.suppliers` | Supplier master data |
-| `masterdata.customers` | Customer master data |
-| `masterdata.uoms` | UOM definitions |
-| `masterdata.uom_conversions` | Global and item-specific UOM conversion factors |
+| `mdm.items` | Item/SKU catalog state |
+| `mdm.warehouses` | Warehouse header state |
+| `mdm.warehouse_bins` | Location/bin state under warehouse |
+| `mdm.suppliers` | Supplier master data |
+| `mdm.customers` | Customer master data |
+| `mdm.uoms` | UOM definitions |
+| `mdm.uom_conversions` | Global and item-specific UOM conversion factors |
 
 Constraints:
 
 ```text
-items.item_code unique
-items.sku_code unique
-warehouses.code unique
-warehouse_locations unique by warehouse_id + code
-suppliers.code unique
-customers.code unique
-uoms.code primary key
-uom_conversions unique by item_id + from_uom_code + to_uom_code
+mdm.items.item_ref unique within org
+mdm.items.item_code unique within org
+mdm.items.sku unique within org
+mdm.warehouses.warehouse_ref unique within org
+mdm.warehouses.code unique within org
+mdm.warehouse_bins.location_ref unique within org
+mdm.warehouse_bins unique by warehouse_id + code
+mdm.suppliers.supplier_ref unique within org
+mdm.suppliers.code unique within org
+mdm.customers.customer_ref unique within org
+mdm.customers.code unique within org
+mdm.uoms.uom_code primary key
+mdm.uom_conversions.conversion_ref unique
+mdm.uom_conversions unique by item_id + from_uom_code + to_uom_code
 ```
 
 Decimal columns follow file 40:
