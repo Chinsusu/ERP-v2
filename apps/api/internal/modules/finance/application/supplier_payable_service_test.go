@@ -2,13 +2,18 @@ package application
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	financedomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/finance/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	apperrors "github.com/Chinsusu/ERP-v2/apps/api/internal/shared/errors"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func TestSupplierPayableServiceCreatesPayableAndAudit(t *testing.T) {
@@ -151,6 +156,165 @@ func TestSupplierPayableServiceReturnsNotFound(t *testing.T) {
 	}
 	if appErr.Code != ErrorCodeSupplierPayableNotFound {
 		t.Fatalf("code = %q, want not found", appErr.Code)
+	}
+}
+
+func TestPostgresSupplierPayableServicePersistsPaymentLifecycleAcrossFreshStores(t *testing.T) {
+	databaseURL := os.Getenv("ERP_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("ERP_TEST_DATABASE_URL is not set")
+	}
+
+	ctx := context.Background()
+	db, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer db.Close()
+
+	if err := seedSupplierPayableSmokeOrg(ctx, db); err != nil {
+		t.Fatalf("seed org: %v", err)
+	}
+
+	suffix := fmt.Sprintf("%d", time.Now().UTC().UnixNano())
+	input := baseCreateSupplierPayableInput()
+	input.ID = "ap-s15-03-02-" + suffix
+	input.PayableNo = "AP-S15-03-02-" + suffix
+	input.SourceDocument.ID = "qc-s15-03-02-" + suffix
+	input.SourceDocument.No = "QC-S15-03-02-" + suffix
+	input.RequestID = "req-ap-s15-03-02-create-" + suffix
+	input.Lines[0].ID = "ap-line-s15-03-02-" + suffix
+	input.Lines[0].SourceDocument.ID = "gr-s15-03-02-" + suffix
+	input.Lines[0].SourceDocument.No = "GR-S15-03-02-" + suffix
+
+	newService := func(now time.Time) SupplierPayableService {
+		store := NewPostgresSupplierPayableStore(
+			db,
+			PostgresSupplierPayableStoreConfig{DefaultOrgID: testSupplierPayableOrgID},
+		)
+		auditStore := audit.NewPostgresLogStore(
+			db,
+			audit.PostgresLogStoreConfig{DefaultOrgID: testSupplierPayableOrgID},
+		)
+		return NewSupplierPayableService(store, auditStore).WithClock(func() time.Time {
+			return now
+		})
+	}
+
+	created, err := newService(time.Date(2026, 5, 2, 10, 0, 0, 0, time.UTC)).
+		CreateSupplierPayable(ctx, input)
+	if err != nil {
+		t.Fatalf("create payable: %v", err)
+	}
+
+	reloaded, err := newService(time.Date(2026, 5, 2, 10, 5, 0, 0, time.UTC)).
+		GetSupplierPayable(ctx, created.SupplierPayable.ID)
+	if err != nil {
+		t.Fatalf("reload created payable: %v", err)
+	}
+	if reloaded.ID != input.ID ||
+		reloaded.SourceDocument.ID != input.SourceDocument.ID ||
+		len(reloaded.Lines) != 1 ||
+		reloaded.Lines[0].ID != input.Lines[0].ID {
+		t.Fatalf("reloaded payable = %+v, want fresh store reload with source and line refs", reloaded)
+	}
+
+	requested, err := newService(time.Date(2026, 5, 2, 10, 10, 0, 0, time.UTC)).
+		RequestSupplierPayablePayment(ctx, SupplierPayableActionInput{
+			ID:        input.ID,
+			ActorID:   "finance-user",
+			RequestID: "req-ap-s15-03-02-request-" + suffix,
+		})
+	if err != nil {
+		t.Fatalf("request payment: %v", err)
+	}
+	if requested.CurrentStatus != financedomain.PayableStatusPaymentRequested {
+		t.Fatalf("request status = %q, want payment_requested", requested.CurrentStatus)
+	}
+
+	rejected, err := newService(time.Date(2026, 5, 2, 10, 15, 0, 0, time.UTC)).
+		RejectSupplierPayablePayment(ctx, SupplierPayableActionInput{
+			ID:        input.ID,
+			Reason:    "supplier invoice mismatch",
+			ActorID:   "finance-lead",
+			RequestID: "req-ap-s15-03-02-reject-" + suffix,
+		})
+	if err != nil {
+		t.Fatalf("reject payment: %v", err)
+	}
+	if rejected.CurrentStatus != financedomain.PayableStatusOpen ||
+		rejected.SupplierPayable.PaymentRejectReason != "supplier invoice mismatch" {
+		t.Fatalf("rejected payable = %+v, want open with reject reason", rejected.SupplierPayable)
+	}
+
+	requested, err = newService(time.Date(2026, 5, 2, 10, 20, 0, 0, time.UTC)).
+		RequestSupplierPayablePayment(ctx, SupplierPayableActionInput{
+			ID:        input.ID,
+			ActorID:   "finance-user",
+			RequestID: "req-ap-s15-03-02-request-again-" + suffix,
+		})
+	if err != nil {
+		t.Fatalf("request payment again: %v", err)
+	}
+
+	approved, err := newService(time.Date(2026, 5, 2, 10, 25, 0, 0, time.UTC)).
+		ApproveSupplierPayablePayment(ctx, SupplierPayableActionInput{
+			ID:        input.ID,
+			ActorID:   "finance-lead",
+			RequestID: "req-ap-s15-03-02-approve-" + suffix,
+		})
+	if err != nil {
+		t.Fatalf("approve payment: %v", err)
+	}
+	if approved.PreviousStatus != requested.CurrentStatus ||
+		approved.CurrentStatus != financedomain.PayableStatusPaymentApproved {
+		t.Fatalf("approve transition = %q -> %q", approved.PreviousStatus, approved.CurrentStatus)
+	}
+
+	paid, err := newService(time.Date(2026, 5, 2, 10, 30, 0, 0, time.UTC)).
+		RecordSupplierPayablePayment(ctx, SupplierPayableActionInput{
+			ID:        input.ID,
+			Amount:    "1250000.00",
+			ActorID:   "cashier",
+			RequestID: "req-ap-s15-03-02-payment-" + suffix,
+		})
+	if err != nil {
+		t.Fatalf("record payment: %v", err)
+	}
+	if paid.CurrentStatus != financedomain.PayableStatusPartiallyPaid {
+		t.Fatalf("payment status = %q, want partially_paid", paid.CurrentStatus)
+	}
+
+	final, err := newService(time.Date(2026, 5, 2, 10, 35, 0, 0, time.UTC)).
+		GetSupplierPayable(ctx, input.PayableNo)
+	if err != nil {
+		t.Fatalf("reload paid payable: %v", err)
+	}
+	if final.Status != financedomain.PayableStatusPartiallyPaid ||
+		final.PaidAmount.String() != "1250000.00" ||
+		final.OutstandingAmount.String() != "3000000.00" ||
+		final.PaymentRequestedBy != "finance-user" ||
+		final.PaymentApprovedBy != "finance-lead" ||
+		final.LastPaymentBy != "cashier" ||
+		final.PaymentRejectReason != "" ||
+		final.Version != 6 {
+		t.Fatalf("final payable = %+v, want persisted request/reject/approve/payment lifecycle", final)
+	}
+
+	auditStore := audit.NewPostgresLogStore(
+		db,
+		audit.PostgresLogStoreConfig{DefaultOrgID: testSupplierPayableOrgID},
+	)
+	logs, err := auditStore.List(ctx, audit.Query{
+		EntityType: string(financedomain.FinanceEntityTypeSupplierPayable),
+		EntityID:   input.ID,
+		Limit:      10,
+	})
+	if err != nil {
+		t.Fatalf("list audit logs: %v", err)
+	}
+	if len(logs) != 6 {
+		t.Fatalf("audit logs = %d, want create, request, reject, request, approve, payment", len(logs))
 	}
 }
 
