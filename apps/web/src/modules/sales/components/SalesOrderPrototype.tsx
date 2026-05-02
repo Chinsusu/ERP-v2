@@ -8,6 +8,7 @@ import {
   type DataTableColumn,
   type StatusTone
 } from "@/shared/design-system/components";
+import { t } from "@/shared/i18n";
 import { useSalesOrders } from "../hooks/useSalesOrders";
 import {
   cancelSalesOrder,
@@ -15,7 +16,6 @@ import {
   createSalesOrder,
   formatSalesDate,
   formatSalesMoney,
-  formatSalesOrderStatus,
   formatSalesQuantity,
   salesChannelOptions,
   salesCustomerOptions,
@@ -34,7 +34,7 @@ const orderColumns = (
 ): DataTableColumn<SalesOrder>[] => [
   {
     key: "order",
-    header: "Order",
+    header: salesCopy("columns.order"),
     render: (row) => (
       <span className="erp-sales-order-cell">
         <strong>{row.orderNo}</strong>
@@ -45,48 +45,48 @@ const orderColumns = (
   },
   {
     key: "channel",
-    header: "Channel",
+    header: salesCopy("columns.channel"),
     render: (row) => row.channel,
     width: "100px"
   },
   {
     key: "warehouse",
-    header: "Warehouse",
+    header: salesCopy("columns.warehouse"),
     render: (row) => row.warehouseCode ?? "-",
     width: "130px"
   },
   {
     key: "status",
-    header: "Status",
-    render: (row) => <StatusChip tone={salesOrderStatusTone(row.status)}>{formatSalesOrderStatus(row.status)}</StatusChip>,
+    header: salesCopy("columns.status"),
+    render: (row) => <StatusChip tone={salesOrderStatusTone(row.status)}>{salesStatusLabel(row.status)}</StatusChip>,
     width: "150px"
   },
   {
     key: "date",
-    header: "Date",
+    header: salesCopy("columns.date"),
     render: (row) => formatSalesDate(row.orderDate),
     width: "120px"
   },
   {
     key: "lines",
-    header: "Lines",
+    header: salesCopy("columns.lines"),
     render: (row) => row.lineCount ?? row.lines.length,
     align: "right",
     width: "80px"
   },
   {
     key: "total",
-    header: "Total",
+    header: salesCopy("columns.total"),
     render: (row) => formatSalesMoney(row.totalAmount, row.currencyCode),
     align: "right",
     width: "140px"
   },
   {
     key: "action",
-    header: "Action",
+    header: salesCopy("columns.action"),
     render: (row) => (
       <button className="erp-button erp-button--secondary" type="button" onClick={() => onSelect(row)}>
-        Open
+        {salesCopy("actions.open")}
       </button>
     ),
     width: "96px",
@@ -107,28 +107,28 @@ const lineColumns: DataTableColumn<SalesOrderLine>[] = [
   },
   {
     key: "qty",
-    header: "Qty",
+    header: salesCopy("columns.qty"),
     render: (row) => formatSalesQuantity(row.orderedQty, row.uomCode),
     align: "right",
     width: "140px"
   },
   {
     key: "base",
-    header: "Base",
+    header: salesCopy("columns.base"),
     render: (row) => formatSalesQuantity(row.baseOrderedQty, row.baseUomCode),
     align: "right",
     width: "140px"
   },
   {
     key: "price",
-    header: "Unit price",
+    header: salesCopy("columns.unitPrice"),
     render: (row) => formatSalesMoney(row.unitPrice, row.currencyCode),
     align: "right",
     width: "140px"
   },
   {
     key: "amount",
-    header: "Amount",
+    header: salesCopy("columns.amount"),
     render: (row) => formatSalesMoney(row.lineAmount, row.currencyCode),
     align: "right",
     width: "140px"
@@ -209,13 +209,13 @@ export function SalesOrderPrototype() {
     setDraftLines((current) => [...current, nextLine]);
     setLineQty("1");
     setLineDiscount("0");
-    setFeedback({ tone: "info", message: `${selectedLineItem.skuCode} added` });
+    setFeedback({ tone: "info", message: salesCopy("feedback.lineAdded", { sku: selectedLineItem.skuCode }) });
   }
 
   async function handleCreateOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busyAction || draftLines.length === 0) {
-      setFeedback({ tone: "danger", message: "Add at least one line item" });
+      setFeedback({ tone: "danger", message: salesCopy("feedback.addLineRequired") });
       return;
     }
 
@@ -235,9 +235,9 @@ export function SalesOrderPrototype() {
       upsertLocalOrder(order);
       setSelectedOrderId(order.id);
       setDraftLines([]);
-      setFeedback({ tone: "success", message: `${order.orderNo} created` });
+      setFeedback({ tone: "success", message: salesCopy("feedback.created", { orderNo: order.orderNo }) });
     } catch (reason) {
-      setFeedback({ tone: "danger", message: reason instanceof Error ? reason.message : "Sales order could not be created" });
+      setFeedback({ tone: "danger", message: salesErrorMessage(reason, "feedback.createFailed") });
     } finally {
       setBusyAction("");
     }
@@ -258,9 +258,9 @@ export function SalesOrderPrototype() {
       upsertLocalOrder(order);
       setSelectedOrderId(order.id);
       setDraftLines([]);
-      setFeedback({ tone: "success", message: `${order.orderNo} lines updated` });
+      setFeedback({ tone: "success", message: salesCopy("feedback.linesUpdated", { orderNo: order.orderNo }) });
     } catch (reason) {
-      setFeedback({ tone: "danger", message: reason instanceof Error ? reason.message : "Sales order update failed" });
+      setFeedback({ tone: "danger", message: salesErrorMessage(reason, "feedback.updateFailed") });
     } finally {
       setBusyAction("");
     }
@@ -270,7 +270,7 @@ export function SalesOrderPrototype() {
     if (!selectedOrder || busyAction) {
       return;
     }
-    const reason = action === "cancel" ? "Cancelled from sales order board" : undefined;
+    const reason = action === "cancel" ? salesCopy("feedback.cancelReason") : undefined;
     setBusyAction(`${action}:${selectedOrder.id}`);
     setFeedback(null);
     try {
@@ -282,10 +282,13 @@ export function SalesOrderPrototype() {
       setSelectedOrderId(result.salesOrder.id);
       setFeedback({
         tone: action === "confirm" ? "success" : "warning",
-        message: `${result.salesOrder.orderNo} / ${formatSalesOrderStatus(result.currentStatus)}`
+        message: salesCopy("feedback.actionDone", {
+          orderNo: result.salesOrder.orderNo,
+          status: salesStatusLabel(result.currentStatus)
+        })
       });
     } catch (reason) {
-      setFeedback({ tone: "danger", message: reason instanceof Error ? reason.message : "Sales order action failed" });
+      setFeedback({ tone: "danger", message: salesErrorMessage(reason, "feedback.actionFailed") });
     } finally {
       setBusyAction("");
     }
@@ -300,38 +303,38 @@ export function SalesOrderPrototype() {
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">SO</p>
-          <h1 className="erp-page-title">Sales Orders</h1>
-          <p className="erp-page-description">Create daily orders, review line items, and move drafts into fulfillment</p>
+          <h1 className="erp-page-title">{salesCopy("orders")}</h1>
+          <p className="erp-page-description">{salesCopy("description")}</p>
         </div>
         <div className="erp-page-actions">
           <a className="erp-button erp-button--secondary" href="#sales-create">
-            Create
+            {salesCopy("actions.create")}
           </a>
           <a className="erp-button erp-button--primary" href="#sales-list">
-            Orders
+            {salesCopy("actions.orders")}
           </a>
         </div>
       </header>
 
-      <section className="erp-sales-toolbar" aria-label="Sales order filters">
+      <section className="erp-sales-toolbar" aria-label={salesCopy("filters.label")}>
         <label className="erp-field">
-          <span>Search</span>
+          <span>{salesCopy("filters.search")}</span>
           <input className="erp-input" type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
         </label>
         <label className="erp-field">
-          <span>Status</span>
+          <span>{salesCopy("filters.status")}</span>
           <select className="erp-input" value={status} onChange={(event) => setStatus(event.target.value as StatusFilter)}>
             {salesStatusOptions.map((option) => (
               <option key={option.value || "all"} value={option.value}>
-                {option.label}
+                {option.value ? salesStatusLabel(option.value) : salesCopy("filters.allStatuses")}
               </option>
             ))}
           </select>
         </label>
         <label className="erp-field">
-          <span>Channel</span>
+          <span>{salesCopy("filters.channel")}</span>
           <select className="erp-input" value={filterChannel} onChange={(event) => setFilterChannel(event.target.value)}>
-            <option value="">All channels</option>
+            <option value="">{salesCopy("filters.allChannels")}</option>
             {salesChannelOptions.map((option) => (
               <option key={option} value={option}>
                 {option}
@@ -340,22 +343,22 @@ export function SalesOrderPrototype() {
           </select>
         </label>
         <label className="erp-field">
-          <span>Warehouse</span>
+          <span>{salesCopy("filters.warehouse")}</span>
           <select className="erp-input" value={filterWarehouseId} onChange={(event) => setFilterWarehouseId(event.target.value)}>
             {salesWarehouseOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {salesWarehouseLabel(option.value, option.label)}
               </option>
             ))}
           </select>
         </label>
       </section>
 
-      <section className="erp-kpi-grid erp-sales-kpis" aria-label="Sales order summary">
-        <KPI label="Orders" value={String(totals.count)} />
-        <KPI label="Draft" value={String(totals.draft)} tone={totals.draft > 0 ? "warning" : "normal"} />
-        <KPI label="Confirmed" value={String(totals.confirmed)} tone="info" />
-        <KPI label="Total" value={formatSalesMoney(totals.totalAmount)} tone="success" />
+      <section className="erp-kpi-grid erp-sales-kpis" aria-label={salesCopy("orders")}>
+        <KPI label={salesCopy("kpi.orders")} value={String(totals.count)} />
+        <KPI label={salesCopy("kpi.draft")} value={String(totals.draft)} tone={totals.draft > 0 ? "warning" : "normal"} />
+        <KPI label={salesCopy("kpi.confirmed")} value={String(totals.confirmed)} tone="info" />
+        <KPI label={salesCopy("kpi.total")} value={formatSalesMoney(totals.totalAmount)} tone="success" />
       </section>
 
       {feedback ? (
@@ -367,12 +370,12 @@ export function SalesOrderPrototype() {
       <section className="erp-sales-workspace">
         <section className="erp-card erp-card--padded erp-sales-create" id="sales-create">
           <header className="erp-section-header">
-            <h2 className="erp-section-title">Create order</h2>
-            <StatusChip tone="info">{draftLines.length} lines</StatusChip>
+            <h2 className="erp-section-title">{salesCopy("sections.createOrder")}</h2>
+            <StatusChip tone="info">{salesCopy("lineCount", { count: draftLines.length })}</StatusChip>
           </header>
           <form className="erp-sales-form-grid" onSubmit={handleCreateOrder}>
             <label className="erp-field">
-              <span>Customer</span>
+              <span>{salesCopy("fields.customer")}</span>
               <select className="erp-input" value={customerId} onChange={(event) => handleCustomerChange(event.target.value)}>
                 {salesCustomerOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -382,7 +385,7 @@ export function SalesOrderPrototype() {
               </select>
             </label>
             <label className="erp-field">
-              <span>Channel</span>
+              <span>{salesCopy("fields.channel")}</span>
               <select className="erp-input" value={orderChannel} onChange={(event) => setOrderChannel(event.target.value)}>
                 {salesChannelOptions.map((option) => (
                   <option key={option} value={option}>
@@ -392,31 +395,31 @@ export function SalesOrderPrototype() {
               </select>
             </label>
             <label className="erp-field">
-              <span>Warehouse</span>
+              <span>{salesCopy("fields.warehouse")}</span>
               <select className="erp-input" value={orderWarehouseId} onChange={(event) => setOrderWarehouseId(event.target.value)}>
                 {salesWarehouseOptions.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label}
+                    {salesWarehouseLabel(option.value, option.label)}
                   </option>
                 ))}
               </select>
             </label>
             <label className="erp-field">
-              <span>Order date</span>
+              <span>{salesCopy("fields.orderDate")}</span>
               <input className="erp-input" type="date" value={orderDate} onChange={(event) => setOrderDate(event.target.value)} />
             </label>
             <label className="erp-field erp-sales-note-field">
-              <span>Note</span>
+              <span>{salesCopy("fields.note")}</span>
               <input className="erp-input" value={note} onChange={(event) => setNote(event.target.value)} />
             </label>
             <button className="erp-button erp-button--primary" type="submit" disabled={busyAction === "create"}>
-              Create order
+              {salesCopy("actions.createOrder")}
             </button>
           </form>
 
           <form className="erp-sales-line-editor" onSubmit={handleAddLine}>
             <label className="erp-field">
-              <span>Line item</span>
+              <span>{salesCopy("fields.lineItem")}</span>
               <select className="erp-input" value={lineItemId} onChange={(event) => handleLineItemChange(event.target.value)}>
                 {salesItemOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -426,11 +429,11 @@ export function SalesOrderPrototype() {
               </select>
             </label>
             <label className="erp-field">
-              <span>Qty</span>
+              <span>{salesCopy("fields.qty")}</span>
               <input className="erp-input" inputMode="decimal" value={lineQty} onChange={(event) => setLineQty(event.target.value)} />
             </label>
             <label className="erp-field">
-              <span>Unit price</span>
+              <span>{salesCopy("fields.unitPrice")}</span>
               <input
                 className="erp-input"
                 inputMode="decimal"
@@ -439,7 +442,7 @@ export function SalesOrderPrototype() {
               />
             </label>
             <label className="erp-field">
-              <span>Discount</span>
+              <span>{salesCopy("fields.discount")}</span>
               <input
                 className="erp-input"
                 inputMode="decimal"
@@ -448,7 +451,7 @@ export function SalesOrderPrototype() {
               />
             </label>
             <button className="erp-button erp-button--secondary" type="submit">
-              Add line
+              {salesCopy("actions.addLine")}
             </button>
           </form>
 
@@ -460,25 +463,25 @@ export function SalesOrderPrototype() {
               disabled={!selectedOrder || selectedOrder.status !== "draft" || draftLines.length === 0}
               onClick={handleReplaceDraftLines}
             >
-              Replace draft lines
+              {salesCopy("actions.replaceDraftLines")}
             </button>
           </div>
         </section>
 
         <section className="erp-card erp-card--padded erp-sales-detail" id="sales-detail">
           <header className="erp-section-header">
-            <h2 className="erp-section-title">Detail</h2>
-            {selectedOrder ? <StatusChip tone={salesOrderStatusTone(selectedOrder.status)}>{formatSalesOrderStatus(selectedOrder.status)}</StatusChip> : null}
+            <h2 className="erp-section-title">{salesCopy("sections.detail")}</h2>
+            {selectedOrder ? <StatusChip tone={salesOrderStatusTone(selectedOrder.status)}>{salesStatusLabel(selectedOrder.status)}</StatusChip> : null}
           </header>
           {selectedOrder ? (
             <>
               <div className="erp-sales-detail-grid">
-                <Fact label="Order" value={selectedOrder.orderNo} />
-                <Fact label="Customer" value={selectedOrder.customerName} />
-                <Fact label="Warehouse" value={selectedOrder.warehouseCode ?? "-"} />
-                <Fact label="Date" value={formatSalesDate(selectedOrder.orderDate)} />
-                <Fact label="Total" value={formatSalesMoney(selectedOrder.totalAmount, selectedOrder.currencyCode)} />
-                <Fact label="Version" value={String(selectedOrder.version)} />
+                <Fact label={salesCopy("fields.order")} value={selectedOrder.orderNo} />
+                <Fact label={salesCopy("fields.customer")} value={selectedOrder.customerName} />
+                <Fact label={salesCopy("fields.warehouse")} value={selectedOrder.warehouseCode ?? "-"} />
+                <Fact label={salesCopy("fields.date")} value={formatSalesDate(selectedOrder.orderDate)} />
+                <Fact label={salesCopy("fields.total")} value={formatSalesMoney(selectedOrder.totalAmount, selectedOrder.currencyCode)} />
+                <Fact label={salesCopy("fields.version")} value={String(selectedOrder.version)} />
               </div>
               <div className="erp-sales-actions">
                 <button
@@ -487,7 +490,7 @@ export function SalesOrderPrototype() {
                   disabled={selectedOrder.status !== "draft" || Boolean(busyAction)}
                   onClick={() => runAction("confirm")}
                 >
-                  Confirm
+                  {salesCopy("actions.confirm")}
                 </button>
                 <button
                   className="erp-button erp-button--danger"
@@ -495,16 +498,16 @@ export function SalesOrderPrototype() {
                   disabled={!["draft", "confirmed"].includes(selectedOrder.status) || Boolean(busyAction)}
                   onClick={() => runAction("cancel")}
                 >
-                  Cancel
+                  {salesCopy("actions.cancel")}
                 </button>
               </div>
               <div className="erp-sales-subsection">
-                <h3 className="erp-section-title">Line items</h3>
+                <h3 className="erp-section-title">{salesCopy("sections.lineItems")}</h3>
                 <DataTable columns={lineColumns} rows={selectedOrder.lines} getRowKey={(row) => row.id} />
               </div>
             </>
           ) : (
-            <EmptyState title="No sales order selected" />
+            <EmptyState title={salesCopy("empty.noSelected")} />
           )}
         </section>
       </section>
@@ -516,7 +519,7 @@ export function SalesOrderPrototype() {
           getRowKey={(row) => row.id}
           loading={loading}
           error={error?.message}
-          emptyState={<EmptyState title="No sales orders match the filters" />}
+          emptyState={<EmptyState title={salesCopy("empty.noOrders")} />}
         />
       </section>
     </section>
@@ -525,11 +528,11 @@ export function SalesOrderPrototype() {
 
 function DraftLineList({ lines, onRemove }: { lines: SalesOrderLineInput[]; onRemove: (index: number) => void }) {
   if (lines.length === 0) {
-    return <p className="erp-sales-empty-line">No draft lines</p>;
+    return <p className="erp-sales-empty-line">{salesCopy("empty.noDraftLines")}</p>;
   }
 
   return (
-    <ol className="erp-sales-draft-lines" aria-label="Draft sales order lines">
+    <ol className="erp-sales-draft-lines" aria-label={salesCopy("draftLines")}>
       {lines.map((line, index) => {
         const item = salesItemOptions.find((candidate) => candidate.value === line.itemId) ?? salesItemOptions[0];
 
@@ -540,7 +543,7 @@ function DraftLineList({ lines, onRemove }: { lines: SalesOrderLineInput[]; onRe
               <small>{line.orderedQty} {line.uomCode} / {formatSalesMoney(line.unitPrice)}</small>
             </span>
             <button className="erp-button erp-button--secondary" type="button" onClick={() => onRemove(index)}>
-              Remove
+              {salesCopy("actions.remove")}
             </button>
           </li>
         );
@@ -557,6 +560,31 @@ function KPI({ label, value, tone = "normal" }: { label: string; value: string; 
       <StatusChip tone={tone}>{label}</StatusChip>
     </article>
   );
+}
+
+function salesCopy(key: string, values?: Record<string, string | number>) {
+  return t(`sales.${key}`, { values });
+}
+
+function salesStatusLabel(status: SalesOrderStatus) {
+  return salesCopy(`status.${status}`, { status });
+}
+
+function salesWarehouseLabel(value: string, fallback: string) {
+  return t(`sales.warehouse.${value}`, { fallback });
+}
+
+function salesErrorMessage(reason: unknown, fallbackKey: string) {
+  if (!(reason instanceof Error)) {
+    return salesCopy(fallbackKey);
+  }
+
+  switch (reason.message) {
+    case "At least one line item is required":
+      return salesCopy("feedback.addLineRequired");
+    default:
+      return salesCopy(fallbackKey);
+  }
 }
 
 function salesStatusFromParam(value: string | null): StatusFilter | null {

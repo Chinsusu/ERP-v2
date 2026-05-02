@@ -1,1 +1,104 @@
-{ "title": "Sales", "orders": "Sales Orders" }
+{
+  "title": "Sales",
+  "orders": "Sales Orders",
+  "description": "Create daily orders, review line items, and move drafts into fulfillment.",
+  "actions": {
+    "create": "Create",
+    "orders": "Orders",
+    "open": "Open",
+    "createOrder": "Create order",
+    "addLine": "Add line",
+    "replaceDraftLines": "Replace draft lines",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "remove": "Remove"
+  },
+  "filters": {
+    "label": "Sales order filters",
+    "search": "Search",
+    "status": "Status",
+    "channel": "Channel",
+    "warehouse": "Warehouse",
+    "allChannels": "All channels",
+    "allStatuses": "All statuses"
+  },
+  "columns": {
+    "order": "Order",
+    "channel": "Channel",
+    "warehouse": "Warehouse",
+    "status": "Status",
+    "date": "Date",
+    "lines": "Lines",
+    "total": "Total",
+    "action": "Action",
+    "qty": "Qty",
+    "base": "Base",
+    "unitPrice": "Unit price",
+    "amount": "Amount"
+  },
+  "kpi": {
+    "orders": "Orders",
+    "draft": "Draft",
+    "confirmed": "Confirmed",
+    "total": "Total"
+  },
+  "sections": {
+    "createOrder": "Create order",
+    "detail": "Detail",
+    "lineItems": "Line items"
+  },
+  "fields": {
+    "customer": "Customer",
+    "channel": "Channel",
+    "warehouse": "Warehouse",
+    "orderDate": "Order date",
+    "note": "Note",
+    "lineItem": "Line item",
+    "qty": "Qty",
+    "unitPrice": "Unit price",
+    "discount": "Discount",
+    "order": "Order",
+    "date": "Date",
+    "total": "Total",
+    "version": "Version"
+  },
+  "status": {
+    "draft": "Draft",
+    "confirmed": "Confirmed",
+    "reserved": "Reserved",
+    "picking": "Picking",
+    "packing": "Packing",
+    "packed": "Packed",
+    "waiting_handover": "Waiting handover",
+    "cancelled": "Cancelled",
+    "picked": "Picked",
+    "handed_over": "Handed over",
+    "closed": "Closed",
+    "reservation_failed": "Reservation failed",
+    "pick_exception": "Pick exception",
+    "pack_exception": "Pack exception",
+    "handover_exception": "Handover exception"
+  },
+  "feedback": {
+    "lineAdded": "{sku} added",
+    "addLineRequired": "Add at least one line item.",
+    "created": "{orderNo} created",
+    "linesUpdated": "{orderNo} lines updated",
+    "actionDone": "{orderNo} / {status}",
+    "cancelReason": "Cancelled from sales order board",
+    "createFailed": "Sales order could not be created.",
+    "updateFailed": "Sales order update failed.",
+    "actionFailed": "Sales order action failed."
+  },
+  "empty": {
+    "noSelected": "No sales order selected",
+    "noOrders": "No sales orders match the filters",
+    "noDraftLines": "No draft lines"
+  },
+  "draftLines": "Draft sales order lines",
+  "lineCount": "{count} lines",
+  "warehouse": {
+    "wh-hcm-fg": "Finished Goods HCM",
+    "wh-hcm-rm": "Raw Material HCM"
+  }
+}

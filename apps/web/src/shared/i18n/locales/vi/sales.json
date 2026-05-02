@@ -1,1 +1,104 @@
-{ "title": "Bán hàng", "orders": "Đơn bán hàng" }
+{
+  "title": "Bán hàng",
+  "orders": "Đơn bán hàng",
+  "description": "Tạo đơn hằng ngày, kiểm tra dòng hàng và chuyển đơn nháp sang xử lý kho.",
+  "actions": {
+    "create": "Tạo đơn",
+    "orders": "Danh sách đơn",
+    "open": "Mở",
+    "createOrder": "Tạo đơn",
+    "addLine": "Thêm dòng",
+    "replaceDraftLines": "Thay dòng nháp",
+    "confirm": "Xác nhận",
+    "cancel": "Hủy",
+    "remove": "Xóa"
+  },
+  "filters": {
+    "label": "Bộ lọc đơn bán hàng",
+    "search": "Tìm kiếm",
+    "status": "Trạng thái",
+    "channel": "Kênh bán",
+    "warehouse": "Kho",
+    "allChannels": "Tất cả kênh",
+    "allStatuses": "Tất cả trạng thái"
+  },
+  "columns": {
+    "order": "Đơn hàng",
+    "channel": "Kênh",
+    "warehouse": "Kho",
+    "status": "Trạng thái",
+    "date": "Ngày",
+    "lines": "Dòng",
+    "total": "Tổng tiền",
+    "action": "Thao tác",
+    "qty": "Số lượng",
+    "base": "SL cơ sở",
+    "unitPrice": "Đơn giá",
+    "amount": "Thành tiền"
+  },
+  "kpi": {
+    "orders": "Đơn",
+    "draft": "Nháp",
+    "confirmed": "Đã xác nhận",
+    "total": "Tổng tiền"
+  },
+  "sections": {
+    "createOrder": "Tạo đơn",
+    "detail": "Chi tiết",
+    "lineItems": "Dòng hàng"
+  },
+  "fields": {
+    "customer": "Khách hàng",
+    "channel": "Kênh bán",
+    "warehouse": "Kho",
+    "orderDate": "Ngày đặt",
+    "note": "Ghi chú",
+    "lineItem": "Mã hàng",
+    "qty": "Số lượng",
+    "unitPrice": "Đơn giá",
+    "discount": "Chiết khấu",
+    "order": "Đơn",
+    "date": "Ngày",
+    "total": "Tổng tiền",
+    "version": "Phiên bản"
+  },
+  "status": {
+    "draft": "Nháp",
+    "confirmed": "Đã xác nhận",
+    "reserved": "Đã giữ tồn",
+    "picking": "Đang soạn",
+    "packing": "Đang đóng",
+    "packed": "Đã đóng",
+    "waiting_handover": "Chờ bàn giao",
+    "cancelled": "Đã hủy",
+    "picked": "Đã soạn",
+    "handed_over": "Đã bàn giao",
+    "closed": "Đã đóng",
+    "reservation_failed": "Giữ tồn lỗi",
+    "pick_exception": "Lỗi soạn hàng",
+    "pack_exception": "Lỗi đóng hàng",
+    "handover_exception": "Lỗi bàn giao"
+  },
+  "feedback": {
+    "lineAdded": "Đã thêm {sku}",
+    "addLineRequired": "Vui lòng thêm ít nhất một dòng hàng.",
+    "created": "Đã tạo {orderNo}",
+    "linesUpdated": "Đã cập nhật dòng hàng cho {orderNo}",
+    "actionDone": "{orderNo} / {status}",
+    "cancelReason": "Hủy từ màn đơn bán hàng",
+    "createFailed": "Không thể tạo đơn bán hàng.",
+    "updateFailed": "Không thể cập nhật đơn bán hàng.",
+    "actionFailed": "Không thể thực hiện thao tác đơn bán hàng."
+  },
+  "empty": {
+    "noSelected": "Chưa chọn đơn bán hàng",
+    "noOrders": "Không có đơn bán hàng phù hợp bộ lọc",
+    "noDraftLines": "Chưa có dòng nháp"
+  },
+  "draftLines": "Dòng nháp đơn bán hàng",
+  "lineCount": "{count} dòng",
+  "warehouse": {
+    "wh-hcm-fg": "Kho thành phẩm HCM",
+    "wh-hcm-rm": "Kho nguyên liệu HCM"
+  }
+}
