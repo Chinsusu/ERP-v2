@@ -6,7 +6,7 @@ Sprint: Sprint 17 - Master data runtime store persistence v1
 Document role: Coding task board for Sprint 17 implementation
 Version: v1.0
 Primary stack: Go backend, PostgreSQL 16, OpenAPI, Docker dev deploy
-Status: Ready for implementation after Sprint 16 manual/dev release gate
+Status: Dev/manual release evidence complete; cloud CI and production tag are on hold while GitHub Actions minutes are exhausted
 
 ---
 
