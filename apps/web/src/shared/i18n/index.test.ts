@@ -62,6 +62,8 @@ describe("Vietnamese-first i18n foundation", () => {
     expect(t("masterdata.warehouse.location.type.handover")).toBe("Bàn giao ĐVVC");
     expect(t("inventory.availableStock.columns.batch")).toBe("Lô");
     expect(t("inventory.qc.status.fail")).toBe("Không đạt QC");
+    expect(t("auth.loginTitle")).toBe("Đăng nhập ERP");
+    expect(t("auth.errors.invalidCredentials")).toBe("Email hoặc mật khẩu không đúng.");
   });
 
   it("centralizes status, error, validation, and unit labels", () => {
