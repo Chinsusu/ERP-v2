@@ -47,6 +47,9 @@ describe("Vietnamese-first i18n foundation", () => {
     expect(t("returns.inspection.actionCode.route_to_lab_or_damaged")).toBe("Chuyển Lab/kho hỏng");
     expect(t("inventory.stockCount.status.variance_review")).toBe("Chờ xử lý lệch");
     expect(t("inventory.stockAdjustment.actions.approve")).toBe("Duyệt");
+    expect(t("purchase.order.title")).toBe("Đơn mua hàng");
+    expect(t("purchase.status.approved")).toBe("Đã duyệt");
+    expect(t("purchase.actions.approve")).toBe("Duyệt PO");
   });
 
   it("centralizes status, error, validation, and unit labels", () => {

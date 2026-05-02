@@ -1,1 +1,116 @@
-{ "title": "Purchase", "purchaseOrder": "Purchase Order" }
+{
+  "title": "Purchase",
+  "purchaseOrder": "Purchase Order",
+  "status": {
+    "draft": "Draft",
+    "submitted": "Submitted",
+    "approved": "Approved",
+    "partially_received": "Partially received",
+    "received": "Received",
+    "closed": "Closed",
+    "cancelled": "Cancelled",
+    "rejected": "Rejected"
+  },
+  "order": {
+    "title": "Purchase Orders",
+    "description": "Create PO drafts, review suppliers and lines, then submit for approval",
+    "columns": {
+      "po": "PO",
+      "warehouse": "Warehouse",
+      "status": "Status",
+      "expected": "Expected",
+      "lines": "Lines",
+      "received": "Received",
+      "total": "Total",
+      "action": "Action"
+    }
+  },
+  "filters": {
+    "label": "Purchase order filters",
+    "search": "Search",
+    "status": "Status",
+    "supplier": "Supplier",
+    "warehouse": "Warehouse",
+    "allStatuses": "All statuses",
+    "allSuppliers": "All suppliers"
+  },
+  "summary": {
+    "label": "Purchase order summary",
+    "pos": "POs",
+    "draft": "Draft",
+    "approved": "Approved",
+    "total": "Total"
+  },
+  "create": {
+    "title": "Create purchase order"
+  },
+  "fields": {
+    "supplier": "Supplier",
+    "warehouse": "Warehouse",
+    "expectedDate": "Expected date",
+    "note": "Note"
+  },
+  "line": {
+    "count": "{count} lines",
+    "item": "Line item",
+    "qty": "Qty",
+    "unitPrice": "Unit price",
+    "note": "Line note",
+    "items": "Line items",
+    "noDraftLines": "No draft lines",
+    "draftLines": "Draft purchase order lines",
+    "columns": {
+      "sku": "SKU",
+      "ordered": "Ordered",
+      "received": "Received",
+      "base": "Base",
+      "unitPrice": "Unit price",
+      "amount": "Amount"
+    }
+  },
+  "detail": {
+    "title": "Detail",
+    "po": "PO",
+    "supplier": "Supplier",
+    "warehouse": "Warehouse",
+    "expected": "Expected",
+    "total": "Total",
+    "version": "Version"
+  },
+  "attachments": {
+    "title": "PO attachments",
+    "empty": "No supplier documents linked.",
+    "file": "PO attachment file",
+    "supplierDocument": "Supplier document",
+    "poEvidence": "PO evidence"
+  },
+  "actions": {
+    "open": "Open",
+    "create": "Create",
+    "orders": "Orders",
+    "createPO": "Create PO",
+    "addLine": "Add line",
+    "replaceDraftLines": "Replace draft lines",
+    "submit": "Submit",
+    "approve": "Approve",
+    "close": "Close",
+    "cancel": "Cancel",
+    "add": "Add",
+    "remove": "Remove"
+  },
+  "feedback": {
+    "lineAdded": "{sku} added",
+    "addLineRequired": "Add at least one line item",
+    "created": "{poNo} created",
+    "createFailed": "Purchase order could not be created",
+    "linesUpdated": "{poNo} lines updated",
+    "updateFailed": "Purchase order update failed",
+    "detailFailed": "Purchase order detail failed",
+    "actionFailed": "Purchase order action failed",
+    "attachmentLinked": "{fileName} linked to {poNo}"
+  },
+  "empty": {
+    "noSelection": "No purchase order selected",
+    "noMatches": "No purchase orders match the filters"
+  }
+}

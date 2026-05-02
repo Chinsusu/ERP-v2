@@ -1,1 +1,116 @@
-{ "title": "Mua hàng", "purchaseOrder": "Đơn mua hàng" }
+{
+  "title": "Mua hàng",
+  "purchaseOrder": "Đơn mua hàng",
+  "status": {
+    "draft": "Nháp",
+    "submitted": "Chờ duyệt",
+    "approved": "Đã duyệt",
+    "partially_received": "Nhận một phần",
+    "received": "Đã nhận",
+    "closed": "Đã đóng",
+    "cancelled": "Đã hủy",
+    "rejected": "Từ chối"
+  },
+  "order": {
+    "title": "Đơn mua hàng",
+    "description": "Tạo nháp PO, kiểm tra nhà cung cấp và dòng hàng, rồi gửi duyệt",
+    "columns": {
+      "po": "PO",
+      "warehouse": "Kho",
+      "status": "Trạng thái",
+      "expected": "Ngày dự kiến",
+      "lines": "Dòng",
+      "received": "Đã nhận",
+      "total": "Tổng tiền",
+      "action": "Thao tác"
+    }
+  },
+  "filters": {
+    "label": "Bộ lọc đơn mua hàng",
+    "search": "Tìm kiếm",
+    "status": "Trạng thái",
+    "supplier": "Nhà cung cấp",
+    "warehouse": "Kho",
+    "allStatuses": "Tất cả trạng thái",
+    "allSuppliers": "Tất cả nhà cung cấp"
+  },
+  "summary": {
+    "label": "Tổng quan đơn mua hàng",
+    "pos": "PO",
+    "draft": "Nháp",
+    "approved": "Đã duyệt",
+    "total": "Tổng tiền"
+  },
+  "create": {
+    "title": "Tạo đơn mua hàng"
+  },
+  "fields": {
+    "supplier": "Nhà cung cấp",
+    "warehouse": "Kho",
+    "expectedDate": "Ngày dự kiến",
+    "note": "Ghi chú"
+  },
+  "line": {
+    "count": "{count} dòng",
+    "item": "Mặt hàng",
+    "qty": "Số lượng",
+    "unitPrice": "Đơn giá",
+    "note": "Ghi chú dòng",
+    "items": "Dòng hàng",
+    "noDraftLines": "Chưa có dòng nháp",
+    "draftLines": "Dòng nháp đơn mua hàng",
+    "columns": {
+      "sku": "SKU",
+      "ordered": "Số lượng mua",
+      "received": "Đã nhận",
+      "base": "SL cơ sở",
+      "unitPrice": "Đơn giá",
+      "amount": "Thành tiền"
+    }
+  },
+  "detail": {
+    "title": "Chi tiết",
+    "po": "PO",
+    "supplier": "Nhà cung cấp",
+    "warehouse": "Kho",
+    "expected": "Ngày dự kiến",
+    "total": "Tổng tiền",
+    "version": "Phiên bản"
+  },
+  "attachments": {
+    "title": "Tệp PO",
+    "empty": "Chưa liên kết chứng từ nhà cung cấp.",
+    "file": "Tệp đính kèm PO",
+    "supplierDocument": "Chứng từ nhà cung cấp",
+    "poEvidence": "Bằng chứng PO"
+  },
+  "actions": {
+    "open": "Mở",
+    "create": "Tạo",
+    "orders": "Đơn hàng",
+    "createPO": "Tạo PO",
+    "addLine": "Thêm dòng",
+    "replaceDraftLines": "Thay dòng nháp",
+    "submit": "Gửi duyệt",
+    "approve": "Duyệt PO",
+    "close": "Đóng",
+    "cancel": "Hủy",
+    "add": "Thêm",
+    "remove": "Xóa"
+  },
+  "feedback": {
+    "lineAdded": "Đã thêm {sku}",
+    "addLineRequired": "Thêm ít nhất một dòng hàng",
+    "created": "Đã tạo {poNo}",
+    "createFailed": "Không thể tạo đơn mua hàng",
+    "linesUpdated": "Đã cập nhật dòng cho {poNo}",
+    "updateFailed": "Không thể cập nhật đơn mua hàng",
+    "detailFailed": "Không thể tải chi tiết đơn mua hàng",
+    "actionFailed": "Không thể xử lý đơn mua hàng",
+    "attachmentLinked": "Đã liên kết {fileName} vào {poNo}"
+  },
+  "empty": {
+    "noSelection": "Chưa chọn đơn mua hàng",
+    "noMatches": "Không có đơn mua hàng khớp bộ lọc"
+  }
+}
