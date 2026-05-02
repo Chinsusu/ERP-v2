@@ -13,6 +13,7 @@
   "HANDED_OVER": "Đã bàn giao",
   "DELIVERED": "Đã giao",
   "RETURNED": "Đã hoàn",
+  "RETURN_PENDING_INSPECTION": "Hàng hoàn chờ kiểm",
   "QC_HOLD": "Đang giữ kiểm",
   "QC_PASS": "Đạt QC",
   "QC_FAIL": "Không đạt QC",
