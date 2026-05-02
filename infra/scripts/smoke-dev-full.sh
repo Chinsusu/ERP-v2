@@ -1386,7 +1386,7 @@ EOF
 
   curl_check "subcontract_order_after" GET "$api_base/subcontract-orders/$order_id" 200 "" auth
   if ! grep -q "\"id\":\"$order_id\"" "$tmp_body" ||
-    ! grep -q '"status":"rejected_factory_issue"' "$tmp_body" ||
+    ! grep -q '"status":"rejected_with_factory_issue"' "$tmp_body" ||
     ! grep -q '"deposit_amount":"250000.00"' "$tmp_body" ||
     ! grep -q '"received_qty":"80.000000"' "$tmp_body"; then
     echo "persisted_subcontract_order failed: order not readable after restart" >&2
@@ -1395,7 +1395,7 @@ EOF
   fi
   json_check "warehouse_subcontract_after" "$api_base/warehouse/daily-board/subcontract-metrics?business_date=2026-04-29&warehouse_id=wh-hcm-rm"
 
-  order_count="$(postgres_scalar "select count(*) from subcontract.subcontract_orders where org_id = '$org_id'::uuid and order_ref = '$order_id' and status = 'rejected_factory_issue' and deposit_amount = 250000.00 and received_qty = 80.000000")"
+  order_count="$(postgres_scalar "select count(*) from subcontract.subcontract_orders where org_id = '$org_id'::uuid and order_ref = '$order_id' and status = 'rejected_with_factory_issue' and deposit_amount = 250000.00 and received_qty = 80.000000")"
   transfer_count="$(postgres_scalar "select count(*) from subcontract.subcontract_material_transfers t join subcontract.subcontract_material_transfer_evidence e on e.material_transfer_id = t.id where t.org_id = '$org_id'::uuid and t.transfer_ref = '$transfer_id' and t.subcontract_order_ref = '$order_id' and t.status = 'sent_to_factory' and e.evidence_ref = '$transfer_evidence_id'")"
   sample_count="$(postgres_scalar "select count(*) from subcontract.subcontract_sample_approvals where org_id = '$org_id'::uuid and sample_ref = '$sample_id' and subcontract_order_ref = '$order_id' and status = 'approved' and storage_status = 'retained_in_qa_cabinet'")"
   receipt_count="$(postgres_scalar "select count(*) from subcontract.subcontract_finished_goods_receipts r join subcontract.subcontract_finished_goods_receipt_lines l on l.finished_goods_receipt_id = r.id where r.org_id = '$org_id'::uuid and r.receipt_ref = '$receipt_id' and r.subcontract_order_ref = '$order_id' and l.receive_qty = 80.000000 and l.packaging_status = 'intact'")"

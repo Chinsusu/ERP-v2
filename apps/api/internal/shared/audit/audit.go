@@ -2,6 +2,8 @@ package audit
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
@@ -95,7 +97,7 @@ func NewLog(input NewLogInput) (Log, error) {
 		CreatedAt:  createdAt.UTC(),
 	}
 	if log.ID == "" {
-		log.ID = fmt.Sprintf("audit_%d_%d", log.CreatedAt.UnixNano(), generatedLogSequence.Add(1))
+		log.ID = newGeneratedLogID(log.CreatedAt)
 	}
 	if log.ActorID == "" {
 		return Log{}, errors.New("audit actor id is required")
@@ -114,6 +116,15 @@ func NewLog(input NewLogInput) (Log, error) {
 	}
 
 	return log, nil
+}
+
+func newGeneratedLogID(createdAt time.Time) string {
+	var suffix [8]byte
+	if _, err := rand.Read(suffix[:]); err == nil {
+		return fmt.Sprintf("audit_%d_%s", createdAt.UnixNano(), hex.EncodeToString(suffix[:]))
+	}
+
+	return fmt.Sprintf("audit_%d_%d", createdAt.UnixNano(), generatedLogSequence.Add(1))
 }
 
 func NewInMemoryLogStore(logs ...Log) *InMemoryLogStore {
