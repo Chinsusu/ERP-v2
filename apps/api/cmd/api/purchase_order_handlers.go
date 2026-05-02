@@ -17,7 +17,7 @@ import (
 )
 
 type purchaseOrderUOMConverterAdapter struct {
-	catalog *masterdataapp.UOMCatalog
+	catalog uomCatalog
 }
 
 type purchaseOrderLineRequest struct {

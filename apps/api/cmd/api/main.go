@@ -1183,12 +1183,79 @@ func main() {
 		}
 		log.Fatalf("configure batch catalog store: %v", err)
 	}
-	itemCatalog := masterdataapp.NewPrototypeItemCatalog(auditLogStore)
-	uomCatalog := masterdataapp.NewPrototypeUOMCatalog()
-	warehouseCatalog := masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore)
-	partyCatalog := masterdataapp.NewPrototypePartyCatalog(auditLogStore)
+	masterDataStores, closeMasterDataStores, err := newRuntimeMasterDataStores(cfg, auditLogStore)
+	if err != nil {
+		if closeBatchCatalogStore != nil {
+			if closeErr := closeBatchCatalogStore(); closeErr != nil {
+				log.Printf("close batch catalog store: %v", closeErr)
+			}
+		}
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeStockCountStore != nil {
+			if closeErr := closeStockCountStore(); closeErr != nil {
+				log.Printf("close stock count store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		log.Fatalf("configure master data stores: %v", err)
+	}
+	if err := seedRuntimeMasterDataStores(context.Background(), masterDataStores); err != nil {
+		if closeMasterDataStores != nil {
+			if closeErr := closeMasterDataStores(); closeErr != nil {
+				log.Printf("close master data stores: %v", closeErr)
+			}
+		}
+		if closeBatchCatalogStore != nil {
+			if closeErr := closeBatchCatalogStore(); closeErr != nil {
+				log.Printf("close batch catalog store: %v", closeErr)
+			}
+		}
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeStockCountStore != nil {
+			if closeErr := closeStockCountStore(); closeErr != nil {
+				log.Printf("close stock count store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		log.Fatalf("seed master data stores: %v", err)
+	}
+	itemCatalog := masterDataStores.items
+	uomCatalog := masterDataStores.uoms
+	warehouseCatalog := masterDataStores.warehouses
+	partyCatalog := masterDataStores.parties
 	purchaseOrderStore, closePurchaseOrderStore, err := newRuntimePurchaseOrderStore(cfg, auditLogStore)
 	if err != nil {
+		if closeMasterDataStores != nil {
+			if closeErr := closeMasterDataStores(); closeErr != nil {
+				log.Printf("close master data stores: %v", closeErr)
+			}
+		}
 		if closeBatchCatalogStore != nil {
 			if closeErr := closeBatchCatalogStore(); closeErr != nil {
 				log.Printf("close batch catalog store: %v", closeErr)
@@ -1735,6 +1802,11 @@ func main() {
 	)
 	subcontractStores, closeSubcontractStores, err := newRuntimeSubcontractStores(cfg, auditLogStore)
 	if err != nil {
+		if closeMasterDataStores != nil {
+			if closeErr := closeMasterDataStores(); closeErr != nil {
+				log.Printf("close master data stores: %v", closeErr)
+			}
+		}
 		if closeFinanceStores != nil {
 			if closeErr := closeFinanceStores(); closeErr != nil {
 				log.Printf("close finance stores: %v", closeErr)
@@ -2787,6 +2859,11 @@ func main() {
 				log.Printf("close subcontract stores: %v", closeErr)
 			}
 		}
+		if closeMasterDataStores != nil {
+			if closeErr := closeMasterDataStores(); closeErr != nil {
+				log.Printf("close master data stores: %v", closeErr)
+			}
+		}
 		if closeReturnReceiptStore != nil {
 			if closeErr := closeReturnReceiptStore(); closeErr != nil {
 				log.Printf("close return receipt store: %v", closeErr)
@@ -3212,7 +3289,7 @@ func auditLogsHandler(store audit.LogStore) http.HandlerFunc {
 	}
 }
 
-func productsHandler(catalog *masterdataapp.ItemCatalog) http.HandlerFunc {
+func productsHandler(catalog itemCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -3298,7 +3375,7 @@ func productsHandler(catalog *masterdataapp.ItemCatalog) http.HandlerFunc {
 	}
 }
 
-func productDetailHandler(catalog *masterdataapp.ItemCatalog) http.HandlerFunc {
+func productDetailHandler(catalog itemCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -3374,7 +3451,7 @@ func productDetailHandler(catalog *masterdataapp.ItemCatalog) http.HandlerFunc {
 	}
 }
 
-func changeProductStatusHandler(catalog *masterdataapp.ItemCatalog) http.HandlerFunc {
+func changeProductStatusHandler(catalog itemCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {
 			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
@@ -3415,7 +3492,7 @@ func changeProductStatusHandler(catalog *masterdataapp.ItemCatalog) http.Handler
 	}
 }
 
-func warehousesHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+func warehousesHandler(catalog warehouseLocationCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -3491,7 +3568,7 @@ func warehousesHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.Han
 	}
 }
 
-func warehouseDetailHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+func warehouseDetailHandler(catalog warehouseLocationCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -3557,7 +3634,7 @@ func warehouseDetailHandler(catalog *masterdataapp.WarehouseLocationCatalog) htt
 	}
 }
 
-func changeWarehouseStatusHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+func changeWarehouseStatusHandler(catalog warehouseLocationCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {
 			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
@@ -3598,7 +3675,7 @@ func changeWarehouseStatusHandler(catalog *masterdataapp.WarehouseLocationCatalo
 	}
 }
 
-func warehouseLocationsHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+func warehouseLocationsHandler(catalog warehouseLocationCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -3676,7 +3753,7 @@ func warehouseLocationsHandler(catalog *masterdataapp.WarehouseLocationCatalog) 
 	}
 }
 
-func warehouseLocationDetailHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+func warehouseLocationDetailHandler(catalog warehouseLocationCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -3743,7 +3820,7 @@ func warehouseLocationDetailHandler(catalog *masterdataapp.WarehouseLocationCata
 	}
 }
 
-func changeWarehouseLocationStatusHandler(catalog *masterdataapp.WarehouseLocationCatalog) http.HandlerFunc {
+func changeWarehouseLocationStatusHandler(catalog warehouseLocationCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {
 			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
@@ -3784,7 +3861,7 @@ func changeWarehouseLocationStatusHandler(catalog *masterdataapp.WarehouseLocati
 	}
 }
 
-func suppliersHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+func suppliersHandler(catalog partyCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -3865,7 +3942,7 @@ func suppliersHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
 	}
 }
 
-func supplierDetailHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+func supplierDetailHandler(catalog partyCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -3936,7 +4013,7 @@ func supplierDetailHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc
 	}
 }
 
-func changeSupplierStatusHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+func changeSupplierStatusHandler(catalog partyCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {
 			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
@@ -3977,7 +4054,7 @@ func changeSupplierStatusHandler(catalog *masterdataapp.PartyCatalog) http.Handl
 	}
 }
 
-func customersHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+func customersHandler(catalog partyCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -4058,7 +4135,7 @@ func customersHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
 	}
 }
 
-func customerDetailHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+func customerDetailHandler(catalog partyCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -4129,7 +4206,7 @@ func customerDetailHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc
 	}
 }
 
-func changeCustomerStatusHandler(catalog *masterdataapp.PartyCatalog) http.HandlerFunc {
+func changeCustomerStatusHandler(catalog partyCatalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {
 			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)

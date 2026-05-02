@@ -146,6 +146,93 @@ restart_api_service() {
   exit 1
 }
 
+persisted_masterdata_runtime_check() {
+  org_id="00000000-0000-4000-8000-000000000001"
+  smoke_index="$(postgres_scalar "select greatest((select count(*) from mdm.items where item_code like 'ITEM-S17-06-01-SMOKE-%'), (select count(*) from mdm.warehouses where code like 'WH-S17-06-%'), (select count(*) from mdm.suppliers where code like 'SUP-S17-06-%'), (select count(*) from mdm.customers where code like 'CUS-S17-06-%')) + 1")"
+  case "$smoke_index" in
+    ''|*[!0-9]*)
+      echo "persisted_masterdata_runtime failed: invalid smoke index '$smoke_index'" >&2
+      exit 1
+      ;;
+  esac
+
+  suffix="$(printf '%04d' "$smoke_index")"
+  item_code="ITEM-S17-06-01-SMOKE-$suffix"
+  sku_code="SKU-S17-06-$suffix"
+  warehouse_code="WH-S17-06-$suffix"
+  location_code="LOC-S17-06-$suffix"
+  supplier_code="SUP-S17-06-$suffix"
+  customer_code="CUS-S17-06-$suffix"
+
+  product_body="$(cat <<EOF
+{"item_code":"$item_code","sku_code":"$sku_code","name":"S17 master data smoke item $suffix","item_type":"finished_good","item_group":"smoke","brand_code":"MYH","uom_base":"EA","uom_purchase":"EA","uom_issue":"EA","lot_controlled":false,"expiry_controlled":false,"shelf_life_days":0,"qc_required":false,"status":"active","standard_cost":"125000.000000","is_sellable":true,"is_purchasable":true,"is_producible":false,"spec_version":"S17-06-01"}
+EOF
+)"
+  warehouse_body="$(cat <<EOF
+{"warehouse_code":"$warehouse_code","warehouse_name":"S17 Master Data Smoke Warehouse $suffix","warehouse_type":"finished_good","site_code":"HCM","address":"S17 smoke warehouse","allow_sale_issue":true,"allow_prod_issue":false,"allow_quarantine":true,"status":"active"}
+EOF
+)"
+  location_body="$(cat <<EOF
+{"warehouse_id":"$warehouse_code","location_code":"$location_code","location_name":"S17 Smoke Location $suffix","location_type":"storage","zone_code":"SMOKE","allow_receive":true,"allow_pick":true,"allow_store":true,"is_default":false,"status":"active"}
+EOF
+)"
+  supplier_body="$(cat <<EOF
+{"supplier_code":"$supplier_code","supplier_name":"S17 Smoke Supplier $suffix","supplier_group":"service","contact_name":"S17 Supplier","phone":"0900000000","email":"s17.supplier.$suffix@example.local","tax_code":"031706$suffix","address":"Ho Chi Minh","payment_terms":"NET15","lead_time_days":5,"moq":"1.000000","quality_score":"90.0000","delivery_score":"91.0000","status":"active"}
+EOF
+)"
+  customer_body="$(cat <<EOF
+{"customer_code":"$customer_code","customer_name":"S17 Smoke Customer $suffix","customer_type":"dealer","channel_code":"dealer","price_list_code":"PL-S17","discount_group":"SMOKE","credit_limit":"1000000.00","payment_terms":"NET15","contact_name":"S17 Customer","phone":"0911111111","email":"s17.customer.$suffix@example.local","tax_code":"031716$suffix","address":"Ho Chi Minh","status":"active"}
+EOF
+)"
+
+  curl_check "masterdata_item_create" POST "$api_base/products" 201 "$product_body" auth
+  curl_check "masterdata_wh_create" POST "$api_base/warehouses" 201 "$warehouse_body" auth
+  curl_check "masterdata_loc_create" POST "$api_base/warehouse-locations" 201 "$location_body" auth
+  curl_check "masterdata_supplier_create" POST "$api_base/suppliers" 201 "$supplier_body" auth
+  curl_check "masterdata_customer_create" POST "$api_base/customers" 201 "$customer_body" auth
+
+  restart_api_service
+
+  curl_check "masterdata_item_read" GET "$api_base/products/$sku_code" 200 "" auth
+  if ! grep -q "\"sku_code\":\"$sku_code\"" "$tmp_body"; then
+    echo "persisted_masterdata_item failed: item not readable after restart" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+  curl_check "masterdata_wh_read" GET "$api_base/warehouses/$warehouse_code" 200 "" auth
+  if ! grep -q "\"warehouse_code\":\"$warehouse_code\"" "$tmp_body"; then
+    echo "persisted_masterdata_warehouse failed: warehouse not readable after restart" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+  curl_check "masterdata_loc_read" GET "$api_base/warehouse-locations/$location_code" 200 "" auth
+  if ! grep -q "\"location_code\":\"$location_code\"" "$tmp_body"; then
+    echo "persisted_masterdata_location failed: location not readable after restart" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+  curl_check "masterdata_supplier_read" GET "$api_base/suppliers/$supplier_code" 200 "" auth
+  if ! grep -q "\"supplier_code\":\"$supplier_code\"" "$tmp_body"; then
+    echo "persisted_masterdata_supplier failed: supplier not readable after restart" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+  curl_check "masterdata_customer_read" GET "$api_base/customers/$customer_code" 200 "" auth
+  if ! grep -q "\"customer_code\":\"$customer_code\"" "$tmp_body"; then
+    echo "persisted_masterdata_customer failed: customer not readable after restart" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  document_count="$(postgres_scalar "select (select count(*) from mdm.items where org_id = '$org_id'::uuid and item_code = '$item_code' and sku = '$sku_code' and status = 'active') + (select count(*) from mdm.warehouses where org_id = '$org_id'::uuid and code = '$warehouse_code' and status = 'active') + (select count(*) from mdm.warehouse_bins where org_id = '$org_id'::uuid and code = '$location_code' and status = 'active') + (select count(*) from mdm.suppliers where org_id = '$org_id'::uuid and code = '$supplier_code' and status = 'active') + (select count(*) from mdm.customers where org_id = '$org_id'::uuid and code = '$customer_code' and status = 'active')")"
+  if [ "$document_count" != "5" ]; then
+    echo "persisted_masterdata_runtime failed: document=$document_count" >&2
+    exit 1
+  fi
+
+  printf '%-28s %s %s\n' "persisted_masterdata" "ok" "$suffix"
+}
+
 persisted_finance_runtime_check() {
   org_id="00000000-0000-4000-8000-000000000001"
   smoke_index="$(postgres_scalar "select greatest((select count(*) from finance.customer_receivables where receivable_ref like 'ar-s15-06-03-smoke-%'), (select count(*) from finance.supplier_payables where payable_ref like 'ap-s15-06-03-smoke-%'), (select count(*) from finance.cod_remittances where remittance_ref like 'cod-s15-06-03-smoke-%'), (select count(*) from finance.cash_transactions where transaction_ref like 'cash-s15-06-03-smoke-%')) + 1")"
@@ -1514,6 +1601,7 @@ csv_check "operations_report_csv" "$api_base/reports/operations-daily/export.csv
 json_check "finance_report_json" "$api_base/reports/finance-summary?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08"
 csv_check "finance_report_csv" "$api_base/reports/finance-summary/export.csv?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08"
 
+persisted_masterdata_runtime_check
 persisted_finance_runtime_check
 persisted_sales_reservation_check
 persisted_stock_movement_check
