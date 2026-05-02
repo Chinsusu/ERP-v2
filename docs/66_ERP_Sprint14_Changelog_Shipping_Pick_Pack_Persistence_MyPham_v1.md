@@ -6,7 +6,7 @@ Sprint: Sprint 14 - Shipping pick/pack persistence v1
 Document role: Sprint changelog and release evidence
 Version: v1.0
 Date: 2026-05-02
-Status: Release evidence prepared; production tag pending after this changelog merges and main CI is green
+Status: Release evidence prepared; production tag created after changelog merge, green CI, dev smoke, and migration gate
 
 ---
 
@@ -245,18 +245,24 @@ Shipping manifest, pick, and pack task stores are no longer listed as production
 Sprint 14 release gate status:
 
 ```text
-Task PRs: merged through S14-04-01
-Current changelog PR: pending merge
-Main CI: green through PR #450; rerun required for this changelog PR
-Dev runtime smoke: green at commit 264f3af
+Task PRs: merged through S14-05-01
+Current changelog PR: merged as PR #451
+Main CI: green through PR #451
+Dev runtime smoke: green at commit 020443a
 Migration apply/rollback: green on PostgreSQL 16 isolated instance
-Production tag: pending
+Production tag: pushed
 ```
 
-Recommended tag after this changelog merges and main CI is green:
+Production tag:
 
 ```text
 v0.14.0-shipping-pick-pack-persistence
+```
+
+Tag commit:
+
+```text
+020443ace3473694d63c95d295e7580de87ccd3e
 ```
 
 Do not move the tag once pushed. If a post-tag fix is needed, create a new patch tag instead.
