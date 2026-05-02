@@ -1,6 +1,14 @@
 {
   "title": "Giao hàng",
   "manifest": "Bảng kê bàn giao ĐVVC",
+  "operations": {
+    "label": "Các màn giao hàng",
+    "tabs": {
+      "picking": "Soạn hàng",
+      "packing": "Đóng hàng",
+      "handover": "Bàn giao ĐVVC"
+    }
+  },
   "picking": {
     "title": "Trạm soạn hàng",
     "description": "Soạn hàng bằng quét mã SKU, lô, vị trí và số lượng theo đơn vị cơ sở.",
@@ -177,6 +185,142 @@
     },
     "exceptions": {
       "pack_exception": "Lỗi đóng hàng"
+    }
+  },
+  "handover": {
+    "title": "Bảng kê bàn giao ĐVVC",
+    "description": "Theo dõi lô bàn giao theo kho, ngày, số đơn cần giao, đã quét và còn thiếu.",
+    "actions": {
+      "select": "Chọn",
+      "remove": "Xóa",
+      "findOrder": "Tìm đơn",
+      "report": "Báo lỗi",
+      "exceptions": "Ngoại lệ",
+      "createManifest": "Tạo bảng kê",
+      "printManifest": "In bảng kê",
+      "readyToScan": "Sẵn sàng quét",
+      "reportMissing": "Báo thiếu",
+      "cancelManifest": "Hủy bảng kê",
+      "confirmHandover": "Xác nhận bàn giao",
+      "addShipment": "Thêm kiện"
+    },
+    "filters": {
+      "label": "Bộ lọc bảng kê bàn giao",
+      "warehouse": "Kho",
+      "date": "Ngày",
+      "carrier": "ĐVVC",
+      "status": "Trạng thái",
+      "allStatuses": "Tất cả trạng thái",
+      "allCarriers": "Tất cả ĐVVC"
+    },
+    "columns": {
+      "manifest": "Bảng kê",
+      "carrier": "ĐVVC",
+      "warehouse": "Kho",
+      "status": "Trạng thái",
+      "orders": "Đơn",
+      "scanned": "Đã quét",
+      "missing": "Còn thiếu",
+      "order": "Đơn",
+      "tracking": "Mã vận đơn",
+      "package": "Kiện",
+      "zone": "Khu vực",
+      "packingZone": "Khu đóng hàng",
+      "bin": "Ô",
+      "scanState": "Tình trạng quét",
+      "state": "Tình trạng",
+      "action": "Thao tác"
+    },
+    "kpi": {
+      "expected": "Cần bàn giao",
+      "scanned": "Đã quét",
+      "missing": "Còn thiếu",
+      "manifests": "Bảng kê"
+    },
+    "sections": {
+      "manifestBatches": "Lô bàn giao",
+      "carrierHandover": "Bàn giao ĐVVC",
+      "missingQueue": "Đơn thiếu / ngoại lệ",
+      "recentScans": "Lần quét gần đây",
+      "shipmentLines": "Dòng kiện hàng"
+    },
+    "facts": {
+      "manifest": "Bảng kê",
+      "carrier": "ĐVVC",
+      "zone": "Khu vực",
+      "bin": "Ô",
+      "owner": "Phụ trách",
+      "expected": "Cần bàn giao",
+      "scanned": "Đã quét",
+      "missing": "Còn thiếu",
+      "shipmentId": "Mã kiện"
+    },
+    "scan": {
+      "label": "Quét mã đơn hoặc mã vận đơn",
+      "placeholder": "SO-260426-003 / GHN260426003",
+      "checkingCode": "Đang kiểm tra mã",
+      "noHandoverZone": "Chưa có khu bàn giao",
+      "relatedManifest": "Liên quan {manifestId}",
+      "issues": "Lỗi quét",
+      "issuesLabel": "Danh sách lỗi quét bảng kê",
+      "recentLabel": "Lần quét bảng kê gần đây",
+      "failed": "Không kiểm tra được mã quét"
+    },
+    "feedback": {
+      "created": "Đã tạo {manifestId}",
+      "added": "Đã thêm {shipmentId} vào {manifestId}",
+      "ready": "{manifestId} đã sẵn sàng quét",
+      "cancelled": "Đã hủy {manifestId}",
+      "removed": "Đã xóa {orderNo} khỏi {manifestId}",
+      "confirmed": "Đã xác nhận bàn giao {manifestId}",
+      "find": "Còn thiếu đơn. Vui lòng kiểm tra lại mã hoặc tìm trong khu vực đóng hàng: {orderNo}",
+      "report": "Đã báo thiếu {orderNo}",
+      "reportMissing": "Đã báo thiếu dòng cho {manifestId}",
+      "printed": "Đã in {manifestId}",
+      "actionFailed": "Thao tác bảng kê thất bại"
+    },
+    "empty": {
+      "noManifestSelected": "Chưa chọn bảng kê",
+      "ready": "Sẵn sàng",
+      "allExpectedScanned": "Đã quét đủ các dòng cần bàn giao",
+      "idle": "Chờ quét",
+      "noScansYet": "Chưa có lượt quét"
+    },
+    "rows": "{count} dòng",
+    "open": "{count} đang mở",
+    "issues": "{count} lỗi",
+    "missingCount": "{count} thiếu",
+    "scanState": {
+      "scanned": "Đã quét",
+      "missing": "Còn thiếu"
+    },
+    "status": {
+      "draft": "Nháp",
+      "ready": "Sẵn sàng",
+      "scanning": "Đang quét",
+      "completed": "Hoàn tất",
+      "handed_over": "Đã bàn giao",
+      "exception": "Ngoại lệ",
+      "cancelled": "Đã hủy"
+    },
+    "scanResult": {
+      "MATCHED": "Đã khớp",
+      "NOT_FOUND": "Không tìm thấy",
+      "INVALID_STATE": "Sai trạng thái",
+      "MANIFEST_MISMATCH": "Sai bảng kê",
+      "DUPLICATE_SCAN": "Đã quét trước đó"
+    },
+    "scanMessage": {
+      "MATCHED": "Mã quét khớp bảng kê",
+      "NOT_FOUND": "Không tìm thấy mã quét",
+      "INVALID_STATE": "Đơn chưa đủ điều kiện bàn giao",
+      "MANIFEST_MISMATCH": "Mã thuộc bảng kê khác",
+      "DUPLICATE_SCAN": "Đơn đã được quét trước đó"
+    },
+    "warehouse": {
+      "all": "Tất cả kho",
+      "wh-hcm": "HCM",
+      "wh-hn": "HN"
     }
   }
 }

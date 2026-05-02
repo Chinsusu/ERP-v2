@@ -1,6 +1,14 @@
 {
   "title": "Shipping",
   "manifest": "Carrier Manifest",
+  "operations": {
+    "label": "Shipping operation views",
+    "tabs": {
+      "picking": "Picking",
+      "packing": "Packing",
+      "handover": "Carrier handover"
+    }
+  },
   "picking": {
     "title": "Picking Station",
     "description": "Scan-first picking by SKU, batch, location, and base UOM quantity.",
@@ -177,6 +185,142 @@
     },
     "exceptions": {
       "pack_exception": "Pack exception"
+    }
+  },
+  "handover": {
+    "title": "Carrier Manifest",
+    "description": "Carrier handover batches by warehouse, date, expected count, scanned count, and missing count.",
+    "actions": {
+      "select": "Select",
+      "remove": "Remove",
+      "findOrder": "Find order",
+      "report": "Report",
+      "exceptions": "Exceptions",
+      "createManifest": "Create manifest",
+      "printManifest": "Print manifest",
+      "readyToScan": "Ready to scan",
+      "reportMissing": "Report missing",
+      "cancelManifest": "Cancel manifest",
+      "confirmHandover": "Confirm handover",
+      "addShipment": "Add shipment"
+    },
+    "filters": {
+      "label": "Carrier manifest filters",
+      "warehouse": "Warehouse",
+      "date": "Date",
+      "carrier": "Carrier",
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "allCarriers": "All carriers"
+    },
+    "columns": {
+      "manifest": "Manifest",
+      "carrier": "Carrier",
+      "warehouse": "Warehouse",
+      "status": "Status",
+      "orders": "Orders",
+      "scanned": "Scanned",
+      "missing": "Missing",
+      "order": "Order",
+      "tracking": "Tracking",
+      "package": "Package",
+      "zone": "Zone",
+      "packingZone": "Packing zone",
+      "bin": "Bin",
+      "scanState": "Scan state",
+      "state": "State",
+      "action": "Action"
+    },
+    "kpi": {
+      "expected": "Expected",
+      "scanned": "Scanned",
+      "missing": "Missing",
+      "manifests": "Manifests"
+    },
+    "sections": {
+      "manifestBatches": "Manifest batches",
+      "carrierHandover": "Carrier handover",
+      "missingQueue": "Missing / exception queue",
+      "recentScans": "Recent scans",
+      "shipmentLines": "Shipment lines"
+    },
+    "facts": {
+      "manifest": "Manifest",
+      "carrier": "Carrier",
+      "zone": "Zone",
+      "bin": "Bin",
+      "owner": "Owner",
+      "expected": "Expected",
+      "scanned": "Scanned",
+      "missing": "Missing",
+      "shipmentId": "Shipment ID"
+    },
+    "scan": {
+      "label": "Scan order or tracking",
+      "placeholder": "SO-260426-003 / GHN260426003",
+      "checkingCode": "Checking code",
+      "noHandoverZone": "No handover zone",
+      "relatedManifest": "Related {manifestId}",
+      "issues": "Scan issues",
+      "issuesLabel": "Manifest scan issues",
+      "recentLabel": "Recent manifest scans",
+      "failed": "Scan could not be verified"
+    },
+    "feedback": {
+      "created": "Created {manifestId}",
+      "added": "Added {shipmentId} to {manifestId}",
+      "ready": "{manifestId} is ready to scan",
+      "cancelled": "Cancelled {manifestId}",
+      "removed": "Removed {orderNo} from {manifestId}",
+      "confirmed": "Confirmed handover for {manifestId}",
+      "find": "Locate {orderNo} in packing zone",
+      "report": "Reported missing {orderNo}",
+      "reportMissing": "Reported missing lines for {manifestId}",
+      "printed": "Printed {manifestId}",
+      "actionFailed": "Manifest action failed"
+    },
+    "empty": {
+      "noManifestSelected": "No manifest selected",
+      "ready": "Ready",
+      "allExpectedScanned": "All expected lines scanned",
+      "idle": "Idle",
+      "noScansYet": "No scans yet"
+    },
+    "rows": "{count} rows",
+    "open": "{count} open",
+    "issues": "{count} issues",
+    "missingCount": "{count} missing",
+    "scanState": {
+      "scanned": "Scanned",
+      "missing": "Missing"
+    },
+    "status": {
+      "draft": "Draft",
+      "ready": "Ready",
+      "scanning": "Scanning",
+      "completed": "Completed",
+      "handed_over": "Handed over",
+      "exception": "Exception",
+      "cancelled": "Cancelled"
+    },
+    "scanResult": {
+      "MATCHED": "Matched",
+      "NOT_FOUND": "Not found",
+      "INVALID_STATE": "Invalid state",
+      "MANIFEST_MISMATCH": "Manifest mismatch",
+      "DUPLICATE_SCAN": "Duplicate scan"
+    },
+    "scanMessage": {
+      "MATCHED": "Scan matched manifest line",
+      "NOT_FOUND": "Scan code was not found",
+      "INVALID_STATE": "Shipment is not ready for handover",
+      "MANIFEST_MISMATCH": "Scan code belongs to another manifest",
+      "DUPLICATE_SCAN": "Shipment was already scanned"
+    },
+    "warehouse": {
+      "all": "All warehouses",
+      "wh-hcm": "HCM",
+      "wh-hn": "HN"
     }
   }
 }
