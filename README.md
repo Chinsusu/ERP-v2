@@ -52,11 +52,15 @@ Completed focus through Sprint 18:
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 
-Current hardening focus:
+Current implementation focus:
 
-- Release hygiene for tags, changelogs, and README status
-- Migration CI apply, rollback, and reapply proof
-- GitHub Actions Node.js 24 compatibility
+- Sprint 19 Vietnamese-first UI localization
+- Vietnamese navigation, page headers, form/table labels, status chips, validation, and operational microcopy
+- Shared VND/date/quantity/rate formatters for Vietnamese UI display
+
+Next hardening focus:
+
+- Sprint 20 release hygiene, API modularization, and fallback cleanup
 - API route registration modularization
 - Production gating for frontend fallback services
 
