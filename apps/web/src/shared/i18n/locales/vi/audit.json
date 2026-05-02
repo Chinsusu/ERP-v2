@@ -1,1 +1,55 @@
-{ "title": "Nhật ký thao tác" }
+{
+  "title": "Nhật ký thao tác",
+  "description": "Theo dõi bất biến các thao tác nhạy cảm trong ERP",
+  "filters": {
+    "ariaLabel": "Bộ lọc nhật ký thao tác",
+    "action": "Thao tác",
+    "entityType": "Loại đối tượng",
+    "entityId": "Mã đối tượng",
+    "allActions": "Tất cả thao tác",
+    "allEntityTypes": "Tất cả loại đối tượng"
+  },
+  "kpi": {
+    "events": "Sự kiện",
+    "adjustments": "Điều chỉnh",
+    "security": "Bảo mật",
+    "latest": "Mới nhất"
+  },
+  "columns": {
+    "time": "Thời gian",
+    "actor": "Người thao tác",
+    "action": "Thao tác",
+    "entity": "Đối tượng",
+    "metadata": "Dữ liệu kèm theo"
+  },
+  "eventsTitle": "Sự kiện thao tác",
+  "rows": "{count} dòng",
+  "actions": {
+    "inventory": {
+      "stock_movement": {
+        "adjusted": "Điều chỉnh tồn kho"
+      }
+    },
+    "security": {
+      "role": {
+        "assigned": "Gán vai trò"
+      }
+    },
+    "qc": {
+      "lot": {
+        "released": "Duyệt lô QC"
+      }
+    }
+  },
+  "entityTypes": {
+    "inventory": {
+      "stock_movement": "Biến động tồn"
+    },
+    "core": {
+      "user_role": "Vai trò người dùng"
+    },
+    "qc": {
+      "inspection": "Phiếu kiểm QC"
+    }
+  }
+}

@@ -2,22 +2,24 @@
 
 import { useMemo, useState } from "react";
 import { DataTable, StatusChip, type DataTableColumn } from "@/shared/design-system/components";
+import { erpNumberLocale, erpTimezone, formatDateTimeVI } from "@/shared/format/numberFormat";
+import { t } from "@/shared/i18n";
 import { useAuditLogs } from "../hooks/useAuditLogs";
 import { auditActionTone, compactAuditPayload, prototypeAuditLogs } from "../services/auditLogService";
 import type { AuditLogItem, AuditLogQuery } from "../types";
 
 const actionOptions = [
-  { label: "All actions", value: "" },
+  { label: auditCopy("filters.allActions"), value: "" },
   ...Array.from(new Set(prototypeAuditLogs.map((item) => item.action))).map((value) => ({
-    label: value,
+    label: getAuditActionLabel(value),
     value
   }))
 ];
 
 const entityTypeOptions = [
-  { label: "All entity types", value: "" },
+  { label: auditCopy("filters.allEntityTypes"), value: "" },
   ...Array.from(new Set(prototypeAuditLogs.map((item) => item.entityType))).map((value) => ({
-    label: value,
+    label: getAuditEntityTypeLabel(value),
     value
   }))
 ];
@@ -25,28 +27,36 @@ const entityTypeOptions = [
 const columns: DataTableColumn<AuditLogItem>[] = [
   {
     key: "created",
-    header: "Time",
+    header: auditCopy("columns.time"),
     render: (row) => formatDateTime(row.createdAt),
     width: "160px"
   },
   {
     key: "actor",
-    header: "Actor",
+    header: auditCopy("columns.actor"),
     render: (row) => row.actorId,
     width: "170px"
   },
   {
     key: "action",
-    header: "Action",
-    render: (row) => <StatusChip tone={auditActionTone(row.action)}>{row.action}</StatusChip>,
+    header: auditCopy("columns.action"),
+    render: (row) => (
+      <span className="erp-audit-entity">
+        <strong>
+          <StatusChip tone={auditActionTone(row.action)}>{getAuditActionLabel(row.action)}</StatusChip>
+        </strong>
+        <small>{row.action}</small>
+      </span>
+    ),
     width: "250px"
   },
   {
     key: "entity",
-    header: "Entity",
+    header: auditCopy("columns.entity"),
     render: (row) => (
       <span className="erp-audit-entity">
-        <strong>{row.entityType}</strong>
+        <strong>{getAuditEntityTypeLabel(row.entityType)}</strong>
+        <small>{row.entityType}</small>
         <small>{row.entityId}</small>
       </span>
     ),
@@ -54,7 +64,7 @@ const columns: DataTableColumn<AuditLogItem>[] = [
   },
   {
     key: "metadata",
-    header: "Metadata",
+    header: auditCopy("columns.metadata"),
     render: (row) => <span className="erp-audit-metadata">{compactAuditPayload(row.metadata)}</span>
   }
 ];
@@ -79,14 +89,14 @@ export function AuditLogPrototype() {
       <header className="erp-page-header">
         <div>
           <p className="erp-module-eyebrow">AU</p>
-          <h1 className="erp-page-title">Audit Log</h1>
-          <p className="erp-page-description">Immutable trace of sensitive ERP actions</p>
+          <h1 className="erp-page-title">{auditCopy("title")}</h1>
+          <p className="erp-page-description">{auditCopy("description")}</p>
         </div>
       </header>
 
-      <section className="erp-audit-toolbar" aria-label="Audit log filters">
+      <section className="erp-audit-toolbar" aria-label={auditCopy("filters.ariaLabel")}>
         <label className="erp-field">
-          <span>Action</span>
+          <span>{auditCopy("filters.action")}</span>
           <select className="erp-input" value={action} onChange={(event) => setAction(event.target.value)}>
             {actionOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -96,7 +106,7 @@ export function AuditLogPrototype() {
           </select>
         </label>
         <label className="erp-field">
-          <span>Entity type</span>
+          <span>{auditCopy("filters.entityType")}</span>
           <select className="erp-input" value={entityType} onChange={(event) => setEntityType(event.target.value)}>
             {entityTypeOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -106,7 +116,7 @@ export function AuditLogPrototype() {
           </select>
         </label>
         <label className="erp-field">
-          <span>Entity ID</span>
+          <span>{auditCopy("filters.entityId")}</span>
           <input
             className="erp-input"
             type="search"
@@ -118,16 +128,22 @@ export function AuditLogPrototype() {
       </section>
 
       <section className="erp-kpi-grid erp-audit-kpis">
-        <AuditKPI label="Events" value={summary.total} tone="info" />
-        <AuditKPI label="Adjustments" value={summary.adjustments} tone="warning" />
-        <AuditKPI label="Security" value={summary.securityEvents} tone="danger" />
-        <AuditKPI label="Latest" value={summary.latestEventAt ? formatShortTime(summary.latestEventAt) : "-"} tone="normal" />
+        <AuditKPI label={auditCopy("kpi.events")} value={summary.total} tone="info" />
+        <AuditKPI label={auditCopy("kpi.adjustments")} value={summary.adjustments} tone="warning" />
+        <AuditKPI label={auditCopy("kpi.security")} value={summary.securityEvents} tone="danger" />
+        <AuditKPI
+          label={auditCopy("kpi.latest")}
+          value={summary.latestEventAt ? formatShortTime(summary.latestEventAt) : "-"}
+          tone="normal"
+        />
       </section>
 
       <section className="erp-card erp-card--padded erp-module-table-card">
         <div className="erp-section-header">
-          <h2 className="erp-section-title">Audit events</h2>
-          <StatusChip tone={items.length === 0 ? "warning" : "info"}>{items.length} rows</StatusChip>
+          <h2 className="erp-section-title">{auditCopy("eventsTitle")}</h2>
+          <StatusChip tone={items.length === 0 ? "warning" : "info"}>
+            {auditCopy("rows", { count: items.length })}
+          </StatusChip>
         </div>
         <DataTable columns={columns} rows={items} getRowKey={(row) => row.id} loading={loading} />
       </section>
@@ -154,15 +170,25 @@ function AuditKPI({
 }
 
 function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(new Date(value));
+  return formatDateTimeVI(value);
 }
 
 function formatShortTime(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat(erpNumberLocale, {
+    timeZone: erpTimezone,
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function getAuditActionLabel(action: string) {
+  return auditCopy(`actions.${action}`, undefined, action);
+}
+
+function getAuditEntityTypeLabel(entityType: string) {
+  return auditCopy(`entityTypes.${entityType}`, undefined, entityType);
+}
+
+function auditCopy(key: string, values?: Record<string, string | number>, fallback?: string) {
+  return t(`audit.${key}`, { values, fallback });
 }

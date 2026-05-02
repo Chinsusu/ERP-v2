@@ -1,1 +1,55 @@
-{ "title": "Audit Log" }
+{
+  "title": "Audit Log",
+  "description": "Immutable trace of sensitive ERP actions",
+  "filters": {
+    "ariaLabel": "Audit log filters",
+    "action": "Action",
+    "entityType": "Entity type",
+    "entityId": "Entity ID",
+    "allActions": "All actions",
+    "allEntityTypes": "All entity types"
+  },
+  "kpi": {
+    "events": "Events",
+    "adjustments": "Adjustments",
+    "security": "Security",
+    "latest": "Latest"
+  },
+  "columns": {
+    "time": "Time",
+    "actor": "Actor",
+    "action": "Action",
+    "entity": "Entity",
+    "metadata": "Metadata"
+  },
+  "eventsTitle": "Audit events",
+  "rows": "{count} rows",
+  "actions": {
+    "inventory": {
+      "stock_movement": {
+        "adjusted": "Stock adjusted"
+      }
+    },
+    "security": {
+      "role": {
+        "assigned": "Role assigned"
+      }
+    },
+    "qc": {
+      "lot": {
+        "released": "QC lot released"
+      }
+    }
+  },
+  "entityTypes": {
+    "inventory": {
+      "stock_movement": "Stock movement"
+    },
+    "core": {
+      "user_role": "User role"
+    },
+    "qc": {
+      "inspection": "QC inspection"
+    }
+  }
+}
