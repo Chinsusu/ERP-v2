@@ -1,1 +1,73 @@
-{ "title": "Inventory" }
+{
+  "title": "Inventory",
+  "stockCount": {
+    "title": "Stock counts",
+    "sessions": "{count} sessions",
+    "lines": "{count} lines",
+    "stockRow": "Stock row",
+    "countedQty": "Counted qty",
+    "openCount": "Open count",
+    "submitCount": "Submit count",
+    "columns": {
+      "count": "Count",
+      "warehouse": "Warehouse",
+      "status": "Status",
+      "line": "Line",
+      "expected": "Expected",
+      "counted": "Counted",
+      "delta": "Delta",
+      "updated": "Updated"
+    },
+    "status": {
+      "open": "Open",
+      "submitted": "Submitted",
+      "variance_review": "Variance review"
+    },
+    "messages": {
+      "opened": "Count opened",
+      "openError": "Could not open count",
+      "invalidCountedQty": "Invalid counted qty",
+      "varianceReview": "Variance review",
+      "submitted": "Submitted",
+      "submitError": "Could not submit count"
+    }
+  },
+  "stockAdjustment": {
+    "title": "Adjustment approvals",
+    "requests": "{count} requests",
+    "lines": "{count} lines",
+    "request": "Request",
+    "to": "to",
+    "columns": {
+      "adjustment": "Adjustment",
+      "warehouse": "Warehouse",
+      "status": "Status",
+      "beforeAfter": "Before / after",
+      "delta": "Delta",
+      "reason": "Reason",
+      "requestedBy": "Requested",
+      "audit": "Audit"
+    },
+    "status": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "posted": "Posted",
+      "cancelled": "Cancelled"
+    },
+    "actions": {
+      "submit": "Submit",
+      "approve": "Approve",
+      "reject": "Reject",
+      "post": "Post"
+    },
+    "messages": {
+      "submitted": "Submit recorded",
+      "approved": "Approve recorded",
+      "rejected": "Reject recorded",
+      "posted": "Post recorded",
+      "actionError": "Could not {action}"
+    }
+  }
+}

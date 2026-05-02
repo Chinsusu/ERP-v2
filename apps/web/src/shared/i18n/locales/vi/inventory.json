@@ -1,1 +1,73 @@
-{ "title": "Kho hàng" }
+{
+  "title": "Kho hàng",
+  "stockCount": {
+    "title": "Kiểm kê tồn kho",
+    "sessions": "{count} phiên",
+    "lines": "{count} dòng",
+    "stockRow": "Dòng tồn",
+    "countedQty": "Số lượng kiểm",
+    "openCount": "Mở kiểm kê",
+    "submitCount": "Gửi kiểm kê",
+    "columns": {
+      "count": "Mã kiểm kê",
+      "warehouse": "Kho",
+      "status": "Trạng thái",
+      "line": "Dòng",
+      "expected": "SL hệ thống",
+      "counted": "SL kiểm",
+      "delta": "Lệch tồn",
+      "updated": "Cập nhật"
+    },
+    "status": {
+      "open": "Đang kiểm",
+      "submitted": "Đã gửi",
+      "variance_review": "Chờ xử lý lệch"
+    },
+    "messages": {
+      "opened": "Đã mở phiên kiểm kê",
+      "openError": "Không thể mở phiên kiểm kê",
+      "invalidCountedQty": "Số lượng kiểm không hợp lệ",
+      "varianceReview": "Cần xử lý lệch tồn",
+      "submitted": "Đã gửi kiểm kê",
+      "submitError": "Không thể gửi kiểm kê"
+    }
+  },
+  "stockAdjustment": {
+    "title": "Duyệt điều chỉnh tồn",
+    "requests": "{count} yêu cầu",
+    "lines": "{count} dòng",
+    "request": "Yêu cầu",
+    "to": "sang",
+    "columns": {
+      "adjustment": "Điều chỉnh",
+      "warehouse": "Kho",
+      "status": "Trạng thái",
+      "beforeAfter": "Trước / sau",
+      "delta": "Chênh lệch",
+      "reason": "Lý do lệch",
+      "requestedBy": "Người yêu cầu",
+      "audit": "Nhật ký"
+    },
+    "status": {
+      "draft": "Nháp",
+      "submitted": "Chờ duyệt",
+      "approved": "Đã duyệt",
+      "rejected": "Từ chối",
+      "posted": "Đã ghi sổ",
+      "cancelled": "Đã hủy"
+    },
+    "actions": {
+      "submit": "Gửi duyệt",
+      "approve": "Duyệt",
+      "reject": "Từ chối",
+      "post": "Ghi sổ"
+    },
+    "messages": {
+      "submitted": "Đã gửi duyệt điều chỉnh",
+      "approved": "Đã duyệt điều chỉnh",
+      "rejected": "Đã từ chối điều chỉnh",
+      "posted": "Đã ghi sổ điều chỉnh",
+      "actionError": "Không thể thực hiện: {action}"
+    }
+  }
+}
