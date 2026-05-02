@@ -293,5 +293,155 @@
         "internal_store": "Internal store"
       }
     }
+  },
+  "warehouse": {
+    "page": {
+      "title": "Warehouse Master Data",
+      "description": "Warehouse and location catalog for receiving and stock ledger flows",
+      "activeLocations": "{count} active locations"
+    },
+    "filters": {
+      "label": "Warehouse master data filters",
+      "search": "Search",
+      "warehouseStatus": "Warehouse status",
+      "warehouseType": "Warehouse type",
+      "locationStatus": "Location status",
+      "locationType": "Location type",
+      "allWarehouseStatuses": "All warehouse statuses",
+      "allWarehouseTypes": "All warehouse types",
+      "allLocationStatuses": "All location statuses",
+      "allLocationTypes": "All location types",
+      "allWarehouses": "All warehouses"
+    },
+    "columns": {
+      "type": "Type",
+      "site": "Site",
+      "flow": "Flow",
+      "status": "Status"
+    },
+    "list": {
+      "rows": "{count} rows"
+    },
+    "kpi": {
+      "warehouses": "Warehouses",
+      "activeWarehouses": "Active WH",
+      "activeLocations": "Active locations",
+      "receiving": "Receiving"
+    },
+    "fields": {
+      "warehouse": "Warehouse",
+      "site": "Site",
+      "address": "Address",
+      "status": "Status",
+      "zone": "Zone"
+    },
+    "detail": {
+      "code": "Code",
+      "updated": "Updated",
+      "audit": "Audit",
+      "auditFallback": "Tracked on write"
+    },
+    "errors": {
+      "loadTitle": "Warehouse master data could not load",
+      "requestFailed": "Warehouse master data request failed"
+    },
+    "toast": {
+      "detailFailed": "Detail failed",
+      "statusFailed": "Status failed",
+      "saved": "{code} saved",
+      "statusChangedDescription": "{code} is {status}"
+    },
+    "flow": {
+      "saleIssue": "Sale issue",
+      "productionIssue": "Production issue",
+      "quarantine": "Quarantine",
+      "receive": "Receive",
+      "pick": "Pick",
+      "store": "Store",
+      "default": "Default"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "warehouse": {
+      "columns": {
+        "warehouse": "Warehouse"
+      },
+      "list": {
+        "title": "Warehouse master"
+      },
+      "empty": {
+        "title": "No warehouses",
+        "description": "Adjust the filters or create a warehouse."
+      },
+      "form": {
+        "createTitle": "Create warehouse",
+        "updateTitle": "Update warehouse",
+        "description": "Warehouse identity, lifecycle, and operational issue controls",
+        "warehouseCode": "Warehouse code",
+        "warehouseName": "Warehouse name",
+        "warehouseType": "Warehouse type"
+      },
+      "detail": {
+        "title": "Warehouse detail"
+      },
+      "toast": {
+        "created": "Warehouse created",
+        "updated": "Warehouse updated",
+        "statusChanged": "Warehouse status changed"
+      },
+      "type": {
+        "finished_good": "Finished good",
+        "raw_material": "Raw material",
+        "packaging": "Packaging",
+        "semi_finished": "Semi finished",
+        "quarantine": "Quarantine",
+        "sample": "Sample",
+        "defect": "Defect",
+        "retail_store": "Retail store"
+      }
+    },
+    "location": {
+      "columns": {
+        "location": "Location",
+        "warehouse": "WH"
+      },
+      "list": {
+        "title": "Location master"
+      },
+      "empty": {
+        "title": "No locations",
+        "description": "Adjust the filters or create a location."
+      },
+      "form": {
+        "createTitle": "Create location",
+        "updateTitle": "Update location",
+        "description": "Location/bin setup for receiving, pick, QC hold, and stock ledger references",
+        "selectWarehouse": "Select warehouse",
+        "locationCode": "Location code",
+        "locationName": "Location name",
+        "locationType": "Location type"
+      },
+      "detail": {
+        "title": "Location detail"
+      },
+      "toast": {
+        "created": "Location created",
+        "updated": "Location updated",
+        "statusChanged": "Location status changed"
+      },
+      "type": {
+        "receiving": "Receiving",
+        "qc_hold": "QC hold",
+        "storage": "Storage",
+        "pick": "Pick",
+        "pack": "Pack",
+        "handover": "Handover",
+        "return": "Return",
+        "lab": "Lab",
+        "scrap": "Scrap"
+      }
+    }
   }
 }
