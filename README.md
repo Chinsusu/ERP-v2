@@ -30,7 +30,7 @@ Start with:
 
 ## Current Status
 
-Current `main`: Sprint 19 completed.
+Current `main`: Sprint 20 hardening completed after Sprint 19 Vietnamese UI localization.
 
 Latest release tag:
 
@@ -38,27 +38,26 @@ Latest release tag:
 v0.19.0-vietnamese-ui-localization
 ```
 
-Latest verified cloud gate:
+Latest verified release tag gate:
 
 ```text
 required-ci on main commit df9b9567: success
 required-api, required-web, required-openapi, required-migration: pass
-required-migration: PostgreSQL 16 apply plus rollback passed
+required-migration at release tag: PostgreSQL 16 apply plus rollback passed
 ```
 
-Completed focus through Sprint 19:
+Completed focus through Sprint 20:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
 - Vietnamese-first ERP UI foundation across navigation, dashboard, warehouse, sales, shipping, returns, purchase, QC, master data, inventory, auth, audit, and attachment surfaces
+- Release hygiene: migration apply -> rollback -> reapply gate, GitHub Actions Node 24 compatibility, modular API route registration, and production-mode prototype fallback blocking
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 
-Next hardening focus:
+Production runtime reference:
 
-- Sprint 20 release hygiene, API modularization, and fallback cleanup
-- API route registration modularization
-- Production gating for frontend fallback services
+- `docs/78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md`
 
 ## Local Setup
 
