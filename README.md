@@ -30,33 +30,30 @@ Start with:
 
 ## Current Status
 
-Current `main`: Sprint 18 completed.
+Current `main`: Sprint 19 completed.
 
 Latest release candidate:
 
 ```text
-v0.18.0-auth-session-runtime-store-persistence
+v0.19.0-vietnamese-ui-localization
 ```
 
 Latest verified cloud gate:
 
 ```text
-required-ci #981 on main commit 9112c399: success
+required-ci on main commit c4315109: success
+web-ci on main commit c4315109: success
 required-api, required-web, required-openapi, required-migration: pass
 required-migration: PostgreSQL 16 apply plus rollback passed
 ```
 
-Completed focus through Sprint 18:
+Completed focus through Sprint 19:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
+- Vietnamese-first ERP UI foundation across navigation, dashboard, warehouse, sales, shipping, returns, purchase, QC, master data, inventory, auth, audit, and attachment surfaces
+- Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
-
-Current implementation focus:
-
-- Sprint 19 Vietnamese-first UI localization
-- Vietnamese navigation, page headers, form/table labels, status chips, validation, and operational microcopy
-- Shared VND/date/quantity/rate formatters for Vietnamese UI display
 
 Next hardening focus:
 
