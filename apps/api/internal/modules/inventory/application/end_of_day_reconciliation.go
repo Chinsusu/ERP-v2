@@ -144,7 +144,7 @@ func NewPrototypeEndOfDayReconciliationStore() *PrototypeEndOfDayReconciliationS
 	store := &PrototypeEndOfDayReconciliationStore{
 		records: make(map[string]domain.EndOfDayReconciliation),
 	}
-	for _, record := range prototypeEndOfDayReconciliations() {
+	for _, record := range DefaultEndOfDayReconciliations() {
 		store.records[record.ID] = record.Clone()
 	}
 
@@ -219,6 +219,16 @@ func (s *PrototypeEndOfDayReconciliationStore) Save(
 	s.records[reconciliation.ID] = reconciliation.Clone()
 
 	return nil
+}
+
+func DefaultEndOfDayReconciliations() []domain.EndOfDayReconciliation {
+	records := prototypeEndOfDayReconciliations()
+	clone := make([]domain.EndOfDayReconciliation, 0, len(records))
+	for _, record := range records {
+		clone = append(clone, record.Clone())
+	}
+
+	return clone
 }
 
 func prototypeEndOfDayReconciliations() []domain.EndOfDayReconciliation {
