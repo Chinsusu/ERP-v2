@@ -225,7 +225,7 @@ Sprint 16 release gate status:
 Task PRs: merged through S16-10-01 PR #482
 Main cloud CI: blocked by exhausted GitHub Actions minutes
 Dev runtime smoke: green at runtime commit af284cf
-Docs-only main sync: green at commit ad3fa354
+Docs-only main sync: green after release-evidence docs merge
 Migration apply/rollback: green on PostgreSQL 16 isolated instance
 Production tag: HOLD
 ```
