@@ -1,1 +1,154 @@
-{ "title": "Quality Control", "inbound": "Inbound QC" }
+{
+  "title": "Quality Control",
+  "inbound": {
+    "title": "Inbound QC",
+    "description": "Receiving inspection for quantity, packaging, lot, expiry, COA/MSDS, and evidence",
+    "nav": {
+      "receipts": "Receipts",
+      "decision": "Decision",
+      "inspections": "Inspections"
+    },
+    "filters": {
+      "label": "Inbound QC filters",
+      "warehouse": "Warehouse",
+      "status": "Inspection status",
+      "inspector": "Inspector",
+      "allStatuses": "All statuses"
+    },
+    "kpi": {
+      "inspectableLines": "Inspectable lines",
+      "holdFail": "Hold / Fail"
+    },
+    "status": {
+      "pending": "Pending",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "result": {
+      "pass": "Pass",
+      "fail": "Fail",
+      "hold": "Hold",
+      "partial": "Partial"
+    },
+    "receivingLines": {
+      "title": "Inspectable receiving lines",
+      "lines": "{count} lines",
+      "selectedLabel": "Selected receiving line",
+      "readyForQC": "Ready for QC",
+      "emptyTitle": "No inspection-ready receiving lines",
+      "emptyDescription": "Submit a goods receipt and mark it inspection-ready before QC can start.",
+      "columns": {
+        "receipt": "Receipt",
+        "sku": "SKU",
+        "lotExpiry": "Lot / Expiry",
+        "packaging": "Packaging",
+        "quantity": "Quantity",
+        "action": "Action"
+      }
+    },
+    "inspections": {
+      "title": "Inbound QC inspections",
+      "records": "{count} records",
+      "emptyTitle": "No inbound QC inspections",
+      "emptyDescription": "Create an inspection from a receiving line.",
+      "columns": {
+        "inspection": "Inspection",
+        "skuLot": "SKU / Lot",
+        "status": "Status",
+        "result": "Result",
+        "quantity": "Quantity",
+        "updated": "Updated",
+        "action": "Action"
+      }
+    },
+    "decision": {
+      "title": "Inspection decision",
+      "factsLabel": "Inbound QC inspection facts",
+      "quantitiesLabel": "QC decision quantities",
+      "passQty": "Pass qty",
+      "failQty": "Fail qty",
+      "holdQty": "Hold qty",
+      "reason": "Reason",
+      "reasonPlaceholder": "Required for fail, hold, or partial",
+      "note": "QC note",
+      "evidenceRefs": "COA / MSDS / photo refs",
+      "evidencePlaceholder": "COA-260429-001, MSDS-SERUM, IMG-..."
+    },
+    "fact": {
+      "receipt": "Receipt",
+      "po": "PO",
+      "sku": "SKU",
+      "lotExpiry": "Lot / expiry",
+      "quantity": "Quantity",
+      "inspector": "Inspector",
+      "started": "Started",
+      "decided": "Decided"
+    },
+    "checklist": {
+      "label": "QC checklist",
+      "required": "Required",
+      "optional": "Optional",
+      "notePlaceholder": "Checklist note",
+      "status": {
+        "pending": "Pending",
+        "pass": "Pass",
+        "fail": "Fail",
+        "not_applicable": "N/A"
+      },
+      "item": {
+        "PACKAGING": "Packaging condition",
+        "LOT_EXPIRY": "Lot, expiry, and supplier label",
+        "COA_MSDS": "COA / MSDS attached when required",
+        "PHOTO_EVIDENCE": "QC photos captured",
+        "SAMPLE": "Sample retained when required"
+      }
+    },
+    "packaging": {
+      "intact": "Intact",
+      "damaged": "Damaged",
+      "missing_label": "Missing label",
+      "leaking": "Leaking"
+    },
+    "attachments": {
+      "title": "QC attachments",
+      "empty": "No COA, MSDS, or QC evidence refs attached.",
+      "document": "Document",
+      "evidence": "QC evidence",
+      "reference": "reference"
+    },
+    "actions": {
+      "remove": "Remove",
+      "open": "Open",
+      "selected": "Selected",
+      "select": "Select",
+      "openInspection": "Open inspection",
+      "creating": "Creating",
+      "createInspection": "Create inspection",
+      "starting": "Starting",
+      "start": "Start"
+    },
+    "feedback": {
+      "loading": "Loading",
+      "alreadyCovered": "{id} already covers this receiving line",
+      "created": "{id} created",
+      "createFailed": "Inbound QC inspection could not be created",
+      "started": "{id} started",
+      "startFailed": "Inbound QC inspection could not be started",
+      "startBeforeDecision": "Start the inspection before recording a QC result",
+      "reasonRequired": "Reason is required for fail, hold, and partial results",
+      "requiredFailBlocksPass": "A failed required checklist item cannot be passed",
+      "decisionFailed": "Inbound QC decision could not be recorded"
+    },
+    "empty": {
+      "noInspection": "No inspection",
+      "noInspectionSelected": "No inbound QC inspection selected",
+      "noInspectionDescription": "Create one from an inspection-ready receiving line."
+    },
+    "note": {
+      "packaging": "Packaging",
+      "lot": "lot",
+      "received": "received"
+    }
+  }
+}

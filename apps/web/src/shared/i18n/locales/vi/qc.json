@@ -1,1 +1,154 @@
-{ "title": "Kiểm chất lượng", "inbound": "QC hàng nhập" }
+{
+  "title": "Kiểm chất lượng",
+  "inbound": {
+    "title": "QC hàng nhập",
+    "description": "Kiểm hàng nhập theo số lượng, bao bì, lô, hạn dùng, COA/MSDS và bằng chứng",
+    "nav": {
+      "receipts": "Phiếu nhận",
+      "decision": "Kết luận",
+      "inspections": "Phiếu QC"
+    },
+    "filters": {
+      "label": "Bộ lọc QC hàng nhập",
+      "warehouse": "Kho",
+      "status": "Trạng thái kiểm",
+      "inspector": "Người kiểm",
+      "allStatuses": "Tất cả trạng thái"
+    },
+    "kpi": {
+      "inspectableLines": "Dòng cần QC",
+      "holdFail": "Giữ / Không đạt"
+    },
+    "status": {
+      "pending": "Chờ kiểm",
+      "in_progress": "Đang kiểm",
+      "completed": "Hoàn tất",
+      "cancelled": "Đã hủy"
+    },
+    "result": {
+      "pass": "Đạt QC",
+      "fail": "Không đạt QC",
+      "hold": "Giữ kiểm",
+      "partial": "Đạt một phần"
+    },
+    "receivingLines": {
+      "title": "Dòng nhận hàng sẵn sàng QC",
+      "lines": "{count} dòng",
+      "selectedLabel": "Dòng nhận hàng đang chọn",
+      "readyForQC": "Sẵn sàng QC",
+      "emptyTitle": "Chưa có dòng nhận hàng sẵn sàng QC",
+      "emptyDescription": "Gửi phiếu nhận và chuyển sang sẵn sàng QC trước khi bắt đầu kiểm.",
+      "columns": {
+        "receipt": "Phiếu nhận",
+        "sku": "SKU",
+        "lotExpiry": "Lô / HSD",
+        "packaging": "Bao bì",
+        "quantity": "Số lượng",
+        "action": "Thao tác"
+      }
+    },
+    "inspections": {
+      "title": "Phiếu QC hàng nhập",
+      "records": "{count} phiếu",
+      "emptyTitle": "Chưa có phiếu QC hàng nhập",
+      "emptyDescription": "Tạo phiếu QC từ dòng nhận hàng.",
+      "columns": {
+        "inspection": "Phiếu QC",
+        "skuLot": "SKU / Lô",
+        "status": "Trạng thái",
+        "result": "Kết quả",
+        "quantity": "Số lượng",
+        "updated": "Cập nhật",
+        "action": "Thao tác"
+      }
+    },
+    "decision": {
+      "title": "Kết luận QC",
+      "factsLabel": "Thông tin phiếu QC hàng nhập",
+      "quantitiesLabel": "Số lượng kết luận QC",
+      "passQty": "SL đạt",
+      "failQty": "SL không đạt",
+      "holdQty": "SL giữ kiểm",
+      "reason": "Lý do",
+      "reasonPlaceholder": "Bắt buộc khi không đạt, giữ kiểm hoặc đạt một phần",
+      "note": "Ghi chú QC",
+      "evidenceRefs": "COA / MSDS / ảnh",
+      "evidencePlaceholder": "COA-260429-001, MSDS-SERUM, IMG-..."
+    },
+    "fact": {
+      "receipt": "Phiếu nhận",
+      "po": "PO",
+      "sku": "SKU",
+      "lotExpiry": "Lô / HSD",
+      "quantity": "Số lượng",
+      "inspector": "Người kiểm",
+      "started": "Bắt đầu",
+      "decided": "Kết luận"
+    },
+    "checklist": {
+      "label": "Checklist QC",
+      "required": "Bắt buộc",
+      "optional": "Tùy chọn",
+      "notePlaceholder": "Ghi chú checklist",
+      "status": {
+        "pending": "Chờ kiểm",
+        "pass": "Đạt",
+        "fail": "Không đạt",
+        "not_applicable": "Không áp dụng"
+      },
+      "item": {
+        "PACKAGING": "Tình trạng bao bì",
+        "LOT_EXPIRY": "Lô, hạn dùng và nhãn NCC",
+        "COA_MSDS": "Đã có COA / MSDS khi cần",
+        "PHOTO_EVIDENCE": "Đã chụp ảnh QC",
+        "SAMPLE": "Đã lưu mẫu khi cần"
+      }
+    },
+    "packaging": {
+      "intact": "Nguyên vẹn",
+      "damaged": "Hư hỏng",
+      "missing_label": "Thiếu nhãn",
+      "leaking": "Rò rỉ"
+    },
+    "attachments": {
+      "title": "Tệp QC",
+      "empty": "Chưa đính kèm COA, MSDS hoặc bằng chứng QC.",
+      "document": "Chứng từ",
+      "evidence": "Bằng chứng QC",
+      "reference": "tham chiếu"
+    },
+    "actions": {
+      "remove": "Xóa",
+      "open": "Mở",
+      "selected": "Đã chọn",
+      "select": "Chọn",
+      "openInspection": "Mở phiếu QC",
+      "creating": "Đang tạo",
+      "createInspection": "Tạo phiếu QC",
+      "starting": "Đang bắt đầu",
+      "start": "Bắt đầu"
+    },
+    "feedback": {
+      "loading": "Đang tải",
+      "alreadyCovered": "{id} đã kiểm dòng nhận hàng này",
+      "created": "Đã tạo {id}",
+      "createFailed": "Không thể tạo phiếu QC hàng nhập",
+      "started": "Đã bắt đầu {id}",
+      "startFailed": "Không thể bắt đầu phiếu QC hàng nhập",
+      "startBeforeDecision": "Bắt đầu kiểm trước khi ghi kết quả QC",
+      "reasonRequired": "Bắt buộc nhập lý do khi không đạt, giữ kiểm hoặc đạt một phần",
+      "requiredFailBlocksPass": "Checklist bắt buộc bị lỗi thì không thể kết luận đạt",
+      "decisionFailed": "Không thể ghi kết luận QC hàng nhập"
+    },
+    "empty": {
+      "noInspection": "Chưa có phiếu QC",
+      "noInspectionSelected": "Chưa chọn phiếu QC hàng nhập",
+      "noInspectionDescription": "Tạo phiếu từ dòng nhận hàng sẵn sàng QC."
+    },
+    "note": {
+      "packaging": "Bao bì",
+      "lot": "lô",
+      "received": "nhận lúc"
+    }
+  }
+}
