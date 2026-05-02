@@ -12,5 +12,7 @@
   "Reject": "Reject",
   "Cancel": "Cancel",
   "Confirm": "Confirm",
-  "Refresh": "Refresh"
+  "Refresh": "Refresh",
+  "Download": "Download",
+  "Delete": "Delete"
 }

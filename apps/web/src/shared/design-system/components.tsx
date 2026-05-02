@@ -12,6 +12,7 @@ import {
   normalizeUOMCode,
   type DecimalScale
 } from "../format/numberFormat";
+import { t } from "../i18n";
 
 export const coreComponentNames = [
   "DataTable",
@@ -72,7 +73,7 @@ export function DataTable<T>({
   error
 }: DataTableProps<T>) {
   if (loading) {
-    return <LoadingState title="Loading records" />;
+    return <LoadingState title={t("common.loadingRecords")} />;
   }
 
   if (error) {
@@ -80,7 +81,7 @@ export function DataTable<T>({
   }
 
   if (rows.length === 0) {
-    return <>{emptyState ?? <EmptyState title="No records yet" />}</>;
+    return <>{emptyState ?? <EmptyState title={t("common.noRecordsYet")} />}</>;
   }
 
   return (
@@ -159,7 +160,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
-  cancelLabel = "Cancel",
+  cancelLabel = t("actions.Cancel"),
   tone = "normal",
   onConfirm,
   onCancel
@@ -212,7 +213,7 @@ export function DetailDrawer({ open, title, subtitle, children, footer, onClose 
             <h2 id="erp-drawer-title">{title}</h2>
             {subtitle ? <p>{subtitle}</p> : null}
           </div>
-          <button className="erp-ds-icon-button" type="button" aria-label="Close drawer" onClick={onClose}>
+          <button className="erp-ds-icon-button" type="button" aria-label={t("common.closeDrawer")} onClick={onClose}>
             x
           </button>
         </header>
@@ -240,7 +241,7 @@ export function ToastStack({ messages }: ToastStackProps) {
   }
 
   return (
-    <ol className="erp-ds-toast-stack" aria-live="polite" aria-label="Notifications">
+    <ol className="erp-ds-toast-stack" aria-live="polite" aria-label={t("common.notifications")}>
       {messages.map((message) => (
         <li className={`erp-ds-toast erp-ds-toast--${message.tone ?? "normal"}`} key={message.id}>
           <strong>{message.title}</strong>
@@ -261,7 +262,7 @@ export function EmptyState({ title, description, action }: StateBlockProps) {
   return <StateBlock tone="empty" title={title} description={description} action={action} />;
 }
 
-export function LoadingState({ title, description = "Please wait while the latest data loads." }: StateBlockProps) {
+export function LoadingState({ title, description = t("common.loadingDescription") }: StateBlockProps) {
   return <StateBlock tone="loading" title={title} description={description} />;
 }
 
@@ -289,8 +290,8 @@ export type ScanInputProps = {
 };
 
 export function ScanInput({
-  label = "Scan code",
-  placeholder = "Scan order, batch, or tracking code",
+  label = t("common.scanCode"),
+  placeholder = t("common.scanPlaceholder"),
   feedback,
   autoFocus = true,
   onScan

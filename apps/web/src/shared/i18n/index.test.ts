@@ -26,6 +26,9 @@ describe("Vietnamese-first i18n foundation", () => {
     expect(getNavigationItemLabel({ href: "/sales", label: "Sales Orders" })).toBe("Đơn bán hàng");
     expect(getActionLabel("Quick create")).toBe("Tạo nhanh");
     expect(getActionLabel("Export CSV")).toBe("Xuất CSV");
+    expect(getActionLabel("Download")).toBe("Tải xuống");
+    expect(t("common.noRecordsYet")).toBe("Chưa có dữ liệu.");
+    expect(t("common.scanCode")).toBe("Quét mã");
   });
 
   it("centralizes status, error, validation, and unit labels", () => {
