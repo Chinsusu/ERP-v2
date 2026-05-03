@@ -144,7 +144,8 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
             {row.status === "active" ? commonAction("inactivate") : commonAction("activate")}
           </button>
         </div>
-      )
+      ),
+      width: "300px"
     }
   ];
 
@@ -196,7 +197,8 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
             {row.status === "active" ? commonAction("inactivate") : commonAction("activate")}
           </button>
         </div>
-      )
+      ),
+      width: "300px"
     }
   ];
 
@@ -267,6 +269,8 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
             rows={warehouses}
             getRowKey={(row) => row.id}
             loading={loading}
+            pagination
+            preserveColumnWidths
             error={tableError(error, clearError)}
             emptyState={<EmptyState title={warehouseCopy("warehouse.empty.title")} description={warehouseCopy("warehouse.empty.description")} />}
           />
@@ -293,6 +297,8 @@ export function WarehouseLocationMasterDataPrototype({ embedded = false }: { emb
             rows={locations}
             getRowKey={(row) => row.id}
             loading={loading}
+            pagination
+            preserveColumnWidths
             error={tableError(error, clearError)}
             emptyState={<EmptyState title={warehouseCopy("location.empty.title")} description={warehouseCopy("location.empty.description")} />}
           />
