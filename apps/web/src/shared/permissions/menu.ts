@@ -235,10 +235,7 @@ export const appMenuGroups: AppMenuGroup[] = [
   {
     label: "Data",
     items: [
-      { label: "Master Data", href: "/master-data", code: "MD", permission: "master-data:view" },
-      { label: "SKU / Batch", href: "/sku-batch", code: "SK", permission: "master-data:view" },
-      { label: "Supplier / Factory", href: "/suppliers", code: "SF", permission: "master-data:view" },
-      { label: "Customer", href: "/customers", code: "CU", permission: "master-data:view" }
+      { label: "Master Data", href: "/master-data", code: "MD", permission: "master-data:view" }
     ]
   },
   {

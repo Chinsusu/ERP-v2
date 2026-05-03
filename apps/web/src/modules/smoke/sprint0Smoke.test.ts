@@ -23,7 +23,7 @@ function mockUserForRole(role: RoleKey): MockUser {
 describe("Sprint 0 frontend smoke pack", () => {
   it("covers the required frontend smoke areas", () => {
     expect(sprint0FrontendSmokeChecks.map((check) => check.href)).toEqual(
-      expect.arrayContaining(["/login", "/master-data", "/sku-batch", "/inventory", "/shipping"])
+      expect.arrayContaining(["/login", "/master-data", "/inventory", "/shipping"])
     );
   });
 
