@@ -1,7 +1,7 @@
 "use client";
 
 import type { KeyboardEvent, Key, ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   decimalScales,
   formatMoney,
@@ -51,6 +51,46 @@ export type DataTableColumn<T> = {
   sticky?: boolean;
 };
 
+export type DataTablePageSize = 10 | 20 | 50 | "all";
+
+export const dataTablePageSizeOptions = [10, 20, 50, "all"] as const satisfies readonly DataTablePageSize[];
+
+export type DataTablePage<T> = {
+  rows: T[];
+  page: number;
+  pageCount: number;
+  start: number;
+  end: number;
+  total: number;
+};
+
+export function paginateDataTableRows<T>(rows: T[], requestedPage: number, pageSize: DataTablePageSize): DataTablePage<T> {
+  const total = rows.length;
+  const pageCount = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / pageSize));
+  const requested = Number.isFinite(requestedPage) ? Math.trunc(requestedPage) : 1;
+  const page = Math.min(Math.max(requested, 1), pageCount);
+
+  if (total === 0) {
+    return { rows: [], page: 1, pageCount: 1, start: 0, end: 0, total };
+  }
+
+  if (pageSize === "all") {
+    return { rows, page: 1, pageCount: 1, start: 1, end: total, total };
+  }
+
+  const startIndex = (page - 1) * pageSize;
+  const pageRows = rows.slice(startIndex, startIndex + pageSize);
+
+  return {
+    rows: pageRows,
+    page,
+    pageCount,
+    start: startIndex + 1,
+    end: startIndex + pageRows.length,
+    total
+  };
+}
+
 export type DataTableProps<T> = {
   columns: DataTableColumn<T>[];
   rows: T[];
@@ -60,6 +100,10 @@ export type DataTableProps<T> = {
   emptyState?: ReactNode;
   loading?: boolean;
   error?: ReactNode;
+  pagination?: boolean;
+  initialPageSize?: DataTablePageSize;
+  pageSizeOptions?: readonly DataTablePageSize[];
+  preserveColumnWidths?: boolean;
 };
 
 export function DataTable<T>({
@@ -70,8 +114,35 @@ export function DataTable<T>({
   bulkActions,
   emptyState,
   loading = false,
-  error
+  error,
+  pagination = false,
+  initialPageSize = 10,
+  pageSizeOptions = dataTablePageSizeOptions,
+  preserveColumnWidths = false
 }: DataTableProps<T>) {
+  const resolvedPageSizeOptions = pageSizeOptions.length > 0 ? pageSizeOptions : dataTablePageSizeOptions;
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<DataTablePageSize>(initialPageSize);
+  const activePageSize = resolvedPageSizeOptions.includes(pageSize) ? pageSize : resolvedPageSizeOptions[0];
+  const tableMinWidth = useMemo(
+    () => (preserveColumnWidths ? resolveTableMinWidth(columns) : undefined),
+    [columns, preserveColumnWidths]
+  );
+  const pageInfo = useMemo(() => paginateDataTableRows(rows, page, activePageSize), [activePageSize, page, rows]);
+  const visibleRows = pagination ? pageInfo.rows : rows;
+
+  useEffect(() => {
+    if (pagination && pageInfo.page !== page) {
+      setPage(pageInfo.page);
+    }
+  }, [page, pageInfo.page, pagination]);
+
+  useEffect(() => {
+    if (pagination) {
+      setPage(1);
+    }
+  }, [activePageSize, pagination]);
+
   if (loading) {
     return <LoadingState title={t("common.loadingRecords")} />;
   }
@@ -89,7 +160,12 @@ export function DataTable<T>({
       {toolbar ? <div className="erp-ds-table-toolbar">{toolbar}</div> : null}
       {bulkActions ? <div className="erp-ds-table-bulk-actions">{bulkActions}</div> : null}
       <div className="erp-ds-table-scroll">
-        <table className="erp-ds-table">
+        <table className="erp-ds-table" style={tableMinWidth ? { minWidth: tableMinWidth } : undefined}>
+          <colgroup>
+            {columns.map((column) => (
+              <col key={column.key} style={{ width: column.width }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
               {columns.map((column) => (
@@ -105,8 +181,8 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, rowIndex) => (
-              <tr key={getRowKey(row, rowIndex)}>
+            {visibleRows.map((row, rowIndex) => (
+              <tr key={getRowKey(row, pagination ? pageInfo.start - 1 + rowIndex : rowIndex)}>
                 {columns.map((column) => (
                   <td
                     className={column.sticky ? "erp-ds-table-cell--sticky" : undefined}
@@ -121,8 +197,63 @@ export function DataTable<T>({
           </tbody>
         </table>
       </div>
+      {pagination ? (
+        <footer className="erp-ds-table-pagination" aria-label={t("common.tablePagination")}>
+          <span className="erp-ds-table-pagination-summary">
+            {t("common.paginationRange", {
+              values: { start: pageInfo.start, end: pageInfo.end, total: pageInfo.total }
+            })}
+          </span>
+          <div className="erp-ds-table-pagination-controls">
+            <label className="erp-ds-table-pagination-size">
+              <span>{t("common.paginationRowsPerPage")}</span>
+              <select
+                className="erp-input"
+                value={String(activePageSize)}
+                onChange={(event) => {
+                  const nextPageSize =
+                    resolvedPageSizeOptions.find((option) => String(option) === event.target.value) ??
+                    resolvedPageSizeOptions[0];
+                  setPageSize(nextPageSize);
+                }}
+              >
+                {resolvedPageSizeOptions.map((option) => (
+                  <option key={String(option)} value={String(option)}>
+                    {option === "all" ? t("common.paginationAll") : option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="erp-button erp-button--secondary erp-button--compact"
+              type="button"
+              onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
+              disabled={pageInfo.page <= 1}
+            >
+              {t("common.paginationPrevious")}
+            </button>
+            <button
+              className="erp-button erp-button--secondary erp-button--compact"
+              type="button"
+              onClick={() => setPage((currentPage) => Math.min(pageInfo.pageCount, currentPage + 1))}
+              disabled={pageInfo.page >= pageInfo.pageCount}
+            >
+              {t("common.paginationNext")}
+            </button>
+          </div>
+        </footer>
+      ) : null}
     </section>
   );
+}
+
+function resolveTableMinWidth<T>(columns: DataTableColumn<T>[]) {
+  const pixelWidth = columns.reduce((total, column) => {
+    const match = column.width?.match(/^(\d+)px$/);
+    return match ? total + Number(match[1]) : total;
+  }, 0);
+
+  return pixelWidth > 640 ? `${pixelWidth}px` : undefined;
 }
 export type FormSectionProps = {
   title: string;

@@ -130,7 +130,7 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
           </button>
         </div>
       ),
-      width: "250px"
+      width: "300px"
     }
   ];
 
@@ -240,6 +240,8 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
             rows={items}
             getRowKey={(row) => row.id}
             loading={loading}
+            pagination
+            preserveColumnWidths
             error={
               error ? (
                 <ErrorState

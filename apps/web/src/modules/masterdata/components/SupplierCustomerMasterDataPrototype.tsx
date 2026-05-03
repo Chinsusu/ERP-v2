@@ -149,7 +149,8 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false, mode = "
             {row.status === "active" ? commonAction("inactivate") : commonAction("activate")}
           </button>
         </div>
-      )
+      ),
+      width: "300px"
     }
   ];
 
@@ -197,7 +198,8 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false, mode = "
             {row.status === "active" ? commonAction("inactivate") : commonAction("activate")}
           </button>
         </div>
-      )
+      ),
+      width: "300px"
     }
   ];
 
@@ -290,6 +292,8 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false, mode = "
               rows={suppliers}
               getRowKey={(row) => row.id}
               loading={loading}
+              pagination
+              preserveColumnWidths
               error={tableError(error, clearError)}
               emptyState={<EmptyState title={partyCopy("supplier.empty.title")} description={partyCopy("supplier.empty.description")} />}
             />
@@ -307,6 +311,8 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false, mode = "
               rows={customers}
               getRowKey={(row) => row.id}
               loading={loading}
+              pagination
+              preserveColumnWidths
               error={tableError(error, clearError)}
               emptyState={<EmptyState title={partyCopy("customer.empty.title")} description={partyCopy("customer.empty.description")} />}
             />
