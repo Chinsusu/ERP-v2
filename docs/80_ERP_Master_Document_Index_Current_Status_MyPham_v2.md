@@ -29,11 +29,11 @@ Which document locks Vietnamese operational terminology?
 ## 2. Current Status Snapshot
 
 ```text
-Current line: Sprint 22 UAT pilot pack preparation after Sprint 21 auth UI backend integration.
+Current line: Sprint 22 Session 0 readiness passed after S22-ISSUE-001 role-auth unblock.
 Latest release tag: v0.19.0-vietnamese-ui-localization.
 Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
 Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
-Sprint 22 status: UAT pilot pack prepared; business UAT execution, issue triage, Go/No-Go decision, and v0.22 tag are pending.
+Sprint 22 status: UAT pilot pack prepared; S22-ISSUE-001 resolved by PR #546 at db894ddb; Session 0 readiness rerun passed; business UAT execution, business issue triage, Go/No-Go decision, and v0.22 tag are pending.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -190,7 +190,7 @@ Sprint 22 tag hold:
 
 ```text
 No v0.22.0-uat-pilot-pack-warehouse-sales-qc tag has been created.
-Sprint 22 is currently UAT preparation and evidence structure.
+Sprint 22 has passed Session 0 readiness after resolving S22-ISSUE-001, but business UAT has not started.
 Create the Sprint 22 checkpoint tag only after business UAT evidence and Go/No-Go decision are recorded.
 ```
 
@@ -204,5 +204,5 @@ Track these as documentation or product follow-up, not as completed Sprint 20 sc
 English mode still has deeper table/filter labels that need localization cleanup.
 Production-like auth smoke evidence must be recorded per target environment before release.
 Any future production-like release must record whether prototype fallback gaps remain.
-Sprint 22 UAT execution remains pending until business users run the prepared scripts.
+Sprint 22 business UAT execution remains pending until business users run the prepared scripts.
 ```
