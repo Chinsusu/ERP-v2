@@ -19,12 +19,6 @@ export const sprint0FrontendSmokeChecks: Sprint0SmokeCheck[] = [
     ownerRole: "ERP_ADMIN"
   },
   {
-    id: "S0SMK-003B",
-    label: "SKU / Batch",
-    href: "/sku-batch",
-    ownerRole: "ERP_ADMIN"
-  },
-  {
     id: "S0SMK-004",
     label: "Stock Movement",
     href: "/inventory",
