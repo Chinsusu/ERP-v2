@@ -5,12 +5,16 @@
   "views": {
     "products": "Mã hàng / SKU",
     "warehouses": "Kho / Vị trí",
-    "parties": "Nhà cung cấp / Khách hàng"
+    "parties": "Nhà cung cấp / Khách hàng",
+    "suppliers": "Nhà cung cấp",
+    "customers": "Khách hàng"
   },
   "viewStatus": {
     "products": "Thiết lập mã hàng",
     "warehouses": "Thiết lập kho",
-    "parties": "Thiết lập đối tác"
+    "parties": "Thiết lập đối tác",
+    "suppliers": "Thiết lập nhà cung cấp",
+    "customers": "Thiết lập khách hàng"
   },
   "page": {
     "title": "Dữ liệu gốc",

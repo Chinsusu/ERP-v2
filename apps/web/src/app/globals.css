@@ -986,11 +986,19 @@ textarea {
   grid-template-columns: repeat(4, minmax(140px, 1fr));
 }
 
+.erp-masterdata-kpis--split {
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+}
+
 .erp-masterdata-workspace {
   display: grid;
   grid-template-columns: minmax(520px, 1.15fr) minmax(360px, 0.85fr);
   gap: 12px;
   align-items: start;
+}
+
+.erp-masterdata-workspace--single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .erp-masterdata-list-card {

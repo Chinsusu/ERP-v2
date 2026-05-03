@@ -45,7 +45,11 @@ const allSupplierGroupOptions = [{ label: partyCopy("filters.allSupplierGroups")
 const allCustomerStatusOptions = [{ label: partyCopy("filters.allCustomerStatuses"), value: "" }, ...customerStatusOptions] as const;
 const allCustomerTypeOptions = [{ label: partyCopy("filters.allCustomerTypes"), value: "" }, ...customerTypeOptions] as const;
 
-export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embedded?: boolean }) {
+type PartyMasterDataMode = "all" | "suppliers" | "customers";
+
+export function SupplierCustomerMasterDataPrototype({ embedded = false, mode = "all" }: { embedded?: boolean; mode?: PartyMasterDataMode }) {
+  const showSuppliers = mode !== "customers";
+  const showCustomers = mode !== "suppliers";
   const [search, setSearch] = useState("");
   const [supplierStatus, setSupplierStatus] = useState<SupplierStatus | "">("");
   const [supplierGroup, setSupplierGroup] = useState<SupplierMasterDataQuery["supplierGroup"]>("");
@@ -197,145 +201,178 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false }: { embe
     }
   ];
 
+  const toolbarClassName = showSuppliers && showCustomers ? "erp-masterdata-toolbar erp-masterdata-toolbar--wide" : "erp-masterdata-toolbar";
+  const kpiClassName = showSuppliers && showCustomers ? "erp-kpi-grid erp-masterdata-kpis" : "erp-kpi-grid erp-masterdata-kpis erp-masterdata-kpis--split";
+  const workspaceClassName = showSuppliers && showCustomers ? "erp-masterdata-workspace" : "erp-masterdata-workspace erp-masterdata-workspace--single";
+  const searchPlaceholder = showSuppliers && showCustomers ? "SUP-RM-BIO / CUS-DL-MINHANH" : showSuppliers ? "SUP-RM-BIO" : "CUS-DL-MINHANH";
+
   const content = (
     <>
-      <section className="erp-masterdata-toolbar erp-masterdata-toolbar--wide" aria-label={partyCopy("filters.label")}>
+      <section className={toolbarClassName} aria-label={partyCopy("filters.label")}>
         <label className="erp-field">
           <span>{partyCopy("filters.search")}</span>
-          <input className="erp-input" type="search" value={search} placeholder="SUP-RM-BIO" onChange={(event) => setSearch(event.target.value.toUpperCase())} />
+          <input className="erp-input" type="search" value={search} placeholder={searchPlaceholder} onChange={(event) => setSearch(event.target.value.toUpperCase())} />
         </label>
-        <label className="erp-field">
-          <span>{partyCopy("filters.supplierStatus")}</span>
-          <select className="erp-input" value={supplierStatus} onChange={(event) => setSupplierStatus(event.target.value as SupplierStatus | "")}>
-            {allSupplierStatusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.value ? supplierStatusDisplay(option.value) : option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="erp-field">
-          <span>{partyCopy("filters.supplierGroup")}</span>
-          <select className="erp-input" value={supplierGroup} onChange={(event) => setSupplierGroup(event.target.value as SupplierMasterDataQuery["supplierGroup"])}>
-            {allSupplierGroupOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.value ? supplierGroupDisplay(option.value) : option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="erp-field">
-          <span>{partyCopy("filters.customerStatus")}</span>
-          <select className="erp-input" value={customerStatus} onChange={(event) => setCustomerStatus(event.target.value as CustomerStatus | "")}>
-            {allCustomerStatusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.value ? customerStatusDisplay(option.value) : option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="erp-field">
-          <span>{partyCopy("filters.customerType")}</span>
-          <select className="erp-input" value={customerType} onChange={(event) => setCustomerType(event.target.value as CustomerMasterDataQuery["customerType"])}>
-            {allCustomerTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.value ? customerTypeDisplay(option.value) : option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {showSuppliers ? (
+          <>
+            <label className="erp-field">
+              <span>{partyCopy("filters.supplierStatus")}</span>
+              <select className="erp-input" value={supplierStatus} onChange={(event) => setSupplierStatus(event.target.value as SupplierStatus | "")}>
+                {allSupplierStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.value ? supplierStatusDisplay(option.value) : option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="erp-field">
+              <span>{partyCopy("filters.supplierGroup")}</span>
+              <select className="erp-input" value={supplierGroup} onChange={(event) => setSupplierGroup(event.target.value as SupplierMasterDataQuery["supplierGroup"])}>
+                {allSupplierGroupOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.value ? supplierGroupDisplay(option.value) : option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : null}
+        {showCustomers ? (
+          <>
+            <label className="erp-field">
+              <span>{partyCopy("filters.customerStatus")}</span>
+              <select className="erp-input" value={customerStatus} onChange={(event) => setCustomerStatus(event.target.value as CustomerStatus | "")}>
+                {allCustomerStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.value ? customerStatusDisplay(option.value) : option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="erp-field">
+              <span>{partyCopy("filters.customerType")}</span>
+              <select className="erp-input" value={customerType} onChange={(event) => setCustomerType(event.target.value as CustomerMasterDataQuery["customerType"])}>
+                {allCustomerTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.value ? customerTypeDisplay(option.value) : option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : null}
       </section>
 
-      <section className="erp-kpi-grid erp-masterdata-kpis">
-        <MasterDataKPI label={partyCopy("kpi.suppliers")} value={summary.suppliers} tone="normal" />
-        <MasterDataKPI label={partyCopy("kpi.activeSuppliers")} value={summary.activeSuppliers} tone="success" />
-        <MasterDataKPI label={partyCopy("kpi.customers")} value={summary.customers} tone="info" />
-        <MasterDataKPI label={partyCopy("kpi.activeCustomers")} value={summary.activeCustomers} tone="success" />
+      <section className={kpiClassName}>
+        {showSuppliers ? (
+          <>
+            <MasterDataKPI label={partyCopy("kpi.suppliers")} value={summary.suppliers} tone="normal" />
+            <MasterDataKPI label={partyCopy("kpi.activeSuppliers")} value={summary.activeSuppliers} tone="success" />
+          </>
+        ) : null}
+        {showCustomers ? (
+          <>
+            <MasterDataKPI label={partyCopy("kpi.customers")} value={summary.customers} tone="info" />
+            <MasterDataKPI label={partyCopy("kpi.activeCustomers")} value={summary.activeCustomers} tone="success" />
+          </>
+        ) : null}
       </section>
 
-      <section className="erp-masterdata-workspace">
-        <section className="erp-card erp-card--padded erp-masterdata-list-card">
-          <div className="erp-section-header">
-            <h2 className="erp-section-title">{partyCopy("supplier.list.title")}</h2>
-            <StatusChip tone={suppliers.length === 0 ? "warning" : "info"}>{partyCopy("list.rows", { count: suppliers.length })}</StatusChip>
-          </div>
-          <DataTable
-            columns={supplierColumns}
-            rows={suppliers}
-            getRowKey={(row) => row.id}
-            loading={loading}
-            error={tableError(error, clearError)}
-            emptyState={<EmptyState title={partyCopy("supplier.empty.title")} description={partyCopy("supplier.empty.description")} />}
+      <section className={workspaceClassName}>
+        {showSuppliers ? (
+          <section className="erp-card erp-card--padded erp-masterdata-list-card">
+            <div className="erp-section-header">
+              <h2 className="erp-section-title">{partyCopy("supplier.list.title")}</h2>
+              <StatusChip tone={suppliers.length === 0 ? "warning" : "info"}>{partyCopy("list.rows", { count: suppliers.length })}</StatusChip>
+            </div>
+            <DataTable
+              columns={supplierColumns}
+              rows={suppliers}
+              getRowKey={(row) => row.id}
+              loading={loading}
+              error={tableError(error, clearError)}
+              emptyState={<EmptyState title={partyCopy("supplier.empty.title")} description={partyCopy("supplier.empty.description")} />}
+            />
+          </section>
+        ) : null}
+
+        {showCustomers ? (
+          <section className="erp-card erp-card--padded erp-masterdata-list-card">
+            <div className="erp-section-header">
+              <h2 className="erp-section-title">{partyCopy("customer.list.title")}</h2>
+              <StatusChip tone={customers.length === 0 ? "warning" : "info"}>{partyCopy("list.rows", { count: customers.length })}</StatusChip>
+            </div>
+            <DataTable
+              columns={customerColumns}
+              rows={customers}
+              getRowKey={(row) => row.id}
+              loading={loading}
+              error={tableError(error, clearError)}
+              emptyState={<EmptyState title={partyCopy("customer.empty.title")} description={partyCopy("customer.empty.description")} />}
+            />
+          </section>
+        ) : null}
+      </section>
+
+      <section className={workspaceClassName}>
+        {showSuppliers ? (
+          <SupplierForm
+            editingId={editingSupplierId}
+            form={supplierForm}
+            formError={formError}
+            saving={saving}
+            onChange={(patch) => setSupplierForm((current) => ({ ...current, ...patch }))}
+            onClear={resetSupplierForm}
+            onSubmit={submitSupplierForm}
           />
-        </section>
-
-        <section className="erp-card erp-card--padded erp-masterdata-list-card">
-          <div className="erp-section-header">
-            <h2 className="erp-section-title">{partyCopy("customer.list.title")}</h2>
-            <StatusChip tone={customers.length === 0 ? "warning" : "info"}>{partyCopy("list.rows", { count: customers.length })}</StatusChip>
-          </div>
-          <DataTable
-            columns={customerColumns}
-            rows={customers}
-            getRowKey={(row) => row.id}
-            loading={loading}
-            error={tableError(error, clearError)}
-            emptyState={<EmptyState title={partyCopy("customer.empty.title")} description={partyCopy("customer.empty.description")} />}
+        ) : null}
+        {showCustomers ? (
+          <CustomerForm
+            editingId={editingCustomerId}
+            form={customerForm}
+            formError={formError}
+            saving={saving}
+            onChange={(patch) => setCustomerForm((current) => ({ ...current, ...patch }))}
+            onClear={resetCustomerForm}
+            onSubmit={submitCustomerForm}
           />
-        </section>
+        ) : null}
       </section>
 
-      <section className="erp-masterdata-workspace">
-        <SupplierForm
-          editingId={editingSupplierId}
-          form={supplierForm}
-          formError={formError}
-          saving={saving}
-          onChange={(patch) => setSupplierForm((current) => ({ ...current, ...patch }))}
-          onClear={resetSupplierForm}
-          onSubmit={submitSupplierForm}
-        />
-        <CustomerForm
-          editingId={editingCustomerId}
-          form={customerForm}
-          formError={formError}
-          saving={saving}
-          onChange={(patch) => setCustomerForm((current) => ({ ...current, ...patch }))}
-          onClear={resetCustomerForm}
-          onSubmit={submitCustomerForm}
-        />
-      </section>
-
-      <DetailDrawer
-        open={Boolean(selectedSupplier)}
-        title={selectedSupplier?.supplierCode ?? partyCopy("supplier.detail.title")}
-        subtitle={selectedSupplier?.supplierName}
-        onClose={clearSelectedSupplier}
-        footer={
-          selectedSupplier ? (
-            <button className="erp-button erp-button--secondary" type="button" onClick={() => startSupplierEdit(selectedSupplier)}>
-              {commonAction("edit")}
-            </button>
-          ) : null
-        }
-      >
-        {selectedSupplier ? <SupplierDetail item={selectedSupplier} /> : null}
-      </DetailDrawer>
-      <DetailDrawer
-        open={Boolean(selectedCustomer)}
-        title={selectedCustomer?.customerCode ?? partyCopy("customer.detail.title")}
-        subtitle={selectedCustomer?.customerName}
-        onClose={clearSelectedCustomer}
-        footer={
-          selectedCustomer ? (
-            <button className="erp-button erp-button--secondary" type="button" onClick={() => startCustomerEdit(selectedCustomer)}>
-              {commonAction("edit")}
-            </button>
-          ) : null
-        }
-      >
-        {selectedCustomer ? <CustomerDetail item={selectedCustomer} /> : null}
-      </DetailDrawer>
+      {showSuppliers ? (
+        <DetailDrawer
+          open={Boolean(selectedSupplier)}
+          title={selectedSupplier?.supplierCode ?? partyCopy("supplier.detail.title")}
+          subtitle={selectedSupplier?.supplierName}
+          onClose={clearSelectedSupplier}
+          footer={
+            selectedSupplier ? (
+              <button className="erp-button erp-button--secondary" type="button" onClick={() => startSupplierEdit(selectedSupplier)}>
+                {commonAction("edit")}
+              </button>
+            ) : null
+          }
+        >
+          {selectedSupplier ? <SupplierDetail item={selectedSupplier} /> : null}
+        </DetailDrawer>
+      ) : null}
+      {showCustomers ? (
+        <DetailDrawer
+          open={Boolean(selectedCustomer)}
+          title={selectedCustomer?.customerCode ?? partyCopy("customer.detail.title")}
+          subtitle={selectedCustomer?.customerName}
+          onClose={clearSelectedCustomer}
+          footer={
+            selectedCustomer ? (
+              <button className="erp-button erp-button--secondary" type="button" onClick={() => startCustomerEdit(selectedCustomer)}>
+                {commonAction("edit")}
+              </button>
+            ) : null
+          }
+        >
+          {selectedCustomer ? <CustomerDetail item={selectedCustomer} /> : null}
+        </DetailDrawer>
+      ) : null}
       <ToastStack messages={toast} />
     </>
   );
