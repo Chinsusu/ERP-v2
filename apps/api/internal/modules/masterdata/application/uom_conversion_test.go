@@ -114,7 +114,7 @@ func TestUOMCatalogPassesThroughBaseUOM(t *testing.T) {
 func TestUOMCatalogAcceptsOperationalPackagingUnits(t *testing.T) {
 	catalog := NewPrototypeUOMCatalog()
 
-	for _, code := range []string{"BAG", "ROLL", "CM"} {
+	for _, code := range []string{"BAG", "PACK", "ROLL", "CM"} {
 		result, err := catalog.ConvertToBase(context.Background(), ConvertToBaseInput{
 			SKU:         "PACKAGING-SHEET-IMPORT",
 			Quantity:    decimal.MustQuantity("1"),
