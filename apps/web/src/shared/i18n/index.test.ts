@@ -8,9 +8,12 @@ import { getStatusLabel } from "./status-labels";
 import { getUnitLabel } from "./units";
 import { getValidationLabel } from "./validation-labels";
 import { t } from "./index";
+import { setActiveLocale } from "./runtime";
 
 describe("Vietnamese-first i18n foundation", () => {
   it("uses Vietnamese as the default locale with English fallback", () => {
+    setActiveLocale(defaultLocale);
+
     expect(defaultLocale).toBe("vi");
     expect(fallbackLocale).toBe("en");
     expect(t("common.appName")).toBe("ERP Mỹ phẩm");
@@ -18,7 +21,19 @@ describe("Vietnamese-first i18n foundation", () => {
     expect(t("common.missing", { fallback: "Fallback copy" })).toBe("Fallback copy");
   });
 
+  it("uses the active runtime locale when no explicit locale is provided", () => {
+    setActiveLocale("en");
+    expect(t("common.appName")).toBe("ERP Platform");
+    expect(t("common.language")).toBe("Language");
+
+    setActiveLocale("vi");
+    expect(t("common.appName")).toBe("ERP Mỹ phẩm");
+    expect(t("common.locales.en")).toBe("Tiếng Anh");
+  });
+
   it("localizes navigation and actions without changing routes", () => {
+    setActiveLocale(defaultLocale);
+
     expect(getNavigationGroupLabel("Operations")).toBe("Vận hành");
     expect(getNavigationItemLabel({ href: "/warehouse", label: "Warehouse Daily Board" })).toBe(
       "Bảng công việc kho"
@@ -73,6 +88,8 @@ describe("Vietnamese-first i18n foundation", () => {
   });
 
   it("centralizes status, error, validation, and unit labels", () => {
+    setActiveLocale(defaultLocale);
+
     expect(getStatusLabel("QC_HOLD")).toBe("Đang giữ kiểm");
     expect(getStatusLabel("PACKED")).toBe("Đã đóng hàng");
     expect(getStatusLabel("RETURN_PENDING_INSPECTION")).toBe("Hàng hoàn chờ kiểm");
@@ -84,6 +101,8 @@ describe("Vietnamese-first i18n foundation", () => {
   });
 
   it("re-exports approved ERP display formatters", () => {
+    setActiveLocale(defaultLocale);
+
     expect(formatERPMoney("1250000")).toBe("1.250.000 ₫");
     expect(formatERPQuantity("10.5", "kg")).toBe("10,5 KG");
     expect(formatERPPercent("2.5")).toBe("2,5%");

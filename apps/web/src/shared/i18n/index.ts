@@ -1,5 +1,6 @@
 import { defaultLocale, fallbackLocale, isSupportedLocale, type Locale } from "./config";
 import { dictionaries, dictionaryNamespaces, type DictionaryNamespace, type DictionaryTree } from "./dictionaries";
+import { getActiveLocale } from "./runtime";
 
 export type TranslationValues = Record<string, string | number>;
 
@@ -10,7 +11,7 @@ export type TranslationOptions = {
 };
 
 export function translate(key: string, options: TranslationOptions = {}) {
-  const locale = options.locale ?? defaultLocale;
+  const locale = options.locale ?? getActiveLocale();
   const value =
     getTranslationValue(locale, key) ??
     getTranslationValue(fallbackLocale, key) ??

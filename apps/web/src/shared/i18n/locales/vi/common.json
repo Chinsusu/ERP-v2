@@ -4,6 +4,11 @@
   "globalSearch": "Tìm kiếm toàn hệ thống",
   "searchPlaceholder": "Tìm đơn, SKU, lô, phiếu nhập, mã vận đơn...",
   "quickActions": "Thao tác nhanh",
+  "language": "Ngôn ngữ",
+  "locales": {
+    "vi": "Tiếng Việt",
+    "en": "Tiếng Anh"
+  },
   "signedInAs": "Đang đăng nhập: {name}",
   "navigation": "Điều hướng ERP",
   "mock": "Mẫu",

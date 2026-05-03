@@ -4,6 +4,11 @@
   "globalSearch": "Global search",
   "searchPlaceholder": "Search order, SKU, batch, receipt, tracking code...",
   "quickActions": "Quick actions",
+  "language": "Language",
+  "locales": {
+    "vi": "Vietnamese",
+    "en": "English"
+  },
   "signedInAs": "Signed in as {name}",
   "navigation": "ERP navigation",
   "mock": "Mock",
