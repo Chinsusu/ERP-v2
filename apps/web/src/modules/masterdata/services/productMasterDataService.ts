@@ -50,6 +50,7 @@ export const productUomOptions: { value: string }[] = [
   { value: "CARTON" },
   { value: "SET" },
   { value: "BAG" },
+  { value: "PACK" },
   { value: "ROLL" },
   { value: "CM" },
   { value: "SERVICE" }

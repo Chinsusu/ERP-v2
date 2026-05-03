@@ -58,7 +58,7 @@ describe("productMasterDataService", () => {
   it("uses the normalized source sheet items in the local fallback store", async () => {
     const items = await getProducts();
 
-    expect(items).toHaveLength(332);
+    expect(items).toHaveLength(371);
     expect(items.some((item) => ["SERUM-30ML", "CREAM-50G", "TONER-100ML"].includes(item.skuCode))).toBe(false);
     expect(items).toContainEqual(
       expect.objectContaining({
@@ -76,11 +76,37 @@ describe("productMasterDataService", () => {
         uomBase: "TUBE"
       })
     );
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        skuCode: "GRN",
+        name: "DẦU GỘI RETRO NANO 350ML",
+        itemType: "finished_good",
+        itemGroup: "retail_hair",
+        uomBase: "BOTTLE",
+        isSellable: true
+      })
+    );
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        skuCode: "BTMN",
+        itemGroup: "gift_skin",
+        uomBase: "PACK",
+        isSellable: false
+      })
+    );
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        skuCode: "BONG",
+        itemGroup: "accessory_skin",
+        uomBase: "PCS"
+      })
+    );
+    expect(items.some((item) => item.skuCode === "SU500" || item.skuCode === "BÔNG" || item.skuCode === "MCBĐ")).toBe(false);
     expect(summarizeProducts(items)).toEqual({
-      total: 332,
-      active: 332,
+      total: 371,
+      active: 371,
       draft: 0,
-      controlled: 332
+      controlled: 371
     });
   });
 
@@ -105,6 +131,7 @@ describe("productMasterDataService", () => {
       "CARTON",
       "SET",
       "BAG",
+      "PACK",
       "ROLL",
       "CM",
       "SERVICE"

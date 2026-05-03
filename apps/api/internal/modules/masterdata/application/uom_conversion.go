@@ -202,6 +202,7 @@ func phase1UOMs() []domain.UOM {
 		{code: "CARTON", nameVI: "Thùng", nameEN: "Carton", group: domain.UOMGroupPack, description: "Item-specific package UOM"},
 		{code: "SET", nameVI: "Bộ/combo", nameEN: "Set", group: domain.UOMGroupPack, description: "BOM/combo UOM"},
 		{code: "BAG", nameVI: "T\u00fai", nameEN: "Bag", group: domain.UOMGroupPack, description: "Item-specific package UOM"},
+		{code: "PACK", nameVI: "Gói", nameEN: "Pack", group: domain.UOMGroupPack, description: "Item-specific pack UOM"},
 		{code: "ROLL", nameVI: "Cu\u1ed9n", nameEN: "Roll", group: domain.UOMGroupPack, description: "Item-specific package UOM"},
 		{code: "CM", nameVI: "Centimet", nameEN: "Centimeter", group: domain.UOMGroupPack, decimal: true, description: "Length unit for roll or fabric packaging"},
 		{code: "SERVICE", nameVI: "Dịch vụ", nameEN: "Service", group: domain.UOMGroupService, description: "Non-stock service"},

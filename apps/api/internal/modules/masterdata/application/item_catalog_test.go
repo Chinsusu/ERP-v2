@@ -31,8 +31,8 @@ func TestItemCatalogListsFilteredPrototypeItems(t *testing.T) {
 
 func TestImportedMasterDataItemsAreNormalizedFromSourceSheets(t *testing.T) {
 	items := importedMasterDataItems()
-	if len(items) != 332 {
-		t.Fatalf("imported item count = %d, want 332", len(items))
+	if len(items) != 371 {
+		t.Fatalf("imported item count = %d, want 371", len(items))
 	}
 
 	bySKU := make(map[string]domain.Item, len(items))
@@ -65,18 +65,42 @@ func TestImportedMasterDataItemsAreNormalizedFromSourceSheets(t *testing.T) {
 	if tube.Type != domain.ItemTypePackaging || tube.Group != "tube" || tube.UOMBase != "TUBE" {
 		t.Fatalf("TP-100 = %+v, want packaging tube item", tube)
 	}
+	retail := bySKU["GRN"]
+	if retail.Name != "DẦU GỘI RETRO NANO 350ML" || retail.Type != domain.ItemTypeFinishedGood || retail.Group != "retail_hair" || retail.UOMBase != "BOTTLE" {
+		t.Fatalf("GRN = %+v, want active retail hair finished good bottle", retail)
+	}
+	if !retail.IsSellable || retail.IsPurchasable || !retail.IsProducible {
+		t.Fatalf("GRN flags = %+v, want sellable and producible finished good", retail)
+	}
+	gift := bySKU["BTMN"]
+	if gift.Type != domain.ItemTypeFinishedGood || gift.Group != "gift_skin" || gift.UOMBase != "PACK" || gift.IsSellable {
+		t.Fatalf("BTMN = %+v, want non-sellable gift finished good pack", gift)
+	}
+	accessory := bySKU["BONG"]
+	if accessory.Name != "BÔNG TẮM VYVY SKINCARE" || accessory.Group != "accessory_skin" || accessory.UOMBase != "PCS" {
+		t.Fatalf("BONG = %+v, want accent-normalized accessory SKU", accessory)
+	}
+	for _, skipped := range []string{"SU500", "BÔNG", "MCBĐ"} {
+		if _, ok := bySKU[skipped]; ok {
+			t.Fatalf("sku %q should not be part of active-only imported master data", skipped)
+		}
+	}
 	bagFound := false
+	packFound := false
 	rollFound := false
 	for _, item := range items {
 		if item.UOMBase == "BAG" {
 			bagFound = true
 		}
+		if item.UOMBase == "PACK" {
+			packFound = true
+		}
 		if item.UOMBase == "ROLL" {
 			rollFound = true
 		}
 	}
-	if !bagFound || !rollFound {
-		t.Fatalf("imported UOMs bag=%v roll=%v, want both present", bagFound, rollFound)
+	if !bagFound || !packFound || !rollFound {
+		t.Fatalf("imported UOMs bag=%v pack=%v roll=%v, want all present", bagFound, packFound, rollFound)
 	}
 }
 
