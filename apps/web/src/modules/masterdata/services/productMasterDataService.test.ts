@@ -4,6 +4,7 @@ import {
   createProduct,
   emptyProductInput,
   getProducts,
+  productUomOptions,
   productStatusTone,
   productTypeLabel,
   resetPrototypeProductMasterData,
@@ -41,6 +42,30 @@ describe("productMasterDataService", () => {
       draft: 1,
       controlled: 3
     });
+  });
+
+  it("uses PCS as the clean default unit for new SKU forms", () => {
+    expect(emptyProductInput.uomBase).toBe("PCS");
+    expect(emptyProductInput.uomPurchase).toBe("PCS");
+    expect(emptyProductInput.uomIssue).toBe("PCS");
+  });
+
+  it("offers the standard UOM catalog for SKU unit fields", () => {
+    expect(productUomOptions.map((option) => option.value)).toEqual([
+      "MG",
+      "G",
+      "KG",
+      "ML",
+      "L",
+      "PCS",
+      "BOTTLE",
+      "JAR",
+      "TUBE",
+      "BOX",
+      "CARTON",
+      "SET",
+      "SERVICE"
+    ]);
   });
 
   it("creates, updates, and changes status in the local fallback store", async () => {
