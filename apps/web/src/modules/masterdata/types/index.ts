@@ -10,6 +10,10 @@ export type SupplierStatus = components["schemas"]["SupplierStatus"];
 export type SupplierGroup = components["schemas"]["SupplierGroup"];
 export type CustomerStatus = components["schemas"]["CustomerStatus"];
 export type CustomerType = components["schemas"]["CustomerType"];
+export type FormulaStatus = "draft" | "active" | "inactive" | "archived";
+export type FormulaApprovalStatus = "draft" | "pending_approval" | "approved" | "rejected";
+export type FormulaComponentType = "raw_material" | "fragrance" | "packaging" | "semi_finished" | "service";
+export type FormulaLineStatus = "active" | "excluded" | "needs_review";
 
 export type ProductMasterDataItem = {
   id: string;
@@ -70,6 +74,129 @@ export type ProductMasterDataSummary = {
   active: number;
   draft: number;
   controlled: number;
+};
+
+export type FormulaMasterDataItem = {
+  id: string;
+  formulaCode: string;
+  finishedItemId: string;
+  finishedSku: string;
+  finishedItemName: string;
+  finishedItemType: ProductType;
+  formulaVersion: string;
+  batchQty: string;
+  batchUomCode: string;
+  baseBatchQty: string;
+  baseBatchUomCode: string;
+  status: FormulaStatus;
+  approvalStatus: FormulaApprovalStatus;
+  effectiveFrom?: string;
+  effectiveTo?: string;
+  lines: FormulaLineItem[];
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  version: number;
+  auditLogId?: string;
+};
+
+export type FormulaLineItem = {
+  id: string;
+  lineNo: number;
+  componentItemId?: string;
+  componentSku: string;
+  componentName: string;
+  componentType: FormulaComponentType;
+  enteredQty: string;
+  enteredUomCode: string;
+  calcQty: string;
+  calcUomCode: string;
+  stockBaseQty: string;
+  stockBaseUomCode: string;
+  wastePercent: string;
+  isRequired: boolean;
+  isStockManaged: boolean;
+  lineStatus: FormulaLineStatus;
+  note?: string;
+};
+
+export type FormulaMasterDataInput = {
+  formulaCode: string;
+  finishedItemId: string;
+  finishedSku: string;
+  finishedItemName: string;
+  finishedItemType: ProductType;
+  formulaVersion: string;
+  batchQty: string;
+  batchUomCode: string;
+  baseBatchQty: string;
+  baseBatchUomCode: string;
+  effectiveFrom: string;
+  effectiveTo: string;
+  lines: FormulaLineInput[];
+  note: string;
+};
+
+export type FormulaLineInput = {
+  lineNo: number;
+  componentItemId: string;
+  componentSku: string;
+  componentName: string;
+  componentType: FormulaComponentType;
+  enteredQty: string;
+  enteredUomCode: string;
+  calcQty: string;
+  calcUomCode: string;
+  stockBaseQty: string;
+  stockBaseUomCode: string;
+  wastePercent: string;
+  isRequired: boolean;
+  isStockManaged: boolean;
+  lineStatus: FormulaLineStatus;
+  note: string;
+};
+
+export type FormulaMasterDataQuery = {
+  search?: string;
+  status?: FormulaStatus | "";
+  finishedItemId?: string;
+};
+
+export type FormulaMasterDataSummary = {
+  total: number;
+  active: number;
+  draft: number;
+  lines: number;
+};
+
+export type FormulaRequirementInput = {
+  plannedQty: string;
+  plannedUomCode: string;
+};
+
+export type FormulaRequirementPreview = {
+  formulaId: string;
+  formulaCode: string;
+  finishedSku: string;
+  plannedQty: string;
+  plannedUomCode: string;
+  requirements: FormulaRequirementLine[];
+};
+
+export type FormulaRequirementLine = {
+  formulaLineId: string;
+  lineNo: number;
+  componentItemId?: string;
+  componentSku: string;
+  componentName: string;
+  componentType: FormulaComponentType;
+  requiredCalcQty: string;
+  calcUomCode: string;
+  requiredStockBaseQty: string;
+  stockBaseUomCode: string;
+  isStockManaged: boolean;
 };
 
 export type WarehouseMasterDataItem = {

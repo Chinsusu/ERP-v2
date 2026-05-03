@@ -16,6 +16,14 @@ type itemCatalog interface {
 	ChangeStatus(context.Context, masterdataapp.ChangeItemStatusInput) (masterdataapp.ItemResult, error)
 }
 
+type formulaCatalog interface {
+	List(context.Context, masterdatadomain.FormulaFilter) ([]masterdatadomain.Formula, error)
+	Get(context.Context, string) (masterdatadomain.Formula, error)
+	Create(context.Context, masterdataapp.CreateFormulaInput) (masterdataapp.FormulaResult, error)
+	Activate(context.Context, masterdataapp.ActivateFormulaInput) (masterdataapp.FormulaResult, error)
+	CalculateRequirement(context.Context, masterdataapp.CalculateFormulaRequirementInput) (masterdataapp.FormulaRequirementResult, error)
+}
+
 type warehouseLocationCatalog interface {
 	ListWarehouses(context.Context, masterdatadomain.WarehouseFilter) ([]masterdatadomain.Warehouse, response.Pagination, error)
 	GetWarehouse(context.Context, string) (masterdatadomain.Warehouse, error)

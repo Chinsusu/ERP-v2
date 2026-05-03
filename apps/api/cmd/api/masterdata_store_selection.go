@@ -15,6 +15,7 @@ import (
 
 type masterDataRuntimeStores struct {
 	items      itemCatalog
+	formulas   formulaCatalog
 	uoms       uomCatalog
 	warehouses warehouseLocationCatalog
 	parties    partyCatalog
@@ -31,6 +32,7 @@ func newRuntimeMasterDataStores(
 	if strings.TrimSpace(cfg.DatabaseURL) == "" {
 		return masterDataRuntimeStores{
 			items:      masterdataapp.NewPrototypeItemCatalog(auditLogStore),
+			formulas:   masterdataapp.NewPrototypeFormulaCatalog(auditLogStore),
 			uoms:       masterdataapp.NewPrototypeUOMCatalog(),
 			warehouses: masterdataapp.NewPrototypeWarehouseLocationCatalog(auditLogStore),
 			parties:    masterdataapp.NewPrototypePartyCatalog(auditLogStore),
@@ -43,16 +45,19 @@ func newRuntimeMasterDataStores(
 	}
 
 	itemConfig := masterdataapp.PostgresItemCatalogConfig{}
+	formulaConfig := masterdataapp.PostgresFormulaCatalogConfig{}
 	warehouseConfig := masterdataapp.PostgresWarehouseLocationCatalogConfig{}
 	partyConfig := masterdataapp.PostgresPartyCatalogConfig{}
 	if config.AllowsStaticAuthAccessToken(cfg.AppEnv) {
 		itemConfig.DefaultOrgID = localAuditOrgID
+		formulaConfig.DefaultOrgID = localAuditOrgID
 		warehouseConfig.DefaultOrgID = localAuditOrgID
 		partyConfig.DefaultOrgID = localAuditOrgID
 	}
 
 	return masterDataRuntimeStores{
 		items:      masterdataapp.NewPostgresItemCatalog(db, auditLogStore, itemConfig),
+		formulas:   masterdataapp.NewPostgresFormulaCatalog(db, auditLogStore, formulaConfig),
 		uoms:       masterdataapp.NewPostgresUOMCatalog(db),
 		warehouses: masterdataapp.NewPostgresWarehouseLocationCatalog(db, auditLogStore, warehouseConfig),
 		parties:    masterdataapp.NewPostgresPartyCatalog(db, auditLogStore, partyConfig),
@@ -66,6 +71,7 @@ func seedRuntimeMasterDataStores(ctx context.Context, stores masterDataRuntimeSt
 	}{
 		{name: "uom catalog", store: stores.uoms},
 		{name: "item catalog", store: stores.items},
+		{name: "formula catalog", store: stores.formulas},
 		{name: "warehouse catalog", store: stores.warehouses},
 		{name: "party catalog", store: stores.parties},
 	} {

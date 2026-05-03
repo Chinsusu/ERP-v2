@@ -10,6 +10,7 @@ describe("master data tab model", () => {
 
     expect(tabs).toEqual([
       { label: "Items / SKU", value: "products" },
+      { label: "Formulas", value: "formulas" },
       { label: "Warehouses / Locations", value: "warehouses" },
       { label: "Suppliers", value: "suppliers" },
       { label: "Customers", value: "customers" }
@@ -22,5 +23,11 @@ describe("master data tab model", () => {
 
     expect(getMasterDataViewStatusLabel("suppliers")).toBe("Supplier setup");
     expect(getMasterDataViewStatusLabel("customers")).toBe("Customer setup");
+  });
+
+  it("uses formula status copy for the BOM formula view", () => {
+    setActiveLocale("en");
+
+    expect(getMasterDataViewStatusLabel("formulas")).toBe("Formula setup");
   });
 });

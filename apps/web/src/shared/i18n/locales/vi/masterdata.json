@@ -4,6 +4,7 @@
   "sectionsLabel": "Nhóm dữ liệu gốc",
   "views": {
     "products": "Mã hàng / SKU",
+    "formulas": "Công thức",
     "warehouses": "Kho / Vị trí",
     "parties": "Nhà cung cấp / Khách hàng",
     "suppliers": "Nhà cung cấp",
@@ -11,6 +12,7 @@
   },
   "viewStatus": {
     "products": "Thiết lập mã hàng",
+    "formulas": "Thiết lập công thức",
     "warehouses": "Thiết lập kho",
     "parties": "Thiết lập đối tác",
     "suppliers": "Thiết lập nhà cung cấp",
@@ -128,6 +130,94 @@
       "packaging": "Bao bì",
       "semi_finished": "Bán thành phẩm",
       "service": "Dịch vụ"
+    }
+  },
+  "formula": {
+    "filters": {
+      "label": "Bộ lọc công thức",
+      "search": "Tìm kiếm",
+      "status": "Trạng thái",
+      "allStatuses": "Tất cả trạng thái"
+    },
+    "columns": {
+      "formula": "Công thức",
+      "parent": "SKU thành phẩm",
+      "batch": "Batch",
+      "lines": "Dòng",
+      "status": "Trạng thái",
+      "updated": "Cập nhật"
+    },
+    "actions": {
+      "newFormula": "Công thức mới",
+      "create": "Tạo công thức",
+      "saving": "Đang lưu",
+      "activate": "Kích hoạt",
+      "calculate": "Tính nhu cầu"
+    },
+    "kpi": {
+      "total": "Tổng",
+      "lines": "Dòng định lượng"
+    },
+    "list": {
+      "title": "Công thức sản xuất",
+      "rows": "{count} dòng"
+    },
+    "empty": {
+      "title": "Chưa có công thức",
+      "description": "Tạo công thức đầu tiên cho thành phẩm hoặc bán thành phẩm."
+    },
+    "form": {
+      "createTitle": "Tạo công thức",
+      "description": "Số lượng batch, SKU thành phẩm và dòng nguyên liệu hoặc bao bì",
+      "formulaCode": "Mã công thức",
+      "finishedItemId": "ID mã hàng cha",
+      "finishedSku": "SKU thành phẩm",
+      "finishedItemName": "Tên thành phẩm",
+      "finishedItemType": "Loại hàng cha",
+      "formulaVersion": "Phiên bản",
+      "batchQty": "Số lượng batch",
+      "baseBatchQty": "Số lượng batch gốc",
+      "uom": "Đơn vị",
+      "lineTitle": "Dòng công thức",
+      "componentSku": "SKU thành phần",
+      "componentName": "Tên thành phần",
+      "componentType": "Loại thành phần",
+      "enteredQty": "Lượng nhập",
+      "calcQty": "Lượng hiển thị",
+      "stockBaseQty": "Lượng theo tồn",
+      "wastePercent": "Hao hụt %",
+      "required": "Bắt buộc",
+      "stockManaged": "Quản lý tồn",
+      "note": "Ghi chú",
+      "addLine": "Thêm dòng",
+      "removeLine": "Xóa dòng"
+    },
+    "preview": {
+      "title": "Nhu cầu dự kiến",
+      "planned": "Kế hoạch {quantity}",
+      "empty": "Chưa tính nhu cầu"
+    },
+    "status": {
+      "draft": "Nháp",
+      "active": "Đang dùng",
+      "inactive": "Ngưng dùng",
+      "archived": "Lưu trữ"
+    },
+    "componentType": {
+      "raw_material": "Nguyên liệu",
+      "fragrance": "Hương liệu",
+      "packaging": "Bao bì",
+      "semi_finished": "Bán thành phẩm",
+      "service": "Dịch vụ"
+    },
+    "errors": {
+      "loadTitle": "Không thể tải công thức",
+      "requestFailed": "Yêu cầu công thức thất bại"
+    },
+    "toast": {
+      "created": "Đã tạo công thức",
+      "activated": "Đã kích hoạt công thức",
+      "calculated": "Đã tính nhu cầu"
     }
   },
   "uom": {

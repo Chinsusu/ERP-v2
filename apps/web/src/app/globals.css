@@ -1060,6 +1060,29 @@ textarea {
   gap: 8px;
 }
 
+.erp-masterdata-form-lines {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.erp-masterdata-form-line {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-masterdata-form-line .erp-field,
+.erp-masterdata-form-line .erp-ds-decimal-input {
+  align-self: start;
+  min-width: 0;
+}
+
 .erp-masterdata-toggle {
   display: flex;
   gap: 8px;
@@ -4706,6 +4729,7 @@ textarea {
   .erp-masterdata-kpis,
   .erp-masterdata-workspace,
   .erp-masterdata-form-grid,
+  .erp-masterdata-form-line,
   .erp-masterdata-detail-grid,
   .erp-masterdata-toggle-grid,
   .erp-warehouse-context,

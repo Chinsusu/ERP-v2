@@ -155,6 +155,116 @@ type changeProductStatusRequest struct {
 	Status string `json:"status"`
 }
 
+type formulaResponse struct {
+	ID               string                `json:"id"`
+	FormulaCode      string                `json:"formula_code"`
+	FinishedItemID   string                `json:"finished_item_id"`
+	FinishedSKU      string                `json:"finished_sku"`
+	FinishedItemName string                `json:"finished_item_name"`
+	FinishedItemType string                `json:"finished_item_type"`
+	FormulaVersion   string                `json:"formula_version"`
+	BatchQty         string                `json:"batch_qty"`
+	BatchUOMCode     string                `json:"batch_uom_code"`
+	BaseBatchQty     string                `json:"base_batch_qty"`
+	BaseBatchUOMCode string                `json:"base_batch_uom_code"`
+	Status           string                `json:"status"`
+	ApprovalStatus   string                `json:"approval_status"`
+	EffectiveFrom    string                `json:"effective_from,omitempty"`
+	EffectiveTo      string                `json:"effective_to,omitempty"`
+	Lines            []formulaLineResponse `json:"lines"`
+	Note             string                `json:"note,omitempty"`
+	CreatedAt        string                `json:"created_at"`
+	UpdatedAt        string                `json:"updated_at"`
+	ApprovedBy       string                `json:"approved_by,omitempty"`
+	ApprovedAt       string                `json:"approved_at,omitempty"`
+	Version          int                   `json:"version"`
+	AuditLogID       string                `json:"audit_log_id,omitempty"`
+}
+
+type formulaLineResponse struct {
+	ID               string `json:"id"`
+	LineNo           int    `json:"line_no"`
+	ComponentItemID  string `json:"component_item_id,omitempty"`
+	ComponentSKU     string `json:"component_sku"`
+	ComponentName    string `json:"component_name"`
+	ComponentType    string `json:"component_type"`
+	EnteredQty       string `json:"entered_qty"`
+	EnteredUOMCode   string `json:"entered_uom_code"`
+	CalcQty          string `json:"calc_qty"`
+	CalcUOMCode      string `json:"calc_uom_code"`
+	StockBaseQty     string `json:"stock_base_qty"`
+	StockBaseUOMCode string `json:"stock_base_uom_code"`
+	WastePercent     string `json:"waste_percent"`
+	IsRequired       bool   `json:"is_required"`
+	IsStockManaged   bool   `json:"is_stock_managed"`
+	LineStatus       string `json:"line_status"`
+	Note             string `json:"note,omitempty"`
+}
+
+type formulaRequest struct {
+	FormulaCode      string               `json:"formula_code"`
+	FinishedItemID   string               `json:"finished_item_id"`
+	FinishedSKU      string               `json:"finished_sku"`
+	FinishedItemName string               `json:"finished_item_name"`
+	FinishedItemType string               `json:"finished_item_type"`
+	FormulaVersion   string               `json:"formula_version"`
+	BatchQty         string               `json:"batch_qty"`
+	BatchUOMCode     string               `json:"batch_uom_code"`
+	BaseBatchQty     string               `json:"base_batch_qty"`
+	BaseBatchUOMCode string               `json:"base_batch_uom_code"`
+	EffectiveFrom    string               `json:"effective_from"`
+	EffectiveTo      string               `json:"effective_to"`
+	Lines            []formulaLineRequest `json:"lines"`
+	Note             string               `json:"note"`
+}
+
+type formulaLineRequest struct {
+	LineNo           int    `json:"line_no"`
+	ComponentItemID  string `json:"component_item_id"`
+	ComponentSKU     string `json:"component_sku"`
+	ComponentName    string `json:"component_name"`
+	ComponentType    string `json:"component_type"`
+	EnteredQty       string `json:"entered_qty"`
+	EnteredUOMCode   string `json:"entered_uom_code"`
+	CalcQty          string `json:"calc_qty"`
+	CalcUOMCode      string `json:"calc_uom_code"`
+	StockBaseQty     string `json:"stock_base_qty"`
+	StockBaseUOMCode string `json:"stock_base_uom_code"`
+	WastePercent     string `json:"waste_percent"`
+	IsRequired       bool   `json:"is_required"`
+	IsStockManaged   bool   `json:"is_stock_managed"`
+	LineStatus       string `json:"line_status"`
+	Note             string `json:"note"`
+}
+
+type formulaRequirementRequest struct {
+	PlannedQty     string `json:"planned_qty"`
+	PlannedUOMCode string `json:"planned_uom_code"`
+}
+
+type formulaRequirementResponse struct {
+	FormulaID    string                       `json:"formula_id"`
+	FormulaCode  string                       `json:"formula_code"`
+	FinishedSKU  string                       `json:"finished_sku"`
+	PlannedQty   string                       `json:"planned_qty"`
+	PlannedUOM   string                       `json:"planned_uom_code"`
+	Requirements []formulaRequirementLineResp `json:"requirements"`
+}
+
+type formulaRequirementLineResp struct {
+	FormulaLineID        string `json:"formula_line_id"`
+	LineNo               int    `json:"line_no"`
+	ComponentItemID      string `json:"component_item_id,omitempty"`
+	ComponentSKU         string `json:"component_sku"`
+	ComponentName        string `json:"component_name"`
+	ComponentType        string `json:"component_type"`
+	RequiredCalcQty      string `json:"required_calc_qty"`
+	CalcUOMCode          string `json:"calc_uom_code"`
+	RequiredStockBaseQty string `json:"required_stock_base_qty"`
+	StockBaseUOMCode     string `json:"stock_base_uom_code"`
+	IsStockManaged       bool   `json:"is_stock_managed"`
+}
+
 type warehouseResponse struct {
 	ID              string `json:"id"`
 	WarehouseCode   string `json:"warehouse_code"`
@@ -1257,6 +1367,7 @@ func main() {
 		log.Fatalf("seed master data stores: %v", err)
 	}
 	itemCatalog := masterDataStores.items
+	formulaCatalog := masterDataStores.formulas
 	uomCatalog := masterDataStores.uoms
 	warehouseCatalog := masterDataStores.warehouses
 	partyCatalog := masterDataStores.parties
@@ -1866,6 +1977,10 @@ func main() {
 		products:                productsHandler(itemCatalog),
 		productDetail:           productDetailHandler(itemCatalog),
 		productStatus:           changeProductStatusHandler(itemCatalog),
+		formulas:                formulasHandler(formulaCatalog),
+		formulaDetail:           formulaDetailHandler(formulaCatalog),
+		formulaActivation:       activateFormulaHandler(formulaCatalog),
+		formulaRequirement:      calculateFormulaRequirementHandler(formulaCatalog),
 		warehouses:              warehousesHandler(warehouseCatalog),
 		warehouseDetail:         warehouseDetailHandler(warehouseCatalog),
 		warehouseStatus:         changeWarehouseStatusHandler(warehouseCatalog),
@@ -2721,6 +2836,210 @@ func changeProductStatusHandler(catalog itemCatalog) http.HandlerFunc {
 
 		response.WriteSuccess(w, r, http.StatusOK, newProductResponse(result.Item, result.AuditLogID))
 	}
+}
+
+func formulasHandler(catalog formulaCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+				writePermissionDenied(w, r, auth.PermissionMasterDataView)
+				return
+			}
+			formulas, err := catalog.List(r.Context(), masterdatadomain.FormulaFilter{
+				FinishedItemID: r.URL.Query().Get("finished_item_id"),
+				Status:         masterdatadomain.FormulaStatus(r.URL.Query().Get("status")),
+				Search:         r.URL.Query().Get("q"),
+			})
+			if err != nil {
+				writeFormulaError(w, r, err)
+				return
+			}
+
+			payload := make([]formulaResponse, 0, len(formulas))
+			for _, formula := range formulas {
+				payload = append(payload, newFormulaResponse(formula, ""))
+			}
+			response.WriteSuccess(w, r, http.StatusOK, payload)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload formulaRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(
+					w,
+					r,
+					http.StatusBadRequest,
+					response.ErrorCodeValidation,
+					"Invalid formula master data payload",
+					nil,
+				)
+				return
+			}
+
+			result, err := catalog.Create(r.Context(), masterdataapp.CreateFormulaInput{
+				FormulaCode:      payload.FormulaCode,
+				FinishedItemID:   payload.FinishedItemID,
+				FinishedSKU:      payload.FinishedSKU,
+				FinishedItemName: payload.FinishedItemName,
+				FinishedItemType: payload.FinishedItemType,
+				FormulaVersion:   payload.FormulaVersion,
+				BatchQty:         formulaDecimalInput(payload.BatchQty),
+				BatchUOMCode:     payload.BatchUOMCode,
+				BaseBatchQty:     formulaDecimalInput(payload.BaseBatchQty),
+				BaseBatchUOMCode: payload.BaseBatchUOMCode,
+				EffectiveFrom:    payload.EffectiveFrom,
+				EffectiveTo:      payload.EffectiveTo,
+				Lines:            formulaLineRequestInputs(payload.Lines),
+				Note:             payload.Note,
+				ActorID:          principal.UserID,
+				RequestID:        response.RequestID(r),
+			})
+			if err != nil {
+				writeFormulaError(w, r, err)
+				return
+			}
+
+			response.WriteSuccess(w, r, http.StatusCreated, newFormulaResponse(result.Formula, result.AuditLogID))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func formulaDetailHandler(catalog formulaCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if r.Method != http.MethodGet {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+			writePermissionDenied(w, r, auth.PermissionMasterDataView)
+			return
+		}
+
+		formula, err := catalog.Get(r.Context(), r.PathValue("formula_id"))
+		if err != nil {
+			writeFormulaError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newFormulaResponse(formula, ""))
+	}
+}
+
+func activateFormulaHandler(catalog formulaCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+
+		r = requestWithStableID(r)
+		result, err := catalog.Activate(r.Context(), masterdataapp.ActivateFormulaInput{
+			ID:        r.PathValue("formula_id"),
+			ActorID:   principal.UserID,
+			RequestID: response.RequestID(r),
+		})
+		if err != nil {
+			writeFormulaError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newFormulaResponse(result.Formula, result.AuditLogID))
+	}
+}
+
+func calculateFormulaRequirementHandler(catalog formulaCatalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionMasterDataView) {
+			writePermissionDenied(w, r, auth.PermissionMasterDataView)
+			return
+		}
+
+		var payload formulaRequirementRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid formula requirement payload",
+				nil,
+			)
+			return
+		}
+
+		result, err := catalog.CalculateRequirement(r.Context(), masterdataapp.CalculateFormulaRequirementInput{
+			ID:             r.PathValue("formula_id"),
+			PlannedQty:     formulaDecimalInput(payload.PlannedQty),
+			PlannedUOMCode: payload.PlannedUOMCode,
+		})
+		if err != nil {
+			writeFormulaError(w, r, err)
+			return
+		}
+
+		response.WriteSuccess(w, r, http.StatusOK, newFormulaRequirementResponse(result))
+	}
+}
+
+func formulaLineRequestInputs(payload []formulaLineRequest) []masterdataapp.CreateFormulaLineInput {
+	lines := make([]masterdataapp.CreateFormulaLineInput, 0, len(payload))
+	for _, line := range payload {
+		lines = append(lines, masterdataapp.CreateFormulaLineInput{
+			LineNo:           line.LineNo,
+			ComponentItemID:  line.ComponentItemID,
+			ComponentSKU:     line.ComponentSKU,
+			ComponentName:    line.ComponentName,
+			ComponentType:    line.ComponentType,
+			EnteredQty:       formulaDecimalInput(line.EnteredQty),
+			EnteredUOMCode:   line.EnteredUOMCode,
+			CalcQty:          formulaDecimalInput(line.CalcQty),
+			CalcUOMCode:      line.CalcUOMCode,
+			StockBaseQty:     formulaDecimalInput(line.StockBaseQty),
+			StockBaseUOMCode: line.StockBaseUOMCode,
+			WastePercent:     formulaDecimalInput(line.WastePercent),
+			IsRequired:       line.IsRequired,
+			IsStockManaged:   line.IsStockManaged,
+			LineStatus:       line.LineStatus,
+			Note:             line.Note,
+		})
+	}
+
+	return lines
+}
+
+func formulaDecimalInput(value string) decimal.Decimal {
+	return decimal.Decimal(strings.ReplaceAll(strings.TrimSpace(value), ",", "."))
 }
 
 func warehousesHandler(catalog warehouseLocationCatalog) http.HandlerFunc {
@@ -6433,6 +6752,103 @@ func writeProductError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 }
 
+func writeFormulaError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, masterdataapp.ErrFormulaNotFound):
+		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Formula master data was not found", nil)
+	case errors.Is(err, masterdataapp.ErrDuplicateFormulaVersion):
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Formula version already exists for this finished item",
+			map[string]any{"field": "formula_version"},
+		)
+	case errors.Is(err, masterdatadomain.ErrFormulaRequiredField):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Formula master data is missing required fields",
+			map[string]any{"required": "formula_code, finished item, formula_version, batch_qty, and at least one line"},
+		)
+	case errors.Is(err, masterdatadomain.ErrFormulaInvalidFinishedItemType):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Formula finished item type is invalid",
+			map[string]any{"allowed": "finished_good, semi_finished"},
+		)
+	case errors.Is(err, masterdatadomain.ErrFormulaInvalidStatus):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Formula status is invalid",
+			map[string]any{"allowed": "draft, active, inactive, archived"},
+		)
+	case errors.Is(err, masterdatadomain.ErrFormulaInvalidApprovalStatus):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Formula approval status is invalid",
+			map[string]any{"allowed": "draft, pending_approval, approved, rejected"},
+		)
+	case errors.Is(err, masterdatadomain.ErrFormulaInvalidQuantity), errors.Is(err, masterdatadomain.ErrFormulaInvalidLineQuantity):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Formula quantity is invalid",
+			map[string]any{"scale": "up to 6 decimals for quantities"},
+		)
+	case errors.Is(err, masterdatadomain.ErrFormulaInvalidComponentType):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Formula component type is invalid",
+			map[string]any{"allowed": "raw_material, fragrance, packaging, semi_finished, service"},
+		)
+	case errors.Is(err, masterdatadomain.ErrFormulaInvalidLineStatus):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Formula line status is invalid",
+			map[string]any{"allowed": "active, excluded, needs_review"},
+		)
+	case errors.Is(err, masterdatadomain.ErrFormulaInvalidUOM):
+		response.WriteError(
+			w,
+			r,
+			http.StatusBadRequest,
+			response.ErrorCodeValidation,
+			"Formula unit of measure is invalid",
+			map[string]any{"field": "uom_code"},
+		)
+	default:
+		response.WriteError(
+			w,
+			r,
+			http.StatusConflict,
+			response.ErrorCodeConflict,
+			"Formula master data request could not be processed",
+			nil,
+		)
+	}
+}
+
 func writeWarehouseError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, masterdataapp.ErrWarehouseNotFound):
@@ -6735,6 +7151,97 @@ func newProductResponse(item masterdatadomain.Item, auditLogID string) productRe
 		UpdatedAt:        item.UpdatedAt.Format(time.RFC3339),
 		AuditLogID:       auditLogID,
 	}
+}
+
+func newFormulaResponse(formula masterdatadomain.Formula, auditLogID string) formulaResponse {
+	lines := make([]formulaLineResponse, 0, len(formula.Lines))
+	for _, line := range formula.Lines {
+		lines = append(lines, newFormulaLineResponse(line))
+	}
+
+	return formulaResponse{
+		ID:               formula.ID,
+		FormulaCode:      formula.FormulaCode,
+		FinishedItemID:   formula.FinishedItemID,
+		FinishedSKU:      formula.FinishedSKU,
+		FinishedItemName: formula.FinishedItemName,
+		FinishedItemType: string(formula.FinishedItemType),
+		FormulaVersion:   formula.FormulaVersion,
+		BatchQty:         formula.BatchQty.String(),
+		BatchUOMCode:     formula.BatchUOMCode.String(),
+		BaseBatchQty:     formula.BaseBatchQty.String(),
+		BaseBatchUOMCode: formula.BaseBatchUOMCode.String(),
+		Status:           string(formula.Status),
+		ApprovalStatus:   string(formula.ApprovalStatus),
+		EffectiveFrom:    formula.EffectiveFrom,
+		EffectiveTo:      formula.EffectiveTo,
+		Lines:            lines,
+		Note:             formula.Note,
+		CreatedAt:        formula.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:        formula.UpdatedAt.Format(time.RFC3339),
+		ApprovedBy:       formula.ApprovedBy,
+		ApprovedAt:       optionalRFC3339(formula.ApprovedAt),
+		Version:          formula.Version,
+		AuditLogID:       auditLogID,
+	}
+}
+
+func newFormulaLineResponse(line masterdatadomain.FormulaLine) formulaLineResponse {
+	return formulaLineResponse{
+		ID:               line.ID,
+		LineNo:           line.LineNo,
+		ComponentItemID:  line.ComponentItemID,
+		ComponentSKU:     line.ComponentSKU,
+		ComponentName:    line.ComponentName,
+		ComponentType:    string(line.ComponentType),
+		EnteredQty:       line.EnteredQty.String(),
+		EnteredUOMCode:   line.EnteredUOMCode.String(),
+		CalcQty:          line.CalcQty.String(),
+		CalcUOMCode:      line.CalcUOMCode.String(),
+		StockBaseQty:     line.StockBaseQty.String(),
+		StockBaseUOMCode: line.StockBaseUOMCode.String(),
+		WastePercent:     line.WastePercent.String(),
+		IsRequired:       line.IsRequired,
+		IsStockManaged:   line.IsStockManaged,
+		LineStatus:       string(line.LineStatus),
+		Note:             line.Note,
+	}
+}
+
+func newFormulaRequirementResponse(result masterdataapp.FormulaRequirementResult) formulaRequirementResponse {
+	requirements := make([]formulaRequirementLineResp, 0, len(result.Requirements))
+	for _, requirement := range result.Requirements {
+		requirements = append(requirements, formulaRequirementLineResp{
+			FormulaLineID:        requirement.FormulaLineID,
+			LineNo:               requirement.LineNo,
+			ComponentItemID:      requirement.ComponentItemID,
+			ComponentSKU:         requirement.ComponentSKU,
+			ComponentName:        requirement.ComponentName,
+			ComponentType:        string(requirement.ComponentType),
+			RequiredCalcQty:      requirement.RequiredCalcQty.String(),
+			CalcUOMCode:          requirement.CalcUOMCode.String(),
+			RequiredStockBaseQty: requirement.RequiredStockBaseQty.String(),
+			StockBaseUOMCode:     requirement.StockBaseUOMCode.String(),
+			IsStockManaged:       requirement.IsStockManaged,
+		})
+	}
+
+	return formulaRequirementResponse{
+		FormulaID:    result.Formula.ID,
+		FormulaCode:  result.Formula.FormulaCode,
+		FinishedSKU:  result.Formula.FinishedSKU,
+		PlannedQty:   result.PlannedQty.String(),
+		PlannedUOM:   result.PlannedUOM.String(),
+		Requirements: requirements,
+	}
+}
+
+func optionalRFC3339(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+
+	return value.Format(time.RFC3339)
 }
 
 func newWarehouseResponse(warehouse masterdatadomain.Warehouse, auditLogID string) warehouseResponse {
