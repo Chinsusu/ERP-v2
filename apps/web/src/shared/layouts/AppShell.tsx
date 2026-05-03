@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { MockUser } from "@/shared/auth/mockSession";
+import { supportedLocales, type Locale } from "@/shared/i18n/config";
 import { getActionLabel } from "@/shared/i18n/action-labels";
 import { t } from "@/shared/i18n";
 import { getNavigationGroupLabel, getNavigationItemLabel } from "@/shared/i18n/navigation-labels";
+import { useLocale } from "@/shared/i18n/useLocale";
 import { getVisibleActions, getVisibleMenuGroups, topbarActions } from "@/shared/permissions/menu";
 
 type AppShellProps = {
@@ -20,6 +22,7 @@ function isActivePath(pathname: string, href: string) {
 
 export function AppShell({ children, user }: AppShellProps) {
   const pathname = usePathname();
+  const [locale, setLocale] = useLocale();
   const groups = getVisibleMenuGroups(user);
   const actions = getVisibleActions(user, topbarActions);
 
@@ -52,6 +55,7 @@ export function AppShell({ children, user }: AppShellProps) {
               {getActionLabel(action.label)}
             </button>
           ))}
+          <LanguageSwitch locale={locale} onLocaleChange={setLocale} />
           <div className="erp-user-badge" aria-label={t("common.signedInAs", { values: { name: user.name } })}>
             <span className="erp-user-avatar" aria-hidden="true">
               {user.name.slice(0, 2).toUpperCase()}
@@ -100,8 +104,37 @@ export function AppShell({ children, user }: AppShellProps) {
           ))}
         </aside>
 
-        <main className="erp-shell-content">{children}</main>
+        <main className="erp-shell-content" key={locale}>{children}</main>
       </div>
+    </div>
+  );
+}
+
+type LanguageSwitchProps = {
+  locale: Locale;
+  onLocaleChange: (locale: Locale) => void;
+};
+
+function LanguageSwitch({ locale, onLocaleChange }: LanguageSwitchProps) {
+  return (
+    <div className="erp-language-switch" role="group" aria-label={t("common.language")}>
+      {supportedLocales.map((candidate) => {
+        const active = candidate === locale;
+
+        return (
+          <button
+            aria-pressed={active}
+            className="erp-language-option"
+            data-active={active ? "true" : "false"}
+            key={candidate}
+            onClick={() => onLocaleChange(candidate)}
+            title={t(`common.locales.${candidate}`)}
+            type="button"
+          >
+            {candidate.toUpperCase()}
+          </button>
+        );
+      })}
     </div>
   );
 }

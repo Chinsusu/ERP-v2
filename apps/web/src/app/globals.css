@@ -436,6 +436,44 @@ textarea {
   padding: 0 16px;
 }
 
+.erp-language-switch {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 2px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius);
+}
+
+.erp-language-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 30px;
+  padding: 0 8px;
+  color: var(--erp-text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: var(--erp-font-weight-semibold);
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.erp-language-option[data-active="true"] {
+  color: var(--erp-red);
+  background: var(--erp-surface-selected);
+  box-shadow: inset 0 0 0 1px rgba(213, 12, 45, 0.16);
+}
+
+.erp-language-option:focus-visible {
+  outline: 2px solid rgba(213, 12, 45, 0.28);
+  outline-offset: 1px;
+}
+
 .erp-user-badge {
   display: inline-flex;
   align-items: center;
