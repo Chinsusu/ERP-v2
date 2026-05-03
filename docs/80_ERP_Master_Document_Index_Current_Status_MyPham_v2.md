@@ -5,7 +5,7 @@ Phase: Phase 1
 Document role: Current master document index and traceability map
 Version: v2.1
 Date: 2026-05-03
-Status: Current source-of-truth index for docs 01-86
+Status: Current source-of-truth index for current Phase 1 docs and design addenda
 
 ---
 
@@ -13,7 +13,7 @@ Status: Current source-of-truth index for docs 01-86
 
 This v2 index is the current navigation map for the ERP documentation set.
 
-The original file `32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` remains the historical handoff index for the early Phase 1 documents. This file extends the map through Sprint 22 UAT pilot pack preparation after Sprint 21 auth UI backend integration.
+The original file `32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` remains the historical handoff index for the early Phase 1 documents. This file extends the map through Sprint 22 UAT pilot pack preparation after Sprint 21 auth UI backend integration and records current design addenda.
 
 Use this file when a reader needs to answer:
 
@@ -169,6 +169,7 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | `85_ERP_UAT_Pilot_Pack_Sprint22_Warehouse_Sales_QC_MyPham_v1.md` | Sprint 22 UAT execution pack | During UAT setup, scenario execution, evidence capture, and Go/No-Go reporting |
 | `86_ERP_Sprint22_Changelog_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md` | Sprint 22 changelog and UAT evidence register | Before closing Sprint 22 or claiming UAT execution evidence |
 | `docs/uat/sprint22/` | Sprint 22 UAT templates and evidence structure | During UAT user setup, seed setup, execution logging, issue triage, and sign-off |
+| `88_ERP_BOM_Formula_Module_Design_MyPham_v1.md` | BOM / formula module design | Before implementing formula master, formula import, material requirement calculation, or production/subcontract formula snapshots |
 
 ---
 
