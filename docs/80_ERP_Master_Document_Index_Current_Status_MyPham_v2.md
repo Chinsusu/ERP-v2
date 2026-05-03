@@ -3,9 +3,9 @@
 Project: Web ERP for cosmetics operations
 Phase: Phase 1
 Document role: Current master document index and traceability map
-Version: v2.0
+Version: v2.1
 Date: 2026-05-03
-Status: Current source-of-truth index for docs 01-83
+Status: Current source-of-truth index for docs 01-86
 
 ---
 
@@ -13,7 +13,7 @@ Status: Current source-of-truth index for docs 01-83
 
 This v2 index is the current navigation map for the ERP documentation set.
 
-The original file `32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` remains the historical handoff index for the early Phase 1 documents. This file extends the map through Sprint 21 auth UI backend integration and production runtime smoke planning.
+The original file `32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` remains the historical handoff index for the early Phase 1 documents. This file extends the map through Sprint 22 UAT pilot pack preparation after Sprint 21 auth UI backend integration.
 
 Use this file when a reader needs to answer:
 
@@ -29,10 +29,11 @@ Which document locks Vietnamese operational terminology?
 ## 2. Current Status Snapshot
 
 ```text
-Current line: Sprint 21 auth UI backend integration after Sprint 20 hardening and Sprint 19 Vietnamese UI localization.
+Current line: Sprint 22 UAT pilot pack preparation after Sprint 21 auth UI backend integration.
 Latest release tag: v0.19.0-vietnamese-ui-localization.
 Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
 Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
+Sprint 22 status: UAT pilot pack prepared; business UAT execution, issue triage, Go/No-Go decision, and v0.22 tag are pending.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -65,10 +66,13 @@ For a new engineer or reviewer:
 5. 79_ERP_Sprint20_Changelog_Release_Hygiene_API_Modularization_Fallback_Cleanup_MyPham_v1.md
 6. 82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md
 7. 83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md
-8. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
-9. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
-10. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
-11. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
+8. 84_ERP_Coding_Task_Board_Sprint22_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md
+9. 85_ERP_UAT_Pilot_Pack_Sprint22_Warehouse_Sales_QC_MyPham_v1.md
+10. 86_ERP_Sprint22_Changelog_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md
+11. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
+12. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
+13. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
+14. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
 ```
 
 For product or operations review:
@@ -81,7 +85,9 @@ For product or operations review:
 5. 21 Gap analysis and decision log
 6. 75 Sprint 19 Vietnamese UI localization board
 7. 81 Vietnamese operational glossary
-8. 78 Production runtime checklist
+8. 84 Sprint 22 UAT pilot task board
+9. 85 Sprint 22 UAT pilot pack
+10. 78 Production runtime checklist
 ```
 
 ---
@@ -145,6 +151,7 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | Sprint 19 | `75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md` | `77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md` | Vietnamese-first UI localization |
 | Sprint 20 | `76_ERP_Coding_Task_Board_Sprint20_Release_Hygiene_API_Modularization_Fallback_Cleanup_MyPham_v1.md` | `79_ERP_Sprint20_Changelog_Release_Hygiene_API_Modularization_Fallback_Cleanup_MyPham_v1.md` | Release hygiene, API modularization, production fallback hardening |
 | Sprint 21 | `82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md` | `83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md` | Web auth UI backend integration and production runtime smoke |
+| Sprint 22 | `84_ERP_Coding_Task_Board_Sprint22_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md` | `86_ERP_Sprint22_Changelog_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md` | UAT pilot pack for Warehouse, Sales, and QC |
 
 ---
 
@@ -156,6 +163,10 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | `81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md` | Vietnamese operational terminology lock | Before changing UI copy, status labels, validation messages, warehouse copy, returns copy, receiving copy, or QC copy |
 | `82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md` | Sprint 21 auth UI integration task board | Before changing auth UI/backend session behavior |
 | `83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md` | Sprint 21 auth integration changelog | Before closing auth UI backend integration or recording release smoke evidence |
+| `84_ERP_Coding_Task_Board_Sprint22_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md` | Sprint 22 UAT pilot task board | Before preparing or changing Warehouse/Sales/QC UAT scope |
+| `85_ERP_UAT_Pilot_Pack_Sprint22_Warehouse_Sales_QC_MyPham_v1.md` | Sprint 22 UAT execution pack | During UAT setup, scenario execution, evidence capture, and Go/No-Go reporting |
+| `86_ERP_Sprint22_Changelog_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md` | Sprint 22 changelog and UAT evidence register | Before closing Sprint 22 or claiming UAT execution evidence |
+| `docs/uat/sprint22/` | Sprint 22 UAT templates and evidence structure | During UAT user setup, seed setup, execution logging, issue triage, and sign-off |
 
 ---
 
@@ -175,6 +186,14 @@ Sprint 21 has main merge, CI, dev deploy, full dev smoke, and auth UI browser sm
 Create the Sprint 21 release checkpoint tag only after target staging/pilot environment smoke evidence is recorded.
 ```
 
+Sprint 22 tag hold:
+
+```text
+No v0.22.0-uat-pilot-pack-warehouse-sales-qc tag has been created.
+Sprint 22 is currently UAT preparation and evidence structure.
+Create the Sprint 22 checkpoint tag only after business UAT evidence and Go/No-Go decision are recorded.
+```
+
 ---
 
 ## 9. Current Backlog Notes
@@ -185,4 +204,5 @@ Track these as documentation or product follow-up, not as completed Sprint 20 sc
 English mode still has deeper table/filter labels that need localization cleanup.
 Production-like auth smoke evidence must be recorded per target environment before release.
 Any future production-like release must record whether prototype fallback gaps remain.
+Sprint 22 UAT execution remains pending until business users run the prepared scripts.
 ```

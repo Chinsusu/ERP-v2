@@ -1,0 +1,2 @@
+issue_id,reported_at,scenario_id,module,title,type,severity,priority,reported_by,owner,status,workaround,target_sprint,evidence_path,notes
+S22-ISSUE-001,,,,,bug,,,,,new,,,,,

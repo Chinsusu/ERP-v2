@@ -1,0 +1,8 @@
+scenario_id,scenario_name,role,environment_url,commit_or_tag,status,started_at,completed_at,executed_by,evidence_path,issue_ids,notes
+S22-UAT-000,Entry gate,UAT Lead,,,,,,,,,
+S22-UAT-001,Auth RBAC Vietnamese UI,Warehouse User,,,,,,,,,
+S22-UAT-002,Warehouse Daily Board,Warehouse User,,,,,,,,,
+S22-UAT-003,Sales Reserve Pick Pack Handover,Sales User + Warehouse User,,,,,,,,,
+S22-UAT-004,Return Receiving Inspection Disposition,Warehouse User + QC User,,,,,,,,,
+S22-UAT-005,Stock Count Adjustment Shift Closing,Warehouse User,,,,,,,,,
+S22-UAT-006,Purchase Receiving Inbound QC,QC User + Warehouse User,,,,,,,,,

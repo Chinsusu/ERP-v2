@@ -26,13 +26,15 @@ docs             ERP project documents
 Start with:
 
 - `docs/80_ERP_Master_Document_Index_Current_Status_MyPham_v2.md`
+- `docs/84_ERP_Coding_Task_Board_Sprint22_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md`
+- `docs/85_ERP_UAT_Pilot_Pack_Sprint22_Warehouse_Sales_QC_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
 - `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
 
 ## Current Status
 
-Current line: Sprint 21 auth UI backend integration after Sprint 20 hardening and Sprint 19 Vietnamese UI localization.
+Current line: Sprint 22 UAT pilot pack preparation after Sprint 21 auth UI backend integration.
 
 Latest release tag:
 
@@ -46,6 +48,14 @@ Sprint 21 release tag status:
 Tag hold.
 Sprint 21 is merged to main at c07409cc with CI, dev deploy, full dev smoke, and auth UI browser smoke evidence.
 No v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created because target staging/pilot environment smoke evidence is still required before release tagging.
+```
+
+Sprint 22 UAT status:
+
+```text
+UAT pilot pack prepared for Warehouse + Sales + QC.
+Business UAT execution, issue triage, Go/No-Go decision, and v0.22 tag are pending.
+Do not treat Sprint 22 preparation docs as UAT pass evidence.
 ```
 
 Latest verified release tag gate:
@@ -76,6 +86,9 @@ Completed focus through Sprint 21:
 
 Production runtime reference:
 
+- `docs/84_ERP_Coding_Task_Board_Sprint22_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md`
+- `docs/85_ERP_UAT_Pilot_Pack_Sprint22_Warehouse_Sales_QC_MyPham_v1.md`
+- `docs/86_ERP_Sprint22_Changelog_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md`
@@ -88,6 +101,13 @@ Production auth status:
 Web auth UI is backend-wired for the existing email/password auth surface.
 Production-like deployments still require target-environment auth smoke evidence before release.
 SSO, MFA, password reset email, and device/session management remain out of scope.
+```
+
+UAT preparation reference:
+
+```text
+docs/uat/sprint22/README.md
+docs/uat/sprint22/templates/
 ```
 
 Release tag traceability note:
