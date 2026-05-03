@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MockUser } from "@/shared/auth/mockSession";
 import {
   canAccessMenuItem,
+  getMenuItemForModule,
   getVisibleActions,
   getVisibleMenuGroups,
   moduleActions,
@@ -130,11 +131,25 @@ describe("permission menu", () => {
     });
   });
 
-  it("shows subcontract operations only to users with subcontract access", () => {
+  it("uses subcontract manufacturing as the Phase 1 production entrypoint", () => {
     const labels = getVisibleMenuGroups(productionUser).flatMap((group) => group.items.map((item) => item.label));
+    const productionEntrypoints = getVisibleMenuGroups(productionUser)
+      .flatMap((group) => group.items)
+      .filter((item) => item.href === "/subcontract");
 
-    expect(labels).toContain("Production");
-    expect(labels).toContain("Subcontract");
+    expect(labels).toContain("Production / Subcontract");
+    expect(labels).not.toContain("Production");
+    expect(labels).not.toContain("Subcontract");
+    expect(productionEntrypoints).toEqual([
+      {
+        label: "Production / Subcontract",
+        href: "/subcontract",
+        code: "PD",
+        permission: "subcontract:view"
+      }
+    ]);
+    expect(getMenuItemForModule("production")).toEqual(productionEntrypoints[0]);
+    expect(getMenuItemForModule("subcontract")).toEqual(productionEntrypoints[0]);
   });
 
   it("shows purchase and finance menus to their Sprint 4 roles", () => {
