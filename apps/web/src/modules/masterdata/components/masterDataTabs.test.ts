@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { setActiveLocale } from "@/shared/i18n/runtime";
+import { setActiveLocale } from "../../../shared/i18n/runtime";
 import { getMasterDataTabs, getMasterDataViewStatusLabel } from "./masterDataTabs";
 
 describe("master data tab model", () => {
