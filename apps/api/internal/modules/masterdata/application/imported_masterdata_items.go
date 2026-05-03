@@ -8543,7 +8543,6 @@ func importedMasterDataItems() []domain.Item {
 			CreatedAt:        baseTime,
 			UpdatedAt:        baseTime,
 		},
-
 	}
 
 	items := make([]domain.Item, 0, len(rows))
