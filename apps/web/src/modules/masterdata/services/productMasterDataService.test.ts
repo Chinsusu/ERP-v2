@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   changeProductStatus,
   createProduct,
@@ -15,6 +15,28 @@ import {
 describe("productMasterDataService", () => {
   beforeEach(() => {
     resetPrototypeProductMasterData();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("loads every API page when the product catalog is larger than one backend page", async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) => apiProduct(`API-PAGE-1-${index + 1}`));
+    const secondPage = [apiProduct("API-PAGE-2-1"), apiProduct("API-PAGE-2-2")];
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(apiPage(firstPage))
+      .mockResolvedValueOnce(apiPage(secondPage));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const items = await getProducts();
+
+    expect(items).toHaveLength(102);
+    expect(items.at(-1)?.skuCode).toBe("API-PAGE-2-2");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("page=1");
+    expect(String(fetchMock.mock.calls[1][0])).toContain("page=2");
   });
 
   it("filters product master data by search, status, and type", async () => {
@@ -145,3 +167,48 @@ describe("productMasterDataService", () => {
     expect(productTypeLabel("semi_finished")).toBe("Semi finished");
   });
 });
+
+function apiPage(data: ReturnType<typeof apiProduct>[]) {
+  return new Response(
+    JSON.stringify({
+      success: true,
+      data,
+      pagination: {
+        page: 1,
+        page_size: 100,
+        total_items: data.length,
+        total_pages: 1
+      },
+      request_id: "req-product-page"
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } }
+  );
+}
+
+function apiProduct(skuCode: string) {
+  return {
+    id: `item-${skuCode.toLowerCase()}`,
+    item_code: skuCode,
+    sku_code: skuCode,
+    name: `Product ${skuCode}`,
+    item_type: "raw_material",
+    item_group: "api",
+    brand_code: "MYH",
+    uom_code: "KG",
+    uom_base: "KG",
+    uom_purchase: "KG",
+    uom_issue: "KG",
+    lot_controlled: true,
+    expiry_controlled: true,
+    shelf_life_days: 365,
+    qc_required: true,
+    status: "active",
+    standard_cost: "0.000000",
+    is_sellable: false,
+    is_purchasable: true,
+    is_producible: false,
+    spec_version: "",
+    created_at: "2026-05-03T00:00:00Z",
+    updated_at: "2026-05-03T00:00:00Z"
+  } as const;
+}

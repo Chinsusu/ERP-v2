@@ -19,6 +19,7 @@ type ProductApiUpdateRequest = components["schemas"]["UpdateProductRequest"];
 type ProductApiStatusRequest = components["schemas"]["ChangeProductStatusRequest"];
 
 const defaultAccessToken = "local-dev-access-token";
+const productApiPageSize = 100;
 
 export const productTypeOptions: { label: string; value: ProductType }[] = [
   { label: "Finished good", value: "finished_good" },
@@ -82,10 +83,7 @@ let localProducts = cloneProducts(prototypeProductMasterData);
 
 export async function getProducts(query: ProductMasterDataQuery = {}): Promise<ProductMasterDataItem[]> {
   try {
-    const items = await apiGet("/products", {
-      accessToken: defaultAccessToken,
-      query: toApiQuery(query)
-    });
+    const items = await getAllProductApiPages(query);
 
     return items.map(fromApiItem);
   } catch (reason) {
@@ -95,6 +93,25 @@ export async function getProducts(query: ProductMasterDataQuery = {}): Promise<P
 
     return filterProducts(localProducts, query);
   }
+}
+
+async function getAllProductApiPages(query: ProductMasterDataQuery): Promise<ProductApiItem[]> {
+  const items: ProductApiItem[] = [];
+  let page = 1;
+
+  while (true) {
+    const pageItems = await apiGet("/products", {
+      accessToken: defaultAccessToken,
+      query: toApiQuery(query, page)
+    });
+    items.push(...pageItems);
+    if (pageItems.length < productApiPageSize) {
+      break;
+    }
+    page += 1;
+  }
+
+  return items;
 }
 
 export async function getProduct(productId: string): Promise<ProductMasterDataItem> {
@@ -304,13 +321,13 @@ function fromApiItem(item: ProductApiItem): ProductMasterDataItem {
   };
 }
 
-function toApiQuery(query: ProductMasterDataQuery): ProductApiQuery {
+function toApiQuery(query: ProductMasterDataQuery, page = 1): ProductApiQuery {
   return {
     q: query.search,
     status: query.status || undefined,
     item_type: query.itemType || undefined,
-    page: 1,
-    page_size: 100
+    page,
+    page_size: productApiPageSize
   };
 }
 
