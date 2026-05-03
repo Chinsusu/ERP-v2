@@ -1,34 +1,34 @@
 category,code,name,minimum_count,scenario,status,loaded_by,loaded_at,notes
-warehouse,WH-MAIN,Kho tong,1,main available warehouse,pending,,,
-warehouse,WH-RETURN,Khu hang hoan,1,return receiving and inspection,pending,,,
-warehouse,WH-QA-HOLD,Khu cach ly / QA hold,1,qc hold and quarantine,pending,,,
-warehouse,WH-DAMAGED,Kho hang hong / Lab,1,non-reusable returns,pending,,,
-location,A1,Khu lay hang A1,1,picking,pending,,,
-location,A2,Khu lay hang A2,1,picking,pending,,,
-location,PK-01,Khu dong hang,1,packing,pending,,,
-location,HO-01,Khu ban giao DVVC,1,carrier handover,pending,,,
-location,RT-01,Khu hang hoan,1,returns,pending,,,
-finished_goods,FG-UAT-001..005,Thanh pham my pham,5,sales reservation and pick pack,pending,,,
-raw_material,RM-UAT-001..003,Nguyen lieu,3,purchase receiving and inbound QC,pending,,,
-packaging,PKG-UAT-001..003,Bao bi phu lieu,3,purchase receiving and inbound QC,pending,,,
-batch,QC_PASS,QC pass batch,2,available stock reservation,pending,,,
-batch,QC_HOLD,QC hold batch,1,blocked reservation and quarantine,pending,,,
-batch,QC_FAIL,QC fail batch,1,blocked reservation and rejection,pending,,,
-batch,NEAR_EXPIRY,Near-expiry batch,1,FEFO and warning,pending,,,
-customer,RET-UAT-001..003,Retail customers,3,sales orders,pending,,,
-customer,B2B-UAT-001..002,B2B dealer customers,2,sales orders and payment terms,pending,,,
-supplier,SUP-UAT-001..002,Raw packaging suppliers,2,purchase receiving,pending,,,
-carrier,GHN,GHN carrier,1,manifest handover,pending,,,
-carrier,GHTK,GHTK carrier,1,manifest handover,pending,,,
-carrier,MANUAL,Internal manual carrier,1,manual handover,pending,,,
-sales_order,SO-UAT-NORMAL,Normal sales orders,5,happy path,pending,,,
-sales_order,SO-UAT-RESERVE,Orders requiring reservation,2,reservation,pending,,,
-sales_order,SO-UAT-INSUFFICIENT,Insufficient stock order,1,negative path,pending,,,
-sales_order,SO-UAT-QC-HOLD,QC blocked order,1,negative path,pending,,,
-sales_order,SO-UAT-HANDOVER,Ready for manifest orders,2,handover,pending,,,
-return,RMA-UAT-REUSABLE,Reusable return,1,return disposition,pending,,,
-return,RMA-UAT-DAMAGED,Non-reusable return,1,return disposition,pending,,,
-return,RMA-UAT-QA-HOLD,QA-hold return,1,return disposition,pending,,,
-purchase_order,PO-UAT-PASS,PO full pass,1,receiving QC pass,pending,,,
-purchase_order,PO-UAT-PARTIAL,PO partial receive,1,partial receiving,pending,,,
-purchase_order,PO-UAT-FAIL,PO QC fail return supplier,1,QC fail,pending,,,
+warehouse,WH-MAIN,Kho tong,1,main available warehouse,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /warehouses returned 14 rows; S22-specific UAT codes still need business approval."
+warehouse,WH-RETURN,Khu hang hoan,1,return receiving and inspection,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /warehouses returned 14 rows; return flow smoke passed."
+warehouse,WH-QA-HOLD,Khu cach ly / QA hold,1,qc hold and quarantine,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /warehouses returned 14 rows; QC hold/quarantine must be reviewed by business users."
+warehouse,WH-DAMAGED,Kho hang hong / Lab,1,non-reusable returns,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /warehouses returned 14 rows; damaged/lab location still needs business confirmation."
+location,A1,Khu lay hang A1,1,picking,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /warehouse-locations returned 14 rows."
+location,A2,Khu lay hang A2,1,picking,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /warehouse-locations returned 14 rows."
+location,PK-01,Khu dong hang,1,packing,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Pack task smoke passed; business packing location naming still pending."
+location,HO-01,Khu ban giao DVVC,1,carrier handover,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Carrier manifest handover smoke passed."
+location,RT-01,Khu hang hoan,1,returns,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Return receipt smoke passed."
+finished_goods,FG-UAT-001..005,Thanh pham my pham,5,sales reservation and pick pack,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /products returned 15 rows; S22-specific UAT SKU codes not loaded."
+raw_material,RM-UAT-001..003,Nguyen lieu,3,purchase receiving and inbound QC,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /products returned 15 rows; S22-specific UAT material codes not loaded."
+packaging,PKG-UAT-001..003,Bao bi phu lieu,3,purchase receiving and inbound QC,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /products returned 15 rows; S22-specific UAT packaging codes not loaded."
+batch,QC_PASS,QC pass batch,2,available stock reservation,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /inventory/batches returned 10 rows."
+batch,QC_HOLD,QC hold batch,1,blocked reservation and quarantine,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /inventory/batches returned 10 rows; business must confirm hold cases."
+batch,QC_FAIL,QC fail batch,1,blocked reservation and rejection,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Inbound QC and supplier rejection smoke passed; business must confirm fail cases."
+batch,NEAR_EXPIRY,Near-expiry batch,1,FEFO and warning,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Inventory snapshot smoke included expiry warning filter."
+customer,RET-UAT-001..003,Retail customers,3,sales orders,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /customers returned 13 rows; S22-specific UAT customer codes not loaded."
+customer,B2B-UAT-001..002,B2B dealer customers,2,sales orders and payment terms,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /customers returned 13 rows; S22-specific UAT customer codes not loaded."
+supplier,SUP-UAT-001..002,Raw packaging suppliers,2,purchase receiving,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /suppliers returned 12 rows; S22-specific UAT supplier codes not loaded."
+carrier,GHN,GHN carrier,1,manifest handover,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Carrier manifest smoke passed."
+carrier,GHTK,GHTK carrier,1,manifest handover,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Carrier manifest smoke passed; business must confirm carrier list."
+carrier,MANUAL,Internal manual carrier,1,manual handover,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Carrier manifest smoke passed; manual carrier business case pending."
+sales_order,SO-UAT-NORMAL,Normal sales orders,5,happy path,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /sales-orders returned 170 rows; full smoke created and cancelled a sales order."
+sales_order,SO-UAT-RESERVE,Orders requiring reservation,2,reservation,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Persisted sales reservation smoke passed."
+sales_order,SO-UAT-INSUFFICIENT,Insufficient stock order,1,negative path,pending_business_case,Codex,2026-05-03T12:42:00+07:00,"Negative insufficient-stock UAT case not explicitly verified in Session 0."
+sales_order,SO-UAT-QC-HOLD,QC blocked order,1,negative path,pending_business_case,Codex,2026-05-03T12:42:00+07:00,"QC-blocked sales reservation UAT case not explicitly verified in Session 0."
+sales_order,SO-UAT-HANDOVER,Ready for manifest orders,2,handover,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Carrier manifest and handover smoke passed; API /shipping/manifests returned 51 rows."
+return,RMA-UAT-REUSABLE,Reusable return,1,return disposition,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /returns/receipts returned 62 rows; return disposition smoke passed."
+return,RMA-UAT-DAMAGED,Non-reusable return,1,return disposition,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Return disposition smoke passed; business must confirm damaged path."
+return,RMA-UAT-QA-HOLD,QA-hold return,1,return disposition,pending_business_case,Codex,2026-05-03T12:42:00+07:00,"QA-hold return business UAT case not explicitly verified in Session 0."
+purchase_order,PO-UAT-PASS,PO full pass,1,receiving QC pass,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"API /purchase-orders returned 67 rows."
+purchase_order,PO-UAT-PARTIAL,PO partial receive,1,partial receiving,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Inbound QC partial smoke passed."
+purchase_order,PO-UAT-FAIL,PO QC fail return supplier,1,QC fail,dev_seed_available,Codex,2026-05-03T12:42:00+07:00,"Supplier rejection smoke passed; business must confirm fail/RTS case."
