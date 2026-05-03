@@ -113,6 +113,26 @@ describe("permission menu", () => {
     });
   });
 
+  it("keeps the data sidebar focused on the consolidated master data entrypoint", () => {
+    const adminGroups = getVisibleMenuGroups({
+      id: "admin-user",
+      name: "Admin User",
+      email: "admin@example.local",
+      role: "ERP_ADMIN",
+      permissions: rolePermissions.ERP_ADMIN
+    });
+    const dataGroup = adminGroups.find((group) => group.label === "Data");
+
+    expect(dataGroup?.items).toEqual([
+      {
+        label: "Master Data",
+        href: "/master-data",
+        code: "MD",
+        permission: "master-data:view"
+      }
+    ]);
+  });
+
   it("defines Sprint 7 reporting permissions", () => {
     expect(permissionCatalog).toContainEqual({
       key: "reports:view",
