@@ -1,0 +1,5 @@
+session_id,session_name,target_date,start_time,end_time,roles,scenarios,uat_lead,dev_support,status,notes
+S22-SESSION-01,Auth and Warehouse Daily Board,,,,Warehouse User;Sales User,S22-UAT-001;S22-UAT-002,,,pending,
+S22-SESSION-02,Sales Pick Pack Handover,,,,Sales User;Warehouse User,S22-UAT-003,,,pending,
+S22-SESSION-03,Returns and Shift Closing,,,,Warehouse User;QC User,S22-UAT-004;S22-UAT-005,,,pending,
+S22-SESSION-04,Purchase Receiving Inbound QC,,,,Warehouse User;QC User,S22-UAT-006,,,pending,

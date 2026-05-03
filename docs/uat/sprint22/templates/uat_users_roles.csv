@@ -1,0 +1,10 @@
+role,email,display_name,department,required_access,status,verified_by,verified_at,notes
+UAT Lead,uat.lead@example.local,UAT Lead,PMO,all UAT scripts and issue board,pending,,,
+Business Owner,business.owner@example.local,Business Owner,Operations,dashboard reports issue summary sign-off,pending,,,
+Warehouse User,warehouse_user@example.local,Warehouse UAT User,Warehouse,warehouse shipping returns,pending,,,
+Sales User,sales_user@example.local,Sales UAT User,Sales,sales stock availability order status,pending,,,
+QC User,qc_user@example.local,QC UAT User,QC,qc receiving inventory,pending,,,
+Finance Observer,finance_observer@example.local,Finance Observer,Finance,finance read-only reports,pending,,,
+ERP Admin,admin@example.local,ERP Admin,IT,settings master data rbac,pending,,,
+QA Test Lead,qa.lead@example.local,QA Test Lead,QA,uat scripts screenshots logs,pending,,,
+Dev Support,dev.support@example.local,Dev Support,Engineering,logs deployment defect support,pending,,,
