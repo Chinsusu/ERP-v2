@@ -14,7 +14,7 @@ import { SubcontractOrderPrototype } from "@/modules/subcontract/components/Subc
 import WarehouseDailyBoard from "@/modules/warehouse/components/WarehouseDailyBoard";
 import { getBackendSession } from "@/shared/auth/serverSession";
 import { ModulePlaceholder } from "@/shared/layouts/ModulePlaceholder";
-import { appMenuGroups, canAccessMenuItem } from "@/shared/permissions/menu";
+import { canAccessMenuItem, getMenuItemForModule } from "@/shared/permissions/menu";
 
 type ERPModulePageProps = {
   params: Promise<{
@@ -22,12 +22,10 @@ type ERPModulePageProps = {
   }>;
 };
 
-const menuItems = appMenuGroups.flatMap((group) => group.items);
-
 export default async function ERPModulePage({ params }: ERPModulePageProps) {
   const { module } = await params;
   const session = await getBackendSession();
-  const item = menuItems.find((candidate) => candidate.href === `/${module}`);
+  const item = getMenuItemForModule(module);
 
   if (!session.isAuthenticated || !item || !canAccessMenuItem(session.user, item)) {
     notFound();
@@ -65,7 +63,7 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
     return <ReturnReceivingPrototype />;
   }
 
-  if (module === "subcontract") {
+  if (module === "production" || module === "subcontract") {
     return <SubcontractOrderPrototype />;
   }
 
