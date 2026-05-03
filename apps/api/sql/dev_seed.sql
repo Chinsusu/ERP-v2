@@ -35,6 +35,15 @@ VALUES
     'Local sales operations role',
     'active',
     true
+  ),
+  (
+    '00000000-0000-4000-8000-000000000204',
+    '00000000-0000-4000-8000-000000000001',
+    'QA',
+    'QA',
+    'Local QC operator role',
+    'active',
+    true
   )
 ON CONFLICT (org_id, code) DO UPDATE
 SET name = EXCLUDED.name,
@@ -73,6 +82,15 @@ FROM (
       'Sales User',
       'local-only-not-for-auth',
       'active'
+    ),
+    (
+      '00000000-0000-4000-8000-000000000104'::uuid,
+      '00000000-0000-4000-8000-000000000001'::uuid,
+      'qc_user@example.local',
+      'qc_user',
+      'QC User',
+      'local-only-not-for-auth',
+      'active'
     )
 ) AS seed(id, org_id, email, username, display_name, password_hash, status)
 WHERE NOT EXISTS (
@@ -92,7 +110,8 @@ FROM (
   VALUES
     ('admin@example.local', 'admin', 'Local Admin', 'local-only-not-for-auth', 'active'),
     ('warehouse_user@example.local', 'warehouse_user', 'Warehouse User', 'local-only-not-for-auth', 'active'),
-    ('sales_user@example.local', 'sales_user', 'Sales User', 'local-only-not-for-auth', 'active')
+    ('sales_user@example.local', 'sales_user', 'Sales User', 'local-only-not-for-auth', 'active'),
+    ('qc_user@example.local', 'qc_user', 'QC User', 'local-only-not-for-auth', 'active')
 ) AS seed(email, username, display_name, password_hash, status)
 WHERE core.users.org_id = '00000000-0000-4000-8000-000000000001'
   AND lower(core.users.email) = lower(seed.email);
@@ -109,7 +128,20 @@ VALUES
   ('00000000-0000-4000-8000-000000000308', 'reports:view', 'reports', 'reports', 'view', 'View reports'),
   ('00000000-0000-4000-8000-000000000309', 'settings:view', 'settings', 'settings', 'view', 'View settings'),
   ('00000000-0000-4000-8000-000000000310', 'record:create', 'shared', 'record', 'create', 'Create records'),
-  ('00000000-0000-4000-8000-000000000311', 'record:export', 'shared', 'record', 'export', 'Export records')
+  ('00000000-0000-4000-8000-000000000311', 'record:export', 'shared', 'record', 'export', 'Export records'),
+  ('00000000-0000-4000-8000-000000000312', 'purchase:view', 'purchase', 'purchase', 'view', 'View purchase'),
+  ('00000000-0000-4000-8000-000000000313', 'finance:view', 'finance', 'finance', 'view', 'View finance'),
+  ('00000000-0000-4000-8000-000000000314', 'finance:manage', 'finance', 'finance', 'manage', 'Manage finance'),
+  ('00000000-0000-4000-8000-000000000315', 'cod:reconcile', 'finance', 'cod', 'reconcile', 'Reconcile COD'),
+  ('00000000-0000-4000-8000-000000000316', 'payment:approve', 'finance', 'payment', 'approve', 'Approve payments'),
+  ('00000000-0000-4000-8000-000000000317', 'qc:view', 'qc', 'qc', 'view', 'View QC'),
+  ('00000000-0000-4000-8000-000000000318', 'qc:decision', 'qc', 'qc', 'decision', 'Record QC decisions'),
+  ('00000000-0000-4000-8000-000000000319', 'production:view', 'production', 'production', 'view', 'View production'),
+  ('00000000-0000-4000-8000-000000000320', 'subcontract:view', 'production', 'subcontract', 'view', 'View subcontract'),
+  ('00000000-0000-4000-8000-000000000321', 'master-data:view', 'masterdata', 'master-data', 'view', 'View master data'),
+  ('00000000-0000-4000-8000-000000000322', 'approvals:view', 'workflow', 'approvals', 'view', 'View approvals'),
+  ('00000000-0000-4000-8000-000000000323', 'reports:export', 'reports', 'reports', 'export', 'Export reports'),
+  ('00000000-0000-4000-8000-000000000324', 'reports:finance:view', 'reports', 'finance', 'view', 'View finance reports')
 ON CONFLICT (code) DO UPDATE
 SET module = EXCLUDED.module,
     resource = EXCLUDED.resource,
@@ -123,11 +155,24 @@ JOIN core.permissions permission ON permission.code IN (
   'dashboard:view',
   'warehouse:view',
   'inventory:view',
+  'purchase:view',
+  'finance:view',
+  'finance:manage',
+  'cod:reconcile',
+  'payment:approve',
+  'qc:view',
+  'qc:decision',
+  'production:view',
+  'subcontract:view',
   'sales:view',
   'shipping:view',
   'returns:view',
+  'master-data:view',
+  'approvals:view',
   'audit-log:view',
   'reports:view',
+  'reports:export',
+  'reports:finance:view',
   'settings:view',
   'record:create',
   'record:export'
@@ -155,6 +200,7 @@ SELECT role.id, permission.id
 FROM core.roles role
 JOIN core.permissions permission ON permission.code IN (
   'dashboard:view',
+  'inventory:view',
   'sales:view',
   'shipping:view',
   'returns:view',
@@ -163,6 +209,25 @@ JOIN core.permissions permission ON permission.code IN (
 )
 WHERE role.org_id = '00000000-0000-4000-8000-000000000001'
   AND role.code = 'SALES_OPS'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO core.role_permissions (role_id, permission_id)
+SELECT role.id, permission.id
+FROM core.roles role
+JOIN core.permissions permission ON permission.code IN (
+  'dashboard:view',
+  'warehouse:view',
+  'inventory:view',
+  'qc:view',
+  'qc:decision',
+  'production:view',
+  'subcontract:view',
+  'returns:view',
+  'reports:view',
+  'record:create'
+)
+WHERE role.org_id = '00000000-0000-4000-8000-000000000001'
+  AND role.code = 'QA'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO core.user_roles (user_id, role_id, scope_type, assigned_by)
@@ -184,6 +249,12 @@ FROM (
     (
       '00000000-0000-4000-8000-000000000103'::uuid,
       '00000000-0000-4000-8000-000000000203'::uuid,
+      'company',
+      '00000000-0000-4000-8000-000000000101'::uuid
+    ),
+    (
+      '00000000-0000-4000-8000-000000000104'::uuid,
+      '00000000-0000-4000-8000-000000000204'::uuid,
       'company',
       '00000000-0000-4000-8000-000000000101'::uuid
     )

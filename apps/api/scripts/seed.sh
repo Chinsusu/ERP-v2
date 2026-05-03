@@ -29,4 +29,4 @@ psql "$database_url" -v ON_ERROR_STOP=1 -f "$seed_file"
 
 echo "local seed applied"
 echo "mock login: admin@example.local / local-only-mock-password"
-echo "seeded users: admin@example.local, warehouse_user@example.local, sales_user@example.local"
+echo "seeded users: admin@example.local, warehouse_user@example.local, sales_user@example.local, qc_user@example.local"

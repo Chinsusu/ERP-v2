@@ -1590,6 +1590,43 @@ persisted_auth_session_check() {
   printf '%-28s %s %s\n' "persisted_auth_session" "ok" "access/refresh/lockout"
 }
 
+role_auth_check() {
+  role_name="$1"
+  role_email="$2"
+  expected_role="$3"
+  shift 3
+
+  role_login_body="$(printf '{"email":"%s","password":"%s"}' "$(json_escape "$role_email")" "$(json_escape "$login_password")")"
+  curl_check "auth_${role_name}_login" POST "$api_base/auth/login" 200 "$role_login_body" noauth
+  role_access_token="$(json_string_field "access_token")"
+  role_refresh_token="$(json_string_field "refresh_token")"
+  if [ "$role_access_token" = "" ] || [ "$role_refresh_token" = "" ]; then
+    echo "auth_${role_name} failed: tokens missing" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  previous_access_token="$access_token"
+  access_token="$role_access_token"
+  json_check "auth_${role_name}_me" "$api_base/me"
+  if ! grep -q "\"email\"[[:space:]]*:[[:space:]]*\"$role_email\"" "$tmp_body" ||
+    ! grep -q "\"role\"[[:space:]]*:[[:space:]]*\"$expected_role\"" "$tmp_body"; then
+    echo "auth_${role_name} failed: /me did not return expected role" >&2
+    sed -n '1,20p' "$tmp_body" >&2
+    exit 1
+  fi
+
+  endpoint_index=1
+  for role_endpoint in "$@"; do
+    json_check "auth_${role_name}_route_$endpoint_index" "$role_endpoint"
+    endpoint_index=$((endpoint_index + 1))
+  done
+  access_token="$previous_access_token"
+
+  role_logout_body="$(printf '{"refresh_token":"%s"}' "$(json_escape "$role_refresh_token")")"
+  curl_check "auth_${role_name}_logout" POST "$api_base/auth/logout" 200 "$role_logout_body" noauth
+}
+
 persisted_sales_reservation_check() {
   smoke_index="$(postgres_scalar "select count(*) + 1 from inventory.stock_reservations where reservation_ref like 'rsv-so-s10-02-03-smoke-%'")"
   case "$smoke_index" in
@@ -1652,6 +1689,9 @@ if ! grep -q '"access_token"[[:space:]]*:' "$tmp_body"; then
 fi
 persisted_audit_login_check "$audit_login_before_count"
 persisted_auth_session_check
+role_auth_check "role_warehouse" "warehouse_user@example.local" "WAREHOUSE_STAFF" "$api_base/warehouse/daily-board/fulfillment-metrics?business_date=2026-04-30&warehouse_id=wh-hcm"
+role_auth_check "role_sales" "sales_user@example.local" "SALES_OPS" "$api_base/inventory/available-stock" "$api_base/sales-orders"
+role_auth_check "role_qc" "qc_user@example.local" "QA" "$api_base/inbound-qc-inspections" "$api_base/warehouse/daily-board/inbound-metrics?business_date=2026-04-30&warehouse_id=wh-hcm"
 
 json_check "warehouse_fulfillment" "$api_base/warehouse/daily-board/fulfillment-metrics?business_date=2026-04-30&warehouse_id=wh-hcm"
 json_check "warehouse_inbound" "$api_base/warehouse/daily-board/inbound-metrics?business_date=2026-04-30&warehouse_id=wh-hcm"
