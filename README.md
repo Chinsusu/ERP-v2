@@ -60,6 +60,13 @@ Business UAT execution, business issue triage, Go/No-Go decision, and v0.22 tag 
 Do not treat Sprint 22 preparation docs as UAT pass evidence.
 ```
 
+Phase 1 production scope:
+
+```text
+The user-facing Production entrypoint uses the subcontract manufacturing flow at /subcontract.
+Internal work-center/MES production remains out of Phase 1 scope until a dedicated production module is planned.
+```
+
 Latest verified release tag gate:
 
 ```text

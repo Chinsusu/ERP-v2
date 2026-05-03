@@ -42,6 +42,8 @@ Routes: English.
 Locale: vi-VN.
 Currency: VND.
 Timezone: Asia/Ho_Chi_Minh.
+Phase 1 production entrypoint: /subcontract subcontract manufacturing flow; /production deep links alias to the same flow.
+Internal work-center/MES production remains out of Phase 1 scope.
 ```
 
 Production auth status:
