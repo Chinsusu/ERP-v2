@@ -31,6 +31,8 @@ Which document locks Vietnamese operational terminology?
 ```text
 Current line: Sprint 21 auth UI backend integration after Sprint 20 hardening and Sprint 19 Vietnamese UI localization.
 Latest release tag: v0.19.0-vietnamese-ui-localization.
+Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
+Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -164,6 +166,14 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | `v0.15.0-finance-runtime-store-persistence` | Sprint 15 finance runtime persistence | Last explicit tag before the runtime persistence consolidation window |
 | `v0.18.0-auth-session-runtime-store-persistence` | Sprint 18 auth/session runtime store persistence | Sprint 16-17 runtime persistence work was merged to main and consolidated under this release evidence |
 | `v0.19.0-vietnamese-ui-localization` | Sprint 19 Vietnamese UI localization | Latest product release tag; Sprint 20 is hardening after this tag |
+
+Sprint 21 tag hold:
+
+```text
+No v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created.
+Sprint 21 has main merge, CI, dev deploy, full dev smoke, and auth UI browser smoke evidence.
+Create the Sprint 21 release checkpoint tag only after target staging/pilot environment smoke evidence is recorded.
+```
 
 ---
 

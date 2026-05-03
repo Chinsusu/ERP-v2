@@ -6,7 +6,7 @@ Sprint: Sprint 21 - Auth UI Backend Integration + Production Runtime Smoke
 Document role: Sprint changelog and release evidence
 Version: v1.0
 Date: 2026-05-03
-Status: PR CI passed; manual merge and post-merge dev smoke pending
+Status: Completed and merged
 
 ---
 
@@ -105,23 +105,39 @@ Cloud PR evidence:
 
 ```text
 PR number: #542
-required-ci run 25270108529: success
-required-api job 74090950319: success
-required-web job 74090950311: success
-required-openapi job 74090950316: success
-required-migration job 74090950320: success
-api-ci run 25270108518: success
-web-ci run 25270108527: success
-openapi-ci run 25270108541: success
-e2e-ci run 25270108517: success
+Title: Wire web auth UI to backend sessions
+Manual merge: completed
+Main merge commit: c07409ccecb513e3c0089311dc303ff4a2a390a2
+required-ci run 25270151483: success
+required-api job 74091067339: success
+required-web job 74091067341: success
+required-openapi job 74091067343: success
+required-migration job 74091067340: success
+api-ci run 25270151488: success
+web-ci run 25270151472: success
+openapi-ci run 25270151469: success
+e2e-ci run 25270151470: success
 ```
 
-Post-merge evidence still required by the release flow:
+Post-merge dev evidence:
 
 ```text
-Manual merge: pending
-Dev deploy: pending
-Auth UI browser smoke: pending
+Dev deploy: ./infra/scripts/deploy-dev-staging.sh dev passed
+Dev runtime smoke: login, /me before restart, /me after restart, refresh rotate, old refresh reject, /me after refresh, logout, /me after logout, refresh after logout, and lockout passed
+Auth UI browser smoke: login dashboard, logout to login, and invalid login Vietnamese error passed
+UI smoke method: Chrome headless CDP fallback because local Playwright CLI/npx was unavailable
+Screenshot evidence: output/playwright/dev-auth-dashboard.png
+Screenshot evidence: output/playwright/dev-auth-logout-login.png
+Screenshot evidence: output/playwright/dev-auth-invalid-login.png
+Dev server health: http://10.1.1.120:8088/health returned 200
+```
+
+Release tag status:
+
+```text
+Tag hold.
+No v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created.
+Reason: Sprint 21 has merged main, CI, dev deploy, full dev smoke, and auth UI browser smoke evidence, but production-like release tagging still requires target staging/pilot environment smoke evidence.
 ```
 
 ---
@@ -129,6 +145,14 @@ Auth UI browser smoke: pending
 ## 4. Known Limits
 
 Sprint 21 makes the existing email/password web auth surface backend-backed. It does not claim enterprise identity completeness.
+
+Verification limits:
+
+```text
+Local workstation was missing node/pnpm/make/docker/npx.
+Web checks, OpenAPI checks, and build confidence were verified through GitHub Actions.
+Auth UI browser smoke used Chrome headless CDP instead of Playwright CLI.
+```
 
 Known non-goals remain:
 

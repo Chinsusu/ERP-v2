@@ -40,6 +40,14 @@ Latest release tag:
 v0.19.0-vietnamese-ui-localization
 ```
 
+Sprint 21 release tag status:
+
+```text
+Tag hold.
+Sprint 21 is merged to main at c07409cc with CI, dev deploy, full dev smoke, and auth UI browser smoke evidence.
+No v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created because target staging/pilot environment smoke evidence is still required before release tagging.
+```
+
 Latest verified release tag gate:
 
 ```text
