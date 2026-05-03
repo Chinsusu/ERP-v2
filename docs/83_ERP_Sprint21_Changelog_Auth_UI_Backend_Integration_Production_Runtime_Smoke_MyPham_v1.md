@@ -6,7 +6,7 @@ Sprint: Sprint 21 - Auth UI Backend Integration + Production Runtime Smoke
 Document role: Sprint changelog and release evidence
 Version: v1.0
 Date: 2026-05-03
-Status: Pending PR CI, manual merge, and dev smoke evidence
+Status: PR CI passed; manual merge and post-merge dev smoke pending
 
 ---
 
@@ -101,17 +101,27 @@ make was not available on PATH.
 Local tsc/vitest, OpenAPI lint/contract, and make targets are therefore deferred to GitHub Actions.
 ```
 
-Required cloud evidence to fill before final Sprint 21 closeout:
+Cloud PR evidence:
 
 ```text
-PR number: pending
-required-ci: pending
-required-api: pending
-required-web: pending
-required-openapi: pending
-required-migration: pending
+PR number: #542
+required-ci run 25270108529: success
+required-api job 74090950319: success
+required-web job 74090950311: success
+required-openapi job 74090950316: success
+required-migration job 74090950320: success
+api-ci run 25270108518: success
+web-ci run 25270108527: success
+openapi-ci run 25270108541: success
+e2e-ci run 25270108517: success
+```
+
+Post-merge evidence still required by the release flow:
+
+```text
+Manual merge: pending
 Dev deploy: pending
-Auth UI smoke: pending
+Auth UI browser smoke: pending
 ```
 
 ---
