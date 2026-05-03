@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke an authenticated session */
+        post: operations["logoutAuthSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/policy": {
         parameters: {
             query?: never;
@@ -2048,6 +2065,9 @@ export interface components {
         AuthRefreshRequest: {
             refresh_token: string;
         };
+        AuthLogoutRequest: {
+            refresh_token: string;
+        };
         AuthLoginSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["AuthLoginResponse"];
         };
@@ -2061,6 +2081,12 @@ export interface components {
             /** Format: date-time */
             expires_at: string;
             user: components["schemas"]["UserProfile"];
+        };
+        AuthLogoutSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["AuthLogoutResponse"];
+        };
+        AuthLogoutResponse: {
+            logged_out: boolean;
         };
         AuthPolicySuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["AuthPolicyResponse"];
@@ -5211,6 +5237,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthLoginSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    logoutAuthSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthLogoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Session revoked */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthLogoutSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];

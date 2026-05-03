@@ -49,6 +49,25 @@ func TestSessionManagerRefreshRotatesTokens(t *testing.T) {
 	}
 }
 
+func TestSessionManagerLogoutInvalidatesSession(t *testing.T) {
+	now := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
+	manager := NewSessionManager(testConfig, func() time.Time { return now })
+	session, failure, ok := manager.Login("admin@example.local", "local-only-mock-password")
+	if !ok {
+		t.Fatalf("login rejected: %+v", failure)
+	}
+
+	if ok := manager.Logout(session.RefreshToken); !ok {
+		t.Fatal("Logout() = false, want true for active refresh token")
+	}
+	if _, ok := manager.AuthenticateAccessToken(session.AccessToken); ok {
+		t.Fatal("access token still authenticates after logout")
+	}
+	if _, ok := manager.Refresh(session.RefreshToken); ok {
+		t.Fatal("refresh token still refreshes after logout")
+	}
+}
+
 func TestSessionManagerWithSharedSessionStoreSurvivesManagerRestart(t *testing.T) {
 	now := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
 	store := NewInMemorySessionStore()

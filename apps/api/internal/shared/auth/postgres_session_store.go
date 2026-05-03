@@ -118,6 +118,33 @@ func (s *PostgresSessionStore) RotateRefreshToken(
 	return next, true, nil
 }
 
+func (s *PostgresSessionStore) RevokeRefreshToken(refreshToken string, now time.Time) (bool, error) {
+	if s == nil || s.db == nil {
+		return false, errors.New("auth postgres session store database is required")
+	}
+
+	refreshToken = strings.TrimSpace(refreshToken)
+	if refreshToken == "" {
+		return false, nil
+	}
+
+	result, err := s.db.ExecContext(
+		context.Background(),
+		postgresRevokeRefreshSessionSQL,
+		tokenHash(refreshToken),
+		now.UTC(),
+	)
+	if err != nil {
+		return false, err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return rows > 0, nil
+}
+
 func (s *PostgresSessionStore) storeSession(
 	ctx context.Context,
 	executor postgresSessionExecutor,

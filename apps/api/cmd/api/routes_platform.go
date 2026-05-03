@@ -7,6 +7,7 @@ type platformRouteHandlers struct {
 	readiness       routeHandler
 	login           routeHandler
 	refresh         routeHandler
+	logout          routeHandler
 	policy          routeHandler
 	me              routeHandler
 	rbacRoles       routeHandler
@@ -22,6 +23,7 @@ func registerPlatformRoutes(routes routeGroup, handlers platformRouteHandlers) {
 	routes.public("/api/v1/auth/login", handlers.login)
 	routes.public("/api/v1/auth/mock-login", handlers.login)
 	routes.public("/api/v1/auth/refresh", handlers.refresh)
+	routes.public("/api/v1/auth/logout", handlers.logout)
 	routes.public("/api/v1/auth/policy", handlers.policy)
 	routes.token("/api/v1/me", handlers.me)
 	routes.permission("/api/v1/rbac/roles", auth.PermissionSettingsView, handlers.rbacRoles)

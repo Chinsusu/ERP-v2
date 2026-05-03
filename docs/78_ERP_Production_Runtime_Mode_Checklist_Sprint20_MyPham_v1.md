@@ -60,7 +60,8 @@ Auth:
 ```text
 APP_ENV must not allow static auth tokens outside local/dev/test.
 Auth/session persistence must use PostgreSQL-backed stores from Sprint 18.
-Login, refresh rotation, failed login attempts, lockout, and logout must be smoke-checked.
+Web auth UI must call backend auth/session APIs in production-like runtime.
+Login, /me session bootstrap, refresh rotation, failed login attempts, lockout, and logout must be smoke-checked.
 ```
 
 ---
@@ -194,8 +195,10 @@ S20-07 Production web runtime blocks prototype fallback masking for backend-back
 S20-08 This production runtime checklist captures env, persistence, fallback, smoke, and release gates.
 ```
 
-Known remaining production-readiness risk:
+Sprint 21 auth update:
 
 ```text
-Frontend auth screens still use the local mock session surface. Treat backend auth/session persistence as available, but do not call the web auth surface production-ready until it is explicitly wired to the backend auth API or accepted as a controlled staging-only mock.
+Frontend auth screens are backend-wired for the existing email/password auth surface.
+Production-like deployments must still record target-environment auth smoke evidence before release.
+SSO, MFA, password reset email, and device/session management remain out of scope.
 ```

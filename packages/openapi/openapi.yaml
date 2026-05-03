@@ -97,6 +97,30 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /auth/logout:
+    post:
+      summary: Revoke an authenticated session
+      operationId: logoutAuthSession
+      security: []
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLogoutRequest"
+      responses:
+        "200":
+          description: Session revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthLogoutSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /auth/policy:
     get:
       summary: Get authentication password and lockout policy
@@ -4600,7 +4624,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
+      bearerFormat: opaque
   schemas:
     ErrorCode:
       type: string
@@ -4658,6 +4682,13 @@ components:
       properties:
         refresh_token:
           type: string
+    AuthLogoutRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
     AuthLoginSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
@@ -4697,6 +4728,22 @@ components:
           format: date-time
         user:
           $ref: "#/components/schemas/UserProfile"
+    AuthLogoutSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/AuthLogoutResponse"
+    AuthLogoutResponse:
+      type: object
+      required:
+        - logged_out
+      properties:
+        logged_out:
+          type: boolean
     AuthPolicySuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
