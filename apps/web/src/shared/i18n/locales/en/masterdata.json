@@ -5,12 +5,16 @@
   "views": {
     "products": "Items / SKU",
     "warehouses": "Warehouses / Locations",
-    "parties": "Suppliers / Customers"
+    "parties": "Suppliers / Customers",
+    "suppliers": "Suppliers",
+    "customers": "Customers"
   },
   "viewStatus": {
     "products": "Item setup",
     "warehouses": "Warehouse setup",
-    "parties": "Party setup"
+    "parties": "Party setup",
+    "suppliers": "Supplier setup",
+    "customers": "Customer setup"
   },
   "page": {
     "title": "Master Data",

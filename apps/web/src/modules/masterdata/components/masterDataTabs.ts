@@ -1,0 +1,25 @@
+import { t } from "../../../shared/i18n";
+
+export type MasterDataView = "products" | "warehouses" | "suppliers" | "customers";
+
+type MasterDataTab = {
+  label: string;
+  value: MasterDataView;
+};
+
+export function getMasterDataTabs(): MasterDataTab[] {
+  return [
+    { label: masterDataCopy("views.products"), value: "products" },
+    { label: masterDataCopy("views.warehouses"), value: "warehouses" },
+    { label: masterDataCopy("views.suppliers"), value: "suppliers" },
+    { label: masterDataCopy("views.customers"), value: "customers" }
+  ];
+}
+
+export function getMasterDataViewStatusLabel(view: MasterDataView) {
+  return masterDataCopy(`viewStatus.${view}`);
+}
+
+function masterDataCopy(key: string, values?: Record<string, string | number>, fallback?: string) {
+  return t(`masterdata.${key}`, { values, fallback });
+}
