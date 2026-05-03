@@ -6,7 +6,7 @@ Sprint: Sprint 22 - UAT Pilot Pack for Warehouse + Sales + QC
 Document role: Sprint changelog and UAT evidence register
 Version: v1.0
 Date: 2026-05-03
-Status: Draft; UAT pack prepared, business UAT execution pending
+Status: Session 0 readiness executed; business UAT blocked by role-user auth
 
 ---
 
@@ -63,17 +63,26 @@ Raw UAT evidence containing PII or secrets
 ## 3. Current Evidence Status
 
 ```text
-UAT environment readiness: pending
-UAT users/roles verified: pending
-UAT seed data loaded: pending
-Auth/RBAC/Vietnamese UI UAT: pending
-Warehouse Daily Board UAT: pending
-Sales -> Reserve -> Pick -> Pack -> Handover UAT: pending
-Returns/Inspection/Disposition UAT: pending
-Stock Count/Shift Closing UAT: pending
-Purchase/Receiving/Inbound QC UAT: pending
-Issue triage board: prepared, no business UAT issues logged yet
-Go/No-Go report: prepared, no decision recorded yet
+UAT environment readiness: dev target health and full dev smoke passed
+UAT users/roles verified: blocked; admin works, Warehouse/Sales/QC role users cannot authenticate
+UAT seed data loaded: partial/dev-smoke data available; S22-specific UAT seed approval pending
+Auth/RBAC/Vietnamese UI UAT: admin browser smoke passed; role-based business UAT blocked
+Warehouse Daily Board UAT: admin browser/API readiness passed; business UAT not started
+Sales -> Reserve -> Pick -> Pack -> Handover UAT: technical full dev smoke passed; business UAT not started
+Returns/Inspection/Disposition UAT: technical full dev smoke passed; business UAT not started
+Stock Count/Shift Closing UAT: technical full dev smoke passed; business UAT not started
+Purchase/Receiving/Inbound QC UAT: technical full dev smoke passed; business UAT not started
+Issue triage board: S22-ISSUE-001 opened as P0 readiness blocker
+Go/No-Go report: prepared; no Go/Conditional Go/No-Go decision recorded
+```
+
+Session 0 evidence:
+
+```text
+docs/uat/sprint22/evidence/session-notes/S22_SESSION0_READINESS_2026-05-03.md
+output/playwright/s22-session0-dashboard.png
+output/playwright/s22-session0-warehouse-daily-board.png
+output/playwright/s22-session0-invalid-login.png
 ```
 
 ---
@@ -92,7 +101,7 @@ Create v0.22.0-uat-pilot-pack-warehouse-sales-qc only after UAT evidence is comp
 
 ```text
 This changelog does not claim business UAT has passed.
-This changelog does not claim staging/pilot environment readiness until an environment smoke is executed and recorded.
+This changelog records dev target readiness smoke, not staging/pilot sign-off.
 This changelog does not include raw UAT evidence.
 UAT findings must be triaged before code changes are added to Sprint 22 or Sprint 23.
 ```
@@ -102,12 +111,12 @@ UAT findings must be triaged before code changes are added to Sprint 22 or Sprin
 ## 6. Next Required Actions
 
 ```text
-1. Confirm UAT environment URL and commit.
-2. Create or verify role-based UAT users.
-3. Load and document seed data.
+1. Fix S22-ISSUE-001 by enabling or creating backend-authenticated Warehouse, Sales, and QC UAT users.
+2. Re-run S22-UAT-001 role-based login and menu visibility.
+3. Approve or load S22-specific seed data.
 4. Schedule business users.
 5. Execute S22-UAT-001 through S22-UAT-006.
 6. Log issues and observations.
 7. Produce Go/Conditional Go/No-Go report.
-8. Update this changelog from draft to completed.
+8. Update this changelog from readiness-blocked to completed or blocked with final evidence.
 ```

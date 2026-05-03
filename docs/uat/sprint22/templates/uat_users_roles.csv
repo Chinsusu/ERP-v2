@@ -1,10 +1,10 @@
 role,email,display_name,department,required_access,status,verified_by,verified_at,notes
-UAT Lead,uat.lead@example.local,UAT Lead,PMO,all UAT scripts and issue board,pending,,,
-Business Owner,business.owner@example.local,Business Owner,Operations,dashboard reports issue summary sign-off,pending,,,
-Warehouse User,warehouse_user@example.local,Warehouse UAT User,Warehouse,warehouse shipping returns,pending,,,
-Sales User,sales_user@example.local,Sales UAT User,Sales,sales stock availability order status,pending,,,
-QC User,qc_user@example.local,QC UAT User,QC,qc receiving inventory,pending,,,
-Finance Observer,finance_observer@example.local,Finance Observer,Finance,finance read-only reports,pending,,,
-ERP Admin,admin@example.local,ERP Admin,IT,settings master data rbac,pending,,,
-QA Test Lead,qa.lead@example.local,QA Test Lead,QA,uat scripts screenshots logs,pending,,,
-Dev Support,dev.support@example.local,Dev Support,Engineering,logs deployment defect support,pending,,,
+UAT Lead,uat.lead@example.local,UAT Lead,PMO,all UAT scripts and issue board,pending_business_schedule,Codex,2026-05-03T12:42:00+07:00,"Named business user not provided yet."
+Business Owner,business.owner@example.local,Business Owner,Operations,dashboard reports issue summary sign-off,pending_business_schedule,Codex,2026-05-03T12:42:00+07:00,"Named business owner not provided yet."
+Warehouse User,warehouse_user@example.local,Warehouse UAT User,Warehouse,warehouse shipping returns,blocked_auth,Codex,2026-05-03T12:42:00+07:00,"Seed user exists in dev_seed.sql, but backend auth/login returned 401 with the shared dev login credential."
+Sales User,sales_user@example.local,Sales UAT User,Sales,sales stock availability order status,blocked_auth,Codex,2026-05-03T12:42:00+07:00,"Seed user exists in dev_seed.sql, but backend auth/login returned 401 with the shared dev login credential."
+QC User,qc_user@example.local,QC UAT User,QC,qc receiving inventory,missing_user,Codex,2026-05-03T12:42:00+07:00,"No seeded qc_user@example.local login was available; backend auth/login returned 401."
+Finance Observer,finance_observer@example.local,Finance Observer,Finance,finance read-only reports,pending_business_schedule,Codex,2026-05-03T12:42:00+07:00,"Observer account not created or verified."
+ERP Admin,admin@example.local,ERP Admin,IT,settings master data rbac,verified,Codex,2026-05-03T12:42:00+07:00,"Backend auth/login and /me passed with 24 permissions."
+QA Test Lead,qa.lead@example.local,QA Test Lead,QA,uat scripts screenshots logs,pending_business_schedule,Codex,2026-05-03T12:42:00+07:00,"Named QA/UAT tester not provided yet."
+Dev Support,dev.support@example.local,Dev Support,Engineering,logs deployment defect support,pending_business_schedule,Codex,2026-05-03T12:42:00+07:00,"Dev support contact not assigned in UAT schedule."
