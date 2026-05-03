@@ -28,14 +28,7 @@ func TestSprint2PrototypeTestDataSeed(t *testing.T) {
 	}
 	requireSeedCodes(t, "customers", customerCodes(customers), "CUS-DL-MINHANH", "CUS-DL-LINHCHI", "CUS-MP-SHOPEE", "CUS-MP-TIKTOK")
 
-	items, _, err := masterdataapp.NewPrototypeItemCatalog(auditStore).List(
-		ctx,
-		masterdatadomain.NewItemFilter("", "", "", 1, 100),
-	)
-	if err != nil {
-		t.Fatalf("list items: %v", err)
-	}
-	requireSeedCodes(t, "items", itemSKUCodes(items), "SERUM-30ML", "CREAM-50G", "TONER-100ML")
+	requirePrototypeItemSKUs(t, ctx, masterdataapp.NewPrototypeItemCatalog(auditStore), "SERUM-30ML", "CREAM-50G", "TONER-100ML")
 
 	batches, err := inventoryapp.NewPrototypeBatchCatalog(auditStore).ListBatches(
 		ctx,
@@ -121,6 +114,20 @@ func itemSKUCodes(items []masterdatadomain.Item) map[string]struct{} {
 	}
 
 	return codes
+}
+
+func requirePrototypeItemSKUs(t *testing.T, ctx context.Context, catalog *masterdataapp.ItemCatalog, expected ...string) {
+	t.Helper()
+
+	for _, sku := range expected {
+		items, _, err := catalog.List(ctx, masterdatadomain.NewItemFilter(sku, "", "", 1, 20))
+		if err != nil {
+			t.Fatalf("list item %s: %v", sku, err)
+		}
+		if _, ok := itemSKUCodes(items)[sku]; !ok {
+			t.Fatalf("items missing %s; got %v", sku, itemSKUCodes(items))
+		}
+	}
 }
 
 func batchNumbers(batches []inventorydomain.Batch) map[string]struct{} {

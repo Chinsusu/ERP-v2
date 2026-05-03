@@ -20,27 +20,45 @@ describe("productMasterDataService", () => {
   it("filters product master data by search, status, and type", async () => {
     await expect(
       getProducts({
-        search: "serum",
+        search: "citric",
         status: "active",
-        itemType: "finished_good"
+        itemType: "raw_material"
       })
     ).resolves.toMatchObject([
       {
-        skuCode: "SERUM-30ML",
+        skuCode: "ACI_CITRIC",
         status: "active",
-        itemType: "finished_good"
+        itemType: "raw_material"
       }
     ]);
   });
 
-  it("summarizes active, draft, and controlled SKU counts", async () => {
+  it("uses the normalized source sheet items in the local fallback store", async () => {
     const items = await getProducts();
 
+    expect(items).toHaveLength(332);
+    expect(items.some((item) => ["SERUM-30ML", "CREAM-50G", "TONER-100ML"].includes(item.skuCode))).toBe(false);
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        skuCode: "FRA_NTG",
+        itemType: "raw_material",
+        itemGroup: "fragrance",
+        uomBase: "KG"
+      })
+    );
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        skuCode: "TP-100",
+        itemType: "packaging",
+        itemGroup: "tube",
+        uomBase: "TUBE"
+      })
+    );
     expect(summarizeProducts(items)).toEqual({
-      total: 3,
-      active: 2,
-      draft: 1,
-      controlled: 3
+      total: 332,
+      active: 332,
+      draft: 0,
+      controlled: 332
     });
   });
 
@@ -64,6 +82,9 @@ describe("productMasterDataService", () => {
       "BOX",
       "CARTON",
       "SET",
+      "BAG",
+      "ROLL",
+      "CM",
       "SERVICE"
     ]);
   });
@@ -102,7 +123,7 @@ describe("productMasterDataService", () => {
     await expect(
       createProduct({
         ...emptyProductInput,
-        itemCode: "ITEM-SERUM-HYDRA",
+        itemCode: "ACI_CITRIC",
         skuCode: "NEW-SERUM-30ML",
         name: "Duplicate Serum"
       })
@@ -112,7 +133,7 @@ describe("productMasterDataService", () => {
       createProduct({
         ...emptyProductInput,
         itemCode: "ITEM-NEW-SERUM",
-        skuCode: "SERUM-30ML",
+        skuCode: "ACI_CITRIC",
         name: "Duplicate Serum"
       })
     ).rejects.toThrow("SKU code already exists");

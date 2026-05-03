@@ -153,6 +153,7 @@ restart_api_service() {
 
 persisted_masterdata_runtime_check() {
   org_id="00000000-0000-4000-8000-000000000001"
+  postgres_exec "DELETE FROM mdm.warehouse_bins WHERE org_id = '$org_id'::uuid AND code LIKE 'LOC-S17-06-%'; DELETE FROM mdm.warehouses WHERE org_id = '$org_id'::uuid AND code LIKE 'WH-S17-06-%'; DELETE FROM mdm.suppliers WHERE org_id = '$org_id'::uuid AND code LIKE 'SUP-S17-06-%'; DELETE FROM mdm.customers WHERE org_id = '$org_id'::uuid AND code LIKE 'CUS-S17-06-%'; DELETE FROM mdm.items WHERE org_id = '$org_id'::uuid AND (item_code LIKE 'ITEM-S17-06-01-SMOKE-%' OR sku LIKE 'SKU-S17-06-%');"
   smoke_index="$(postgres_scalar "select greatest((select count(*) from mdm.items where item_code like 'ITEM-S17-06-01-SMOKE-%'), (select count(*) from mdm.warehouses where code like 'WH-S17-06-%'), (select count(*) from mdm.suppliers where code like 'SUP-S17-06-%'), (select count(*) from mdm.customers where code like 'CUS-S17-06-%')) + 1")"
   case "$smoke_index" in
     ''|*[!0-9]*)
@@ -235,6 +236,7 @@ EOF
     exit 1
   fi
 
+  postgres_exec "DELETE FROM mdm.warehouse_bins WHERE org_id = '$org_id'::uuid AND code = '$location_code'; DELETE FROM mdm.warehouses WHERE org_id = '$org_id'::uuid AND code = '$warehouse_code'; DELETE FROM mdm.suppliers WHERE org_id = '$org_id'::uuid AND code = '$supplier_code'; DELETE FROM mdm.customers WHERE org_id = '$org_id'::uuid AND code = '$customer_code'; DELETE FROM mdm.items WHERE org_id = '$org_id'::uuid AND sku = '$sku_code';"
   printf '%-28s %s %s\n' "persisted_masterdata" "ok" "$suffix"
 }
 

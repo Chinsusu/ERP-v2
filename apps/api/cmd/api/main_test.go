@@ -3081,7 +3081,7 @@ func TestAuditLogsHandlerRejectsDelete(t *testing.T) {
 
 func TestProductsHandlerListsFilteredMasterData(t *testing.T) {
 	catalog := masterdataapp.NewPrototypeItemCatalog(audit.NewInMemoryLogStore())
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/products?q=serum&status=active", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/products?q=citric&status=active&item_type=raw_material", nil)
 	req.Header.Set(response.HeaderRequestID, "req-product-list")
 	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.MockPrincipalForRole(auth.MockConfig{
 		Email:       "admin@example.local",
@@ -3103,8 +3103,8 @@ func TestProductsHandlerListsFilteredMasterData(t *testing.T) {
 	if len(payload.Data) != 1 {
 		t.Fatalf("products = %d, want 1", len(payload.Data))
 	}
-	if payload.Data[0].SKUCode != "SERUM-30ML" || payload.Pagination.TotalItems != 1 {
-		t.Fatalf("payload = %+v, want SERUM-30ML with one total item", payload)
+	if payload.Data[0].SKUCode != "ACI_CITRIC" || payload.Pagination.TotalItems != 1 {
+		t.Fatalf("payload = %+v, want ACI_CITRIC with one total item", payload)
 	}
 }
 
