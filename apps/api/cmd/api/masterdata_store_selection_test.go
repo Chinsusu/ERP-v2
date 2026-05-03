@@ -20,6 +20,9 @@ func TestNewRuntimeMasterDataStoresFallsBackToPrototypeWithoutDatabaseURL(t *tes
 	if _, ok := stores.items.(*masterdataapp.ItemCatalog); !ok {
 		t.Fatalf("items store type = %T, want *ItemCatalog", stores.items)
 	}
+	if _, ok := stores.formulas.(*masterdataapp.FormulaCatalog); !ok {
+		t.Fatalf("formulas store type = %T, want *FormulaCatalog", stores.formulas)
+	}
 	if _, ok := stores.uoms.(*masterdataapp.UOMCatalog); !ok {
 		t.Fatalf("uom store type = %T, want *UOMCatalog", stores.uoms)
 	}
@@ -53,6 +56,9 @@ func TestNewRuntimeMasterDataStoresUsesPostgresWhenDatabaseURLConfigured(t *test
 
 	if _, ok := stores.items.(*masterdataapp.PostgresItemCatalog); !ok {
 		t.Fatalf("items store type = %T, want *PostgresItemCatalog", stores.items)
+	}
+	if _, ok := stores.formulas.(*masterdataapp.PostgresFormulaCatalog); !ok {
+		t.Fatalf("formulas store type = %T, want *PostgresFormulaCatalog", stores.formulas)
 	}
 	if _, ok := stores.uoms.(*masterdataapp.PostgresUOMCatalog); !ok {
 		t.Fatalf("uom store type = %T, want *PostgresUOMCatalog", stores.uoms)

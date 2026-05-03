@@ -6,6 +6,10 @@ type masterDataRouteHandlers struct {
 	products                routeHandler
 	productDetail           routeHandler
 	productStatus           routeHandler
+	formulas                routeHandler
+	formulaDetail           routeHandler
+	formulaActivation       routeHandler
+	formulaRequirement      routeHandler
 	warehouses              routeHandler
 	warehouseDetail         routeHandler
 	warehouseStatus         routeHandler
@@ -24,6 +28,10 @@ func registerMasterDataRoutes(routes routeGroup, handlers masterDataRouteHandler
 	routes.token("/api/v1/products", handlers.products)
 	routes.token("/api/v1/products/{product_id}", handlers.productDetail)
 	routes.permission("/api/v1/products/{product_id}/status", auth.PermissionRecordCreate, handlers.productStatus)
+	routes.token("/api/v1/formulas", handlers.formulas)
+	routes.token("/api/v1/formulas/{formula_id}", handlers.formulaDetail)
+	routes.permission("/api/v1/formulas/{formula_id}/activate", auth.PermissionRecordCreate, handlers.formulaActivation)
+	routes.permission("/api/v1/formulas/{formula_id}/calculate-requirement", auth.PermissionMasterDataView, handlers.formulaRequirement)
 	routes.token("/api/v1/warehouses", handlers.warehouses)
 	routes.token("/api/v1/warehouses/{warehouse_id}", handlers.warehouseDetail)
 	routes.permission("/api/v1/warehouses/{warehouse_id}/status", auth.PermissionRecordCreate, handlers.warehouseStatus)

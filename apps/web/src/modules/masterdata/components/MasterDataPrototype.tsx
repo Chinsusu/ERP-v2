@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { StatusChip } from "@/shared/design-system/components";
 import { t } from "@/shared/i18n";
+import { FormulaMasterDataPrototype } from "./FormulaMasterDataPrototype";
 import { ProductMasterDataPrototype } from "./ProductMasterDataPrototype";
 import { SupplierCustomerMasterDataPrototype } from "./SupplierCustomerMasterDataPrototype";
 import { WarehouseLocationMasterDataPrototype } from "./WarehouseLocationMasterDataPrototype";
@@ -37,6 +38,7 @@ export function MasterDataPrototype() {
       </nav>
 
       {view === "products" ? <ProductMasterDataPrototype embedded /> : null}
+      {view === "formulas" ? <FormulaMasterDataPrototype /> : null}
       {view === "warehouses" ? <WarehouseLocationMasterDataPrototype embedded /> : null}
       {view === "suppliers" ? <SupplierCustomerMasterDataPrototype embedded mode="suppliers" /> : null}
       {view === "customers" ? <SupplierCustomerMasterDataPrototype embedded mode="customers" /> : null}

@@ -4,6 +4,7 @@
   "sectionsLabel": "Master data sections",
   "views": {
     "products": "Items / SKU",
+    "formulas": "Formulas",
     "warehouses": "Warehouses / Locations",
     "parties": "Suppliers / Customers",
     "suppliers": "Suppliers",
@@ -11,6 +12,7 @@
   },
   "viewStatus": {
     "products": "Item setup",
+    "formulas": "Formula setup",
     "warehouses": "Warehouse setup",
     "parties": "Party setup",
     "suppliers": "Supplier setup",
@@ -128,6 +130,94 @@
       "packaging": "Packaging",
       "semi_finished": "Semi finished",
       "service": "Service"
+    }
+  },
+  "formula": {
+    "filters": {
+      "label": "Formula filters",
+      "search": "Search",
+      "status": "Status",
+      "allStatuses": "All statuses"
+    },
+    "columns": {
+      "formula": "Formula",
+      "parent": "Parent SKU",
+      "batch": "Batch",
+      "lines": "Lines",
+      "status": "Status",
+      "updated": "Updated"
+    },
+    "actions": {
+      "newFormula": "New formula",
+      "create": "Create formula",
+      "saving": "Saving",
+      "activate": "Activate",
+      "calculate": "Requirement"
+    },
+    "kpi": {
+      "total": "Total",
+      "lines": "Lines"
+    },
+    "list": {
+      "title": "Production formulas",
+      "rows": "{count} rows"
+    },
+    "empty": {
+      "title": "No formulas",
+      "description": "Create the first formula for a finished or semi finished item."
+    },
+    "form": {
+      "createTitle": "Create formula",
+      "description": "Batch quantity, parent SKU, and ingredient or packaging lines",
+      "formulaCode": "Formula code",
+      "finishedItemId": "Parent item ID",
+      "finishedSku": "Parent SKU",
+      "finishedItemName": "Parent name",
+      "finishedItemType": "Parent type",
+      "formulaVersion": "Version",
+      "batchQty": "Batch quantity",
+      "baseBatchQty": "Base batch quantity",
+      "uom": "UOM",
+      "lineTitle": "Formula lines",
+      "componentSku": "Component SKU",
+      "componentName": "Component name",
+      "componentType": "Component type",
+      "enteredQty": "Entered quantity",
+      "calcQty": "Display quantity",
+      "stockBaseQty": "Stock base quantity",
+      "wastePercent": "Waste %",
+      "required": "Required",
+      "stockManaged": "Stock managed",
+      "note": "Note",
+      "addLine": "Add line",
+      "removeLine": "Remove line"
+    },
+    "preview": {
+      "title": "Requirement preview",
+      "planned": "Planned {quantity}",
+      "empty": "No preview yet"
+    },
+    "status": {
+      "draft": "Draft",
+      "active": "Active",
+      "inactive": "Inactive",
+      "archived": "Archived"
+    },
+    "componentType": {
+      "raw_material": "Raw material",
+      "fragrance": "Fragrance",
+      "packaging": "Packaging",
+      "semi_finished": "Semi finished",
+      "service": "Service"
+    },
+    "errors": {
+      "loadTitle": "Formula master data could not load",
+      "requestFailed": "Formula request failed"
+    },
+    "toast": {
+      "created": "Formula created",
+      "activated": "Formula activated",
+      "calculated": "Requirement calculated"
     }
   },
   "uom": {

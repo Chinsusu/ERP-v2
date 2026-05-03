@@ -381,6 +381,150 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /formulas:
+    get:
+      summary: List formula master data
+      operationId: listFormulas
+      tags:
+        - master-data
+      parameters:
+        - $ref: "#/components/parameters/SearchParam"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/FormulaStatus"
+        - name: finished_item_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Formula master data list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormulaListSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create formula master data
+      operationId: createFormula
+      tags:
+        - master-data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFormulaRequest"
+      responses:
+        "201":
+          description: Formula master data created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormulaSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /formulas/{formula_id}:
+    get:
+      summary: Get formula master data detail
+      operationId: getFormula
+      tags:
+        - master-data
+      parameters:
+        - name: formula_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Formula master data detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormulaSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /formulas/{formula_id}/activate:
+    post:
+      summary: Activate formula master data
+      operationId: activateFormula
+      tags:
+        - master-data
+      parameters:
+        - name: formula_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Formula master data activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormulaSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /formulas/{formula_id}/calculate-requirement:
+    post:
+      summary: Calculate formula material requirements
+      operationId: calculateFormulaRequirement
+      tags:
+        - master-data
+      parameters:
+        - name: formula_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FormulaRequirementRequest"
+      responses:
+        "200":
+          description: Formula material requirement preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormulaRequirementSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /suppliers:
     get:
       summary: List supplier master data
@@ -5308,6 +5452,367 @@ components:
       properties:
         status:
           $ref: "#/components/schemas/MasterDataStatus"
+    FormulaStatus:
+      type: string
+      enum:
+        - draft
+        - active
+        - inactive
+        - archived
+    FormulaApprovalStatus:
+      type: string
+      enum:
+        - draft
+        - pending_approval
+        - approved
+        - rejected
+    FormulaComponentType:
+      type: string
+      enum:
+        - raw_material
+        - fragrance
+        - packaging
+        - semi_finished
+        - service
+    FormulaLineStatus:
+      type: string
+      enum:
+        - active
+        - excluded
+        - needs_review
+    FormulaListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/FormulaListItem"
+    FormulaSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/FormulaListItem"
+    FormulaListItem:
+      type: object
+      required:
+        - id
+        - formula_code
+        - finished_item_id
+        - finished_sku
+        - finished_item_name
+        - finished_item_type
+        - formula_version
+        - batch_qty
+        - batch_uom_code
+        - base_batch_qty
+        - base_batch_uom_code
+        - status
+        - approval_status
+        - lines
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: formula-xff-150ml-v1
+        formula_code:
+          type: string
+          example: XFF-150ML
+        finished_item_id:
+          type: string
+          example: item-xff-150
+        finished_sku:
+          type: string
+          example: XFF
+        finished_item_name:
+          type: string
+          example: Tinh chat buoi Fast & Furious 150ML
+        finished_item_type:
+          $ref: "#/components/schemas/ItemType"
+        formula_version:
+          type: string
+          example: v1
+        batch_qty:
+          $ref: "#/components/schemas/Quantity"
+        batch_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_batch_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_batch_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        status:
+          $ref: "#/components/schemas/FormulaStatus"
+        approval_status:
+          $ref: "#/components/schemas/FormulaApprovalStatus"
+        effective_from:
+          type: string
+          format: date
+        effective_to:
+          type: string
+          format: date
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/FormulaLineItem"
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        approved_by:
+          type: string
+        approved_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+        audit_log_id:
+          type: string
+    FormulaLineItem:
+      type: object
+      required:
+        - id
+        - line_no
+        - component_sku
+        - component_name
+        - component_type
+        - entered_qty
+        - entered_uom_code
+        - calc_qty
+        - calc_uom_code
+        - stock_base_qty
+        - stock_base_uom_code
+        - waste_percent
+        - is_required
+        - is_stock_managed
+        - line_status
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+          minimum: 1
+        component_item_id:
+          type: string
+        component_sku:
+          type: string
+          example: ACT_BAICAPIL
+        component_name:
+          type: string
+          example: BAICAPIL
+        component_type:
+          $ref: "#/components/schemas/FormulaComponentType"
+        entered_qty:
+          $ref: "#/components/schemas/Quantity"
+        entered_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        calc_qty:
+          $ref: "#/components/schemas/Quantity"
+        calc_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        stock_base_qty:
+          $ref: "#/components/schemas/Quantity"
+        stock_base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        waste_percent:
+          $ref: "#/components/schemas/Rate"
+        is_required:
+          type: boolean
+        is_stock_managed:
+          type: boolean
+        line_status:
+          $ref: "#/components/schemas/FormulaLineStatus"
+        note:
+          type: string
+    CreateFormulaRequest:
+      type: object
+      required:
+        - formula_code
+        - finished_item_id
+        - finished_sku
+        - finished_item_name
+        - finished_item_type
+        - formula_version
+        - batch_qty
+        - batch_uom_code
+        - base_batch_qty
+        - base_batch_uom_code
+        - lines
+      properties:
+        formula_code:
+          type: string
+        finished_item_id:
+          type: string
+        finished_sku:
+          type: string
+        finished_item_name:
+          type: string
+        finished_item_type:
+          $ref: "#/components/schemas/ItemType"
+        formula_version:
+          type: string
+        batch_qty:
+          $ref: "#/components/schemas/Quantity"
+        batch_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        base_batch_qty:
+          $ref: "#/components/schemas/Quantity"
+        base_batch_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        effective_from:
+          type: string
+          format: date
+        effective_to:
+          type: string
+          format: date
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateFormulaLineRequest"
+        note:
+          type: string
+    CreateFormulaLineRequest:
+      type: object
+      required:
+        - line_no
+        - component_sku
+        - component_name
+        - component_type
+        - entered_qty
+        - entered_uom_code
+        - calc_qty
+        - calc_uom_code
+        - stock_base_qty
+        - stock_base_uom_code
+      properties:
+        line_no:
+          type: integer
+          minimum: 1
+        component_item_id:
+          type: string
+        component_sku:
+          type: string
+        component_name:
+          type: string
+        component_type:
+          $ref: "#/components/schemas/FormulaComponentType"
+        entered_qty:
+          $ref: "#/components/schemas/Quantity"
+        entered_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        calc_qty:
+          $ref: "#/components/schemas/Quantity"
+        calc_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        stock_base_qty:
+          $ref: "#/components/schemas/Quantity"
+        stock_base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        waste_percent:
+          $ref: "#/components/schemas/Rate"
+        is_required:
+          type: boolean
+          default: true
+        is_stock_managed:
+          type: boolean
+          default: true
+        line_status:
+          $ref: "#/components/schemas/FormulaLineStatus"
+        note:
+          type: string
+    FormulaRequirementRequest:
+      type: object
+      required:
+        - planned_qty
+        - planned_uom_code
+      properties:
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        planned_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+    FormulaRequirementSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/FormulaRequirementPreview"
+    FormulaRequirementPreview:
+      type: object
+      required:
+        - formula_id
+        - formula_code
+        - finished_sku
+        - planned_qty
+        - planned_uom_code
+        - requirements
+      properties:
+        formula_id:
+          type: string
+        formula_code:
+          type: string
+        finished_sku:
+          type: string
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        planned_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        requirements:
+          type: array
+          items:
+            $ref: "#/components/schemas/FormulaRequirementLine"
+    FormulaRequirementLine:
+      type: object
+      required:
+        - formula_line_id
+        - line_no
+        - component_sku
+        - component_name
+        - component_type
+        - required_calc_qty
+        - calc_uom_code
+        - required_stock_base_qty
+        - stock_base_uom_code
+        - is_stock_managed
+      properties:
+        formula_line_id:
+          type: string
+        line_no:
+          type: integer
+        component_item_id:
+          type: string
+        component_sku:
+          type: string
+        component_name:
+          type: string
+        component_type:
+          $ref: "#/components/schemas/FormulaComponentType"
+        required_calc_qty:
+          $ref: "#/components/schemas/Quantity"
+        calc_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        required_stock_base_qty:
+          $ref: "#/components/schemas/Quantity"
+        stock_base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        is_stock_managed:
+          type: boolean
     SupplierListSuccessResponse:
       type: object
       required:
