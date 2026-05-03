@@ -34,7 +34,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 22 UAT pilot pack preparation after Sprint 21 auth UI backend integration.
+Current line: Sprint 22 Session 0 readiness passed after S22-ISSUE-001 role-auth unblock.
 
 Latest release tag:
 
@@ -54,7 +54,9 @@ Sprint 22 UAT status:
 
 ```text
 UAT pilot pack prepared for Warehouse + Sales + QC.
-Business UAT execution, issue triage, Go/No-Go decision, and v0.22 tag are pending.
+S22-ISSUE-001 role-based UAT authentication blocker resolved by PR #546 at db894ddb.
+Session 0 readiness rerun passed on dev, including Warehouse/Sales/QC role login, /me role payloads, RBAC menu/route guard, logout, and invalid-login Vietnamese copy.
+Business UAT execution, business issue triage, Go/No-Go decision, and v0.22 tag are pending.
 Do not treat Sprint 22 preparation docs as UAT pass evidence.
 ```
 
