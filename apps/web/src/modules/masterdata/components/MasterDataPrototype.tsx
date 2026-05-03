@@ -16,7 +16,6 @@ export function MasterDataPrototype() {
     <section className="erp-module-page erp-masterdata-page">
       <header className="erp-page-header">
         <div>
-          <p className="erp-module-eyebrow">MD</p>
           <h1 className="erp-page-title">{masterDataCopy("title")}</h1>
           <p className="erp-page-description">{masterDataCopy("description")}</p>
         </div>
