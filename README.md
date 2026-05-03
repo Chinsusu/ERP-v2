@@ -25,7 +25,8 @@ docs             ERP project documents
 
 Start with:
 
-- `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md`
+- `docs/80_ERP_Master_Document_Index_Current_Status_MyPham_v2.md`
+- `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
 - `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
 
 ## Current Status
@@ -41,9 +42,17 @@ v0.19.0-vietnamese-ui-localization
 Latest verified release tag gate:
 
 ```text
-required-ci on main commit df9b9567: success
+release tag v0.19.0-vietnamese-ui-localization on commit df9b9567
+required-ci on release commit df9b9567: success
 required-api, required-web, required-openapi, required-migration: pass
-required-migration at release tag: PostgreSQL 16 apply plus rollback passed
+required-migration at release tag: PostgreSQL 16 apply + rollback passed
+```
+
+Sprint 20 baseline before this docs traceability cleanup:
+
+```text
+main baseline d455aa16: required-ci success
+required-migration after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed
 ```
 
 Completed focus through Sprint 20:
@@ -58,6 +67,21 @@ Completed focus through Sprint 20:
 Production runtime reference:
 
 - `docs/78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md`
+- `docs/79_ERP_Sprint20_Changelog_Release_Hygiene_API_Modularization_Fallback_Cleanup_MyPham_v1.md`
+- `docs/81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md`
+
+Production readiness caveat:
+
+```text
+Web auth UI is still mock/staging-only until wired to the backend auth/session API.
+Backend auth/session persistence exists, but the frontend login surface must not be called production-ready until that integration is explicit.
+```
+
+Release tag traceability note:
+
+```text
+Sprint 16-17 runtime persistence work was merged to main and consolidated under the v0.18.0 auth/session runtime store release evidence.
+```
 
 ## Local Setup
 
