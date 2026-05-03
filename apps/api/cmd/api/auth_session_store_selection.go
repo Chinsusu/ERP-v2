@@ -19,6 +19,7 @@ func newRuntimeSessionManager(
 		Email:       cfg.AuthMockEmail,
 		Password:    cfg.AuthMockPassword,
 		AccessToken: cfg.StaticAuthAccessToken(),
+		Users:       sprint22UATLoginUsers(cfg),
 	}
 	if strings.TrimSpace(cfg.DatabaseURL) == "" {
 		return auth.NewSessionManager(authConfig, now), nil, nil
@@ -50,4 +51,28 @@ func newRuntimeSessionManager(
 	}
 
 	return manager, db.Close, nil
+}
+
+func sprint22UATLoginUsers(cfg config.Config) []auth.LoginUser {
+	if !config.AllowsStaticAuthAccessToken(cfg.AppEnv) {
+		return nil
+	}
+
+	return []auth.LoginUser{
+		{
+			Email: "warehouse_user@example.local",
+			Name:  "Warehouse User",
+			Role:  auth.RoleWarehouseStaff,
+		},
+		{
+			Email: "sales_user@example.local",
+			Name:  "Sales User",
+			Role:  auth.RoleSalesOps,
+		},
+		{
+			Email: "qc_user@example.local",
+			Name:  "QC User",
+			Role:  auth.RoleQA,
+		},
+	}
 }

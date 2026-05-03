@@ -157,6 +157,7 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
   ],
   QA: [
     "dashboard:view",
+    "warehouse:view",
     "inventory:view",
     "qc:view",
     "qc:decision",
@@ -190,6 +191,7 @@ export const rolePermissions: Record<RoleKey, PermissionKey[]> = {
   ],
   SALES_OPS: [
     "dashboard:view",
+    "inventory:view",
     "sales:view",
     "shipping:view",
     "returns:view",

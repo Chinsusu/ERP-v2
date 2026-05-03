@@ -164,6 +164,23 @@ describe("permission menu", () => {
     expect(financeLabels).not.toContain("QC");
   });
 
+  it("shows Sprint 22 sales and stock availability surfaces to sales UAT users", () => {
+    const salesUser: MockUser = {
+      id: "sales-user",
+      name: "Sales User",
+      email: "sales_user@example.local",
+      role: "SALES_OPS",
+      permissions: rolePermissions.SALES_OPS
+    };
+
+    const labels = getVisibleMenuGroups(salesUser).flatMap((group) => group.items.map((item) => item.label));
+
+    expect(labels).toContain("Sales Orders");
+    expect(labels).toContain("Inventory");
+    expect(labels).not.toContain("Finance");
+    expect(labels).not.toContain("Settings");
+  });
+
   it("shows reporting to leads and protects finance reporting visibility", () => {
     const warehouseLead: MockUser = {
       id: "warehouse-lead",
@@ -178,6 +195,25 @@ describe("permission menu", () => {
     expect(staffLabels).not.toContain("Reporting");
     expect(leadLabels).toContain("Reporting");
     expect(rolePermissions.WAREHOUSE_LEAD).not.toContain("reports:finance:view");
+  });
+
+  it("shows Sprint 22 receiving and QC surfaces to QC UAT users", () => {
+    const qcUser: MockUser = {
+      id: "qc-user",
+      name: "QC User",
+      email: "qc_user@example.local",
+      role: "QA",
+      permissions: rolePermissions.QA
+    };
+
+    const labels = getVisibleMenuGroups(qcUser).flatMap((group) => group.items.map((item) => item.label));
+
+    expect(labels).toContain("Receiving");
+    expect(labels).toContain("Inventory");
+    expect(labels).toContain("QC");
+    expect(labels).not.toContain("Sales Orders");
+    expect(labels).not.toContain("Finance");
+    expect(labels).not.toContain("Settings");
   });
 
   it("checks single menu item access", () => {

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/config"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -29,6 +30,43 @@ func TestNewRuntimeSessionManagerFallsBackToMemoryWithoutDatabaseURL(t *testing.
 	principal, ok := manager.AuthenticateAccessToken("local-dev-access-token")
 	if !ok || principal.Email != "admin@example.local" {
 		t.Fatalf("principal = %+v, authenticated = %v", principal, ok)
+	}
+}
+
+func TestNewRuntimeSessionManagerAcceptsSprint22RoleUATUsers(t *testing.T) {
+	manager, closeManager, err := newRuntimeSessionManager(config.Config{
+		AppEnv:              "dev",
+		AuthMockEmail:       "admin@example.local",
+		AuthMockPassword:    "local-only-mock-password",
+		AuthMockAccessToken: "local-dev-access-token",
+	}, func() time.Time { return time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC) })
+	if err != nil {
+		t.Fatalf("newRuntimeSessionManager() error = %v", err)
+	}
+	if closeManager != nil {
+		t.Fatal("closeManager is not nil, want nil for in-memory auth manager")
+	}
+
+	for _, tc := range []struct {
+		email string
+		role  auth.RoleKey
+	}{
+		{email: "warehouse_user@example.local", role: auth.RoleWarehouseStaff},
+		{email: "sales_user@example.local", role: auth.RoleSalesOps},
+		{email: "qc_user@example.local", role: auth.RoleQA},
+	} {
+		t.Run(tc.email, func(t *testing.T) {
+			session, failure, ok := manager.Login(tc.email, "local-only-mock-password")
+			if !ok {
+				t.Fatalf("login rejected: %+v", failure)
+			}
+			if session.Principal.Email != tc.email || session.Principal.Role != tc.role {
+				t.Fatalf("principal = %+v, want email %s role %s", session.Principal, tc.email, tc.role)
+			}
+			if _, ok := manager.AuthenticateAccessToken(session.AccessToken); !ok {
+				t.Fatal("issued access token did not authenticate")
+			}
+		})
 	}
 }
 

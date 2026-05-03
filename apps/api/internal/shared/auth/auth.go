@@ -14,6 +14,14 @@ type MockConfig struct {
 	Email       string
 	Password    string
 	AccessToken string
+	Users       []LoginUser
+}
+
+type LoginUser struct {
+	Email    string
+	Password string
+	Name     string
+	Role     RoleKey
 }
 
 type Principal struct {
@@ -27,14 +35,23 @@ type Principal struct {
 type principalContextKey struct{}
 
 func ValidateMockLogin(cfg MockConfig, email string, password string) (Principal, bool) {
-	if !strings.EqualFold(strings.TrimSpace(email), strings.TrimSpace(cfg.Email)) {
-		return Principal{}, false
+	admin := LoginUser{
+		Email:    cfg.Email,
+		Password: cfg.Password,
+		Name:     RoleDisplayName(RoleERPAdmin),
+		Role:     RoleERPAdmin,
 	}
-	if password != cfg.Password {
-		return Principal{}, false
+	if principal, ok := validateLoginUser(admin, email, password, cfg.Password); ok {
+		return principal, true
 	}
 
-	return MockPrincipal(cfg), true
+	for _, user := range cfg.Users {
+		if principal, ok := validateLoginUser(user, email, password, cfg.Password); ok {
+			return principal, true
+		}
+	}
+
+	return Principal{}, false
 }
 
 func MockPrincipal(cfg MockConfig) Principal {
@@ -42,10 +59,42 @@ func MockPrincipal(cfg MockConfig) Principal {
 }
 
 func MockPrincipalForRole(cfg MockConfig, role RoleKey) Principal {
+	return principalForLoginUser(LoginUser{
+		Email: cfg.Email,
+		Name:  RoleDisplayName(role),
+		Role:  role,
+	})
+}
+
+func validateLoginUser(user LoginUser, email string, password string, fallbackPassword string) (Principal, bool) {
+	if !strings.EqualFold(strings.TrimSpace(email), strings.TrimSpace(user.Email)) {
+		return Principal{}, false
+	}
+	expectedPassword := user.Password
+	if expectedPassword == "" {
+		expectedPassword = fallbackPassword
+	}
+	if password != expectedPassword {
+		return Principal{}, false
+	}
+
+	return principalForLoginUser(user), true
+}
+
+func principalForLoginUser(user LoginUser) Principal {
+	role := user.Role
+	if role == "" {
+		role = RoleERPAdmin
+	}
+	name := strings.TrimSpace(user.Name)
+	if name == "" {
+		name = RoleDisplayName(role)
+	}
+
 	return Principal{
 		UserID:      "user-" + strings.ToLower(strings.ReplaceAll(string(role), "_", "-")),
-		Email:       cfg.Email,
-		Name:        RoleDisplayName(role),
+		Email:       strings.TrimSpace(user.Email),
+		Name:        name,
 		Role:        role,
 		Permissions: PermissionsForRole(role),
 	}

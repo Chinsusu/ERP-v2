@@ -165,6 +165,7 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 	},
 	RoleQA: {
 		PermissionDashboardView,
+		PermissionWarehouseView,
 		PermissionInventoryView,
 		PermissionQCView,
 		PermissionQCDecision,
@@ -198,6 +199,7 @@ var rolePermissions = map[RoleKey][]PermissionKey{
 	},
 	RoleSalesOps: {
 		PermissionDashboardView,
+		PermissionInventoryView,
 		PermissionSalesView,
 		PermissionShippingView,
 		PermissionReturnsView,

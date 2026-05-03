@@ -145,6 +145,23 @@ func TestQCDecisionPermissionIsScopedToQARoles(t *testing.T) {
 	}
 }
 
+func TestQARoleCanAccessSprint22ReceivingUATSurfaces(t *testing.T) {
+	qa := MockPrincipalForRole(testConfig, RoleQA)
+	for _, permission := range []PermissionKey{
+		PermissionWarehouseView,
+		PermissionInventoryView,
+		PermissionQCView,
+		PermissionQCDecision,
+	} {
+		if !HasPermission(qa, permission) {
+			t.Fatalf("QA role missing Sprint 22 UAT permission %q", permission)
+		}
+	}
+	if HasPermission(qa, PermissionFinanceView) || HasPermission(qa, PermissionSettingsView) {
+		t.Fatal("QA role should not have finance or settings access")
+	}
+}
+
 func TestSprint4PurchaseAndFinanceRoleScopes(t *testing.T) {
 	purchase := MockPrincipalForRole(testConfig, RolePurchaseOps)
 	for _, permission := range []PermissionKey{
@@ -178,6 +195,21 @@ func TestSprint4PurchaseAndFinanceRoleScopes(t *testing.T) {
 	}
 	if HasPermission(finance, PermissionRecordCreate) || HasPermission(finance, PermissionQCDecision) {
 		t.Fatal("finance role should not create operational records or make QC decisions")
+	}
+}
+
+func TestSalesRoleCanAccessSprint22StockAvailability(t *testing.T) {
+	sales := MockPrincipalForRole(testConfig, RoleSalesOps)
+	for _, permission := range []PermissionKey{
+		PermissionSalesView,
+		PermissionInventoryView,
+	} {
+		if !HasPermission(sales, permission) {
+			t.Fatalf("sales role missing Sprint 22 UAT permission %q", permission)
+		}
+	}
+	if HasPermission(sales, PermissionFinanceView) || HasPermission(sales, PermissionSettingsView) {
+		t.Fatal("sales role should not have finance or settings access")
 	}
 }
 
