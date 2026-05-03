@@ -1,4 +1,4 @@
-import type { AuthenticatedUser } from "@/shared/auth/session";
+import type { AuthenticatedUser } from "../auth/session";
 
 export type RoleKey =
   | "CEO"

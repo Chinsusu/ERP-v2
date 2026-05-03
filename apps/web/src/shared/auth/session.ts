@@ -1,4 +1,4 @@
-import type { components } from "@/shared/api/generated/schema";
+import type { components } from "../api/generated/schema";
 
 export type AuthenticatedUser = components["schemas"]["UserProfile"];
 

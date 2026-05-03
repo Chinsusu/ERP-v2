@@ -1,5 +1,5 @@
 import type { components, paths } from "./generated/schema";
-import { resolveApiAccessToken } from "@/shared/auth/clientSessionToken";
+import { resolveApiAccessToken } from "../auth/clientSessionToken";
 
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
 

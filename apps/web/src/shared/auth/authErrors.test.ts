@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ApiError } from "@/shared/api/client";
+import { ApiError } from "../api/client";
 import { loginErrorReasonFromUnknown } from "./authErrors";
 
 function unauthorized(reason: string) {

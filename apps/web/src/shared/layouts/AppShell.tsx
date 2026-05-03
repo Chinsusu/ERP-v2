@@ -6,8 +6,8 @@ import { useEffect, type ReactNode } from "react";
 import {
   clearClientAccessToken,
   rememberClientAccessToken
-} from "@/shared/auth/clientSessionToken";
-import type { AuthenticatedUser } from "@/shared/auth/session";
+} from "../auth/clientSessionToken";
+import type { AuthenticatedUser } from "../auth/session";
 import { supportedLocales, type Locale } from "@/shared/i18n/config";
 import { getActionLabel } from "@/shared/i18n/action-labels";
 import { t } from "@/shared/i18n";

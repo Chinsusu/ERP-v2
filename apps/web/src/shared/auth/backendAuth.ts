@@ -1,5 +1,5 @@
-import { apiGet, apiPost } from "@/shared/api/client";
-import type { components } from "@/shared/api/generated/schema";
+import { apiGet, apiPost } from "../api/client";
+import type { components } from "../api/generated/schema";
 
 export type AuthLoginResponse = components["schemas"]["AuthLoginResponse"];
 export type AuthLogoutResponse = components["schemas"]["AuthLogoutResponse"];

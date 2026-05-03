@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { ApiError } from "@/shared/api/client";
+import { ApiError } from "../api/client";
 import { isProductionLikeWebRuntime } from "./clientSessionToken";
 import { loginErrorReasonFromUnknown, type LoginErrorReason } from "./authErrors";
 import {

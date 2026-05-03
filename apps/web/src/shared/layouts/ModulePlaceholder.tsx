@@ -1,6 +1,6 @@
 "use client";
 
-import type { AuthenticatedUser } from "@/shared/auth/session";
+import type { AuthenticatedUser } from "../auth/session";
 import { DataTable, StatusChip, type DataTableColumn } from "@/shared/design-system/components";
 import { getActionLabel } from "@/shared/i18n/action-labels";
 import { t } from "@/shared/i18n";

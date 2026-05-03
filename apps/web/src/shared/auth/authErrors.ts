@@ -1,4 +1,4 @@
-import { ApiError } from "@/shared/api/client";
+import { ApiError } from "../api/client";
 
 export type LoginErrorReason = "invalid_credentials" | "password_policy" | "locked" | "auth_unavailable";
 
