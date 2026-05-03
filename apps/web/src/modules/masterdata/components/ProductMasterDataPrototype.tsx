@@ -21,6 +21,7 @@ import {
   productStatusOptions,
   productStatusTone,
   productTypeOptions,
+  productUomOptions,
   toProductInput
 } from "../services/productMasterDataService";
 import type { ProductMasterDataInput, ProductMasterDataItem, ProductMasterDataQuery, ProductStatus, ProductType } from "../types";
@@ -288,9 +289,9 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
               </label>
               <TextField label={productCopy("form.group")} value={form.itemGroup} onChange={(value) => updateForm({ itemGroup: value })} />
               <TextField label={productCopy("form.brand")} value={form.brandCode} onChange={(value) => updateForm({ brandCode: value.toUpperCase() })} />
-              <TextField label={productCopy("form.baseUom")} value={form.uomBase} onChange={(value) => updateForm({ uomBase: value.toUpperCase() })} />
-              <TextField label={productCopy("form.purchaseUom")} value={form.uomPurchase} onChange={(value) => updateForm({ uomPurchase: value.toUpperCase() })} />
-              <TextField label={productCopy("form.issueUom")} value={form.uomIssue} onChange={(value) => updateForm({ uomIssue: value.toUpperCase() })} />
+              <UomField label={productCopy("form.baseUom")} value={form.uomBase} onChange={(value) => updateForm({ uomBase: value })} />
+              <UomField label={productCopy("form.purchaseUom")} value={form.uomPurchase} onChange={(value) => updateForm({ uomPurchase: value })} />
+              <UomField label={productCopy("form.issueUom")} value={form.uomIssue} onChange={(value) => updateForm({ uomIssue: value })} />
               <NumberField label={productCopy("form.shelfLifeDays")} value={form.shelfLifeDays} onChange={(value) => updateForm({ shelfLifeDays: value })} />
               <DecimalInput label={productCopy("form.standardCost")} scale={decimalScales.unitCost} suffix="VND" value={form.standardCost} onChange={(value) => updateForm({ standardCost: value })} />
               <TextField label={productCopy("form.specVersion")} value={form.specVersion} onChange={(value) => updateForm({ specVersion: value })} />
@@ -403,6 +404,26 @@ function TextField({ label, value, onChange }: { label: string; value: string; o
   );
 }
 
+function UomField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const normalizedValue = value.trim().toUpperCase();
+  const options = productUomOptions.some((option) => option.value === normalizedValue)
+    ? productUomOptions
+    : [...productUomOptions, { value: normalizedValue }];
+
+  return (
+    <label className="erp-field">
+      <span>{label}</span>
+      <select className="erp-input" value={normalizedValue} onChange={(event) => onChange(event.target.value)}>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {productUomDisplay(option.value)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
   return (
     <label className="erp-field">
@@ -449,6 +470,10 @@ function productStatusDisplay(status: ProductStatus) {
 
 function productTypeDisplay(type: ProductType) {
   return productCopy(`product.type.${type}`);
+}
+
+function productUomDisplay(value: string) {
+  return productCopy(`uom.${value}`, undefined, value);
 }
 
 function productCopy(key: string, values?: Record<string, string | number>, fallback?: string) {

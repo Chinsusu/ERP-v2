@@ -130,6 +130,21 @@
       "service": "Dịch vụ"
     }
   },
+  "uom": {
+    "MG": "MG - Miligam",
+    "G": "G - Gram",
+    "KG": "KG - Kilogram",
+    "ML": "ML - Mililit",
+    "L": "L - Lít",
+    "PCS": "PCS - Cái",
+    "BOTTLE": "BOTTLE - Chai",
+    "JAR": "JAR - Hũ",
+    "TUBE": "TUBE - Tuýp",
+    "BOX": "BOX - Hộp",
+    "CARTON": "CARTON - Thùng",
+    "SET": "SET - Bộ/combo",
+    "SERVICE": "SERVICE - Dịch vụ"
+  },
   "party": {
     "page": {
       "title": "Dữ liệu nhà cung cấp và khách hàng",

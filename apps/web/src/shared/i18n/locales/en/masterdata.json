@@ -130,6 +130,21 @@
       "service": "Service"
     }
   },
+  "uom": {
+    "MG": "MG - Milligram",
+    "G": "G - Gram",
+    "KG": "KG - Kilogram",
+    "ML": "ML - Milliliter",
+    "L": "L - Liter",
+    "PCS": "PCS - Piece",
+    "BOTTLE": "BOTTLE - Bottle",
+    "JAR": "JAR - Jar",
+    "TUBE": "TUBE - Tube",
+    "BOX": "BOX - Box",
+    "CARTON": "CARTON - Carton",
+    "SET": "SET - Set",
+    "SERVICE": "SERVICE - Service"
+  },
   "party": {
     "page": {
       "title": "Supplier Customer Master Data",
