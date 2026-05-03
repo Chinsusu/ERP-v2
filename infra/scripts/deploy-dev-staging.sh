@@ -51,7 +51,9 @@ if [ "$environment" = "dev" ]; then
   compose --profile tools run --rm seed
 fi
 
-compose up -d --remove-orphans api worker web reverse-proxy
+compose up -d --remove-orphans api worker web
+# Nginx resolves Docker upstream names at start; app recreates can change IPs.
+compose up -d --remove-orphans --force-recreate reverse-proxy
 "$root_dir/infra/scripts/smoke-dev-staging.sh" "$environment"
 
 echo "ERP $environment deployment finished"
