@@ -111,6 +111,25 @@ func TestUOMCatalogPassesThroughBaseUOM(t *testing.T) {
 	}
 }
 
+func TestUOMCatalogAcceptsOperationalPackagingUnits(t *testing.T) {
+	catalog := NewPrototypeUOMCatalog()
+
+	for _, code := range []string{"BAG", "ROLL", "CM"} {
+		result, err := catalog.ConvertToBase(context.Background(), ConvertToBaseInput{
+			SKU:         "PACKAGING-SHEET-IMPORT",
+			Quantity:    decimal.MustQuantity("1"),
+			FromUOMCode: code,
+			BaseUOMCode: code,
+		})
+		if err != nil {
+			t.Fatalf("base passthrough for %s: %v", code, err)
+		}
+		if !result.IsBasePassthrough || result.BaseUOMCode.String() != code {
+			t.Fatalf("result for %s = %+v, want direct passthrough", code, result)
+		}
+	}
+}
+
 func TestUOMCatalogReturnsStandardDetailsForMissingConversion(t *testing.T) {
 	catalog := NewPrototypeUOMCatalog()
 

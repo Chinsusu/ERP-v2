@@ -143,6 +143,9 @@
     "BOX": "BOX - Box",
     "CARTON": "CARTON - Carton",
     "SET": "SET - Set",
+    "BAG": "BAG - Bag",
+    "ROLL": "ROLL - Roll",
+    "CM": "CM - Centimeter",
     "SERVICE": "SERVICE - Service"
   },
   "party": {

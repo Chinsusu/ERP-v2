@@ -143,6 +143,9 @@
     "BOX": "BOX - Hộp",
     "CARTON": "CARTON - Thùng",
     "SET": "SET - Bộ/combo",
+    "BAG": "BAG - T\u00fai",
+    "ROLL": "ROLL - Cu\u1ed9n",
+    "CM": "CM - Centimet",
     "SERVICE": "SERVICE - Dịch vụ"
   },
   "party": {

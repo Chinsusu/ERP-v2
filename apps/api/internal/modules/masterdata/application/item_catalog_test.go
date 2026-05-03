@@ -13,7 +13,7 @@ import (
 func TestItemCatalogListsFilteredPrototypeItems(t *testing.T) {
 	store := NewPrototypeItemCatalog(audit.NewInMemoryLogStore())
 
-	items, pagination, err := store.List(context.Background(), domain.NewItemFilter("serum", domain.ItemStatusActive, domain.ItemTypeFinishedGood, 1, 20))
+	items, pagination, err := store.List(context.Background(), domain.NewItemFilter("citric", domain.ItemStatusActive, domain.ItemTypeRawMaterial, 1, 20))
 	if err != nil {
 		t.Fatalf("list items: %v", err)
 	}
@@ -21,11 +21,70 @@ func TestItemCatalogListsFilteredPrototypeItems(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("items = %d, want 1", len(items))
 	}
-	if items[0].SKUCode != "SERUM-30ML" {
-		t.Fatalf("sku = %q, want SERUM-30ML", items[0].SKUCode)
+	if items[0].SKUCode != "ACI_CITRIC" {
+		t.Fatalf("sku = %q, want ACI_CITRIC", items[0].SKUCode)
 	}
 	if pagination.TotalItems != 1 || pagination.Page != 1 {
 		t.Fatalf("pagination = %+v, want one item on page 1", pagination)
+	}
+}
+
+func TestImportedMasterDataItemsAreNormalizedFromSourceSheets(t *testing.T) {
+	items := importedMasterDataItems()
+	if len(items) != 332 {
+		t.Fatalf("imported item count = %d, want 332", len(items))
+	}
+
+	bySKU := make(map[string]domain.Item, len(items))
+	for _, item := range items {
+		if item.SKUCode == "SERUM-30ML" || item.SKUCode == "CREAM-50G" || item.SKUCode == "TONER-100ML" {
+			t.Fatalf("legacy mock sku %q should not be part of imported master data", item.SKUCode)
+		}
+		if _, exists := bySKU[item.SKUCode]; exists {
+			t.Fatalf("duplicate imported sku %q", item.SKUCode)
+		}
+		bySKU[item.SKUCode] = item
+	}
+
+	citric := bySKU["ACI_CITRIC"]
+	if citric.Name != "CITRIC ACID" || citric.Type != domain.ItemTypeRawMaterial || citric.Group != "acid" || citric.UOMBase != "KG" {
+		t.Fatalf("ACI_CITRIC = %+v, want raw acid KG item", citric)
+	}
+	if !citric.IsPurchasable || citric.IsSellable || citric.IsProducible {
+		t.Fatalf("ACI_CITRIC flags = %+v, want purchasable raw material only", citric)
+	}
+
+	if fragrance := bySKU["FRA_NTG"]; fragrance.Name == "" || fragrance.Group != "fragrance" || fragrance.UOMBase != "KG" {
+		t.Fatalf("FRA_NTG = %+v, want imported fragrance from header row", fragrance)
+	}
+	if fragrance := bySKU["FRA_SEXY"]; fragrance.Name == "" || fragrance.Group != "fragrance" || fragrance.UOMBase != "KG" {
+		t.Fatalf("FRA_SEXY = %+v, want imported fragrance from header row", fragrance)
+	}
+
+	tube := bySKU["TP-100"]
+	if tube.Type != domain.ItemTypePackaging || tube.Group != "tube" || tube.UOMBase != "TUBE" {
+		t.Fatalf("TP-100 = %+v, want packaging tube item", tube)
+	}
+	bagFound := false
+	rollFound := false
+	for _, item := range items {
+		if item.UOMBase == "BAG" {
+			bagFound = true
+		}
+		if item.UOMBase == "ROLL" {
+			rollFound = true
+		}
+	}
+	if !bagFound || !rollFound {
+		t.Fatalf("imported UOMs bag=%v roll=%v, want both present", bagFound, rollFound)
+	}
+}
+
+func TestPostgresSeedItemsExcludeLegacyOperationalMockItems(t *testing.T) {
+	for _, item := range seedMasterDataItems() {
+		if item.SKUCode == "SERUM-30ML" || item.SKUCode == "CREAM-50G" || item.SKUCode == "TONER-100ML" {
+			t.Fatalf("legacy mock sku %q should not be seeded into Postgres", item.SKUCode)
+		}
 	}
 }
 
@@ -33,11 +92,11 @@ func TestItemCatalogBlocksDuplicateItemAndSKUCode(t *testing.T) {
 	store := NewPrototypeItemCatalog(audit.NewInMemoryLogStore())
 
 	_, err := store.Create(context.Background(), CreateItemInput{
-		ItemCode:         "ITEM-SERUM-HYDRA",
+		ItemCode:         "ACI_CITRIC",
 		SKUCode:          "NEW-SERUM-30ML",
 		Name:             "New Serum",
-		Type:             "finished_good",
-		UOMBase:          "EA",
+		Type:             "raw_material",
+		UOMBase:          "KG",
 		LotControlled:    true,
 		ExpiryControlled: true,
 		ShelfLifeDays:    365,
@@ -50,10 +109,10 @@ func TestItemCatalogBlocksDuplicateItemAndSKUCode(t *testing.T) {
 
 	_, err = store.Create(context.Background(), CreateItemInput{
 		ItemCode:         "ITEM-NEW-SERUM",
-		SKUCode:          "SERUM-30ML",
+		SKUCode:          "ACI_CITRIC",
 		Name:             "New Serum",
-		Type:             "finished_good",
-		UOMBase:          "EA",
+		Type:             "raw_material",
+		UOMBase:          "KG",
 		LotControlled:    true,
 		ExpiryControlled: true,
 		ShelfLifeDays:    365,

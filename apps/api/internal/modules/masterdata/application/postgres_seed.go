@@ -11,7 +11,7 @@ func (s *PostgresItemCatalog) EnsureSeed(ctx context.Context) error {
 		return errors.New("database connection is required")
 	}
 
-	for _, item := range prototypeItems() {
+	for _, item := range seedMasterDataItems() {
 		item = item.Clone()
 		if _, err := s.Get(ctx, item.ID); err == nil {
 			continue

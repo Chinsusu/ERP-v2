@@ -421,6 +421,17 @@ func newItemID(skuCode string, now time.Time) string {
 }
 
 func prototypeItems() []domain.Item {
+	items := seedMasterDataItems()
+	items = append(items, operationalPrototypeItems()...)
+
+	return items
+}
+
+func seedMasterDataItems() []domain.Item {
+	return importedMasterDataItems()
+}
+
+func operationalPrototypeItems() []domain.Item {
 	baseTime := time.Date(2026, 4, 26, 8, 0, 0, 0, time.UTC)
 	items := make([]domain.Item, 0, 3)
 	for _, input := range []domain.NewItemInput{

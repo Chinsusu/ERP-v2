@@ -2,6 +2,7 @@ import { apiGet, apiGetRaw, apiPatch, apiPost } from "../../../shared/api/client
 import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import type { components, operations } from "../../../shared/api/generated/schema";
 import { decimalScales, isNegativeDecimal, normalizeDecimalInput } from "../../../shared/format/numberFormat";
+import importedProductMasterData from "../data/importedProductMasterData.json";
 import type {
   ProductMasterDataInput,
   ProductMasterDataItem,
@@ -47,6 +48,9 @@ export const productUomOptions: { value: string }[] = [
   { value: "BOX" },
   { value: "CARTON" },
   { value: "SET" },
+  { value: "BAG" },
+  { value: "ROLL" },
+  { value: "CM" },
   { value: "SERVICE" }
 ];
 
@@ -72,80 +76,7 @@ export const emptyProductInput: ProductMasterDataInput = {
   specVersion: ""
 };
 
-export const prototypeProductMasterData: ProductMasterDataItem[] = [
-  {
-    id: "item-serum-30ml",
-    itemCode: "ITEM-SERUM-HYDRA",
-    skuCode: "SERUM-30ML",
-    name: "Hydrating Serum 30ml",
-    itemType: "finished_good",
-    itemGroup: "serum",
-    brandCode: "MYH",
-    uomBase: "PCS",
-    uomPurchase: "PCS",
-    uomIssue: "PCS",
-    lotControlled: true,
-    expiryControlled: true,
-    shelfLifeDays: 730,
-    qcRequired: true,
-    status: "active",
-    standardCost: "64000.000000",
-    isSellable: true,
-    isPurchasable: false,
-    isProducible: true,
-    specVersion: "SPEC-SERUM-2026.04",
-    createdAt: "2026-04-26T08:00:00Z",
-    updatedAt: "2026-04-26T08:00:00Z"
-  },
-  {
-    id: "item-cream-50g",
-    itemCode: "ITEM-CREAM-REPAIR",
-    skuCode: "CREAM-50G",
-    name: "Repair Cream 50g",
-    itemType: "finished_good",
-    itemGroup: "cream",
-    brandCode: "MYH",
-    uomBase: "PCS",
-    uomPurchase: "PCS",
-    uomIssue: "PCS",
-    lotControlled: true,
-    expiryControlled: true,
-    shelfLifeDays: 540,
-    qcRequired: true,
-    status: "active",
-    standardCost: "58000.000000",
-    isSellable: true,
-    isPurchasable: false,
-    isProducible: true,
-    specVersion: "SPEC-CREAM-2026.03",
-    createdAt: "2026-04-26T08:10:00Z",
-    updatedAt: "2026-04-26T08:10:00Z"
-  },
-  {
-    id: "item-toner-100ml",
-    itemCode: "ITEM-TONER-BALANCE",
-    skuCode: "TONER-100ML",
-    name: "Balancing Toner 100ml",
-    itemType: "finished_good",
-    itemGroup: "toner",
-    brandCode: "MYH",
-    uomBase: "PCS",
-    uomPurchase: "PCS",
-    uomIssue: "PCS",
-    lotControlled: true,
-    expiryControlled: true,
-    shelfLifeDays: 720,
-    qcRequired: true,
-    status: "draft",
-    standardCost: "42000.000000",
-    isSellable: true,
-    isPurchasable: false,
-    isProducible: true,
-    specVersion: "SPEC-TONER-2026.04-DRAFT",
-    createdAt: "2026-04-26T08:20:00Z",
-    updatedAt: "2026-04-26T08:20:00Z"
-  }
-];
+export const prototypeProductMasterData: ProductMasterDataItem[] = importedProductMasterData as ProductMasterDataItem[];
 
 let localProducts = cloneProducts(prototypeProductMasterData);
 
