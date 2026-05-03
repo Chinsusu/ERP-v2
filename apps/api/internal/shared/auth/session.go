@@ -64,6 +64,7 @@ type SessionStore interface {
 	StoreSession(session Session, now time.Time) error
 	FindByAccessToken(accessToken string, now time.Time) (Session, bool, error)
 	RotateRefreshToken(refreshToken string, now time.Time, buildNext func(Session) Session) (Session, bool, error)
+	RevokeRefreshToken(refreshToken string, now time.Time) (bool, error)
 }
 
 type InMemorySessionStore struct {
@@ -134,6 +135,24 @@ func (s *InMemorySessionStore) RotateRefreshToken(
 	s.accessTokens[session.AccessToken] = session
 	s.refreshTokens[session.RefreshToken] = session
 	return session, true, nil
+}
+
+func (s *InMemorySessionStore) RevokeRefreshToken(refreshToken string, now time.Time) (bool, error) {
+	if s == nil {
+		return false, errors.New("auth session store is required")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing, ok := s.refreshTokens[strings.TrimSpace(refreshToken)]
+	if !ok || !existing.RefreshExpiresAt.After(now) {
+		return false, nil
+	}
+
+	delete(s.refreshTokens, existing.RefreshToken)
+	delete(s.accessTokens, existing.AccessToken)
+	return true, nil
 }
 
 type LoginFailureStore interface {
@@ -358,6 +377,16 @@ func (m *SessionManager) RefreshWithError(refreshToken string) (Session, bool, e
 	return m.sessionStore.RotateRefreshToken(refreshToken, now, func(existing Session) Session {
 		return m.newSession(existing.Principal, now)
 	})
+}
+
+func (m *SessionManager) Logout(refreshToken string) bool {
+	ok, _ := m.LogoutWithError(refreshToken)
+	return ok
+}
+
+func (m *SessionManager) LogoutWithError(refreshToken string) (bool, error) {
+	now := m.now().UTC()
+	return m.sessionStore.RevokeRefreshToken(refreshToken, now)
 }
 
 func (m *SessionManager) AuthenticateAccessToken(accessToken string) (Principal, bool) {

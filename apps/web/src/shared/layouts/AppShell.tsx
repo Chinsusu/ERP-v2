@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
-import type { MockUser } from "@/shared/auth/mockSession";
+import { useEffect, type ReactNode } from "react";
+import {
+  clearClientAccessToken,
+  rememberClientAccessToken
+} from "@/shared/auth/clientSessionToken";
+import type { AuthenticatedUser } from "@/shared/auth/session";
 import { supportedLocales, type Locale } from "@/shared/i18n/config";
 import { getActionLabel } from "@/shared/i18n/action-labels";
 import { t } from "@/shared/i18n";
@@ -12,19 +16,96 @@ import { useLocale } from "@/shared/i18n/useLocale";
 import { getVisibleActions, getVisibleMenuGroups, topbarActions } from "@/shared/permissions/menu";
 
 type AppShellProps = {
+  accessToken: string;
   children: ReactNode;
-  user: MockUser;
+  expiresAt: string;
+  signOutAction: () => Promise<void>;
+  user: AuthenticatedUser;
 };
+
+const logoutSignalKey = "erp_auth_logout_at";
 
 function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppShell({ children, user }: AppShellProps) {
+type RefreshResponse = {
+  data?: {
+    access_token?: string;
+    expires_at?: string;
+  };
+};
+
+export function AppShell({ accessToken, children, expiresAt, signOutAction, user }: AppShellProps) {
+  rememberClientAccessToken(accessToken);
+
   const pathname = usePathname();
   const [locale, setLocale] = useLocale();
   const groups = getVisibleMenuGroups(user);
   const actions = getVisibleActions(user, topbarActions);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === logoutSignalKey) {
+        clearClientAccessToken();
+        window.location.assign("/login");
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  useEffect(() => {
+    let stopped = false;
+    let refreshTimer: number | undefined;
+
+    const scheduleRefresh = (targetExpiresAt: string) => {
+      const expiresAtMs = Date.parse(targetExpiresAt);
+      if (!Number.isFinite(expiresAtMs)) {
+        return;
+      }
+
+      const refreshDelayMs = Math.max(expiresAtMs - Date.now() - 60_000, 0);
+      refreshTimer = window.setTimeout(async () => {
+        try {
+          const response = await fetch("/api/auth/refresh", { method: "POST" });
+          if (stopped) {
+            return;
+          }
+          if (!response.ok) {
+            throw new Error("session refresh failed");
+          }
+
+          const payload = (await response.json()) as RefreshResponse;
+          const nextAccessToken = payload.data?.access_token;
+          const nextExpiresAt = payload.data?.expires_at;
+          if (!nextAccessToken || !nextExpiresAt) {
+            throw new Error("session refresh response is incomplete");
+          }
+
+          rememberClientAccessToken(nextAccessToken);
+          scheduleRefresh(nextExpiresAt);
+        } catch {
+          if (!stopped) {
+            clearClientAccessToken();
+            publishLogoutSignal();
+            window.location.assign("/login?error=session_expired");
+          }
+        }
+      }, refreshDelayMs);
+    };
+
+    rememberClientAccessToken(accessToken);
+    scheduleRefresh(expiresAt);
+
+    return () => {
+      stopped = true;
+      if (refreshTimer !== undefined) {
+        window.clearTimeout(refreshTimer);
+      }
+    };
+  }, [accessToken, expiresAt]);
 
   return (
     <div className="erp-shell">
@@ -56,6 +137,11 @@ export function AppShell({ children, user }: AppShellProps) {
             </button>
           ))}
           <LanguageSwitch locale={locale} onLocaleChange={setLocale} />
+          <form action={signOutAction} onSubmit={publishLogoutSignal}>
+            <button className="erp-button erp-button--secondary" type="submit">
+              {t("auth.signOut")}
+            </button>
+          </form>
           <div className="erp-user-badge" aria-label={t("common.signedInAs", { values: { name: user.name } })}>
             <span className="erp-user-avatar" aria-hidden="true">
               {user.name.slice(0, 2).toUpperCase()}
@@ -108,6 +194,15 @@ export function AppShell({ children, user }: AppShellProps) {
       </div>
     </div>
   );
+}
+
+function publishLogoutSignal() {
+  clearClientAccessToken();
+  try {
+    window.localStorage.setItem(logoutSignalKey, String(Date.now()));
+  } catch {
+    // The server logout action still clears the httpOnly cookies for this tab.
+  }
 }
 
 type LanguageSwitchProps = {

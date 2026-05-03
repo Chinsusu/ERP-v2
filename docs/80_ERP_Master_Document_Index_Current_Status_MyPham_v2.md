@@ -5,7 +5,7 @@ Phase: Phase 1
 Document role: Current master document index and traceability map
 Version: v2.0
 Date: 2026-05-03
-Status: Current source-of-truth index for docs 01-81
+Status: Current source-of-truth index for docs 01-83
 
 ---
 
@@ -13,7 +13,7 @@ Status: Current source-of-truth index for docs 01-81
 
 This v2 index is the current navigation map for the ERP documentation set.
 
-The original file `32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` remains the historical handoff index for the early Phase 1 documents. This file extends the map through Sprint 20 hardening and the post-localization documentation cleanup.
+The original file `32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` remains the historical handoff index for the early Phase 1 documents. This file extends the map through Sprint 21 auth UI backend integration and production runtime smoke planning.
 
 Use this file when a reader needs to answer:
 
@@ -29,7 +29,7 @@ Which document locks Vietnamese operational terminology?
 ## 2. Current Status Snapshot
 
 ```text
-Current main: Sprint 20 hardening completed after Sprint 19 Vietnamese UI localization.
+Current line: Sprint 21 auth UI backend integration after Sprint 20 hardening and Sprint 19 Vietnamese UI localization.
 Latest release tag: v0.19.0-vietnamese-ui-localization.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
@@ -41,11 +41,12 @@ Currency: VND.
 Timezone: Asia/Ho_Chi_Minh.
 ```
 
-Production caveat:
+Production auth status:
 
 ```text
-Web auth UI is still mock/staging-only until wired to the backend auth/session API.
-Backend auth/session persistence exists, but frontend login must not be called production-ready until that integration is explicit.
+Web auth UI is backend-wired for the existing email/password auth surface.
+Production-like deployments still require target-environment auth smoke evidence before release.
+SSO, MFA, password reset email, and device/session management remain out of scope.
 ```
 
 ---
@@ -60,10 +61,12 @@ For a new engineer or reviewer:
 3. 38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md
 4. 76_ERP_Coding_Task_Board_Sprint20_Release_Hygiene_API_Modularization_Fallback_Cleanup_MyPham_v1.md
 5. 79_ERP_Sprint20_Changelog_Release_Hygiene_API_Modularization_Fallback_Cleanup_MyPham_v1.md
-6. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
-7. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
-8. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
-9. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
+6. 82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md
+7. 83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md
+8. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
+9. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
+10. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
+11. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
 ```
 
 For product or operations review:
@@ -139,6 +142,7 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | Sprint 18 | `73_ERP_Coding_Task_Board_Sprint18_Auth_Session_Runtime_Store_Persistence_MyPham_v1.md` | `74_ERP_Sprint18_Changelog_Auth_Session_Runtime_Store_Persistence_MyPham_v1.md` | Auth/session runtime store persistence |
 | Sprint 19 | `75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md` | `77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md` | Vietnamese-first UI localization |
 | Sprint 20 | `76_ERP_Coding_Task_Board_Sprint20_Release_Hygiene_API_Modularization_Fallback_Cleanup_MyPham_v1.md` | `79_ERP_Sprint20_Changelog_Release_Hygiene_API_Modularization_Fallback_Cleanup_MyPham_v1.md` | Release hygiene, API modularization, production fallback hardening |
+| Sprint 21 | `82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md` | `83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md` | Web auth UI backend integration and production runtime smoke |
 
 ---
 
@@ -148,6 +152,8 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | --- | --- | --- |
 | `78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md` | Production-like runtime checklist | Before staging, pilot, production rehearsal, production release, or production-like smoke |
 | `81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md` | Vietnamese operational terminology lock | Before changing UI copy, status labels, validation messages, warehouse copy, returns copy, receiving copy, or QC copy |
+| `82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md` | Sprint 21 auth UI integration task board | Before changing auth UI/backend session behavior |
+| `83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md` | Sprint 21 auth integration changelog | Before closing auth UI backend integration or recording release smoke evidence |
 
 ---
 
@@ -167,6 +173,6 @@ Track these as documentation or product follow-up, not as completed Sprint 20 sc
 
 ```text
 English mode still has deeper table/filter labels that need localization cleanup.
-Web auth UI remains mock/staging-only until backend auth/session API wiring is explicit.
+Production-like auth smoke evidence must be recorded per target environment before release.
 Any future production-like release must record whether prototype fallback gaps remain.
 ```

@@ -1,4 +1,5 @@
 import { signInAction } from "./actions";
+import { isProductionLikeWebRuntime } from "@/shared/auth/clientSessionToken";
 import { t } from "@/shared/i18n";
 
 type LoginPageProps = {
@@ -7,8 +8,13 @@ type LoginPageProps = {
 
 const errorCopy: Record<string, string> = {
   invalid_credentials: authCopy("errors.invalidCredentials"),
-  password_policy: authCopy("errors.passwordPolicy")
+  password_policy: authCopy("errors.passwordPolicy"),
+  locked: authCopy("errors.locked"),
+  session_expired: authCopy("errors.sessionExpired"),
+  auth_unavailable: authCopy("errors.authUnavailable")
 };
+
+const devDefaultEmail = isProductionLikeWebRuntime() ? undefined : "admin@example.local";
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
@@ -25,7 +31,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             className="erp-input"
             name="email"
             type="email"
-            defaultValue="admin@example.local"
+            defaultValue={devDefaultEmail}
           />
         </label>
         <label className="erp-field">

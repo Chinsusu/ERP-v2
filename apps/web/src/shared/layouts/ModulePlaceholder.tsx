@@ -1,6 +1,6 @@
 "use client";
 
-import type { MockUser } from "@/shared/auth/mockSession";
+import type { AuthenticatedUser } from "@/shared/auth/session";
 import { DataTable, StatusChip, type DataTableColumn } from "@/shared/design-system/components";
 import { getActionLabel } from "@/shared/i18n/action-labels";
 import { t } from "@/shared/i18n";
@@ -10,7 +10,7 @@ import { getVisibleActions, moduleActions, type AppMenuItem } from "@/shared/per
 
 type ModulePlaceholderProps = {
   item: AppMenuItem;
-  user: MockUser;
+  user: AuthenticatedUser;
 };
 
 const kpis = [

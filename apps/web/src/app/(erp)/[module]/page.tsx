@@ -12,7 +12,7 @@ import { SalesOrderPrototype } from "@/modules/sales/components/SalesOrderProtot
 import { ShippingOperationsPrototype } from "@/modules/shipping/components/ShippingOperationsPrototype";
 import { SubcontractOrderPrototype } from "@/modules/subcontract/components/SubcontractOrderPrototype";
 import WarehouseDailyBoard from "@/modules/warehouse/components/WarehouseDailyBoard";
-import { getMockSession } from "@/shared/auth/mockSession";
+import { getBackendSession } from "@/shared/auth/serverSession";
 import { ModulePlaceholder } from "@/shared/layouts/ModulePlaceholder";
 import { appMenuGroups, canAccessMenuItem } from "@/shared/permissions/menu";
 
@@ -26,7 +26,7 @@ const menuItems = appMenuGroups.flatMap((group) => group.items);
 
 export default async function ERPModulePage({ params }: ERPModulePageProps) {
   const { module } = await params;
-  const session = await getMockSession();
+  const session = await getBackendSession();
   const item = menuItems.find((candidate) => candidate.href === `/${module}`);
 
   if (!session.isAuthenticated || !item || !canAccessMenuItem(session.user, item)) {

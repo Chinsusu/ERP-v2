@@ -26,12 +26,13 @@ docs             ERP project documents
 Start with:
 
 - `docs/80_ERP_Master_Document_Index_Current_Status_MyPham_v2.md`
+- `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
 - `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
 
 ## Current Status
 
-Current `main`: Sprint 20 hardening completed after Sprint 19 Vietnamese UI localization.
+Current line: Sprint 21 auth UI backend integration after Sprint 20 hardening and Sprint 19 Vietnamese UI localization.
 
 Latest release tag:
 
@@ -48,33 +49,37 @@ required-api, required-web, required-openapi, required-migration: pass
 required-migration at release tag: PostgreSQL 16 apply + rollback passed
 ```
 
-Sprint 20 baseline before this docs traceability cleanup:
+Sprint 21 baseline before auth UI backend integration:
 
 ```text
-main baseline d455aa16: required-ci success
+main baseline 020d6a13: Sprint 20 traceability cleanup merged after required-ci success
 required-migration after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed
 ```
 
-Completed focus through Sprint 20:
+Completed focus through Sprint 21:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
 - Vietnamese-first ERP UI foundation across navigation, dashboard, warehouse, sales, shipping, returns, purchase, QC, master data, inventory, auth, audit, and attachment surfaces
 - Release hygiene: migration apply -> rollback -> reapply gate, GitHub Actions Node 24 compatibility, modular API route registration, and production-mode prototype fallback blocking
+- Backend-backed web auth UI integration: login, `/me` session bootstrap, refresh rotation, logout, RBAC menu/route guard, Vietnamese auth errors, and production-like mock auth blocking
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 
 Production runtime reference:
 
+- `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
+- `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md`
 - `docs/79_ERP_Sprint20_Changelog_Release_Hygiene_API_Modularization_Fallback_Cleanup_MyPham_v1.md`
 - `docs/81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md`
 
-Production readiness caveat:
+Production auth status:
 
 ```text
-Web auth UI is still mock/staging-only until wired to the backend auth/session API.
-Backend auth/session persistence exists, but the frontend login surface must not be called production-ready until that integration is explicit.
+Web auth UI is backend-wired for the existing email/password auth surface.
+Production-like deployments still require target-environment auth smoke evidence before release.
+SSO, MFA, password reset email, and device/session management remain out of scope.
 ```
 
 Release tag traceability note:

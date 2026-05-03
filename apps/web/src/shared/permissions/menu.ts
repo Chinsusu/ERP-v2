@@ -1,4 +1,4 @@
-import type { MockUser } from "@/shared/auth/mockSession";
+import type { AuthenticatedUser } from "@/shared/auth/session";
 
 export type RoleKey =
   | "CEO"
@@ -271,15 +271,15 @@ export function getPermissionsForRole(role: RoleKey): PermissionKey[] {
   return [...rolePermissions[role]];
 }
 
-export function hasPermission(user: MockUser, permission: PermissionKey) {
+export function hasPermission(user: AuthenticatedUser, permission: PermissionKey) {
   return user.permissions.includes(permission);
 }
 
-export function canAccessMenuItem(user: MockUser, item: AppMenuItem) {
+export function canAccessMenuItem(user: AuthenticatedUser, item: AppMenuItem) {
   return hasPermission(user, item.permission);
 }
 
-export function getVisibleMenuGroups(user: MockUser): AppMenuGroup[] {
+export function getVisibleMenuGroups(user: AuthenticatedUser): AppMenuGroup[] {
   return appMenuGroups
     .map((group) => ({
       ...group,
@@ -288,10 +288,10 @@ export function getVisibleMenuGroups(user: MockUser): AppMenuGroup[] {
     .filter((group) => group.items.length > 0);
 }
 
-export function canUseAction(user: MockUser, action: AppAction) {
+export function canUseAction(user: AuthenticatedUser, action: AppAction) {
   return hasPermission(user, action.permission);
 }
 
-export function getVisibleActions(user: MockUser, actions: AppAction[]) {
+export function getVisibleActions(user: AuthenticatedUser, actions: AppAction[]) {
   return actions.filter((action) => canUseAction(user, action));
 }

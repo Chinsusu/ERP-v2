@@ -64,6 +64,14 @@ type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type logoutRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type logoutResponse struct {
+	LoggedOut bool `json:"logged_out"`
+}
+
 type authPolicyResponse struct {
 	PasswordMinLength              int  `json:"password_min_length"`
 	PasswordRequiresLetter         bool `json:"password_requires_letter"`
@@ -1847,6 +1855,7 @@ func main() {
 		readiness:       readinessHandler,
 		login:           loginHandler(authSessions, auditLogStore),
 		refresh:         refreshHandler(authSessions, auditLogStore),
+		logout:          logoutHandler(authSessions, auditLogStore),
 		policy:          authPolicyHandler(authSessions),
 		me:              meHandler,
 		rbacRoles:       rbacRolesHandler,
@@ -2297,6 +2306,44 @@ func refreshHandler(authSessions *auth.SessionManager, auditStores ...audit.LogS
 			"role":  string(session.Principal.Role),
 		})
 		response.WriteSuccess(w, r, http.StatusOK, newLoginResponse(session, time.Now().UTC()))
+	}
+}
+
+func logoutHandler(authSessions *auth.SessionManager, auditStores ...audit.LogStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		var payload logoutRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(
+				w,
+				r,
+				http.StatusBadRequest,
+				response.ErrorCodeValidation,
+				"Invalid logout payload",
+				nil,
+			)
+			return
+		}
+
+		loggedOut, err := authSessions.LogoutWithError(payload.RefreshToken)
+		if err != nil || !loggedOut {
+			response.WriteError(
+				w,
+				r,
+				http.StatusUnauthorized,
+				response.ErrorCodeUnauthorized,
+				"Invalid or expired refresh token",
+				nil,
+			)
+			return
+		}
+
+		recordAuthAudit(r, firstAuditStore(auditStores), "anonymous", "auth.logout_succeeded", "unknown", nil)
+		response.WriteSuccess(w, r, http.StatusOK, logoutResponse{LoggedOut: loggedOut})
 	}
 }
 

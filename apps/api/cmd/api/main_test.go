@@ -133,6 +133,56 @@ func TestRefreshHandlerRotatesSessionContract(t *testing.T) {
 	}
 }
 
+func TestLogoutHandlerInvalidatesSessionContract(t *testing.T) {
+	sessions := auth.NewSessionManager(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, nil)
+	session, failure, ok := sessions.Login("admin@example.local", "local-only-mock-password")
+	if !ok {
+		t.Fatalf("login rejected: %+v", failure)
+	}
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/auth/logout",
+		bytes.NewBufferString(`{"refresh_token":"`+session.RefreshToken+`"}`),
+	)
+	rec := httptest.NewRecorder()
+
+	logoutHandler(sessions).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if _, ok := sessions.AuthenticateAccessToken(session.AccessToken); ok {
+		t.Fatal("access token still authenticates after logout")
+	}
+	if _, ok := sessions.Refresh(session.RefreshToken); ok {
+		t.Fatal("refresh token still refreshes after logout")
+	}
+}
+
+func TestLogoutHandlerRejectsInvalidRefreshToken(t *testing.T) {
+	sessions := auth.NewSessionManager(auth.MockConfig{
+		Email:       "admin@example.local",
+		Password:    "local-only-mock-password",
+		AccessToken: "local-dev-access-token",
+	}, nil)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/auth/logout",
+		bytes.NewBufferString(`{"refresh_token":"missing-refresh-token"}`),
+	)
+	rec := httptest.NewRecorder()
+
+	logoutHandler(sessions).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusUnauthorized, rec.Body.String())
+	}
+}
+
 func TestAuthPolicyHandlerDocumentsPasswordAndLockoutPolicy(t *testing.T) {
 	sessions := auth.NewSessionManager(auth.MockConfig{
 		Email:       "admin@example.local",

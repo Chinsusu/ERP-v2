@@ -3,12 +3,12 @@
 import { FinanceSummaryReportPanel } from "./FinanceSummaryReport";
 import { InventorySnapshotReportPanel } from "./InventorySnapshotReport";
 import { OperationsDailyReportPanel } from "./OperationsDailyReport";
-import type { MockUser } from "../../../shared/auth/mockSession";
+import type { AuthenticatedUser } from "../../../shared/auth/session";
 import { getVisibleReportingTabs } from "../services/reportingAccess";
 import { urlOptionParam, useReportUrlState } from "../hooks/useReportUrlState";
 
 type ReportingDashboardProps = {
-  user: MockUser;
+  user: AuthenticatedUser;
 };
 
 export function ReportingDashboard({ user }: ReportingDashboardProps) {
