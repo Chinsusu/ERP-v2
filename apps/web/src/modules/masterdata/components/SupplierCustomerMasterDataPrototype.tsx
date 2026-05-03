@@ -204,13 +204,14 @@ export function SupplierCustomerMasterDataPrototype({ embedded = false, mode = "
   const toolbarClassName = showSuppliers && showCustomers ? "erp-masterdata-toolbar erp-masterdata-toolbar--wide" : "erp-masterdata-toolbar";
   const kpiClassName = showSuppliers && showCustomers ? "erp-kpi-grid erp-masterdata-kpis" : "erp-kpi-grid erp-masterdata-kpis erp-masterdata-kpis--split";
   const workspaceClassName = showSuppliers && showCustomers ? "erp-masterdata-workspace" : "erp-masterdata-workspace erp-masterdata-workspace--single";
+  const searchPlaceholder = showSuppliers && showCustomers ? "SUP-RM-BIO / CUS-DL-MINHANH" : showSuppliers ? "SUP-RM-BIO" : "CUS-DL-MINHANH";
 
   const content = (
     <>
       <section className={toolbarClassName} aria-label={partyCopy("filters.label")}>
         <label className="erp-field">
           <span>{partyCopy("filters.search")}</span>
-          <input className="erp-input" type="search" value={search} placeholder="SUP-RM-BIO" onChange={(event) => setSearch(event.target.value.toUpperCase())} />
+          <input className="erp-input" type="search" value={search} placeholder={searchPlaceholder} onChange={(event) => setSearch(event.target.value.toUpperCase())} />
         </label>
         {showSuppliers ? (
           <>
