@@ -33,7 +33,16 @@ login_email="${override_login_email:-${SMOKE_LOGIN_EMAIL:-admin@example.local}}"
 login_password="${override_login_password:-${SMOKE_LOGIN_PASSWORD:-local-only-mock-password}}"
 
 tmp_body="$(mktemp)"
-trap 'rm -f "$tmp_body"' EXIT
+operational_smoke_item_refs_ensured=0
+
+cleanup() {
+  if [ "${operational_smoke_item_refs_ensured:-0}" = "1" ]; then
+    postgres_exec "DELETE FROM mdm.items WHERE org_id = '00000000-0000-4000-8000-000000000001'::uuid AND item_group = 'operational_smoke_fixture' AND item_ref IN ('item-serum-30ml', 'item-cream-50g');" || true
+  fi
+  rm -f "$tmp_body"
+}
+
+trap cleanup EXIT
 
 json_escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
@@ -123,6 +132,132 @@ postgres_exec() {
   printf '%s\n' "$sql" |
     docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
       psql -v ON_ERROR_STOP=1 -q -X -U "${POSTGRES_USER:-erp_dev}" -d "${POSTGRES_DB:-erp_dev}" >/dev/null
+}
+
+ensure_operational_smoke_item_refs() {
+  postgres_exec "
+WITH org AS (
+  SELECT id
+  FROM core.organizations
+  WHERE id = '00000000-0000-4000-8000-000000000001'::uuid
+  LIMIT 1
+),
+unit AS (
+  SELECT id
+  FROM mdm.units
+  WHERE code = 'EA'
+  LIMIT 1
+),
+rows (
+  item_ref,
+  item_code,
+  sku,
+  name,
+  item_type,
+  item_group,
+  brand_code,
+  uom_base,
+  uom_purchase,
+  uom_issue,
+  lot_controlled,
+  expiry_controlled,
+  shelf_life_days,
+  qc_required,
+  standard_cost,
+  is_sellable,
+  is_purchasable,
+  is_producible,
+  spec_version
+) AS (
+  VALUES
+    ('item-serum-30ml', 'SMOKE-FG-SERUM-30ML', 'SERUM-30ML', 'Operational smoke serum 30ml', 'finished_good', 'operational_smoke_fixture', 'MYH', 'EA', 'EA', 'EA', true, true, 730, true, 64000.000000, true, false, true, 'SMOKE-SERUM-2026.05'),
+    ('item-cream-50g', 'SMOKE-FG-CREAM-50G', 'CREAM-50G', 'Operational smoke cream 50g', 'finished_good', 'operational_smoke_fixture', 'MYH', 'EA', 'EA', 'EA', true, true, 540, true, 58000.000000, true, false, true, 'SMOKE-CREAM-2026.05')
+)
+INSERT INTO mdm.items (
+  org_id,
+  item_ref,
+  item_code,
+  sku,
+  name,
+  item_type,
+  item_group,
+  brand_code,
+  base_unit_id,
+  uom_base,
+  uom_purchase,
+  uom_issue,
+  lot_controlled,
+  expiry_controlled,
+  requires_batch,
+  requires_expiry,
+  shelf_life_days,
+  qc_required,
+  status,
+  standard_cost,
+  is_sellable,
+  is_purchasable,
+  is_producible,
+  spec_version,
+  created_at,
+  updated_at
+)
+SELECT
+  org.id,
+  rows.item_ref,
+  rows.item_code,
+  rows.sku,
+  rows.name,
+  rows.item_type,
+  rows.item_group,
+  rows.brand_code,
+  unit.id,
+  rows.uom_base,
+  rows.uom_purchase,
+  rows.uom_issue,
+  rows.lot_controlled,
+  rows.expiry_controlled,
+  rows.lot_controlled,
+  rows.expiry_controlled,
+  rows.shelf_life_days,
+  rows.qc_required,
+  'active',
+  rows.standard_cost,
+  rows.is_sellable,
+  rows.is_purchasable,
+  rows.is_producible,
+  rows.spec_version,
+  now(),
+  now()
+FROM rows
+CROSS JOIN org
+CROSS JOIN unit
+ON CONFLICT (org_id, sku) DO UPDATE SET
+  item_ref = EXCLUDED.item_ref,
+  item_code = EXCLUDED.item_code,
+  name = EXCLUDED.name,
+  item_type = EXCLUDED.item_type,
+  item_group = EXCLUDED.item_group,
+  brand_code = EXCLUDED.brand_code,
+  base_unit_id = EXCLUDED.base_unit_id,
+  uom_base = EXCLUDED.uom_base,
+  uom_purchase = EXCLUDED.uom_purchase,
+  uom_issue = EXCLUDED.uom_issue,
+  lot_controlled = EXCLUDED.lot_controlled,
+  expiry_controlled = EXCLUDED.expiry_controlled,
+  requires_batch = EXCLUDED.requires_batch,
+  requires_expiry = EXCLUDED.requires_expiry,
+  shelf_life_days = EXCLUDED.shelf_life_days,
+  qc_required = EXCLUDED.qc_required,
+  status = EXCLUDED.status,
+  standard_cost = EXCLUDED.standard_cost,
+  is_sellable = EXCLUDED.is_sellable,
+  is_purchasable = EXCLUDED.is_purchasable,
+  is_producible = EXCLUDED.is_producible,
+  spec_version = EXCLUDED.spec_version,
+  updated_at = now();"
+  operational_smoke_item_refs_ensured=1
+  curl_check "operational_smoke_serum" GET "$api_base/products/item-serum-30ml" 200 "" auth
+  curl_check "operational_smoke_cream" GET "$api_base/products/item-cream-50g" 200 "" auth
 }
 
 restart_api_service() {
@@ -1699,6 +1834,7 @@ json_check "warehouse_fulfillment" "$api_base/warehouse/daily-board/fulfillment-
 json_check "warehouse_inbound" "$api_base/warehouse/daily-board/inbound-metrics?business_date=2026-04-30&warehouse_id=wh-hcm"
 json_check "warehouse_subcontract" "$api_base/warehouse/daily-board/subcontract-metrics?business_date=2026-04-30&warehouse_id=wh-hcm"
 json_check "finance_dashboard" "$api_base/finance/dashboard?business_date=2026-05-08"
+ensure_operational_smoke_item_refs
 
 json_check "inventory_report_json" "$api_base/reports/inventory-snapshot?business_date=2026-04-30&warehouse_id=wh-hcm&item_id=item-serum-30ml&status=quarantine&expiry_warning_days=45"
 csv_check "inventory_report_csv" "$api_base/reports/inventory-snapshot/export.csv?business_date=2026-04-30&warehouse_id=wh-hcm&item_id=item-serum-30ml&status=quarantine&expiry_warning_days=45"
