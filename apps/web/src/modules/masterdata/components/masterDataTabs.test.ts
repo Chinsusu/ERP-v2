@@ -3,19 +3,20 @@ import { setActiveLocale } from "../../../shared/i18n/runtime";
 import { getMasterDataTabs, getMasterDataViewStatusLabel } from "./masterDataTabs";
 
 describe("master data tab model", () => {
-  it("splits supplier and customer master data into separate tabs", () => {
+  it("splits finished products, materials, supplier, and customer master data into separate tabs", () => {
     setActiveLocale("en");
 
     const tabs = getMasterDataTabs();
 
     expect(tabs).toEqual([
-      { label: "Items / SKU", value: "products" },
-      { label: "Formulas", value: "formulas" },
+      { label: "Finished products", value: "finishedProducts" },
+      { label: "Materials / Packaging", value: "materials" },
       { label: "Warehouses / Locations", value: "warehouses" },
       { label: "Suppliers", value: "suppliers" },
       { label: "Customers", value: "customers" }
     ]);
     expect(tabs.map((tab) => tab.value)).not.toContain("parties");
+    expect(tabs.map((tab) => tab.value)).not.toContain("formulas");
   });
 
   it("uses distinct status copy for the supplier and customer views", () => {
@@ -25,9 +26,10 @@ describe("master data tab model", () => {
     expect(getMasterDataViewStatusLabel("customers")).toBe("Customer setup");
   });
 
-  it("uses formula status copy for the BOM formula view", () => {
+  it("uses distinct status copy for finished products and material views", () => {
     setActiveLocale("en");
 
-    expect(getMasterDataViewStatusLabel("formulas")).toBe("Formula setup");
+    expect(getMasterDataViewStatusLabel("finishedProducts")).toBe("Finished product setup");
+    expect(getMasterDataViewStatusLabel("materials")).toBe("Material setup");
   });
 });

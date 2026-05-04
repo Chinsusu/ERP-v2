@@ -67,6 +67,7 @@ export type ProductMasterDataQuery = {
   search?: string;
   status?: ProductStatus | "";
   itemType?: ProductType | "";
+  itemTypes?: ProductType[];
 };
 
 export type ProductMasterDataSummary = {

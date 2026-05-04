@@ -6756,6 +6756,10 @@ func writeFormulaError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, masterdataapp.ErrFormulaNotFound):
 		response.WriteError(w, r, http.StatusNotFound, response.ErrorCodeNotFound, "Formula master data was not found", nil)
+	case errors.Is(err, masterdataapp.ErrFormulaParentItemNotFound):
+		response.WriteError(w, r, http.StatusUnprocessableEntity, response.ErrorCodeValidation, "Formula parent item was not found", nil)
+	case errors.Is(err, masterdataapp.ErrFormulaParentItemInactive):
+		response.WriteError(w, r, http.StatusUnprocessableEntity, response.ErrorCodeValidation, "Formula parent item must be active", nil)
 	case errors.Is(err, masterdataapp.ErrDuplicateFormulaVersion):
 		response.WriteError(
 			w,

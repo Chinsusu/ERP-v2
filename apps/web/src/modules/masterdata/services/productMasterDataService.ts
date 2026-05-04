@@ -20,6 +20,8 @@ type ProductApiStatusRequest = components["schemas"]["ChangeProductStatusRequest
 
 const defaultAccessToken = "local-dev-access-token";
 const productApiPageSize = 100;
+export const finishedProductTypes: ProductType[] = ["finished_good", "semi_finished"];
+export const materialProductTypes: ProductType[] = ["raw_material", "packaging", "service"];
 
 export const productTypeOptions: { label: string; value: ProductType }[] = [
   { label: "Finished good", value: "finished_good" },
@@ -418,6 +420,9 @@ function filterProducts(items: ProductMasterDataItem[], query: ProductMasterData
         return false;
       }
       if (query.itemType && item.itemType !== query.itemType) {
+        return false;
+      }
+      if (!query.itemType && query.itemTypes && query.itemTypes.length > 0 && !query.itemTypes.includes(item.itemType)) {
         return false;
       }
       if (!search) {

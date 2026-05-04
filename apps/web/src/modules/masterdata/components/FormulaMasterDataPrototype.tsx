@@ -19,6 +19,7 @@ import {
   calculateFormulaRequirement,
   createFormula,
   emptyFormulaInput,
+  formulaInputForParentItem,
   formatFormulaQuantity,
   formulaComponentTypeOptions,
   formulaStatusOptions,
@@ -34,16 +35,17 @@ import type {
   FormulaMasterDataQuery,
   FormulaRequirementPreview,
   FormulaStatus,
-  ProductType
+  ProductMasterDataItem
 } from "../types";
 
 const allStatusOptions = [{ label: formulaCopy("formula.filters.allStatuses"), value: "" }, ...formulaStatusOptions] as const;
-const parentTypeOptions: { label: string; value: ProductType }[] = [
-  { label: formulaCopy("product.type.finished_good"), value: "finished_good" },
-  { label: formulaCopy("product.type.semi_finished"), value: "semi_finished" }
-];
 
-export function FormulaMasterDataPrototype() {
+type FormulaMasterDataPrototypeProps = {
+  parentItems?: ProductMasterDataItem[];
+  selectedParentItemId?: string;
+};
+
+export function FormulaMasterDataPrototype({ parentItems = [], selectedParentItemId = "" }: FormulaMasterDataPrototypeProps) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<FormulaStatus | "">("");
   const [items, setItems] = useState<FormulaMasterDataItem[]>([]);
@@ -54,14 +56,34 @@ export function FormulaMasterDataPrototype() {
   const [formError, setFormError] = useState<string | undefined>();
   const [preview, setPreview] = useState<FormulaRequirementPreview | null>(null);
   const [toast, setToast] = useState<ToastMessage[]>([]);
+  const parentOptions = useMemo(
+    () => parentItems.filter((item) => item.status === "active" && (item.itemType === "finished_good" || item.itemType === "semi_finished")),
+    [parentItems]
+  );
+  const selectedParent = useMemo(
+    () => parentOptions.find((item) => item.id === selectedParentItemId) ?? parentOptions.find((item) => item.id === form.finishedItemId),
+    [form.finishedItemId, parentOptions, selectedParentItemId]
+  );
   const query = useMemo<FormulaMasterDataQuery>(
     () => ({
       search: search || undefined,
-      status
+      status,
+      finishedItemId: selectedParentItemId || undefined
     }),
-    [search, status]
+    [search, selectedParentItemId, status]
   );
   const summary = useMemo(() => summarizeFormulas(items), [items]);
+
+  useEffect(() => {
+    if (!selectedParentItemId) {
+      return;
+    }
+    const parent = parentOptions.find((item) => item.id === selectedParentItemId);
+    if (!parent) {
+      return;
+    }
+    setForm((current) => formulaInputForParentItem(current, parent));
+  }, [parentOptions, selectedParentItemId]);
 
   useEffect(() => {
     let active = true;
@@ -180,7 +202,7 @@ export function FormulaMasterDataPrototype() {
     try {
       const created = await createFormula(form);
       await refresh();
-      setForm(freshFormulaInput());
+      setForm(freshFormulaInput(selectedParent));
       pushToast(formulaCopy("formula.toast.created"), created.formulaCode, "success");
     } catch (saveError) {
       setFormError(errorText(saveError));
@@ -216,7 +238,7 @@ export function FormulaMasterDataPrototype() {
   }
 
   function resetForm() {
-    setForm(freshFormulaInput());
+    setForm(freshFormulaInput(selectedParent));
     setFormError(undefined);
   }
 
@@ -298,7 +320,7 @@ export function FormulaMasterDataPrototype() {
                 <button className="erp-button erp-button--secondary" type="button" onClick={resetForm}>
                   {formulaCopy("actions.clear")}
                 </button>
-                <button className="erp-button erp-button--primary" type="submit" disabled={saving}>
+                <button className="erp-button erp-button--primary" type="submit" disabled={saving || !form.finishedItemId}>
                   {saving ? formulaCopy("formula.actions.saving") : formulaCopy("formula.actions.create")}
                 </button>
               </>
@@ -308,15 +330,23 @@ export function FormulaMasterDataPrototype() {
             <div className="erp-masterdata-form-grid">
               <TextField label={formulaCopy("formula.form.formulaCode")} value={form.formulaCode} onChange={(value) => updateForm({ formulaCode: value.toUpperCase() })} />
               <TextField label={formulaCopy("formula.form.formulaVersion")} value={form.formulaVersion} onChange={(value) => updateForm({ formulaVersion: value })} />
-              <TextField label={formulaCopy("formula.form.finishedItemId")} value={form.finishedItemId} onChange={(value) => updateForm({ finishedItemId: value })} />
-              <TextField label={formulaCopy("formula.form.finishedSku")} value={form.finishedSku} onChange={(value) => updateForm({ finishedSku: value.toUpperCase() })} />
-              <TextField label={formulaCopy("formula.form.finishedItemName")} value={form.finishedItemName} onChange={(value) => updateForm({ finishedItemName: value })} />
               <label className="erp-field">
-                <span>{formulaCopy("formula.form.finishedItemType")}</span>
-                <select className="erp-input" value={form.finishedItemType} onChange={(event) => updateForm({ finishedItemType: event.target.value as ProductType })}>
-                  {parentTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
+                <span>{formulaCopy("formula.form.parentItem")}</span>
+                <select
+                  className="erp-input"
+                  value={form.finishedItemId}
+                  disabled={parentOptions.length === 0 || Boolean(selectedParentItemId)}
+                  onChange={(event) => {
+                    const parent = parentOptions.find((item) => item.id === event.target.value);
+                    if (parent) {
+                      updateForm(formulaInputForParentItem(form, parent));
+                    }
+                  }}
+                >
+                  <option value="">{formulaCopy("formula.form.selectParentItem")}</option>
+                  {parentOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.skuCode} - {option.name}
                     </option>
                   ))}
                 </select>
@@ -524,11 +554,12 @@ function formulaStatusTone(status: FormulaStatus): "normal" | "success" | "warni
   }
 }
 
-function freshFormulaInput(): FormulaMasterDataInput {
-  return {
+function freshFormulaInput(parent?: ProductMasterDataItem): FormulaMasterDataInput {
+  const input = {
     ...emptyFormulaInput,
     lines: emptyFormulaInput.lines.map((line) => ({ ...line }))
   };
+  return parent ? formulaInputForParentItem(input, parent) : input;
 }
 
 function formatDate(value: string) {
