@@ -4,6 +4,7 @@ import { decimalScales, normalizeDecimalInput } from "../../../shared/format/num
 import type { AuditLogItem } from "@/modules/audit/types";
 import type {
   ChangeSubcontractOrderStatusInput,
+  CreateSubcontractOrderMaterialLineInput,
   CreateSubcontractFactoryClaimInput,
   CreateSubcontractOrderInput,
   DecideSubcontractSampleInput,
@@ -1368,13 +1369,13 @@ function toApiCreateInput(input: CreateSubcontractOrderInput): CreateSubcontract
     factory_id: input.factoryId,
     finished_item_id: input.productId,
     planned_qty: normalizeDecimalInput(String(input.quantity), decimalScales.quantity),
-    uom_code: "EA",
+    uom_code: input.uomCode ?? "EA",
     currency_code: "VND",
     spec_summary: input.specVersion,
     sample_required: input.sampleRequired,
     claim_window_days: 7,
     expected_receipt_date: input.expectedDeliveryDate,
-    material_lines: [toApiMaterialLineInput(input)]
+    material_lines: materialLineInputsFor(input).map(toApiMaterialLineInput)
   };
 }
 
@@ -1527,6 +1528,7 @@ function toApiUpdateInput(input: UpdateSubcontractOrderInput): UpdateSubcontract
       factoryId: input.factoryId ?? subcontractFactoryOptions[0].id,
       productId: input.productId ?? subcontractProductOptions[0].id,
       quantity: input.quantity ?? 1,
+      uomCode: input.uomCode ?? "EA",
       specVersion: input.specVersion ?? "",
       sampleRequired: input.sampleRequired ?? true,
       expectedDeliveryDate: input.expectedDeliveryDate ?? "",
@@ -1539,15 +1541,32 @@ function toApiUpdateInput(input: UpdateSubcontractOrderInput): UpdateSubcontract
   };
 }
 
-function toApiMaterialLineInput(input: CreateSubcontractOrderInput): SubcontractOrderApiMaterialLineRequest {
+function toApiMaterialLineInput(input: CreateSubcontractOrderMaterialLineInput): SubcontractOrderApiMaterialLineRequest {
   return {
-    item_id: input.materialItemId,
-    planned_qty: normalizeDecimalInput(input.materialQty, decimalScales.quantity),
-    uom_code: "EA",
-    unit_cost: normalizeDecimalInput(input.materialUnitCost, decimalScales.unitCost),
-    currency_code: "VND",
-    lot_trace_required: input.materialLotTraceRequired ?? true
+    item_id: input.itemId,
+    planned_qty: normalizeDecimalInput(input.plannedQty, decimalScales.quantity),
+    uom_code: input.uomCode,
+    unit_cost: normalizeDecimalInput(input.unitCost, decimalScales.unitCost),
+    currency_code: input.currencyCode ?? "VND",
+    lot_trace_required: input.lotTraceRequired ?? true,
+    note: input.note
   };
+}
+
+function materialLineInputsFor(input: CreateSubcontractOrderInput): CreateSubcontractOrderMaterialLineInput[] {
+  if (input.materialLines && input.materialLines.length > 0) {
+    return input.materialLines;
+  }
+
+  return [
+    {
+      itemId: input.materialItemId ?? "",
+      plannedQty: input.materialQty ?? "",
+      uomCode: "EA",
+      unitCost: input.materialUnitCost ?? "",
+      lotTraceRequired: input.materialLotTraceRequired ?? true
+    }
+  ];
 }
 
 function subcontractOrderQueryString(query: SubcontractOrderQuery) {
@@ -1592,12 +1611,28 @@ function createPrototypeSubcontractOrder(input: CreateSubcontractOrderInput): Su
   subcontractOrderSequence += 1;
   const factory = resolveFactory(input.factoryId, input.factoryName);
   const product = resolveProduct(input.productId, input.productName);
-  const material = resolveMaterialItem(input.materialItemId);
   const quantity = normalizeQuantity(input.quantity);
-  const materialQty = normalizeDecimalInput(input.materialQty, decimalScales.quantity);
-  const materialUnitCost = normalizeDecimalInput(input.materialUnitCost, decimalScales.unitCost);
   const id = input.id ?? `sco-ui-${subcontractOrderSequence}`;
-  const lineAmount = calculateLineCost(materialQty, materialUnitCost);
+  const materialLines = materialLineInputsFor(input).map((line, index) => {
+    const material = resolveMaterialItem(line.itemId, line.skuCode, line.itemName);
+    const plannedQty = normalizeDecimalInput(line.plannedQty, decimalScales.quantity);
+    const unitCost = normalizeDecimalInput(line.unitCost, decimalScales.unitCost);
+
+    return {
+      id: `${id}-material-${String(index + 1).padStart(2, "0")}`,
+      itemId: material.id,
+      skuCode: material.sku,
+      itemName: material.name,
+      plannedQty,
+      issuedQty: "0.000000",
+      uomCode: line.uomCode,
+      unitCost,
+      currencyCode: line.currencyCode ?? "VND",
+      lineCostAmount: calculateLineCost(plannedQty, unitCost),
+      lotTraceRequired: line.lotTraceRequired ?? true,
+      note: line.note
+    };
+  });
   const order = createSubcontractOrderRecord({
     id,
     orderNo: input.orderNo ?? `SCO-260429-${String(subcontractOrderSequence).padStart(4, "0")}`,
@@ -1622,22 +1657,8 @@ function createPrototypeSubcontractOrder(input: CreateSubcontractOrderInput): Su
     createdAt: prototypeNow,
     updatedAt: prototypeNow,
     version: 1,
-    estimatedCostAmount: lineAmount,
-    materialLines: [
-      {
-        id: `${id}-material-01`,
-        itemId: material.id,
-        skuCode: material.sku,
-        itemName: material.name,
-        plannedQty: materialQty,
-        issuedQty: "0.000000",
-        uomCode: "EA",
-        unitCost: materialUnitCost,
-        currencyCode: "VND",
-        lineCostAmount: lineAmount,
-        lotTraceRequired: input.materialLotTraceRequired ?? true
-      }
-    ],
+    estimatedCostAmount: calculateTotalLineCost(materialLines),
+    materialLines,
     auditLogIds: [`audit-${id}-created`]
   });
   prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== id)];
@@ -1667,7 +1688,20 @@ function updatePrototypeSubcontractOrder(id: string, input: UpdateSubcontractOrd
     materialItemId: input.materialItemId ?? current.materialLines[0]?.itemId ?? subcontractMaterialItemOptions[0].id,
     materialQty: input.materialQty ?? current.materialLines[0]?.plannedQty ?? "1",
     materialUnitCost: input.materialUnitCost ?? current.materialLines[0]?.unitCost ?? subcontractMaterialItemOptions[0].defaultUnitCost,
-    materialLotTraceRequired: input.materialLotTraceRequired ?? current.materialLines[0]?.lotTraceRequired ?? true
+    materialLotTraceRequired: input.materialLotTraceRequired ?? current.materialLines[0]?.lotTraceRequired ?? true,
+    materialLines:
+      input.materialLines ??
+      current.materialLines.map((line) => ({
+        itemId: line.itemId,
+        skuCode: line.skuCode,
+        itemName: line.itemName,
+        plannedQty: line.plannedQty,
+        uomCode: line.uomCode,
+        unitCost: line.unitCost,
+        currencyCode: line.currencyCode,
+        lotTraceRequired: line.lotTraceRequired,
+        note: line.note
+      }))
   });
   updated.version = current.version + 1;
   updated.createdAt = current.createdAt;
@@ -2645,14 +2679,18 @@ function resolveProduct(productId: string, productName?: string): SubcontractPro
   );
 }
 
-function resolveMaterialItem(itemId: string) {
+function resolveMaterialItem(itemId: string, skuCode?: string, itemName?: string) {
   const normalizedItemId = normalizeRequiredText(itemId, "Material item is required");
   const matched = subcontractMaterialItemOptions.find((item) => item.id === normalizedItemId);
-  if (!matched) {
-    throw new Error("Material item is required");
-  }
 
-  return matched;
+  return (
+    matched ?? {
+      id: normalizedItemId,
+      sku: skuCode?.trim() || normalizedItemId.toUpperCase(),
+      name: itemName?.trim() || skuCode?.trim() || normalizedItemId,
+      defaultUnitCost: "0.000000"
+    }
+  );
 }
 
 function normalizeQuantity(quantity: number) {
@@ -2746,5 +2784,10 @@ function cloneSubcontractOrder(order: SubcontractOrder): SubcontractOrder {
 
 function calculateLineCost(quantity: string, unitCost: string) {
   const amount = Number(quantity) * Number(unitCost);
+  return Number.isFinite(amount) ? amount.toFixed(2) : "0.00";
+}
+
+function calculateTotalLineCost(lines: Pick<SubcontractOrderMaterialLine, "lineCostAmount">[]) {
+  const amount = lines.reduce((sum, line) => sum + Number(line.lineCostAmount), 0);
   return Number.isFinite(amount) ? amount.toFixed(2) : "0.00";
 }

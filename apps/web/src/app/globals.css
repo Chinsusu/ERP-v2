@@ -1135,6 +1135,44 @@ textarea {
   min-height: var(--erp-control-height);
 }
 
+.erp-production-next-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.erp-production-next-action-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-production-next-action-panel h3,
+.erp-production-next-action-panel p {
+  margin: 0;
+}
+
+.erp-production-next-action-panel p {
+  color: var(--erp-text-muted);
+  font-size: var(--erp-font-size-table);
+}
+
+.erp-production-next-action-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.erp-production-next-action-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .erp-masterdata-toggle {
   display: flex;
   gap: 8px;
@@ -4659,6 +4697,11 @@ textarea {
 
   .erp-production-plan-line-actions {
     justify-content: flex-start;
+  }
+
+  .erp-production-next-actions,
+  .erp-production-next-action-fields {
+    grid-template-columns: 1fr;
   }
 }
 
