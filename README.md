@@ -30,6 +30,8 @@ Start with:
 - `docs/85_ERP_UAT_Pilot_Pack_Sprint22_Warehouse_Sales_QC_MyPham_v1.md`
 - `docs/89_ERP_Inventory_Purchase_Warehouse_Document_Flow_Design_MyPham_v1.md`
 - `docs/90_ERP_Coding_Task_Board_Sprint23_Inventory_Purchase_Warehouse_Documents_MyPham_v1.md`
+- `docs/91_ERP_Module_Roadmap_From_Note_Sheet_Production_Purchase_Warehouse_MyPham_v1.md`
+- `docs/92_ERP_Coding_Task_Board_Sprint23_Production_Planning_Material_Demand_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -67,8 +69,10 @@ Sprint 23 planning status:
 
 ```text
 Inventory/purchase/warehouse document-flow design is documented in file 89.
-Sprint 23 task-board candidate is documented in file 90.
-Sprint 23 is not started; stock transfer, purchase request, warehouse issue note, and ledger-backed inventory dashboard implementation remain pending.
+Inventory/purchase/warehouse task-board candidate is documented in file 90.
+The note-sheet module roadmap and sequencing decision are documented in file 91.
+Selected first Sprint 23 implementation track is documented in file 92: production planning, material demand, and Purchase Request draft.
+Sprint 23 is not started; production planning/material demand, stock transfer, purchase request hardening, warehouse issue note, and ledger-backed inventory dashboard implementation remain pending.
 No v0.23 tag has been created.
 ```
 
@@ -112,6 +116,8 @@ Production runtime reference:
 - `docs/86_ERP_Sprint22_Changelog_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md`
 - `docs/89_ERP_Inventory_Purchase_Warehouse_Document_Flow_Design_MyPham_v1.md`
 - `docs/90_ERP_Coding_Task_Board_Sprint23_Inventory_Purchase_Warehouse_Documents_MyPham_v1.md`
+- `docs/91_ERP_Module_Roadmap_From_Note_Sheet_Production_Purchase_Warehouse_MyPham_v1.md`
+- `docs/92_ERP_Coding_Task_Board_Sprint23_Production_Planning_Material_Demand_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
