@@ -227,6 +227,75 @@ export interface paths {
         patch: operations["changeProductStatus"];
         trace?: never;
     };
+    "/formulas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List formula master data */
+        get: operations["listFormulas"];
+        put?: never;
+        /** Create formula master data */
+        post: operations["createFormula"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/formulas/{formula_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get formula master data detail */
+        get: operations["getFormula"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/formulas/{formula_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate formula master data */
+        post: operations["activateFormula"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/formulas/{formula_id}/calculate-requirement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calculate formula material requirements */
+        post: operations["calculateFormulaRequirement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/suppliers": {
         parameters: {
             query?: never;
@@ -537,6 +606,41 @@ export interface paths {
         put?: never;
         /** Close a purchase order */
         post: operations["closePurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/production-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List production planning drafts */
+        get: operations["listProductionPlans"];
+        put?: never;
+        /** Create a production planning draft from an active formula */
+        post: operations["createProductionPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/production-plans/{production_plan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a production planning draft */
+        get: operations["getProductionPlan"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2322,6 +2426,242 @@ export interface components {
         UpdateProductRequest: components["schemas"]["CreateProductRequest"];
         ChangeProductStatusRequest: {
             status: components["schemas"]["MasterDataStatus"];
+        };
+        /** @enum {string} */
+        FormulaStatus: "draft" | "active" | "inactive" | "archived";
+        /** @enum {string} */
+        FormulaApprovalStatus: "draft" | "pending_approval" | "approved" | "rejected";
+        /** @enum {string} */
+        FormulaComponentType: "raw_material" | "fragrance" | "packaging" | "semi_finished" | "service";
+        /** @enum {string} */
+        FormulaLineStatus: "active" | "excluded" | "needs_review";
+        FormulaListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["FormulaListItem"][];
+        };
+        FormulaSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["FormulaListItem"];
+        };
+        FormulaListItem: {
+            /** @example formula-xff-150ml-v1 */
+            id: string;
+            /** @example XFF-150ML */
+            formula_code: string;
+            /**
+             * @description Active finished_good or semi_finished item id from product master data.
+             * @example item-xff-150
+             */
+            finished_item_id: string;
+            /** @example XFF */
+            finished_sku: string;
+            /** @example Tinh chat buoi Fast & Furious 150ML */
+            finished_item_name: string;
+            finished_item_type: components["schemas"]["ItemType"];
+            /** @example v1 */
+            formula_version: string;
+            batch_qty: components["schemas"]["Quantity"];
+            batch_uom_code: components["schemas"]["UOMCode"];
+            base_batch_qty: components["schemas"]["Quantity"];
+            base_batch_uom_code: components["schemas"]["UOMCode"];
+            status: components["schemas"]["FormulaStatus"];
+            approval_status: components["schemas"]["FormulaApprovalStatus"];
+            /** Format: date */
+            effective_from?: string;
+            /** Format: date */
+            effective_to?: string;
+            lines: components["schemas"]["FormulaLineItem"][];
+            note?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            approved_by?: string;
+            /** Format: date-time */
+            approved_at?: string;
+            version: number;
+            audit_log_id?: string;
+        };
+        FormulaLineItem: {
+            id: string;
+            line_no: number;
+            component_item_id?: string;
+            /** @example ACT_BAICAPIL */
+            component_sku: string;
+            /** @example BAICAPIL */
+            component_name: string;
+            component_type: components["schemas"]["FormulaComponentType"];
+            entered_qty: components["schemas"]["Quantity"];
+            entered_uom_code: components["schemas"]["UOMCode"];
+            calc_qty: components["schemas"]["Quantity"];
+            calc_uom_code: components["schemas"]["UOMCode"];
+            stock_base_qty: components["schemas"]["Quantity"];
+            stock_base_uom_code: components["schemas"]["UOMCode"];
+            waste_percent: components["schemas"]["Rate"];
+            is_required: boolean;
+            is_stock_managed: boolean;
+            line_status: components["schemas"]["FormulaLineStatus"];
+            note?: string;
+        };
+        CreateFormulaRequest: {
+            formula_code: string;
+            /** @description Must reference an active finished_good or semi_finished item from product master data. SKU, name, and type are resolved from that parent item by the API. */
+            finished_item_id: string;
+            finished_sku: string;
+            finished_item_name: string;
+            finished_item_type: components["schemas"]["ItemType"];
+            formula_version: string;
+            batch_qty: components["schemas"]["Quantity"];
+            batch_uom_code: components["schemas"]["UOMCode"];
+            base_batch_qty: components["schemas"]["Quantity"];
+            base_batch_uom_code: components["schemas"]["UOMCode"];
+            /** Format: date */
+            effective_from?: string;
+            /** Format: date */
+            effective_to?: string;
+            lines: components["schemas"]["CreateFormulaLineRequest"][];
+            note?: string;
+        };
+        CreateFormulaLineRequest: {
+            line_no: number;
+            component_item_id?: string;
+            component_sku: string;
+            component_name: string;
+            component_type: components["schemas"]["FormulaComponentType"];
+            entered_qty: components["schemas"]["Quantity"];
+            entered_uom_code: components["schemas"]["UOMCode"];
+            calc_qty: components["schemas"]["Quantity"];
+            calc_uom_code: components["schemas"]["UOMCode"];
+            stock_base_qty: components["schemas"]["Quantity"];
+            stock_base_uom_code: components["schemas"]["UOMCode"];
+            waste_percent?: components["schemas"]["Rate"];
+            /** @default true */
+            is_required: boolean;
+            /** @default true */
+            is_stock_managed: boolean;
+            line_status?: components["schemas"]["FormulaLineStatus"];
+            note?: string;
+        };
+        FormulaRequirementRequest: {
+            planned_qty: components["schemas"]["Quantity"];
+            planned_uom_code: components["schemas"]["UOMCode"];
+        };
+        FormulaRequirementSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["FormulaRequirementPreview"];
+        };
+        FormulaRequirementPreview: {
+            formula_id: string;
+            formula_code: string;
+            finished_sku: string;
+            planned_qty: components["schemas"]["Quantity"];
+            planned_uom_code: components["schemas"]["UOMCode"];
+            requirements: components["schemas"]["FormulaRequirementLine"][];
+        };
+        FormulaRequirementLine: {
+            formula_line_id: string;
+            line_no: number;
+            component_item_id?: string;
+            component_sku: string;
+            component_name: string;
+            component_type: components["schemas"]["FormulaComponentType"];
+            required_calc_qty: components["schemas"]["Quantity"];
+            calc_uom_code: components["schemas"]["UOMCode"];
+            required_stock_base_qty: components["schemas"]["Quantity"];
+            stock_base_uom_code: components["schemas"]["UOMCode"];
+            is_stock_managed: boolean;
+        };
+        /** @enum {string} */
+        ProductionPlanStatus: "draft" | "purchase_request_draft_created" | "cancelled";
+        /** @enum {string} */
+        PurchaseRequestDraftStatus: "draft";
+        CreateProductionPlanRequest: {
+            output_item_id: string;
+            formula_id?: string;
+            planned_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            /** Format: date */
+            planned_start_date?: string;
+            /** Format: date */
+            planned_end_date?: string;
+        };
+        ProductionPlanListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["ProductionPlan"][];
+        };
+        ProductionPlanSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["ProductionPlan"];
+        };
+        ProductionPlan: {
+            id: string;
+            org_id: string;
+            plan_no: string;
+            output_item_id: string;
+            output_sku: string;
+            output_item_name: string;
+            output_item_type: components["schemas"]["ItemType"];
+            planned_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            formula_id: string;
+            formula_code: string;
+            formula_version: string;
+            formula_batch_qty: components["schemas"]["Quantity"];
+            formula_batch_uom_code: components["schemas"]["UOMCode"];
+            /** Format: date */
+            planned_start_date?: string;
+            /** Format: date */
+            planned_end_date?: string;
+            status: components["schemas"]["ProductionPlanStatus"];
+            lines: components["schemas"]["ProductionPlanLine"][];
+            purchase_request_draft: components["schemas"]["PurchaseRequestDraft"];
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            created_by: string;
+            /** Format: date-time */
+            updated_at: string;
+            updated_by: string;
+            version: number;
+        };
+        ProductionPlanLine: {
+            id: string;
+            formula_line_id: string;
+            line_no: number;
+            component_item_id?: string;
+            component_sku: string;
+            component_name: string;
+            component_type: components["schemas"]["FormulaComponentType"];
+            formula_qty: components["schemas"]["Quantity"];
+            formula_uom_code: components["schemas"]["UOMCode"];
+            required_qty: components["schemas"]["Quantity"];
+            required_uom_code: components["schemas"]["UOMCode"];
+            required_stock_base_qty: components["schemas"]["Quantity"];
+            stock_base_uom_code: components["schemas"]["UOMCode"];
+            available_qty: components["schemas"]["Quantity"];
+            shortage_qty: components["schemas"]["Quantity"];
+            purchase_draft_qty: components["schemas"]["Quantity"];
+            purchase_draft_uom_code: components["schemas"]["UOMCode"];
+            is_stock_managed: boolean;
+            needs_purchase: boolean;
+            note?: string;
+        };
+        PurchaseRequestDraft: {
+            id?: string;
+            request_no?: string;
+            source_production_plan_id?: string;
+            source_production_plan_no?: string;
+            status?: components["schemas"]["PurchaseRequestDraftStatus"];
+            lines: components["schemas"]["PurchaseRequestDraftLine"][];
+            /** Format: date-time */
+            created_at?: string;
+            created_by?: string;
+        };
+        PurchaseRequestDraftLine: {
+            id: string;
+            line_no: number;
+            source_production_plan_line_id: string;
+            item_id?: string;
+            sku: string;
+            item_name: string;
+            requested_qty: components["schemas"]["Quantity"];
+            uom_code: components["schemas"]["UOMCode"];
+            note?: string;
         };
         SupplierListSuccessResponse: {
             /** @example true */
@@ -5531,6 +5871,144 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    listFormulas: {
+        parameters: {
+            query?: {
+                /** @description Quick search term for code, name, phone, or other whitelisted fields. */
+                q?: components["parameters"]["SearchParam"];
+                status?: components["schemas"]["FormulaStatus"];
+                finished_item_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Formula master data list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaListSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createFormula: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFormulaRequest"];
+            };
+        };
+        responses: {
+            /** @description Formula master data created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getFormula: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formula_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Formula master data detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    activateFormula: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formula_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Formula master data activated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    calculateFormulaRequirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formula_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FormulaRequirementRequest"];
+            };
+        };
+        responses: {
+            /** @description Formula material requirement preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaRequirementSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     listSuppliers: {
         parameters: {
             query?: {
@@ -6356,6 +6834,87 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listProductionPlans: {
+        parameters: {
+            query?: {
+                q?: string;
+                /** @description Comma-separated production plan statuses. */
+                status?: string;
+                output_item_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Production planning draft rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionPlanListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createProductionPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProductionPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Production planning draft created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionPlanSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getProductionPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                production_plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Production planning draft detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionPlanSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listSubcontractOrders: {

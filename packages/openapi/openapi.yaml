@@ -1418,6 +1418,93 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /production-plans:
+    get:
+      summary: List production planning drafts
+      operationId: listProductionPlans
+      tags:
+        - production
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated production plan statuses.
+        - name: output_item_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Production planning draft rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductionPlanListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create a production planning draft from an active formula
+      operationId: createProductionPlan
+      tags:
+        - production
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductionPlanRequest"
+      responses:
+        "201":
+          description: Production planning draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductionPlanSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /production-plans/{production_plan_id}:
+    get:
+      summary: Get a production planning draft
+      operationId: getProductionPlan
+      tags:
+        - production
+      parameters:
+        - name: production_plan_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Production planning draft detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductionPlanSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /subcontract-orders:
     get:
       summary: List subcontract manufacturing orders
@@ -5815,6 +5902,254 @@ components:
           $ref: "#/components/schemas/UOMCode"
         is_stock_managed:
           type: boolean
+    ProductionPlanStatus:
+      type: string
+      enum:
+        - draft
+        - purchase_request_draft_created
+        - cancelled
+    PurchaseRequestDraftStatus:
+      type: string
+      enum:
+        - draft
+    CreateProductionPlanRequest:
+      type: object
+      required:
+        - output_item_id
+        - planned_qty
+        - uom_code
+      properties:
+        output_item_id:
+          type: string
+        formula_id:
+          type: string
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        planned_start_date:
+          type: string
+          format: date
+        planned_end_date:
+          type: string
+          format: date
+    ProductionPlanListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProductionPlan"
+    ProductionPlanSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ProductionPlan"
+    ProductionPlan:
+      type: object
+      required:
+        - id
+        - org_id
+        - plan_no
+        - output_item_id
+        - output_sku
+        - output_item_name
+        - output_item_type
+        - planned_qty
+        - uom_code
+        - formula_id
+        - formula_code
+        - formula_version
+        - formula_batch_qty
+        - formula_batch_uom_code
+        - status
+        - lines
+        - purchase_request_draft
+        - created_at
+        - created_by
+        - updated_at
+        - updated_by
+        - version
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        plan_no:
+          type: string
+        output_item_id:
+          type: string
+        output_sku:
+          type: string
+        output_item_name:
+          type: string
+        output_item_type:
+          $ref: "#/components/schemas/ItemType"
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        formula_id:
+          type: string
+        formula_code:
+          type: string
+        formula_version:
+          type: string
+        formula_batch_qty:
+          $ref: "#/components/schemas/Quantity"
+        formula_batch_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        planned_start_date:
+          type: string
+          format: date
+        planned_end_date:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/ProductionPlanStatus"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductionPlanLine"
+        purchase_request_draft:
+          $ref: "#/components/schemas/PurchaseRequestDraft"
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        updated_by:
+          type: string
+        version:
+          type: integer
+    ProductionPlanLine:
+      type: object
+      required:
+        - id
+        - formula_line_id
+        - line_no
+        - component_sku
+        - component_name
+        - component_type
+        - formula_qty
+        - formula_uom_code
+        - required_qty
+        - required_uom_code
+        - required_stock_base_qty
+        - stock_base_uom_code
+        - available_qty
+        - shortage_qty
+        - purchase_draft_qty
+        - purchase_draft_uom_code
+        - is_stock_managed
+        - needs_purchase
+      properties:
+        id:
+          type: string
+        formula_line_id:
+          type: string
+        line_no:
+          type: integer
+        component_item_id:
+          type: string
+        component_sku:
+          type: string
+        component_name:
+          type: string
+        component_type:
+          $ref: "#/components/schemas/FormulaComponentType"
+        formula_qty:
+          $ref: "#/components/schemas/Quantity"
+        formula_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        required_qty:
+          $ref: "#/components/schemas/Quantity"
+        required_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        required_stock_base_qty:
+          $ref: "#/components/schemas/Quantity"
+        stock_base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        available_qty:
+          $ref: "#/components/schemas/Quantity"
+        shortage_qty:
+          $ref: "#/components/schemas/Quantity"
+        purchase_draft_qty:
+          $ref: "#/components/schemas/Quantity"
+        purchase_draft_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        is_stock_managed:
+          type: boolean
+        needs_purchase:
+          type: boolean
+        note:
+          type: string
+    PurchaseRequestDraft:
+      type: object
+      required:
+        - lines
+      properties:
+        id:
+          type: string
+        request_no:
+          type: string
+        source_production_plan_id:
+          type: string
+        source_production_plan_no:
+          type: string
+        status:
+          $ref: "#/components/schemas/PurchaseRequestDraftStatus"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseRequestDraftLine"
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+    PurchaseRequestDraftLine:
+      type: object
+      required:
+        - id
+        - line_no
+        - source_production_plan_line_id
+        - sku
+        - item_name
+        - requested_qty
+        - uom_code
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+        source_production_plan_line_id:
+          type: string
+        item_id:
+          type: string
+        sku:
+          type: string
+        item_name:
+          type: string
+        requested_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        note:
+          type: string
     SupplierListSuccessResponse:
       type: object
       required:

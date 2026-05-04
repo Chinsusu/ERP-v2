@@ -151,25 +151,31 @@ describe("permission menu", () => {
     });
   });
 
-  it("uses subcontract manufacturing as the Phase 1 production entrypoint", () => {
+  it("separates production planning from subcontract manufacturing entrypoints", () => {
     const labels = getVisibleMenuGroups(productionUser).flatMap((group) => group.items.map((item) => item.label));
-    const productionEntrypoints = getVisibleMenuGroups(productionUser)
+    const entrypoints = getVisibleMenuGroups(productionUser)
       .flatMap((group) => group.items)
-      .filter((item) => item.href === "/subcontract");
+      .filter((item) => item.href === "/production" || item.href === "/subcontract");
 
-    expect(labels).toContain("Production / Subcontract");
-    expect(labels).not.toContain("Production");
-    expect(labels).not.toContain("Subcontract");
-    expect(productionEntrypoints).toEqual([
+    expect(labels).toContain("Production");
+    expect(labels).toContain("Subcontract");
+    expect(labels).not.toContain("Production / Subcontract");
+    expect(entrypoints).toEqual([
       {
-        label: "Production / Subcontract",
-        href: "/subcontract",
+        label: "Production",
+        href: "/production",
         code: "PD",
+        permission: "production:view"
+      },
+      {
+        label: "Subcontract",
+        href: "/subcontract",
+        code: "SC",
         permission: "subcontract:view"
       }
     ]);
-    expect(getMenuItemForModule("production")).toEqual(productionEntrypoints[0]);
-    expect(getMenuItemForModule("subcontract")).toEqual(productionEntrypoints[0]);
+    expect(getMenuItemForModule("production")).toEqual(entrypoints[0]);
+    expect(getMenuItemForModule("subcontract")).toEqual(entrypoints[1]);
   });
 
   it("shows purchase and finance menus to their Sprint 4 roles", () => {
