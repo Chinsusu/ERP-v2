@@ -39,7 +39,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 22 Session 0 readiness passed after S22-ISSUE-001 role-auth unblock.
+Current line: Sprint 23 production planning and material-demand bridge after Sprint 22 Session 0 readiness.
 
 Latest release tag:
 
@@ -65,22 +65,24 @@ Business UAT execution, business issue triage, Go/No-Go decision, and v0.22 tag 
 Do not treat Sprint 22 preparation docs as UAT pass evidence.
 ```
 
-Sprint 23 planning status:
+Sprint 23 implementation status:
 
 ```text
 Inventory/purchase/warehouse document-flow design is documented in file 89.
 Inventory/purchase/warehouse task-board candidate is documented in file 90.
 The note-sheet module roadmap and sequencing decision are documented in file 91.
 Selected first Sprint 23 implementation track is documented in file 92: production planning, material demand, and Purchase Request draft.
-Sprint 23 is not started; production planning/material demand, stock transfer, purchase request hardening, warehouse issue note, and ledger-backed inventory dashboard implementation remain pending.
+The first Sprint 23 runtime bridge adds /production planning UI, backend production-plan API, active-formula snapshot, material demand/shortage calculation, internal Purchase Request draft lines, PostgreSQL persistence, and OpenAPI contract coverage.
+Stock transfer, warehouse issue note, Purchase Request approval/PO conversion, costing, and ledger-backed inventory dashboard implementation remain pending follow-up scope.
 No v0.23 tag has been created.
 ```
 
 Phase 1 production scope:
 
 ```text
-The user-facing Production entrypoint uses the subcontract manufacturing flow at /subcontract.
-Internal work-center/MES production remains out of Phase 1 scope until a dedicated production module is planned.
+The user-facing Production entrypoint at /production is for planning, active-formula snapshot, material demand, and shortage/PR draft review.
+The Subcontract entrypoint at /subcontract remains the external factory execution flow.
+Internal work-center/MES production remains out of Phase 1 scope.
 ```
 
 Latest verified release tag gate:
@@ -106,6 +108,7 @@ Completed focus through Sprint 21:
 - Vietnamese-first ERP UI foundation across navigation, dashboard, warehouse, sales, shipping, returns, purchase, QC, master data, inventory, auth, audit, and attachment surfaces
 - Release hygiene: migration apply -> rollback -> reapply gate, GitHub Actions Node 24 compatibility, modular API route registration, and production-mode prototype fallback blocking
 - Backend-backed web auth UI integration: login, `/me` session bootstrap, refresh rotation, logout, RBAC menu/route guard, Vietnamese auth errors, and production-like mock auth blocking
+- Sprint 23 production planning bridge: `/production` planning surface, backend production-plan API, formula snapshot demand calculation, shortage comparison, and internal Purchase Request draft evidence without PO/receiving/payment/stock movement side effects
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 

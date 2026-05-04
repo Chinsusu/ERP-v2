@@ -226,7 +226,8 @@ export const appMenuGroups: AppMenuGroup[] = [
       { label: "Inventory", href: "/inventory", code: "IV", permission: "inventory:view" },
       { label: "Purchase", href: "/purchase", code: "PU", permission: "purchase:view" },
       { label: "QC", href: "/qc", code: "QC", permission: "qc:view" },
-      { label: "Production / Subcontract", href: "/subcontract", code: "PD", permission: "subcontract:view" },
+      { label: "Production", href: "/production", code: "PD", permission: "production:view" },
+      { label: "Subcontract", href: "/subcontract", code: "SC", permission: "subcontract:view" },
       { label: "Sales Orders", href: "/sales", code: "SO", permission: "sales:view" },
       { label: "Shipping", href: "/shipping", code: "SH", permission: "shipping:view" },
       { label: "Returns", href: "/returns", code: "RT", permission: "returns:view" }
@@ -278,7 +279,7 @@ export function canAccessMenuItem(user: AuthenticatedUser, item: AppMenuItem) {
 }
 
 export function getMenuItemForModule(module: string) {
-  const href = module === "production" ? "/subcontract" : `/${module}`;
+  const href = `/${module}`;
 
   return appMenuGroups.flatMap((group) => group.items).find((item) => item.href === href);
 }

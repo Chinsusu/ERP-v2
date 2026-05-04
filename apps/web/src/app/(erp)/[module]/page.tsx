@@ -6,6 +6,7 @@ import { MasterDataPrototype } from "@/modules/masterdata/components/MasterDataP
 import { PurchaseOrderPrototype } from "@/modules/purchase/components/PurchaseOrderPrototype";
 import { InboundQCPrototype } from "@/modules/qc/components/InboundQCPrototype";
 import { WarehouseReceivingPrototype } from "@/modules/receiving/components/WarehouseReceivingPrototype";
+import { ProductionPlanPrototype } from "@/modules/production-planning/components/ProductionPlanPrototype";
 import { ReportingDashboard } from "@/modules/reporting/components/ReportingDashboard";
 import { ReturnReceivingPrototype } from "@/modules/returns/components/ReturnReceivingPrototype";
 import { SalesOrderPrototype } from "@/modules/sales/components/SalesOrderPrototype";
@@ -63,7 +64,11 @@ export default async function ERPModulePage({ params }: ERPModulePageProps) {
     return <ReturnReceivingPrototype />;
   }
 
-  if (module === "production" || module === "subcontract") {
+  if (module === "production") {
+    return <ProductionPlanPrototype />;
+  }
+
+  if (module === "subcontract") {
     return <SubcontractOrderPrototype />;
   }
 

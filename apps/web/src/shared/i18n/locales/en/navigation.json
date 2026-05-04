@@ -14,7 +14,7 @@
     "purchase": "Purchase",
     "qc": "QC",
     "production": "Production",
-    "subcontract": "Production / Subcontract",
+    "subcontract": "Subcontract",
     "sales": "Sales Orders",
     "shipping": "Shipping",
     "returns": "Returns",
