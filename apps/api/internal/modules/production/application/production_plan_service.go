@@ -236,11 +236,42 @@ func (s ProductionPlanService) resolveFormula(ctx context.Context, input CreateP
 	if formula.Status != masterdatadomain.FormulaStatusActive {
 		return masterdatadomain.Formula{}, ErrProductionPlanFormulaInactive
 	}
-	if outputItemID := strings.TrimSpace(input.OutputItemID); outputItemID != "" && !strings.EqualFold(outputItemID, formula.FinishedItemID) {
-		return masterdatadomain.Formula{}, productiondomain.ErrProductionPlanInvalidOutputType
+	if formulaID != "" {
+		matchesOutput, err := s.formulaMatchesRequestedOutput(ctx, formula, input.OutputItemID)
+		if err != nil {
+			return masterdatadomain.Formula{}, err
+		}
+		if !matchesOutput {
+			return masterdatadomain.Formula{}, productiondomain.ErrProductionPlanInvalidOutputType
+		}
 	}
 
 	return formula.Clone(), nil
+}
+
+func (s ProductionPlanService) formulaMatchesRequestedOutput(
+	ctx context.Context,
+	formula masterdatadomain.Formula,
+	outputItemID string,
+) (bool, error) {
+	outputItemID = strings.TrimSpace(outputItemID)
+	if outputItemID == "" || strings.EqualFold(outputItemID, formula.FinishedItemID) || strings.EqualFold(outputItemID, formula.FinishedSKU) {
+		return true, nil
+	}
+	formulas, err := s.formulaRead.List(ctx, masterdatadomain.FormulaFilter{
+		FinishedItemID: outputItemID,
+		Status:         masterdatadomain.FormulaStatusActive,
+	})
+	if err != nil {
+		return false, err
+	}
+	for _, candidate := range formulas {
+		if strings.EqualFold(candidate.ID, formula.ID) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func (s ProductionPlanService) productionPlanLinesFromRequirements(

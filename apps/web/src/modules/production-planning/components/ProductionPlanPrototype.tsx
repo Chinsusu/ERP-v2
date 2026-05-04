@@ -55,9 +55,13 @@ export function ProductionPlanPrototype() {
     [products]
   );
   const activeFormulas = useMemo(() => formulas.filter((formula) => formula.status === "active"), [formulas]);
+  const selectedProduct = useMemo(
+    () => activeFinishedProducts.find((product) => product.id === form.outputItemId),
+    [activeFinishedProducts, form.outputItemId]
+  );
   const formulasForSelectedProduct = useMemo(
-    () => activeFormulas.filter((formula) => formula.finishedItemId === form.outputItemId),
-    [activeFormulas, form.outputItemId]
+    () => activeFormulas.filter((formula) => formulaBelongsToProduct(formula, selectedProduct)),
+    [activeFormulas, selectedProduct]
   );
   const summary = useMemo(() => summarizeProductionPlans(plans), [plans]);
   const selectedPlan = useMemo(
@@ -89,7 +93,7 @@ export function ProductionPlanPrototype() {
           (product) => product.status === "active" && finishedProductTypes.includes(product.itemType) && product.isProducible
         );
         if (firstProduct) {
-          const firstFormula = formulaRows.find((formula) => formula.status === "active" && formula.finishedItemId === firstProduct.id);
+          const firstFormula = formulaRows.find((formula) => formula.status === "active" && formulaBelongsToProduct(formula, firstProduct));
           setForm((current) => ({
             ...current,
             outputItemId: current.outputItemId || firstProduct.id,
@@ -247,7 +251,7 @@ export function ProductionPlanPrototype() {
 
   function changeProduct(productId: string) {
     const product = activeFinishedProducts.find((candidate) => candidate.id === productId);
-    const formula = activeFormulas.find((candidate) => candidate.finishedItemId === productId);
+    const formula = activeFormulas.find((candidate) => formulaBelongsToProduct(candidate, product));
     setForm((current) => ({
       ...current,
       outputItemId: productId,
@@ -421,6 +425,14 @@ function formatDate(value?: string) {
     return "";
   }
   return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(new Date(value));
+}
+
+function formulaBelongsToProduct(formula: FormulaMasterDataItem, product?: ProductMasterDataItem) {
+  if (!product) {
+    return false;
+  }
+
+  return formula.finishedItemId === product.id || formula.finishedSku === product.skuCode;
 }
 
 function errorText(error: unknown) {
