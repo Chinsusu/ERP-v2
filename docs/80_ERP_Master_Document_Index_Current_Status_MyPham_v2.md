@@ -3,7 +3,7 @@
 Project: Web ERP for cosmetics operations
 Phase: Phase 1
 Document role: Current master document index and traceability map
-Version: v2.2
+Version: v2.3
 Date: 2026-05-04
 Status: Current source-of-truth index for current Phase 1 docs, design addenda, and proposed Sprint 23 planning
 
@@ -34,7 +34,7 @@ Latest release tag: v0.19.0-vietnamese-ui-localization.
 Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
 Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
 Sprint 22 status: UAT pilot pack prepared; S22-ISSUE-001 resolved by PR #546 at db894ddb; Session 0 readiness rerun passed; business UAT execution, business issue triage, Go/No-Go decision, and v0.22 tag are pending.
-Sprint 23 planning status: inventory/purchase/warehouse document-flow design exists in file 89; candidate Sprint 23 task board exists in file 90; implementation is not started and no v0.23 tag exists.
+Sprint 23 planning status: inventory/purchase/warehouse document-flow design exists in file 89; inventory/purchase/warehouse candidate task board exists in file 90; note-sheet module roadmap and sequencing decision exist in file 91; selected first Sprint 23 implementation track exists in file 92 for production planning, material demand, and Purchase Request draft; implementation is not started and no v0.23 tag exists.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -74,11 +74,13 @@ For a new engineer or reviewer:
 10. 86_ERP_Sprint22_Changelog_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md
 11. 89_ERP_Inventory_Purchase_Warehouse_Document_Flow_Design_MyPham_v1.md
 12. 90_ERP_Coding_Task_Board_Sprint23_Inventory_Purchase_Warehouse_Documents_MyPham_v1.md
-13. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
-14. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
-15. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
-16. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
-17. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
+13. 91_ERP_Module_Roadmap_From_Note_Sheet_Production_Purchase_Warehouse_MyPham_v1.md
+14. 92_ERP_Coding_Task_Board_Sprint23_Production_Planning_Material_Demand_MyPham_v1.md
+15. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
+16. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
+17. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
+18. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
+19. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
 ```
 
 For product or operations review:
@@ -95,8 +97,10 @@ For product or operations review:
 9. 85 Sprint 22 UAT pilot pack
 10. 89 Inventory/Purchase/Warehouse document-flow design
 11. 90 Sprint 23 candidate task board
-12. 88 BOM / formula module design
-13. 78 Production runtime checklist
+12. 91 Note-sheet module roadmap and sequencing decision
+13. 92 Selected Sprint 23 production planning/material demand task board
+14. 88 BOM / formula module design
+15. 78 Production runtime checklist
 ```
 
 ---
@@ -178,7 +182,9 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | `docs/uat/sprint22/` | Sprint 22 UAT templates and evidence structure | During UAT user setup, seed setup, execution logging, issue triage, and sign-off |
 | `88_ERP_BOM_Formula_Module_Design_MyPham_v1.md` | BOM / formula module design | Before implementing formula master, formula import, material requirement calculation, or production/subcontract formula snapshots |
 | `89_ERP_Inventory_Purchase_Warehouse_Document_Flow_Design_MyPham_v1.md` | Inventory, purchase request, stock transfer, warehouse issue note, and inventory dashboard design | Before implementing spreadsheet-to-ERP warehouse/purchase document flows |
-| `90_ERP_Coding_Task_Board_Sprint23_Inventory_Purchase_Warehouse_Documents_MyPham_v1.md` | Candidate Sprint 23 task board | Before starting Stock Transfer, Purchase Request, Warehouse Issue Note, and ledger-backed Inventory Dashboard implementation |
+| `90_ERP_Coding_Task_Board_Sprint23_Inventory_Purchase_Warehouse_Documents_MyPham_v1.md` | Follow-up Sprint 23 candidate task board | Before starting Stock Transfer, Warehouse Issue Note, and ledger-backed Inventory Dashboard implementation after the production-demand bridge is stable |
+| `91_ERP_Module_Roadmap_From_Note_Sheet_Production_Purchase_Warehouse_MyPham_v1.md` | Note-sheet module roadmap and sequencing decision | Before choosing the next implementation order from dashboard, setup, sales, production planning, purchasing, warehouse, and costing requests |
+| `92_ERP_Coding_Task_Board_Sprint23_Production_Planning_Material_Demand_MyPham_v1.md` | Selected first Sprint 23 task board | Before starting production planning, formula snapshot, material demand calculation, and Purchase Request draft generation |
 
 ---
 
@@ -217,7 +223,9 @@ English mode still has deeper table/filter labels that need localization cleanup
 Production-like auth smoke evidence must be recorded per target environment before release.
 Any future production-like release must record whether prototype fallback gaps remain.
 Sprint 22 business UAT execution remains pending until business users run the prepared scripts.
-Sprint 23 implementation has not started; files 89 and 90 are planning/design evidence only.
+Sprint 23 implementation has not started; files 89, 90, 91, and 92 are planning/design evidence only.
+Selected first Sprint 23 implementation track is file 92: production planning, material demand, and Purchase Request draft.
+File 90 remains the follow-up track for Stock Transfer, Warehouse Issue Note, and ledger-backed Inventory Dashboard hardening.
 Stock Transfer must remain same-SKU only; SKU-changing movements require separate conversion/repack design.
 Purchase Request must remain separate from PO, receiving, payment, and invoice source documents.
 ```
