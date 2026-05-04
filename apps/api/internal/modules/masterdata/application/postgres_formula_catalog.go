@@ -272,6 +272,10 @@ func (s *PostgresFormulaCatalog) List(ctx context.Context, filter domain.Formula
 	if err != nil {
 		return nil, err
 	}
+	filter, err = s.normalizeListFilter(ctx, orgID, filter)
+	if err != nil {
+		return nil, err
+	}
 
 	rows, err := s.db.QueryContext(ctx, selectPostgresFormulasSQL, orgID)
 	if err != nil {
@@ -295,6 +299,23 @@ func (s *PostgresFormulaCatalog) List(ctx context.Context, filter domain.Formula
 	sortFormulas(formulas)
 
 	return formulas, nil
+}
+
+func (s *PostgresFormulaCatalog) normalizeListFilter(ctx context.Context, orgID string, filter domain.FormulaFilter) (domain.FormulaFilter, error) {
+	parentID := strings.TrimSpace(filter.FinishedItemID)
+	if parentID == "" {
+		return filter, nil
+	}
+	parent, err := s.getFormulaParentItem(ctx, orgID, parentID)
+	if errors.Is(err, ErrFormulaParentItemNotFound) {
+		return filter, nil
+	}
+	if err != nil {
+		return domain.FormulaFilter{}, err
+	}
+	filter.FinishedItemID = parent.ID
+
+	return filter, nil
 }
 
 func (s *PostgresFormulaCatalog) Get(ctx context.Context, id string) (domain.Formula, error) {
