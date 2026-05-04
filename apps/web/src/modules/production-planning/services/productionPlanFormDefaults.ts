@@ -1,7 +1,7 @@
 import type { FormulaMasterDataItem, ProductMasterDataItem } from "@/modules/masterdata/types";
 import type { ProductionPlanDraftLine } from "../types";
 
-const defaultDraftQty = "1.000000";
+const defaultDraftQty = "1";
 
 export function formulaBelongsToProduct(formula: FormulaMasterDataItem, product?: ProductMasterDataItem) {
   if (!product) {

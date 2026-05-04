@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   DataTable,
-  DecimalInput,
   EmptyState,
   ErrorState,
   FormSection,
@@ -12,7 +11,6 @@ import {
   type DataTableColumn,
   type ToastMessage
 } from "@/shared/design-system/components";
-import { decimalScales } from "@/shared/format/numberFormat";
 import { getFormulas } from "@/modules/masterdata/services/formulaMasterDataService";
 import { finishedProductTypes, getProducts } from "@/modules/masterdata/services/productMasterDataService";
 import type { FormulaMasterDataItem, ProductMasterDataItem } from "@/modules/masterdata/types";
@@ -392,13 +390,16 @@ export function ProductionPlanPrototype() {
                         ))}
                       </select>
                     </label>
-                    <DecimalInput
-                      label="Số lượng"
-                      value={line.plannedQty}
-                      scale={decimalScales.quantity}
-                      suffix={line.uomCode}
-                      onChange={(value) => updateDraftLine(line.rowId, { plannedQty: value })}
-                    />
+                    <label className="erp-field">
+                      <span>Số lượng</span>
+                      <input
+                        className="erp-input"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={line.plannedQty}
+                        onChange={(event) => updateDraftLine(line.rowId, { plannedQty: integerText(event.currentTarget.value) })}
+                      />
+                    </label>
                     <label className="erp-field">
                       <span>Đơn vị</span>
                       <input
@@ -481,6 +482,10 @@ function formatDate(value?: string) {
 
 function errorText(error: unknown) {
   return error instanceof Error ? error.message : "Request failed";
+}
+
+function integerText(value: string) {
+  return value.replace(/\D/g, "");
 }
 
 function newDraftLineID() {
