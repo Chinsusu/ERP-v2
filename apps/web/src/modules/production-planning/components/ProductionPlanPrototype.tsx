@@ -24,6 +24,7 @@ import {
   productionPlanStatusTone,
   summarizeProductionPlans
 } from "../services/productionPlanService";
+import { defaultProductionPlanUom, findFormulaForProduct, formulaBelongsToProduct } from "../services/productionPlanFormDefaults";
 import type { ProductionPlan, ProductionPlanInput, ProductionPlanLine } from "../types";
 
 const emptyInput: ProductionPlanInput = {
@@ -93,12 +94,15 @@ export function ProductionPlanPrototype() {
           (product) => product.status === "active" && finishedProductTypes.includes(product.itemType) && product.isProducible
         );
         if (firstProduct) {
-          const firstFormula = formulaRows.find((formula) => formula.status === "active" && formulaBelongsToProduct(formula, firstProduct));
+          const firstFormula = findFormulaForProduct(
+            formulaRows.filter((formula) => formula.status === "active"),
+            firstProduct
+          );
           setForm((current) => ({
             ...current,
             outputItemId: current.outputItemId || firstProduct.id,
             formulaId: current.formulaId || firstFormula?.id || "",
-            uomCode: current.uomCode || firstProduct.uomBase
+            uomCode: current.outputItemId ? current.uomCode : defaultProductionPlanUom(firstProduct, firstFormula)
           }));
         }
       })
@@ -251,12 +255,21 @@ export function ProductionPlanPrototype() {
 
   function changeProduct(productId: string) {
     const product = activeFinishedProducts.find((candidate) => candidate.id === productId);
-    const formula = activeFormulas.find((candidate) => formulaBelongsToProduct(candidate, product));
+    const formula = findFormulaForProduct(activeFormulas, product);
     setForm((current) => ({
       ...current,
       outputItemId: productId,
       formulaId: formula?.id ?? "",
-      uomCode: product?.uomBase ?? current.uomCode
+      uomCode: defaultProductionPlanUom(product, formula) || current.uomCode
+    }));
+  }
+
+  function changeFormula(formulaId: string) {
+    const formula = activeFormulas.find((candidate) => candidate.id === formulaId);
+    setForm((current) => ({
+      ...current,
+      formulaId,
+      uomCode: defaultProductionPlanUom(selectedProduct, formula ?? formulasForSelectedProduct[0]) || current.uomCode
     }));
   }
 
@@ -343,7 +356,7 @@ export function ProductionPlanPrototype() {
                 <select
                   className="erp-input"
                   value={form.formulaId ?? ""}
-                  onChange={(event) => setForm((current) => ({ ...current, formulaId: event.currentTarget.value }))}
+                  onChange={(event) => changeFormula(event.currentTarget.value)}
                 >
                   <option value="">Tự chọn công thức active</option>
                   {formulasForSelectedProduct.map((formula) => (
@@ -425,14 +438,6 @@ function formatDate(value?: string) {
     return "";
   }
   return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(new Date(value));
-}
-
-function formulaBelongsToProduct(formula: FormulaMasterDataItem, product?: ProductMasterDataItem) {
-  if (!product) {
-    return false;
-  }
-
-  return formula.finishedItemId === product.id || formula.finishedSku === product.skuCode;
 }
 
 function errorText(error: unknown) {
