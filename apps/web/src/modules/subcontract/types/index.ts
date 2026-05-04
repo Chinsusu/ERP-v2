@@ -100,6 +100,18 @@ export type SubcontractOrderMaterialLine = {
   note?: string;
 };
 
+export type CreateSubcontractOrderMaterialLineInput = {
+  itemId: string;
+  skuCode?: string;
+  itemName?: string;
+  plannedQty: string;
+  uomCode: string;
+  unitCost: string;
+  currencyCode?: string;
+  lotTraceRequired?: boolean;
+  note?: string;
+};
+
 export type CreateSubcontractOrderInput = {
   id?: string;
   orderNo?: string;
@@ -108,15 +120,17 @@ export type CreateSubcontractOrderInput = {
   productId: string;
   productName?: string;
   quantity: number;
+  uomCode?: string;
   specVersion: string;
   sampleRequired: boolean;
   expectedDeliveryDate: string;
   depositStatus: SubcontractDepositStatus;
   depositAmount?: number;
-  materialItemId: string;
-  materialQty: string;
-  materialUnitCost: string;
+  materialItemId?: string;
+  materialQty?: string;
+  materialUnitCost?: string;
   materialLotTraceRequired?: boolean;
+  materialLines?: CreateSubcontractOrderMaterialLineInput[];
   createdBy?: string;
 };
 

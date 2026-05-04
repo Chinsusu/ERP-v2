@@ -14,6 +14,8 @@ import {
 import { getFormulas } from "@/modules/masterdata/services/formulaMasterDataService";
 import { finishedProductTypes, getProducts } from "@/modules/masterdata/services/productMasterDataService";
 import type { FormulaMasterDataItem, ProductMasterDataItem } from "@/modules/masterdata/types";
+import { purchaseSupplierOptions, purchaseWarehouseOptions } from "@/modules/purchase/services/purchaseOrderService";
+import { subcontractFactoryOptions } from "@/modules/subcontract/services/subcontractOrderService";
 import {
   createProductionPlans,
   formatProductionPlanQuantity,
@@ -28,6 +30,10 @@ import {
   createProductionPlanDraftLine,
   formulaBelongsToProduct
 } from "../services/productionPlanFormDefaults";
+import {
+  createPurchaseOrderFromProductionPlan,
+  createSubcontractOrderFromProductionPlan
+} from "../services/productionPlanNextActions";
 import type { ProductionPlan, ProductionPlanDraftLine, ProductionPlanLine } from "../types";
 
 export function ProductionPlanPrototype() {
@@ -38,8 +44,15 @@ export function ProductionPlanPrototype() {
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [nextActionSaving, setNextActionSaving] = useState<"" | "purchase" | "subcontract">("");
   const [error, setError] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | undefined>();
+  const [nextActionError, setNextActionError] = useState<string | undefined>();
+  const [purchaseSupplierId, setPurchaseSupplierId] = useState(purchaseSupplierOptions[0]?.value ?? "");
+  const [purchaseWarehouseId, setPurchaseWarehouseId] = useState(purchaseWarehouseOptions[0]?.value ?? "");
+  const [purchaseExpectedDate, setPurchaseExpectedDate] = useState(defaultDateOffset(3));
+  const [subcontractFactoryId, setSubcontractFactoryId] = useState(subcontractFactoryOptions[0]?.id ?? "");
+  const [subcontractExpectedDate, setSubcontractExpectedDate] = useState(defaultDateOffset(14));
   const [toast, setToast] = useState<ToastMessage[]>([]);
 
   const activeFinishedProducts = useMemo(
@@ -55,6 +68,9 @@ export function ProductionPlanPrototype() {
     () => plans.find((plan) => plan.id === selectedPlanId) ?? plans[0],
     [plans, selectedPlanId]
   );
+  const selectedPlanPurchaseLineCount = selectedPlan?.purchaseRequestDraft.lines.length ?? 0;
+  const selectedPlanShortageLineCount =
+    selectedPlan?.lines.filter((line) => line.needsPurchase || Number(line.shortageQty) > 0).length ?? 0;
 
   useEffect(() => {
     let active = true;
@@ -105,6 +121,11 @@ export function ProductionPlanPrototype() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    setPurchaseExpectedDate(selectedPlan?.plannedStartDate ?? defaultDateOffset(3));
+    setSubcontractExpectedDate(selectedPlan?.plannedEndDate ?? defaultDateOffset(14));
+  }, [selectedPlan?.id, selectedPlan?.plannedEndDate, selectedPlan?.plannedStartDate]);
 
   const planColumns: DataTableColumn<ProductionPlan>[] = [
     {
@@ -283,6 +304,45 @@ export function ProductionPlanPrototype() {
 
   function formulasForLine(line: ProductionPlanDraftLine) {
     return activeFormulas.filter((formula) => formulaBelongsToProduct(formula, productForLine(line)));
+  }
+
+  async function createPurchaseOrderFromSelectedPlan() {
+    if (!selectedPlan) {
+      return;
+    }
+    setNextActionSaving("purchase");
+    setNextActionError(undefined);
+    try {
+      const order = await createPurchaseOrderFromProductionPlan(selectedPlan, {
+        supplierId: purchaseSupplierId,
+        warehouseId: purchaseWarehouseId,
+        expectedDate: purchaseExpectedDate
+      });
+      pushToast("Đã tạo PO", `${order.poNo} từ ${selectedPlan.planNo}`, "success");
+    } catch (actionError) {
+      setNextActionError(errorText(actionError));
+    } finally {
+      setNextActionSaving("");
+    }
+  }
+
+  async function createSubcontractOrderFromSelectedPlan() {
+    if (!selectedPlan) {
+      return;
+    }
+    setNextActionSaving("subcontract");
+    setNextActionError(undefined);
+    try {
+      const order = await createSubcontractOrderFromProductionPlan(selectedPlan, {
+        factoryId: subcontractFactoryId,
+        expectedDeliveryDate: subcontractExpectedDate
+      });
+      pushToast("Đã tạo lệnh gia công", `${order.orderNo} từ ${selectedPlan.planNo}`, "success");
+    } catch (actionError) {
+      setNextActionError(errorText(actionError));
+    } finally {
+      setNextActionSaving("");
+    }
   }
 
   function pushToast(title: string, description: string, tone: ToastMessage["tone"]) {
@@ -466,6 +526,122 @@ export function ProductionPlanPrototype() {
             emptyState={<EmptyState title="Chưa có dòng nhu cầu vật tư" />}
           />
         </article>
+
+        {selectedPlan ? (
+          <FormSection
+            title="Bước tiếp theo"
+            description="Từ kế hoạch đã chọn, tạo chứng từ mua hàng nếu còn thiếu vật tư hoặc tạo lệnh gia công khi vật tư đã đủ."
+          >
+            <div className="erp-production-next-actions">
+              <article className="erp-production-next-action-panel">
+                <header>
+                  <h3>Tạo PO từ đề nghị mua</h3>
+                  <p>
+                    {selectedPlanPurchaseLineCount > 0
+                      ? `${selectedPlanPurchaseLineCount} dòng vật tư cần mua từ ${selectedPlan.planNo}.`
+                      : "Kế hoạch này không có dòng đề nghị mua."}
+                  </p>
+                </header>
+                <div className="erp-production-next-action-fields">
+                  <label className="erp-field">
+                    <span>Nhà cung cấp</span>
+                    <select
+                      className="erp-input"
+                      value={purchaseSupplierId}
+                      onChange={(event) => setPurchaseSupplierId(event.currentTarget.value)}
+                    >
+                      {purchaseSupplierOptions.map((supplier) => (
+                        <option key={supplier.value} value={supplier.value}>
+                          {supplier.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="erp-field">
+                    <span>Kho nhận</span>
+                    <select
+                      className="erp-input"
+                      value={purchaseWarehouseId}
+                      onChange={(event) => setPurchaseWarehouseId(event.currentTarget.value)}
+                    >
+                      {purchaseWarehouseOptions.map((warehouse) => (
+                        <option key={warehouse.value} value={warehouse.value}>
+                          {warehouse.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="erp-field">
+                    <span>Ngày dự kiến</span>
+                    <input
+                      className="erp-input"
+                      type="date"
+                      value={purchaseExpectedDate}
+                      onChange={(event) => setPurchaseExpectedDate(event.currentTarget.value)}
+                    />
+                  </label>
+                </div>
+                <footer className="erp-production-next-action-footer">
+                  <button
+                    className="erp-button erp-button--primary"
+                    type="button"
+                    onClick={createPurchaseOrderFromSelectedPlan}
+                    disabled={nextActionSaving !== "" || selectedPlanPurchaseLineCount === 0}
+                  >
+                    {nextActionSaving === "purchase" ? "Đang tạo PO" : "Tạo PO"}
+                  </button>
+                </footer>
+              </article>
+
+              <article className="erp-production-next-action-panel">
+                <header>
+                  <h3>Tạo lệnh gia công</h3>
+                  <p>
+                    {selectedPlanShortageLineCount === 0
+                      ? "Vật tư đã đủ, có thể chuyển kế hoạch thành lệnh gia công."
+                      : `Còn ${selectedPlanShortageLineCount} dòng thiếu vật tư, cần xử lý mua hàng trước.`}
+                  </p>
+                </header>
+                <div className="erp-production-next-action-fields">
+                  <label className="erp-field">
+                    <span>Nhà máy</span>
+                    <select
+                      className="erp-input"
+                      value={subcontractFactoryId}
+                      onChange={(event) => setSubcontractFactoryId(event.currentTarget.value)}
+                    >
+                      {subcontractFactoryOptions.map((factory) => (
+                        <option key={factory.id} value={factory.id}>
+                          {factory.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="erp-field">
+                    <span>Ngày nhận dự kiến</span>
+                    <input
+                      className="erp-input"
+                      type="date"
+                      value={subcontractExpectedDate}
+                      onChange={(event) => setSubcontractExpectedDate(event.currentTarget.value)}
+                    />
+                  </label>
+                </div>
+                <footer className="erp-production-next-action-footer">
+                  <button
+                    className="erp-button erp-button--primary"
+                    type="button"
+                    onClick={createSubcontractOrderFromSelectedPlan}
+                    disabled={nextActionSaving !== "" || selectedPlanShortageLineCount > 0}
+                  >
+                    {nextActionSaving === "subcontract" ? "Đang tạo lệnh" : "Tạo lệnh gia công"}
+                  </button>
+                </footer>
+              </article>
+            </div>
+            {nextActionError ? <p className="erp-form-error">{nextActionError}</p> : null}
+          </FormSection>
+        ) : null}
       </section>
 
       <ToastStack messages={toast} />
@@ -486,6 +662,15 @@ function errorText(error: unknown) {
 
 function integerText(value: string) {
   return value.replace(/\D/g, "");
+}
+
+function defaultDateOffset(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function newDraftLineID() {

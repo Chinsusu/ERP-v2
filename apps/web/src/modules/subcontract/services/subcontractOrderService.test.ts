@@ -60,6 +60,56 @@ describe("subcontractOrderService", () => {
     });
   });
 
+  it("creates an external factory order with multiple material lines", async () => {
+    const order = await createSubcontractOrder({
+      factoryId: "sup-out-lotus",
+      productId: "item-serum-30ml",
+      productName: "Hydrating Serum 30ml",
+      quantity: 1200,
+      specVersion: "SPEC-SERUM-2026.04",
+      sampleRequired: true,
+      expectedDeliveryDate: "2026-05-20",
+      depositStatus: "pending",
+      materialLines: [
+        {
+          itemId: "item-act-baicapil",
+          skuCode: "ACT_BAICAPIL",
+          itemName: "BAICAPIL",
+          plannedQty: "0.001500",
+          uomCode: "KG",
+          unitCost: "0",
+          lotTraceRequired: true
+        },
+        {
+          itemId: "item-pkg-bottle-150",
+          skuCode: "CPGC-01",
+          itemName: "Chai PET 150ML",
+          plannedQty: "1200.000000",
+          uomCode: "PCS",
+          unitCost: "0",
+          lotTraceRequired: true
+        }
+      ]
+    });
+
+    expect(order.materialLines).toEqual([
+      expect.objectContaining({
+        itemId: "item-act-baicapil",
+        skuCode: "ACT_BAICAPIL",
+        itemName: "BAICAPIL",
+        plannedQty: "0.001500",
+        uomCode: "KG"
+      }),
+      expect.objectContaining({
+        itemId: "item-pkg-bottle-150",
+        skuCode: "CPGC-01",
+        itemName: "Chai PET 150ML",
+        plannedQty: "1200.000000",
+        uomCode: "PCS"
+      })
+    ]);
+  });
+
   it("rejects invalid external factory orders before creating a draft", async () => {
     await expect(
       createSubcontractOrder({
