@@ -55,6 +55,19 @@ describe("productMasterDataService", () => {
     ]);
   });
 
+  it("filters product master data by a controlled set of item types", async () => {
+    const finishedItems = await getProducts({ itemTypes: ["finished_good", "semi_finished"] });
+    const materialItems = await getProducts({ itemTypes: ["raw_material", "packaging", "service"] });
+
+    expect(finishedItems.length).toBeGreaterThan(0);
+    expect(materialItems.length).toBeGreaterThan(0);
+    expect(finishedItems.every((item) => ["finished_good", "semi_finished"].includes(item.itemType))).toBe(true);
+    expect(materialItems.every((item) => ["raw_material", "packaging", "service"].includes(item.itemType))).toBe(true);
+    expect(finishedItems.some((item) => item.itemType === "finished_good")).toBe(true);
+    expect(materialItems.some((item) => item.itemType === "raw_material")).toBe(true);
+    expect(materialItems.some((item) => item.itemType === "packaging")).toBe(true);
+  });
+
   it("uses the normalized source sheet items in the local fallback store", async () => {
     const items = await getProducts();
 

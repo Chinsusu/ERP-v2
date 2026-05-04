@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   DataTable,
   DecimalInput,
@@ -18,6 +18,8 @@ import { t } from "@/shared/i18n";
 import { useProductMasterData } from "../hooks/useProductMasterData";
 import {
   emptyProductInput,
+  finishedProductTypes,
+  materialProductTypes,
   productStatusOptions,
   productStatusTone,
   productTypeOptions,
@@ -27,23 +29,45 @@ import {
 import type { ProductMasterDataInput, ProductMasterDataItem, ProductMasterDataQuery, ProductStatus, ProductType } from "../types";
 
 const allStatusOptions = [{ label: productCopy("filters.allStatuses"), value: "" }, ...productStatusOptions] as const;
-const allTypeOptions = [{ label: productCopy("filters.allItemTypes"), value: "" }, ...productTypeOptions] as const;
 
-export function ProductMasterDataPrototype({ embedded = false }: { embedded?: boolean }) {
+type ProductMasterDataMode = "all" | "finished" | "materials";
+
+type ProductMasterDataPrototypeProps = {
+  embedded?: boolean;
+  mode?: ProductMasterDataMode;
+  onOpenFormula?: (item: ProductMasterDataItem) => void;
+  activeFormulaItemId?: string;
+  onItemsChange?: (items: ProductMasterDataItem[]) => void;
+};
+
+export function ProductMasterDataPrototype({
+  embedded = false,
+  mode = "all",
+  onOpenFormula,
+  activeFormulaItemId,
+  onItemsChange
+}: ProductMasterDataPrototypeProps) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ProductStatus | "">("");
   const [itemType, setItemType] = useState<ProductMasterDataQuery["itemType"]>("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<ProductMasterDataInput>(emptyProductInput);
+  const [form, setForm] = useState<ProductMasterDataInput>(() => emptyProductInputForMode(mode));
   const [formError, setFormError] = useState<string | undefined>();
   const [toast, setToast] = useState<ToastMessage[]>([]);
+  const allowedItemTypes = useMemo(() => productTypesForMode(mode), [mode]);
+  const typeOptions = useMemo(() => productTypeOptions.filter((option) => allowedItemTypes.includes(option.value)), [allowedItemTypes]);
+  const filterTypeOptions = useMemo(
+    () => [{ label: productCopy("filters.allItemTypes"), value: "" }, ...typeOptions] as const,
+    [typeOptions]
+  );
   const query = useMemo<ProductMasterDataQuery>(
     () => ({
       search: search || undefined,
       status,
-      itemType
+      itemType,
+      itemTypes: allowedItemTypes
     }),
-    [search, status, itemType]
+    [allowedItemTypes, search, status, itemType]
   );
   const {
     items,
@@ -59,6 +83,10 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
     saveProduct,
     saveProductStatus
   } = useProductMasterData(query);
+
+  useEffect(() => {
+    onItemsChange?.(items);
+  }, [items, onItemsChange]);
 
   const columns: DataTableColumn<ProductMasterDataItem>[] = [
     {
@@ -120,6 +148,16 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
           <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => startEdit(row)}>
             {productCopy("actions.edit")}
           </button>
+          {onOpenFormula && canHaveFormula(row) ? (
+            <button
+              className="erp-button erp-button--secondary erp-button--compact"
+              data-active={activeFormulaItemId === row.id ? "true" : "false"}
+              type="button"
+              onClick={() => onOpenFormula(row)}
+            >
+              {productCopy("actions.formula")}
+            </button>
+          ) : null}
           <button
             className="erp-button erp-button--secondary erp-button--compact"
             type="button"
@@ -130,7 +168,7 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
           </button>
         </div>
       ),
-      width: "300px"
+      width: onOpenFormula ? "390px" : "300px"
     }
   ];
 
@@ -150,7 +188,7 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
 
   function resetForm() {
     setEditingId(null);
-    setForm(emptyProductInput);
+    setForm(emptyProductInputForMode(mode));
     setFormError(undefined);
   }
 
@@ -210,7 +248,7 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
             value={itemType}
             onChange={(event) => setItemType(event.target.value as ProductMasterDataQuery["itemType"])}
           >
-            {allTypeOptions.map((option) => (
+            {filterTypeOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.value ? productTypeDisplay(option.value) : option.label}
               </option>
@@ -282,7 +320,7 @@ export function ProductMasterDataPrototype({ embedded = false }: { embedded?: bo
               <label className="erp-field">
                 <span>{productCopy("form.itemType")}</span>
                 <select className="erp-input" value={form.itemType} onChange={(event) => updateForm({ itemType: event.target.value as ProductMasterDataInput["itemType"] })}>
-                  {productTypeOptions.map((option) => (
+                  {typeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {productTypeDisplay(option.value)}
                     </option>
@@ -456,6 +494,44 @@ function controlLabels(item: ProductMasterDataItem) {
     item.expiryControlled ? productCopy("controls.expiry") : undefined,
     item.qcRequired ? productCopy("controls.qc") : undefined
   ].filter((label): label is string => Boolean(label));
+}
+
+function productTypesForMode(mode: ProductMasterDataMode): ProductType[] {
+  if (mode === "finished") {
+    return finishedProductTypes;
+  }
+  if (mode === "materials") {
+    return materialProductTypes;
+  }
+
+  return productTypeOptions.map((option) => option.value);
+}
+
+function emptyProductInputForMode(mode: ProductMasterDataMode): ProductMasterDataInput {
+  const next = { ...emptyProductInput };
+  if (mode === "materials") {
+    next.itemType = "raw_material";
+    next.uomBase = "KG";
+    next.uomPurchase = "KG";
+    next.uomIssue = "KG";
+    next.isSellable = false;
+    next.isPurchasable = true;
+    next.isProducible = false;
+  } else {
+    next.itemType = "finished_good";
+    next.uomBase = "PCS";
+    next.uomPurchase = "PCS";
+    next.uomIssue = "PCS";
+    next.isSellable = true;
+    next.isPurchasable = false;
+    next.isProducible = true;
+  }
+
+  return next;
+}
+
+function canHaveFormula(item: ProductMasterDataItem) {
+  return item.status === "active" && (item.itemType === "finished_good" || item.itemType === "semi_finished");
 }
 
 function formatDate(value: string) {

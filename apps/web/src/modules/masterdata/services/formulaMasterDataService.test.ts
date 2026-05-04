@@ -3,6 +3,7 @@ import {
   calculateFormulaRequirement,
   createFormula,
   emptyFormulaInput,
+  formulaInputForParentItem,
   formatFormulaQuantity,
   getFormulas,
   normalizeFormulaInput,
@@ -51,6 +52,23 @@ describe("formulaMasterDataService", () => {
     expect(formatFormulaQuantity("0.000001", "KG")).toBe("1 mg");
     expect(formatFormulaQuantity("0.001000", "KG")).toBe("1 g");
     expect(formatFormulaQuantity("1.250000", "KG")).toBe("1,25 kg");
+  });
+
+  it("binds formula parent fields from a finished or semi-finished SKU instead of free text", () => {
+    const input = formulaInputForParentItem(emptyFormulaInput, {
+      id: "item-grn",
+      skuCode: "GRN",
+      name: "Dáº¦U Gá»˜I RETRO NANO 350ML",
+      itemType: "finished_good",
+      status: "active"
+    });
+
+    expect(input).toMatchObject({
+      finishedItemId: "item-grn",
+      finishedSku: "GRN",
+      finishedItemName: "Dáº¦U Gá»˜I RETRO NANO 350ML",
+      finishedItemType: "finished_good"
+    });
   });
 
   it("creates formulas and calculates planned requirements in the local fallback store", async () => {

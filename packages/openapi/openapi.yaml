@@ -5529,6 +5529,7 @@ components:
           example: XFF-150ML
         finished_item_id:
           type: string
+          description: Active finished_good or semi_finished item id from product master data.
           example: item-xff-150
         finished_sku:
           type: string
@@ -5656,6 +5657,7 @@ components:
           type: string
         finished_item_id:
           type: string
+          description: Must reference an active finished_good or semi_finished item from product master data. SKU, name, and type are resolved from that parent item by the API.
         finished_sku:
           type: string
         finished_item_name:

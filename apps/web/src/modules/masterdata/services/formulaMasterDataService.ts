@@ -15,6 +15,7 @@ import type {
   FormulaRequirementLine,
   FormulaRequirementPreview,
   FormulaStatus,
+  ProductMasterDataItem,
   ProductType
 } from "../types";
 
@@ -299,6 +300,23 @@ export function normalizeFormulaInput(input: FormulaMasterDataInput): FormulaMas
     effectiveTo: input.effectiveTo.trim(),
     lines: input.lines.map(normalizeFormulaLineInput),
     note: input.note.trim()
+  };
+}
+
+export function formulaInputForParentItem(input: FormulaMasterDataInput, parent: Pick<ProductMasterDataItem, "id" | "skuCode" | "name" | "itemType" | "status">): FormulaMasterDataInput {
+  if (parent.status !== "active") {
+    throw new Error("Formula parent item must be active");
+  }
+  if (parent.itemType !== "finished_good" && parent.itemType !== "semi_finished") {
+    throw new Error("Formula parent item must be a finished good or semi finished item");
+  }
+
+  return {
+    ...input,
+    finishedItemId: parent.id,
+    finishedSku: parent.skuCode,
+    finishedItemName: parent.name,
+    finishedItemType: parent.itemType
   };
 }
 

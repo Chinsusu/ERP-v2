@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { StatusChip } from "@/shared/design-system/components";
 import { t } from "@/shared/i18n";
-import { FormulaMasterDataPrototype } from "./FormulaMasterDataPrototype";
+import { FinishedProductMasterDataPrototype } from "./FinishedProductMasterDataPrototype";
 import { ProductMasterDataPrototype } from "./ProductMasterDataPrototype";
 import { SupplierCustomerMasterDataPrototype } from "./SupplierCustomerMasterDataPrototype";
 import { WarehouseLocationMasterDataPrototype } from "./WarehouseLocationMasterDataPrototype";
 import { getMasterDataTabs, getMasterDataViewStatusLabel, type MasterDataView } from "./masterDataTabs";
 
 export function MasterDataPrototype() {
-  const [view, setView] = useState<MasterDataView>("products");
+  const [view, setView] = useState<MasterDataView>("finishedProducts");
   const masterDataViews = getMasterDataTabs();
 
   return (
@@ -37,8 +37,8 @@ export function MasterDataPrototype() {
         ))}
       </nav>
 
-      {view === "products" ? <ProductMasterDataPrototype embedded /> : null}
-      {view === "formulas" ? <FormulaMasterDataPrototype /> : null}
+      {view === "finishedProducts" ? <FinishedProductMasterDataPrototype /> : null}
+      {view === "materials" ? <ProductMasterDataPrototype embedded mode="materials" /> : null}
       {view === "warehouses" ? <WarehouseLocationMasterDataPrototype embedded /> : null}
       {view === "suppliers" ? <SupplierCustomerMasterDataPrototype embedded mode="suppliers" /> : null}
       {view === "customers" ? <SupplierCustomerMasterDataPrototype embedded mode="customers" /> : null}

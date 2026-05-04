@@ -16,6 +16,8 @@ import (
 
 var ErrFormulaNotFound = errors.New("formula not found")
 var ErrDuplicateFormulaVersion = errors.New("formula version already exists")
+var ErrFormulaParentItemNotFound = errors.New("formula parent item not found")
+var ErrFormulaParentItemInactive = errors.New("formula parent item must be active")
 
 type FormulaCatalog struct {
 	mu       sync.RWMutex
@@ -84,6 +86,25 @@ type FormulaRequirementResult struct {
 	PlannedQty   decimal.Decimal
 	PlannedUOM   decimal.UOMCode
 	Requirements []domain.FormulaRequirement
+}
+
+func createFormulaInputForParent(input CreateFormulaInput, parent domain.Item) (CreateFormulaInput, error) {
+	if strings.TrimSpace(parent.ID) == "" {
+		return CreateFormulaInput{}, ErrFormulaParentItemNotFound
+	}
+	if parent.Status != domain.ItemStatusActive {
+		return CreateFormulaInput{}, ErrFormulaParentItemInactive
+	}
+	if parent.Type != domain.ItemTypeFinishedGood && parent.Type != domain.ItemTypeSemiFinished {
+		return CreateFormulaInput{}, domain.ErrFormulaInvalidFinishedItemType
+	}
+
+	input.FinishedItemID = strings.TrimSpace(parent.ID)
+	input.FinishedSKU = domain.NormalizeSKUCode(parent.SKUCode)
+	input.FinishedItemName = strings.TrimSpace(parent.Name)
+	input.FinishedItemType = string(parent.Type)
+
+	return input, nil
 }
 
 func NewPrototypeFormulaCatalog(auditLog audit.LogStore) *FormulaCatalog {

@@ -42,7 +42,7 @@ const selectPostgresFormulasSQL = `
 SELECT
   formula.formula_ref,
   formula.formula_code,
-  formula.finished_item_ref,
+  formula.finished_item_id::text,
   formula.finished_sku,
   formula.finished_item_name,
   formula.finished_item_type,
@@ -69,7 +69,7 @@ const selectPostgresFormulaSQL = `
 SELECT
   formula.formula_ref,
   formula.formula_code,
-  formula.finished_item_ref,
+  formula.finished_item_id::text,
   formula.finished_sku,
   formula.finished_item_name,
   formula.finished_item_type,
@@ -124,6 +124,7 @@ INSERT INTO mdm.item_formulas (
   formula_ref,
   formula_code,
   finished_item_ref,
+  finished_item_id,
   finished_sku,
   finished_item_name,
   finished_item_type,
@@ -147,7 +148,7 @@ INSERT INTO mdm.item_formulas (
   $2,
   $3,
   $4,
-  $5,
+  $5::uuid,
   $6,
   $7,
   $8,
@@ -157,14 +158,15 @@ INSERT INTO mdm.item_formulas (
   $12,
   $13,
   $14,
-  $15::date,
+  $15,
   $16::date,
-  $17,
+  $17::date,
   $18,
   $19,
   $20,
   $21,
-  $22
+  $22,
+  $23
 )
 RETURNING id::text`
 
@@ -215,8 +217,28 @@ const selectPostgresFormulaDuplicateSQL = `
 SELECT formula_ref
 FROM mdm.item_formulas
 WHERE org_id = $1::uuid
-  AND lower(finished_item_ref) = lower($2)
+  AND finished_item_id = $2::uuid
   AND lower(formula_version) = lower($3)
+LIMIT 1`
+
+const selectPostgresFormulaParentItemSQL = `
+SELECT
+  item.id::text,
+  COALESCE(item.item_code, item.sku),
+  item.sku,
+  item.name,
+  item.item_type,
+  CASE WHEN item.status = 'blocked' THEN 'inactive' ELSE item.status END,
+  COALESCE(item.uom_base, unit.code, 'PCS')
+FROM mdm.items AS item
+LEFT JOIN mdm.units AS unit ON unit.id = item.base_unit_id
+WHERE item.org_id = $1::uuid
+  AND (
+    item.id::text = $2
+    OR lower(COALESCE(item.item_ref, item.id::text)) = lower($2)
+    OR lower(item.sku) = lower($2)
+    OR lower(COALESCE(item.item_code, '')) = lower($2)
+  )
 LIMIT 1`
 
 const deactivatePostgresActiveFormulaSQL = `
@@ -225,7 +247,7 @@ SET status = 'inactive',
     updated_at = $3,
     version = version + 1
 WHERE org_id = $1::uuid
-  AND lower(finished_item_ref) = lower($2)
+  AND finished_item_id = $2::uuid
   AND status = 'active'`
 
 const activatePostgresFormulaSQL = `
@@ -301,6 +323,18 @@ func (s *PostgresFormulaCatalog) Create(ctx context.Context, input CreateFormula
 	if s.auditLog == nil {
 		return FormulaResult{}, errors.New("audit log store is required")
 	}
+	orgID, err := s.resolveOrgID()
+	if err != nil {
+		return FormulaResult{}, err
+	}
+	parent, err := s.getFormulaParentItem(ctx, orgID, input.FinishedItemID)
+	if err != nil {
+		return FormulaResult{}, err
+	}
+	input, err = createFormulaInputForParent(input, parent)
+	if err != nil {
+		return FormulaResult{}, err
+	}
 	now := s.clock().UTC()
 	formula, err := domain.NewFormula(domain.NewFormulaInput{
 		ID:               newFormulaID(input.FormulaCode, input.FormulaVersion, now),
@@ -323,10 +357,6 @@ func (s *PostgresFormulaCatalog) Create(ctx context.Context, input CreateFormula
 		CreatedAt:        now,
 		UpdatedAt:        now,
 	})
-	if err != nil {
-		return FormulaResult{}, err
-	}
-	orgID, err := s.resolveOrgID()
 	if err != nil {
 		return FormulaResult{}, err
 	}
@@ -455,6 +485,7 @@ func (s *PostgresFormulaCatalog) saveNewFormula(ctx context.Context, orgID strin
 		formula.ID,
 		formula.FormulaCode,
 		formula.FinishedItemID,
+		formula.FinishedItemID,
 		formula.FinishedSKU,
 		formula.FinishedItemName,
 		string(formula.FinishedItemType),
@@ -507,6 +538,30 @@ func (s *PostgresFormulaCatalog) saveNewFormula(ctx context.Context, orgID strin
 	committed = true
 
 	return nil
+}
+
+func (s *PostgresFormulaCatalog) getFormulaParentItem(ctx context.Context, orgID string, parentID string) (domain.Item, error) {
+	if strings.TrimSpace(parentID) == "" {
+		return domain.Item{}, ErrFormulaParentItemNotFound
+	}
+	var item domain.Item
+	err := s.db.QueryRowContext(ctx, selectPostgresFormulaParentItemSQL, orgID, strings.TrimSpace(parentID)).Scan(
+		&item.ID,
+		&item.ItemCode,
+		&item.SKUCode,
+		&item.Name,
+		&item.Type,
+		&item.Status,
+		&item.UOMBase,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Item{}, ErrFormulaParentItemNotFound
+	}
+	if err != nil {
+		return domain.Item{}, err
+	}
+
+	return item, nil
 }
 
 func (s *PostgresFormulaCatalog) scanFormulaWithLines(ctx context.Context, orgID string, scanner interface{ Scan(dest ...any) error }) (domain.Formula, error) {

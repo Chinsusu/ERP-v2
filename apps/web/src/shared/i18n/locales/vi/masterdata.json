@@ -4,6 +4,8 @@
   "sectionsLabel": "Nhóm dữ liệu gốc",
   "views": {
     "products": "Mã hàng / SKU",
+    "finishedProducts": "Thành phẩm",
+    "materials": "Nguyên liệu / Bao bì",
     "formulas": "Công thức",
     "warehouses": "Kho / Vị trí",
     "parties": "Nhà cung cấp / Khách hàng",
@@ -12,6 +14,8 @@
   },
   "viewStatus": {
     "products": "Thiết lập mã hàng",
+    "finishedProducts": "Thiết lập thành phẩm",
+    "materials": "Thiết lập nguyên liệu",
     "formulas": "Thiết lập công thức",
     "warehouses": "Thiết lập kho",
     "parties": "Thiết lập đối tác",
@@ -44,6 +48,7 @@
     "edit": "Sửa",
     "activate": "Kích hoạt",
     "inactivate": "Ngưng kích hoạt",
+    "formula": "Công thức",
     "newItem": "Mã hàng mới",
     "dismiss": "Đóng",
     "clear": "Xóa form",
@@ -117,6 +122,14 @@
     "itemCreated": "Đã tạo mã hàng",
     "saved": "Đã lưu {sku}"
   },
+  "finished": {
+    "formulaTitle": "Công thức",
+    "formulaDescription": "Thiết lập công thức cho {sku}",
+    "formulaEmptyDescription": "Chọn một SKU thành phẩm hoặc bán thành phẩm để quản lý công thức.",
+    "noSelection": "Chưa chọn SKU",
+    "emptyTitle": "Chọn thành phẩm",
+    "emptyDescription": "Dùng action Công thức trên dòng thành phẩm hoặc bán thành phẩm."
+  },
   "product": {
     "status": {
       "draft": "Nháp",
@@ -170,6 +183,8 @@
       "createTitle": "Tạo công thức",
       "description": "Số lượng batch, SKU thành phẩm và dòng nguyên liệu hoặc bao bì",
       "formulaCode": "Mã công thức",
+      "parentItem": "Thành phẩm",
+      "selectParentItem": "Chọn thành phẩm",
       "finishedItemId": "ID mã hàng cha",
       "finishedSku": "SKU thành phẩm",
       "finishedItemName": "Tên thành phẩm",

@@ -4,6 +4,8 @@
   "sectionsLabel": "Master data sections",
   "views": {
     "products": "Items / SKU",
+    "finishedProducts": "Finished products",
+    "materials": "Materials / Packaging",
     "formulas": "Formulas",
     "warehouses": "Warehouses / Locations",
     "parties": "Suppliers / Customers",
@@ -12,6 +14,8 @@
   },
   "viewStatus": {
     "products": "Item setup",
+    "finishedProducts": "Finished product setup",
+    "materials": "Material setup",
     "formulas": "Formula setup",
     "warehouses": "Warehouse setup",
     "parties": "Party setup",
@@ -44,6 +48,7 @@
     "edit": "Edit",
     "activate": "Activate",
     "inactivate": "Inactivate",
+    "formula": "Formula",
     "newItem": "New item",
     "dismiss": "Dismiss",
     "clear": "Clear",
@@ -117,6 +122,14 @@
     "itemCreated": "Item created",
     "saved": "{sku} saved"
   },
+  "finished": {
+    "formulaTitle": "Formula",
+    "formulaDescription": "Formula setup for {sku}",
+    "formulaEmptyDescription": "Select a finished or semi finished SKU to manage its formula.",
+    "noSelection": "No SKU selected",
+    "emptyTitle": "Select a finished SKU",
+    "emptyDescription": "Use the Formula action on a finished or semi finished SKU row."
+  },
   "product": {
     "status": {
       "draft": "Draft",
@@ -170,6 +183,8 @@
       "createTitle": "Create formula",
       "description": "Batch quantity, parent SKU, and ingredient or packaging lines",
       "formulaCode": "Formula code",
+      "parentItem": "Finished product",
+      "selectParentItem": "Select finished product",
       "finishedItemId": "Parent item ID",
       "finishedSku": "Parent SKU",
       "finishedItemName": "Parent name",
