@@ -28,6 +28,9 @@ Start with:
 - `docs/80_ERP_Master_Document_Index_Current_Status_MyPham_v2.md`
 - `docs/84_ERP_Coding_Task_Board_Sprint22_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md`
 - `docs/85_ERP_UAT_Pilot_Pack_Sprint22_Warehouse_Sales_QC_MyPham_v1.md`
+- `docs/89_ERP_Inventory_Purchase_Warehouse_Document_Flow_Design_MyPham_v1.md`
+- `docs/90_ERP_Coding_Task_Board_Sprint23_Inventory_Purchase_Warehouse_Documents_MyPham_v1.md`
+- `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
 - `docs/38_ERP_Workspace_Repository_Structure_Standards_Phase1_MyPham_v1.md`
@@ -58,6 +61,15 @@ S22-ISSUE-001 role-based UAT authentication blocker resolved by PR #546 at db894
 Session 0 readiness rerun passed on dev, including Warehouse/Sales/QC role login, /me role payloads, RBAC menu/route guard, logout, and invalid-login Vietnamese copy.
 Business UAT execution, business issue triage, Go/No-Go decision, and v0.22 tag are pending.
 Do not treat Sprint 22 preparation docs as UAT pass evidence.
+```
+
+Sprint 23 planning status:
+
+```text
+Inventory/purchase/warehouse document-flow design is documented in file 89.
+Sprint 23 task-board candidate is documented in file 90.
+Sprint 23 is not started; stock transfer, purchase request, warehouse issue note, and ledger-backed inventory dashboard implementation remain pending.
+No v0.23 tag has been created.
 ```
 
 Phase 1 production scope:
@@ -98,6 +110,9 @@ Production runtime reference:
 - `docs/84_ERP_Coding_Task_Board_Sprint22_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md`
 - `docs/85_ERP_UAT_Pilot_Pack_Sprint22_Warehouse_Sales_QC_MyPham_v1.md`
 - `docs/86_ERP_Sprint22_Changelog_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md`
+- `docs/89_ERP_Inventory_Purchase_Warehouse_Document_Flow_Design_MyPham_v1.md`
+- `docs/90_ERP_Coding_Task_Board_Sprint23_Inventory_Purchase_Warehouse_Documents_MyPham_v1.md`
+- `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md`
