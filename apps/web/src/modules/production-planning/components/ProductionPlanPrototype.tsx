@@ -17,30 +17,26 @@ import { getFormulas } from "@/modules/masterdata/services/formulaMasterDataServ
 import { finishedProductTypes, getProducts } from "@/modules/masterdata/services/productMasterDataService";
 import type { FormulaMasterDataItem, ProductMasterDataItem } from "@/modules/masterdata/types";
 import {
-  createProductionPlan,
+  createProductionPlans,
   formatProductionPlanQuantity,
   getProductionPlans,
   productionPlanStatusDisplay,
   productionPlanStatusTone,
   summarizeProductionPlans
 } from "../services/productionPlanService";
-import { defaultProductionPlanUom, findFormulaForProduct, formulaBelongsToProduct } from "../services/productionPlanFormDefaults";
-import type { ProductionPlan, ProductionPlanInput, ProductionPlanLine } from "../types";
-
-const emptyInput: ProductionPlanInput = {
-  outputItemId: "",
-  formulaId: "",
-  plannedQty: "1.000000",
-  uomCode: "PCS",
-  plannedStartDate: "",
-  plannedEndDate: ""
-};
+import {
+  applyFormulaToProductionPlanDraftLine,
+  applyProductToProductionPlanDraftLine,
+  createProductionPlanDraftLine,
+  formulaBelongsToProduct
+} from "../services/productionPlanFormDefaults";
+import type { ProductionPlan, ProductionPlanDraftLine, ProductionPlanLine } from "../types";
 
 export function ProductionPlanPrototype() {
   const [plans, setPlans] = useState<ProductionPlan[]>([]);
   const [products, setProducts] = useState<ProductMasterDataItem[]>([]);
   const [formulas, setFormulas] = useState<FormulaMasterDataItem[]>([]);
-  const [form, setForm] = useState<ProductionPlanInput>(emptyInput);
+  const [draftLines, setDraftLines] = useState<ProductionPlanDraftLine[]>([createProductionPlanDraftLine(newDraftLineID())]);
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -56,14 +52,6 @@ export function ProductionPlanPrototype() {
     [products]
   );
   const activeFormulas = useMemo(() => formulas.filter((formula) => formula.status === "active"), [formulas]);
-  const selectedProduct = useMemo(
-    () => activeFinishedProducts.find((product) => product.id === form.outputItemId),
-    [activeFinishedProducts, form.outputItemId]
-  );
-  const formulasForSelectedProduct = useMemo(
-    () => activeFormulas.filter((formula) => formulaBelongsToProduct(formula, selectedProduct)),
-    [activeFormulas, selectedProduct]
-  );
   const summary = useMemo(() => summarizeProductionPlans(plans), [plans]);
   const selectedPlan = useMemo(
     () => plans.find((plan) => plan.id === selectedPlanId) ?? plans[0],
@@ -94,16 +82,14 @@ export function ProductionPlanPrototype() {
           (product) => product.status === "active" && finishedProductTypes.includes(product.itemType) && product.isProducible
         );
         if (firstProduct) {
-          const firstFormula = findFormulaForProduct(
-            formulaRows.filter((formula) => formula.status === "active"),
-            firstProduct
-          );
-          setForm((current) => ({
-            ...current,
-            outputItemId: current.outputItemId || firstProduct.id,
-            formulaId: current.formulaId || firstFormula?.id || "",
-            uomCode: current.outputItemId ? current.uomCode : defaultProductionPlanUom(firstProduct, firstFormula)
-          }));
+          const activeFormulaRows = formulaRows.filter((formula) => formula.status === "active");
+          setDraftLines((current) => {
+            if (current.some((line) => line.outputItemId)) {
+              return current;
+            }
+
+            return [createProductionPlanDraftLine(current[0]?.rowId ?? newDraftLineID(), firstProduct, activeFormulaRows)];
+          });
         }
       })
       .catch((loadError) => {
@@ -242,10 +228,13 @@ export function ProductionPlanPrototype() {
     setSaving(true);
     setFormError(undefined);
     try {
-      const created = await createProductionPlan(form);
+      const readyLines = draftLines.filter((line) => line.outputItemId.trim() !== "");
+      const created = await createProductionPlans(readyLines.map(toProductionPlanInput));
       await refreshPlans();
-      setSelectedPlanId(created.id);
-      pushToast("Đã tạo kế hoạch", `${created.planNo} - ${created.outputSku}`, "success");
+      if (created[0]) {
+        setSelectedPlanId(created[0].id);
+      }
+      pushToast("Đã tạo kế hoạch", `${created.length} thành phẩm: ${created.map((plan) => plan.outputSku).join(", ")}`, "success");
     } catch (saveError) {
       setFormError(errorText(saveError));
     } finally {
@@ -253,24 +242,49 @@ export function ProductionPlanPrototype() {
     }
   }
 
-  function changeProduct(productId: string) {
+  function changeProduct(rowId: string, productId: string) {
     const product = activeFinishedProducts.find((candidate) => candidate.id === productId);
-    const formula = findFormulaForProduct(activeFormulas, product);
-    setForm((current) => ({
-      ...current,
-      outputItemId: productId,
-      formulaId: formula?.id ?? "",
-      uomCode: defaultProductionPlanUom(product, formula) || current.uomCode
-    }));
+    setDraftLines((current) =>
+      current.map((line) =>
+        line.rowId === rowId ? applyProductToProductionPlanDraftLine(line, product, activeFormulas) : line
+      )
+    );
   }
 
-  function changeFormula(formulaId: string) {
+  function changeFormula(line: ProductionPlanDraftLine, formulaId: string) {
     const formula = activeFormulas.find((candidate) => candidate.id === formulaId);
-    setForm((current) => ({
-      ...current,
-      formulaId,
-      uomCode: defaultProductionPlanUom(selectedProduct, formula ?? formulasForSelectedProduct[0]) || current.uomCode
-    }));
+    const product = productForLine(line);
+    setDraftLines((current) =>
+      current.map((candidate) =>
+        candidate.rowId === line.rowId
+          ? applyFormulaToProductionPlanDraftLine(candidate, product, formula ?? formulasForLine(line)[0])
+          : candidate
+      )
+    );
+  }
+
+  function updateDraftLine(rowId: string, patch: Partial<ProductionPlanDraftLine>) {
+    setDraftLines((current) => current.map((line) => (line.rowId === rowId ? { ...line, ...patch } : line)));
+  }
+
+  function addDraftLine() {
+    setDraftLines((current) => [...current, createProductionPlanDraftLine(newDraftLineID())]);
+  }
+
+  function removeDraftLine(rowId: string) {
+    setDraftLines((current) =>
+      current.length === 1
+        ? [createProductionPlanDraftLine(current[0]?.rowId ?? newDraftLineID())]
+        : current.filter((line) => line.rowId !== rowId)
+    );
+  }
+
+  function productForLine(line: ProductionPlanDraftLine) {
+    return activeFinishedProducts.find((product) => product.id === line.outputItemId);
+  }
+
+  function formulasForLine(line: ProductionPlanDraftLine) {
+    return activeFormulas.filter((formula) => formulaBelongsToProduct(formula, productForLine(line)));
   }
 
   function pushToast(title: string, description: string, tone: ToastMessage["tone"]) {
@@ -329,76 +343,101 @@ export function ProductionPlanPrototype() {
         <form onSubmit={submit}>
           <FormSection
             title="Tạo kế hoạch sản xuất"
-            description="Chọn thành phẩm và công thức đang active để snapshot nhu cầu vật tư. Kết quả chỉ tạo đề nghị mua nháp nội bộ."
+            description="Thêm nhiều thành phẩm trong một lần nhập; hệ thống sẽ tạo mỗi thành phẩm thành một kế hoạch riêng để giữ traceability theo công thức."
             footer={
               <>
                 {formError ? <span className="erp-form-error">{formError}</span> : null}
+                <button className="erp-button erp-button--secondary" type="button" onClick={addDraftLine} disabled={saving || loading}>
+                  Thêm thành phẩm
+                </button>
                 <button className="erp-button erp-button--primary" type="submit" disabled={saving || loading}>
-                  {saving ? "Đang tạo" : "Tạo kế hoạch"}
+                  {saving ? "Đang tạo" : `Tạo ${draftLines.filter((line) => line.outputItemId).length || 1} kế hoạch`}
                 </button>
               </>
             }
           >
-            <div className="erp-masterdata-form-grid">
-              <label className="erp-field">
-                <span>Thành phẩm</span>
-                <select className="erp-input" value={form.outputItemId} onChange={(event) => changeProduct(event.currentTarget.value)}>
-                  <option value="">Chọn thành phẩm</option>
-                  {activeFinishedProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.skuCode} - {product.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="erp-field">
-                <span>Công thức</span>
-                <select
-                  className="erp-input"
-                  value={form.formulaId ?? ""}
-                  onChange={(event) => changeFormula(event.currentTarget.value)}
-                >
-                  <option value="">Tự chọn công thức active</option>
-                  {formulasForSelectedProduct.map((formula) => (
-                    <option key={formula.id} value={formula.id}>
-                      {formula.formulaCode} - {formula.formulaVersion}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <DecimalInput
-                label="Số lượng cần sản xuất"
-                value={form.plannedQty}
-                scale={decimalScales.quantity}
-                suffix={form.uomCode}
-                onChange={(value) => setForm((current) => ({ ...current, plannedQty: value }))}
-              />
-              <label className="erp-field">
-                <span>Đơn vị</span>
-                <input
-                  className="erp-input"
-                  value={form.uomCode}
-                  onChange={(event) => setForm((current) => ({ ...current, uomCode: event.currentTarget.value.toUpperCase() }))}
-                />
-              </label>
-              <label className="erp-field">
-                <span>Ngày bắt đầu</span>
-                <input
-                  className="erp-input"
-                  type="date"
-                  value={form.plannedStartDate ?? ""}
-                  onChange={(event) => setForm((current) => ({ ...current, plannedStartDate: event.currentTarget.value }))}
-                />
-              </label>
-              <label className="erp-field">
-                <span>Ngày kết thúc</span>
-                <input
-                  className="erp-input"
-                  type="date"
-                  value={form.plannedEndDate ?? ""}
-                  onChange={(event) => setForm((current) => ({ ...current, plannedEndDate: event.currentTarget.value }))}
-                />
-              </label>
+            <div className="erp-production-plan-lines">
+              {draftLines.map((line, index) => {
+                const lineFormulas = formulasForLine(line);
+
+                return (
+                  <div className="erp-production-plan-line" key={line.rowId}>
+                    <label className="erp-field">
+                      <span>Thành phẩm {index + 1}</span>
+                      <select
+                        className="erp-input"
+                        value={line.outputItemId}
+                        onChange={(event) => changeProduct(line.rowId, event.currentTarget.value)}
+                      >
+                        <option value="">Chọn thành phẩm</option>
+                        {activeFinishedProducts.map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.skuCode} - {product.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="erp-field">
+                      <span>Công thức</span>
+                      <select
+                        className="erp-input"
+                        value={line.formulaId ?? ""}
+                        onChange={(event) => changeFormula(line, event.currentTarget.value)}
+                      >
+                        <option value="">Tự chọn công thức active</option>
+                        {lineFormulas.map((formula) => (
+                          <option key={formula.id} value={formula.id}>
+                            {formula.formulaCode} - {formula.formulaVersion}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <DecimalInput
+                      label="Số lượng"
+                      value={line.plannedQty}
+                      scale={decimalScales.quantity}
+                      suffix={line.uomCode}
+                      onChange={(value) => updateDraftLine(line.rowId, { plannedQty: value })}
+                    />
+                    <label className="erp-field">
+                      <span>Đơn vị</span>
+                      <input
+                        className="erp-input"
+                        value={line.uomCode}
+                        onChange={(event) => updateDraftLine(line.rowId, { uomCode: event.currentTarget.value.toUpperCase() })}
+                      />
+                    </label>
+                    <label className="erp-field">
+                      <span>Ngày bắt đầu</span>
+                      <input
+                        className="erp-input"
+                        type="date"
+                        value={line.plannedStartDate ?? ""}
+                        onChange={(event) => updateDraftLine(line.rowId, { plannedStartDate: event.currentTarget.value })}
+                      />
+                    </label>
+                    <label className="erp-field">
+                      <span>Ngày kết thúc</span>
+                      <input
+                        className="erp-input"
+                        type="date"
+                        value={line.plannedEndDate ?? ""}
+                        onChange={(event) => updateDraftLine(line.rowId, { plannedEndDate: event.currentTarget.value })}
+                      />
+                    </label>
+                    <div className="erp-production-plan-line-actions">
+                      <button
+                        className="erp-button erp-button--secondary erp-button--compact"
+                        type="button"
+                        onClick={() => removeDraftLine(line.rowId)}
+                        disabled={saving}
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </FormSection>
         </form>
@@ -442,4 +481,19 @@ function formatDate(value?: string) {
 
 function errorText(error: unknown) {
   return error instanceof Error ? error.message : "Request failed";
+}
+
+function newDraftLineID() {
+  return `production-plan-line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function toProductionPlanInput(line: ProductionPlanDraftLine) {
+  return {
+    outputItemId: line.outputItemId,
+    formulaId: line.formulaId,
+    plannedQty: line.plannedQty,
+    uomCode: line.uomCode,
+    plannedStartDate: line.plannedStartDate,
+    plannedEndDate: line.plannedEndDate
+  };
 }

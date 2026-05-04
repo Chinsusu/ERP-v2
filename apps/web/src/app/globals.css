@@ -1090,6 +1090,46 @@ textarea {
   min-width: 0;
 }
 
+.erp-production-plan-lines {
+  display: grid;
+  gap: 12px;
+}
+
+.erp-production-plan-line {
+  display: grid;
+  grid-template-columns:
+    minmax(220px, 2fr)
+    minmax(180px, 1.3fr)
+    minmax(140px, 0.8fr)
+    minmax(100px, 0.6fr)
+    minmax(140px, 0.8fr)
+    minmax(140px, 0.8fr)
+    auto;
+  gap: 12px;
+  align-items: end;
+  min-width: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--erp-border-soft);
+}
+
+.erp-production-plan-line:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.erp-production-plan-line .erp-field,
+.erp-production-plan-line .erp-ds-decimal-input {
+  align-self: start;
+  min-width: 0;
+}
+
+.erp-production-plan-line-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  min-height: var(--erp-control-height);
+}
+
 .erp-masterdata-toggle {
   display: flex;
   gap: 8px;
@@ -4607,6 +4647,16 @@ textarea {
   color: var(--erp-danger);
 }
 
+@media (max-width: 1280px) {
+  .erp-production-plan-line {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .erp-production-plan-line-actions {
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 1024px) {
   .erp-finance-kpis,
   .erp-finance-toolbar,
@@ -4739,6 +4789,7 @@ textarea {
   .erp-masterdata-formula-panel,
   .erp-masterdata-form-grid,
   .erp-masterdata-form-line,
+  .erp-production-plan-line,
   .erp-masterdata-detail-grid,
   .erp-masterdata-toggle-grid,
   .erp-warehouse-context,
