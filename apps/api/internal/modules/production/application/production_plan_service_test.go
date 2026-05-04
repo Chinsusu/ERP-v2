@@ -109,6 +109,61 @@ func TestProductionPlanServiceDoesNotCreatePurchaseDraftWhenEnoughStock(t *testi
 	}
 }
 
+func TestProductionPlanServiceAcceptsPublicItemReferenceResolvedByFormulaList(t *testing.T) {
+	ctx := context.Background()
+	formula := activeProductionPlanFormula(t)
+	formula.FinishedItemID = "2e2f71b4-a502-43e8-a448-04d875a04cb5"
+	store := NewPrototypeProductionPlanStore(audit.NewInMemoryLogStore())
+	service := NewProductionPlanService(
+		store,
+		fakeProductionPlanFormulaReader{formula: formula, outputAliases: []string{"item-xff-150"}},
+		fakeProductionPlanAvailableStock{},
+	)
+
+	result, err := service.CreateProductionPlan(ctx, CreateProductionPlanInput{
+		ID:           "plan-public-ref-list",
+		PlanNo:       "PP-260504-PUBLIC-LIST",
+		OutputItemID: "item-xff-150",
+		PlannedQty:   "10",
+		UOMCode:      "PCS",
+		ActorID:      "user-production",
+	})
+	if err != nil {
+		t.Fatalf("CreateProductionPlan() error = %v", err)
+	}
+	if result.ProductionPlan.OutputItemID != formula.FinishedItemID {
+		t.Fatalf("OutputItemID = %q, want formula finished item UUID %q", result.ProductionPlan.OutputItemID, formula.FinishedItemID)
+	}
+}
+
+func TestProductionPlanServiceAcceptsPublicItemReferenceWithExplicitFormulaID(t *testing.T) {
+	ctx := context.Background()
+	formula := activeProductionPlanFormula(t)
+	formula.FinishedItemID = "2e2f71b4-a502-43e8-a448-04d875a04cb5"
+	store := NewPrototypeProductionPlanStore(audit.NewInMemoryLogStore())
+	service := NewProductionPlanService(
+		store,
+		fakeProductionPlanFormulaReader{formula: formula, outputAliases: []string{"item-xff-150"}},
+		fakeProductionPlanAvailableStock{},
+	)
+
+	result, err := service.CreateProductionPlan(ctx, CreateProductionPlanInput{
+		ID:           "plan-public-ref-get",
+		PlanNo:       "PP-260504-PUBLIC-GET",
+		OutputItemID: "item-xff-150",
+		FormulaID:    formula.ID,
+		PlannedQty:   "10",
+		UOMCode:      "PCS",
+		ActorID:      "user-production",
+	})
+	if err != nil {
+		t.Fatalf("CreateProductionPlan() error = %v", err)
+	}
+	if result.ProductionPlan.FormulaID != formula.ID {
+		t.Fatalf("FormulaID = %q, want %q", result.ProductionPlan.FormulaID, formula.ID)
+	}
+}
+
 func activeProductionPlanFormula(t *testing.T) masterdatadomain.Formula {
 	t.Helper()
 	formula, err := masterdatadomain.NewFormula(masterdatadomain.NewFormulaInput{
@@ -154,8 +209,9 @@ func activeProductionPlanFormula(t *testing.T) masterdatadomain.Formula {
 }
 
 type fakeProductionPlanFormulaReader struct {
-	formula masterdatadomain.Formula
-	err     error
+	formula       masterdatadomain.Formula
+	err           error
+	outputAliases []string
 }
 
 func (r fakeProductionPlanFormulaReader) Get(ctx context.Context, id string) (masterdatadomain.Formula, error) {
@@ -173,7 +229,7 @@ func (r fakeProductionPlanFormulaReader) List(ctx context.Context, filter master
 	if r.err != nil {
 		return nil, r.err
 	}
-	if filter.FinishedItemID != "" && filter.FinishedItemID != r.formula.FinishedItemID {
+	if filter.FinishedItemID != "" && filter.FinishedItemID != r.formula.FinishedItemID && !r.matchesOutputAlias(filter.FinishedItemID) {
 		return nil, nil
 	}
 	if filter.Status != "" && filter.Status != r.formula.Status {
@@ -181,6 +237,16 @@ func (r fakeProductionPlanFormulaReader) List(ctx context.Context, filter master
 	}
 
 	return []masterdatadomain.Formula{r.formula.Clone()}, nil
+}
+
+func (r fakeProductionPlanFormulaReader) matchesOutputAlias(outputItemID string) bool {
+	for _, alias := range r.outputAliases {
+		if alias == outputItemID {
+			return true
+		}
+	}
+
+	return false
 }
 
 type fakeProductionPlanAvailableStock struct {
