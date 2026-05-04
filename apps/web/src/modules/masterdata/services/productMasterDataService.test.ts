@@ -68,6 +68,22 @@ describe("productMasterDataService", () => {
     expect(materialItems.some((item) => item.itemType === "packaging")).toBe(true);
   });
 
+  it("applies controlled item type filters after loading API pages", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      apiPage([
+        apiProduct("FG-API-1", "finished_good"),
+        apiProduct("BTP-API-1", "semi_finished"),
+        apiProduct("RM-API-1", "raw_material"),
+        apiProduct("PKG-API-1", "packaging")
+      ])
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const items = await getProducts({ itemTypes: ["finished_good", "semi_finished"] });
+
+    expect(items.map((item) => item.skuCode)).toEqual(["BTP-API-1", "FG-API-1"]);
+  });
+
   it("uses the normalized source sheet items in the local fallback store", async () => {
     const items = await getProducts();
 
@@ -225,13 +241,16 @@ function apiPage(data: ReturnType<typeof apiProduct>[]) {
   );
 }
 
-function apiProduct(skuCode: string) {
+function apiProduct(
+  skuCode: string,
+  itemType: "finished_good" | "raw_material" | "packaging" | "semi_finished" | "service" = "raw_material"
+) {
   return {
     id: `item-${skuCode.toLowerCase()}`,
     item_code: skuCode,
     sku_code: skuCode,
     name: `Product ${skuCode}`,
-    item_type: "raw_material",
+    item_type: itemType,
     item_group: "api",
     brand_code: "MYH",
     uom_code: "KG",

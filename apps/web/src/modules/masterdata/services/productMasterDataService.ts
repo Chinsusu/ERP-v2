@@ -88,7 +88,7 @@ export async function getProducts(query: ProductMasterDataQuery = {}): Promise<P
   try {
     const items = await getAllProductApiPages(query);
 
-    return items.map(fromApiItem);
+    return filterProducts(items.map(fromApiItem), query);
   } catch (reason) {
     if (!shouldUsePrototypeFallback(reason)) {
       throw reason;
