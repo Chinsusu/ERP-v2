@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { FormulaMasterDataItem, ProductMasterDataItem } from "@/modules/masterdata/types";
-import { defaultProductionPlanUom, findFormulaForProduct, formulaBelongsToProduct } from "./productionPlanFormDefaults";
+import {
+  applyFormulaToProductionPlanDraftLine,
+  applyProductToProductionPlanDraftLine,
+  createProductionPlanDraftLine,
+  defaultProductionPlanUom,
+  findFormulaForProduct,
+  formulaBelongsToProduct
+} from "./productionPlanFormDefaults";
 
 const product: ProductMasterDataItem = {
   id: "item-aah",
@@ -55,5 +62,39 @@ describe("productionPlanFormDefaults", () => {
 
   it("uses the selected formula batch UOM instead of the product base UOM", () => {
     expect(defaultProductionPlanUom(product, formula)).toBe("PCS");
+  });
+
+  it("creates a draft line from the product and its active formula", () => {
+    expect(createProductionPlanDraftLine("line-1", product, [formula])).toMatchObject({
+      rowId: "line-1",
+      outputItemId: "item-aah",
+      formulaId: "formula-aah-v1",
+      plannedQty: "1.000000",
+      uomCode: "PCS"
+    });
+  });
+
+  it("updates product and formula fields without losing quantity and dates", () => {
+    const current = createProductionPlanDraftLine("line-1", undefined, []);
+    const withProduct = applyProductToProductionPlanDraftLine(
+      {
+        ...current,
+        plannedQty: "25.000000",
+        plannedStartDate: "2026-05-05",
+        plannedEndDate: "2026-05-06"
+      },
+      product,
+      [formula]
+    );
+
+    expect(withProduct).toMatchObject({
+      plannedQty: "25.000000",
+      plannedStartDate: "2026-05-05",
+      plannedEndDate: "2026-05-06",
+      outputItemId: "item-aah",
+      formulaId: "formula-aah-v1",
+      uomCode: "PCS"
+    });
+    expect(applyFormulaToProductionPlanDraftLine(withProduct, product, undefined).uomCode).toBe("JAR");
   });
 });

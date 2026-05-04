@@ -86,6 +86,10 @@ export type ProductionPlanInput = {
   plannedEndDate?: string;
 };
 
+export type ProductionPlanDraftLine = ProductionPlanInput & {
+  rowId: string;
+};
+
 export type ProductionPlanQuery = {
   search?: string;
   status?: ProductionPlanStatus | "";

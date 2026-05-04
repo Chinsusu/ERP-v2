@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createProductionPlan, formatProductionPlanQuantity, summarizeProductionPlans } from "./productionPlanService";
+import { createProductionPlan, createProductionPlans, formatProductionPlanQuantity, summarizeProductionPlans } from "./productionPlanService";
 
 describe("productionPlanService", () => {
   afterEach(() => {
@@ -124,5 +124,81 @@ describe("productionPlanService", () => {
     expect(formatProductionPlanQuantity("0.000001", "KG")).toBe("1 mg");
     expect(formatProductionPlanQuantity("0.001500", "KG")).toBe("1,5 g");
     expect(formatProductionPlanQuantity("2.000000", "PCS")).toBe("2 PCS");
+  });
+
+  it("creates multiple production plans from one submission", async () => {
+    const fetchMock = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String((init as RequestInit).body));
+      const sku = body.output_item_id === "item-aah" ? "AAH" : "XFF";
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          request_id: `req-${sku.toLowerCase()}`,
+          data: {
+            id: `plan-${sku.toLowerCase()}`,
+            org_id: "org-my-pham",
+            plan_no: `PP-260504-${sku}`,
+            output_item_id: body.output_item_id,
+            output_sku: sku,
+            output_item_name: sku,
+            output_item_type: "finished_good",
+            planned_qty: body.planned_qty,
+            uom_code: body.uom_code,
+            formula_id: body.formula_id,
+            formula_code: sku,
+            formula_version: "v1",
+            formula_batch_qty: "1.000000",
+            formula_batch_uom_code: body.uom_code,
+            status: "purchase_request_draft_created",
+            lines: [],
+            purchase_request_draft: { lines: [] },
+            created_at: "2026-05-04T03:00:00Z",
+            created_by: "user-production",
+            updated_at: "2026-05-04T03:00:00Z",
+            updated_by: "user-production",
+            version: 1
+          }
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } }
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const plans = await createProductionPlans([
+      {
+        outputItemId: "item-aah",
+        formulaId: "formula-aah-v1",
+        plannedQty: "10",
+        uomCode: "pcs"
+      },
+      {
+        outputItemId: "item-xff",
+        formulaId: "formula-xff-v1",
+        plannedQty: "50",
+        uomCode: "pcs"
+      }
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        body: expect.stringContaining('"output_item_id":"item-aah"')
+      })
+    );
+    expect(fetchMock.mock.calls[1][1]).toEqual(
+      expect.objectContaining({
+        body: expect.stringContaining('"output_item_id":"item-xff"')
+      })
+    );
+    expect(plans.map((plan) => plan.outputSku)).toEqual(["AAH", "XFF"]);
+  });
+
+  it("rejects empty multi-plan submissions before calling the API", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(createProductionPlans([])).rejects.toThrow("At least one production plan line is required");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

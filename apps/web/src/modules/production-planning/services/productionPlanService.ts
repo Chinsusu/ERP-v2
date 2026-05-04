@@ -121,6 +121,26 @@ export async function createProductionPlan(input: ProductionPlanInput): Promise<
   const normalized = normalizeProductionPlanInput(input);
   validateProductionPlanInput(normalized);
 
+  return createNormalizedProductionPlan(normalized);
+}
+
+export async function createProductionPlans(inputs: ProductionPlanInput[]): Promise<ProductionPlan[]> {
+  if (inputs.length === 0) {
+    throw new Error("At least one production plan line is required");
+  }
+
+  const normalized = inputs.map(normalizeProductionPlanInput);
+  normalized.forEach(validateProductionPlanInput);
+
+  const plans: ProductionPlan[] = [];
+  for (const input of normalized) {
+    plans.push(await createNormalizedProductionPlan(input));
+  }
+
+  return plans;
+}
+
+async function createNormalizedProductionPlan(normalized: ProductionPlanInput): Promise<ProductionPlan> {
   try {
     const plan = await apiPost<ProductionPlanApi, CreateProductionPlanApiRequest>(
       "/production-plans",
@@ -135,8 +155,9 @@ export async function createProductionPlan(input: ProductionPlanInput): Promise<
     }
 
     const now = new Date().toISOString();
+    const localID = `local-production-plan-${Date.now()}-${localPlans.length + 1}`;
     const plan: ProductionPlan = {
-      id: `local-production-plan-${Date.now()}`,
+      id: localID,
       orgId: "org-my-pham",
       planNo: `PP-LOCAL-${Date.now()}`,
       outputItemId: normalized.outputItemId,
