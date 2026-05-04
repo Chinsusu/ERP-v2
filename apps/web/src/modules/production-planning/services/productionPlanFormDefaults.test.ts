@@ -69,7 +69,7 @@ describe("productionPlanFormDefaults", () => {
       rowId: "line-1",
       outputItemId: "item-aah",
       formulaId: "formula-aah-v1",
-      plannedQty: "1.000000",
+      plannedQty: "1",
       uomCode: "PCS"
     });
   });

@@ -1124,6 +1124,10 @@ textarea {
   margin-top: 0;
 }
 
+.erp-production-plan-line .erp-field {
+  gap: 4px;
+}
+
 .erp-production-plan-line-actions {
   display: flex;
   align-items: flex-end;
