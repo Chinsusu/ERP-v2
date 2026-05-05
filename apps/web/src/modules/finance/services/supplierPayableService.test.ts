@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   approveSupplierPayablePayment,
+  getSupplierPayablePaymentReadiness,
   getSupplierPayables,
   recordSupplierPayablePayment,
   rejectSupplierPayablePayment,
@@ -124,6 +125,91 @@ describe("supplierPayableService", () => {
       paidAmount: "1250000.00",
       outstandingAmount: "3000000.00",
       auditLogId: "audit-ap-record-payment-ap-supplier-260430-0001"
+    });
+  });
+
+  it("requires a matched supplier invoice before requesting AP payment", () => {
+    const payable = {
+      id: "ap-1",
+      payableNo: "AP-1",
+      supplierId: "supplier-1",
+      supplierName: "Supplier 1",
+      status: "open" as const,
+      lines: [],
+      totalAmount: "1000000.00",
+      paidAmount: "0.00",
+      outstandingAmount: "1000000.00",
+      currencyCode: "VND",
+      createdAt: "2026-05-05T10:00:00Z",
+      updatedAt: "2026-05-05T10:00:00Z",
+      version: 1
+    };
+
+    expect(getSupplierPayablePaymentReadiness(payable, [], false)).toMatchObject({
+      canRequestPayment: false,
+      tone: "warning"
+    });
+    expect(
+      getSupplierPayablePaymentReadiness(
+        payable,
+        [
+          {
+            id: "si-1",
+            invoiceNo: "INV-1",
+            supplierId: "supplier-1",
+            supplierName: "Supplier 1",
+            payableId: "ap-1",
+            payableNo: "AP-1",
+            status: "mismatch",
+            matchStatus: "mismatch",
+            sourceDocument: { type: "warehouse_receipt", id: "gr-1", no: "GR-1" },
+            lines: [],
+            invoiceAmount: "990000.00",
+            expectedAmount: "1000000.00",
+            varianceAmount: "-10000.00",
+            currencyCode: "VND",
+            invoiceDate: "2026-05-05",
+            createdAt: "2026-05-05T10:00:00Z",
+            updatedAt: "2026-05-05T10:00:00Z",
+            version: 1
+          }
+        ],
+        false
+      )
+    ).toMatchObject({
+      canRequestPayment: false,
+      tone: "danger"
+    });
+    expect(
+      getSupplierPayablePaymentReadiness(
+        payable,
+        [
+          {
+            id: "si-2",
+            invoiceNo: "INV-2",
+            supplierId: "supplier-1",
+            supplierName: "Supplier 1",
+            payableId: "ap-1",
+            payableNo: "AP-1",
+            status: "matched",
+            matchStatus: "matched",
+            sourceDocument: { type: "warehouse_receipt", id: "gr-1", no: "GR-1" },
+            lines: [],
+            invoiceAmount: "1000000.00",
+            expectedAmount: "1000000.00",
+            varianceAmount: "0.00",
+            currencyCode: "VND",
+            invoiceDate: "2026-05-05",
+            createdAt: "2026-05-05T10:00:00Z",
+            updatedAt: "2026-05-05T10:00:00Z",
+            version: 1
+          }
+        ],
+        false
+      )
+    ).toMatchObject({
+      canRequestPayment: true,
+      tone: "success"
     });
   });
 

@@ -4,6 +4,7 @@ import type { components, operations } from "../../../shared/api/generated/schem
 import { decimalScales, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type {
   FinanceSourceDocument,
+  SupplierInvoice,
   SupplierPayable,
   SupplierPayableActionResult,
   SupplierPayableLine,
@@ -136,6 +137,84 @@ export function canApproveSupplierPayablePayment(payable: SupplierPayable | null
 
 export function canRequestSupplierPayablePayment(payable: SupplierPayable | null) {
   return Boolean(payable && payable.status === "open");
+}
+
+export type SupplierPayablePaymentReadiness = {
+  canRequestPayment: boolean;
+  label: string;
+  message: string;
+  tone: "success" | "warning" | "danger" | "info" | "normal";
+};
+
+export function getSupplierPayablePaymentReadiness(
+  payable: SupplierPayable | null,
+  invoices: SupplierInvoice[],
+  loading: boolean
+): SupplierPayablePaymentReadiness {
+  if (!payable) {
+    return {
+      canRequestPayment: false,
+      label: "Chưa chọn AP",
+      message: "Chọn một AP để kiểm tra điều kiện thanh toán.",
+      tone: "normal"
+    };
+  }
+  if (loading) {
+    return {
+      canRequestPayment: false,
+      label: "Đang kiểm tra hóa đơn",
+      message: "Hệ thống đang tải hóa đơn NCC liên kết với AP này.",
+      tone: "warning"
+    };
+  }
+  const matchedInvoice = invoices.find((invoice) => supplierInvoiceMatchesPayable(invoice, payable));
+  if (matchedInvoice) {
+    return {
+      canRequestPayment: canRequestSupplierPayablePayment(payable),
+      label: "Sẵn sàng thanh toán",
+      message: `${matchedInvoice.invoiceNo} đã khớp với ${payable.payableNo}.`,
+      tone: "success"
+    };
+  }
+  const blockingInvoice = invoices.find((invoice) => invoice.payableId === payable.id && invoice.status !== "void");
+  if (blockingInvoice) {
+    return {
+      canRequestPayment: false,
+      label: "Hóa đơn chưa khớp",
+      message: `${blockingInvoice.invoiceNo} đang ${formatSupplierInvoiceGateStatus(blockingInvoice)}; xử lý lệch hoặc tranh chấp trước khi thanh toán.`,
+      tone: "danger"
+    };
+  }
+
+  return {
+    canRequestPayment: false,
+    label: "Cần hóa đơn NCC",
+    message: "Tạo và đối chiếu hóa đơn NCC đến trạng thái đã khớp trước khi yêu cầu thanh toán.",
+    tone: "warning"
+  };
+}
+
+function supplierInvoiceMatchesPayable(invoice: SupplierInvoice, payable: SupplierPayable) {
+  return (
+    invoice.payableId === payable.id &&
+    invoice.supplierId === payable.supplierId &&
+    invoice.currencyCode === payable.currencyCode &&
+    invoice.expectedAmount === payable.totalAmount &&
+    invoice.status === "matched" &&
+    invoice.matchStatus === "matched" &&
+    Number(invoice.varianceAmount) === 0
+  );
+}
+
+function formatSupplierInvoiceGateStatus(invoice: SupplierInvoice) {
+  if (invoice.status === "mismatch") {
+    return "lệch đối chiếu";
+  }
+  if (invoice.status === "draft") {
+    return "nháp";
+  }
+
+  return "chưa sẵn sàng";
 }
 
 export function canRejectSupplierPayablePayment(payable: SupplierPayable | null) {

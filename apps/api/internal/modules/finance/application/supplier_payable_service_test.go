@@ -131,6 +131,48 @@ func TestSupplierPayableServiceRequestsAndRejectsPayment(t *testing.T) {
 	}
 }
 
+func TestSupplierPayableServiceBlocksPaymentRequestWithoutMatchedSupplierInvoice(t *testing.T) {
+	service, _ := newTestSupplierPayableServiceWithInvoiceGate()
+	created, err := service.CreateSupplierPayable(context.Background(), baseCreateSupplierPayableInput())
+	if err != nil {
+		t.Fatalf("create payable: %v", err)
+	}
+
+	_, err = service.RequestSupplierPayablePayment(context.Background(), SupplierPayableActionInput{
+		ID:        created.SupplierPayable.ID,
+		ActorID:   "finance-user",
+		RequestID: "req-ap-request-without-invoice",
+	})
+	var appErr apperrors.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("error = %T, want app error", err)
+	}
+	if appErr.Code != ErrorCodeSupplierPayableInvoiceNotMatched {
+		t.Fatalf("code = %q, want %q", appErr.Code, ErrorCodeSupplierPayableInvoiceNotMatched)
+	}
+}
+
+func TestSupplierPayableServiceAllowsPaymentRequestWithMatchedSupplierInvoice(t *testing.T) {
+	service, invoiceStore := newTestSupplierPayableServiceWithInvoiceGate()
+	created, err := service.CreateSupplierPayable(context.Background(), baseCreateSupplierPayableInput())
+	if err != nil {
+		t.Fatalf("create payable: %v", err)
+	}
+	saveMatchedSupplierInvoiceForPayable(t, invoiceStore, created.SupplierPayable)
+
+	requested, err := service.RequestSupplierPayablePayment(context.Background(), SupplierPayableActionInput{
+		ID:        created.SupplierPayable.ID,
+		ActorID:   "finance-user",
+		RequestID: "req-ap-request-with-invoice",
+	})
+	if err != nil {
+		t.Fatalf("request payment: %v", err)
+	}
+	if requested.CurrentStatus != financedomain.PayableStatusPaymentRequested {
+		t.Fatalf("status = %q, want payment_requested", requested.CurrentStatus)
+	}
+}
+
 func TestSupplierPayableServiceMapsValidationErrors(t *testing.T) {
 	service, _ := newTestSupplierPayableService()
 	input := baseCreateSupplierPayableInput()
@@ -343,6 +385,65 @@ func newTestSupplierPayableService() (SupplierPayableService, *audit.InMemoryLog
 	})
 
 	return service, auditStore
+}
+
+func newTestSupplierPayableServiceWithInvoiceGate() (SupplierPayableService, *PrototypeSupplierInvoiceStore) {
+	auditStore := audit.NewInMemoryLogStore()
+	payableStore := &PrototypeSupplierPayableStore{records: make(map[string]financedomain.SupplierPayable)}
+	invoiceStore := &PrototypeSupplierInvoiceStore{records: make(map[string]financedomain.SupplierInvoice)}
+	service := NewSupplierPayableService(payableStore, auditStore).
+		WithClock(func() time.Time {
+			return time.Date(2026, 4, 30, 10, 0, 0, 0, time.UTC)
+		}).
+		WithSupplierInvoiceStore(invoiceStore)
+
+	return service, invoiceStore
+}
+
+func saveMatchedSupplierInvoiceForPayable(
+	t *testing.T,
+	store *PrototypeSupplierInvoiceStore,
+	payable financedomain.SupplierPayable,
+) {
+	t.Helper()
+	lines := make([]financedomain.NewSupplierInvoiceLineInput, 0, len(payable.Lines))
+	for _, line := range payable.Lines {
+		lines = append(lines, financedomain.NewSupplierInvoiceLineInput{
+			ID:             "si-" + line.ID,
+			Description:    line.Description,
+			SourceDocument: line.SourceDocument,
+			Amount:         line.Amount.String(),
+		})
+	}
+	invoice, err := financedomain.NewSupplierInvoice(financedomain.NewSupplierInvoiceInput{
+		ID:             "si-" + payable.ID,
+		OrgID:          payable.OrgID,
+		InvoiceNo:      "INV-" + payable.PayableNo,
+		SupplierID:     payable.SupplierID,
+		SupplierCode:   payable.SupplierCode,
+		SupplierName:   payable.SupplierName,
+		PayableID:      payable.ID,
+		PayableNo:      payable.PayableNo,
+		Status:         financedomain.SupplierInvoiceStatusMatched,
+		MatchStatus:    financedomain.SupplierInvoiceMatchStatusMatched,
+		SourceDocument: payable.SourceDocument,
+		Lines:          lines,
+		InvoiceAmount:  payable.TotalAmount.String(),
+		ExpectedAmount: payable.TotalAmount.String(),
+		VarianceAmount: "0.00",
+		CurrencyCode:   payable.CurrencyCode.String(),
+		InvoiceDate:    time.Date(2026, 5, 5, 0, 0, 0, 0, time.UTC),
+		CreatedAt:      time.Date(2026, 5, 5, 10, 0, 0, 0, time.UTC),
+		CreatedBy:      "finance-user",
+		UpdatedAt:      time.Date(2026, 5, 5, 10, 0, 0, 0, time.UTC),
+		UpdatedBy:      "finance-user",
+	})
+	if err != nil {
+		t.Fatalf("new supplier invoice: %v", err)
+	}
+	if err := store.Save(context.Background(), invoice); err != nil {
+		t.Fatalf("save supplier invoice: %v", err)
+	}
 }
 
 func baseCreateSupplierPayableInput() CreateSupplierPayableInput {
