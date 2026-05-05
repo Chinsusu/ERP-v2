@@ -13,6 +13,9 @@ type financeRouteHandlers struct {
 	supplierPayableRejectPayment    routeHandler
 	supplierPayableRecordPayment    routeHandler
 	supplierPayableVoid             routeHandler
+	supplierInvoices                routeHandler
+	supplierInvoiceDetail           routeHandler
+	supplierInvoiceVoid             routeHandler
 	cashTransactions                routeHandler
 	cashTransactionDetail           routeHandler
 	financeDashboard                routeHandler
@@ -38,6 +41,9 @@ func registerFinanceRoutes(routes routeGroup, handlers financeRouteHandlers) {
 	routes.token("/api/v1/supplier-payables/{supplier_payable_id}/reject-payment", handlers.supplierPayableRejectPayment)
 	routes.token("/api/v1/supplier-payables/{supplier_payable_id}/record-payment", handlers.supplierPayableRecordPayment)
 	routes.token("/api/v1/supplier-payables/{supplier_payable_id}/void", handlers.supplierPayableVoid)
+	routes.token("/api/v1/supplier-invoices", handlers.supplierInvoices)
+	routes.token("/api/v1/supplier-invoices/{supplier_invoice_id}", handlers.supplierInvoiceDetail)
+	routes.token("/api/v1/supplier-invoices/{supplier_invoice_id}/void", handlers.supplierInvoiceVoid)
 	routes.token("/api/v1/cash-transactions", handlers.cashTransactions)
 	routes.token("/api/v1/cash-transactions/{cash_transaction_id}", handlers.cashTransactionDetail)
 	routes.token("/api/v1/finance/dashboard", handlers.financeDashboard)

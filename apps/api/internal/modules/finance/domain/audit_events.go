@@ -24,6 +24,9 @@ const (
 	FinanceAuditActionPayablePaymentRecorded  FinanceAuditAction = "finance.supplier_payable.payment_recorded"
 	FinanceAuditActionPayableVoided           FinanceAuditAction = "finance.supplier_payable.voided"
 
+	FinanceAuditActionSupplierInvoiceCreated FinanceAuditAction = "finance.supplier_invoice.created"
+	FinanceAuditActionSupplierInvoiceVoided  FinanceAuditAction = "finance.supplier_invoice.voided"
+
 	FinanceAuditActionCODRemittanceCreated             FinanceAuditAction = "finance.cod_remittance.created"
 	FinanceAuditActionCODRemittanceMatched             FinanceAuditAction = "finance.cod_remittance.matched"
 	FinanceAuditActionCODRemittanceSubmitted           FinanceAuditAction = "finance.cod_remittance.submitted"
@@ -41,6 +44,7 @@ type FinanceEntityType string
 const (
 	FinanceEntityTypeCustomerReceivable FinanceEntityType = "finance.customer_receivable"
 	FinanceEntityTypeSupplierPayable    FinanceEntityType = "finance.supplier_payable"
+	FinanceEntityTypeSupplierInvoice    FinanceEntityType = "finance.supplier_invoice"
 	FinanceEntityTypeCODRemittance      FinanceEntityType = "finance.cod_remittance"
 	FinanceEntityTypeCashTransaction    FinanceEntityType = "finance.cash_transaction"
 	FinanceEntityTypePaymentRequest     FinanceEntityType = "finance.payment_request"
@@ -55,6 +59,7 @@ const (
 	SourceDocumentTypePurchaseOrder               SourceDocumentType = "purchase_order"
 	SourceDocumentTypeWarehouseReceipt            SourceDocumentType = "warehouse_receipt"
 	SourceDocumentTypeQCInspection                SourceDocumentType = "qc_inspection"
+	SourceDocumentTypeSupplierPayable             SourceDocumentType = "supplier_payable"
 	SourceDocumentTypeSubcontractOrder            SourceDocumentType = "subcontract_order"
 	SourceDocumentTypeSubcontractPaymentMilestone SourceDocumentType = "subcontract_payment_milestone"
 	SourceDocumentTypeCODRemittance               SourceDocumentType = "cod_remittance"
@@ -110,6 +115,8 @@ func IsValidFinanceAuditAction(action FinanceAuditAction) bool {
 		FinanceAuditActionPayablePaymentRejected,
 		FinanceAuditActionPayablePaymentRecorded,
 		FinanceAuditActionPayableVoided,
+		FinanceAuditActionSupplierInvoiceCreated,
+		FinanceAuditActionSupplierInvoiceVoided,
 		FinanceAuditActionCODRemittanceCreated,
 		FinanceAuditActionCODRemittanceMatched,
 		FinanceAuditActionCODRemittanceSubmitted,
@@ -133,6 +140,7 @@ func IsValidFinanceEntityType(entityType FinanceEntityType) bool {
 	switch NormalizeFinanceEntityType(entityType) {
 	case FinanceEntityTypeCustomerReceivable,
 		FinanceEntityTypeSupplierPayable,
+		FinanceEntityTypeSupplierInvoice,
 		FinanceEntityTypeCODRemittance,
 		FinanceEntityTypeCashTransaction,
 		FinanceEntityTypePaymentRequest:
@@ -154,6 +162,7 @@ func IsValidSourceDocumentType(sourceType SourceDocumentType) bool {
 		SourceDocumentTypePurchaseOrder,
 		SourceDocumentTypeWarehouseReceipt,
 		SourceDocumentTypeQCInspection,
+		SourceDocumentTypeSupplierPayable,
 		SourceDocumentTypeSubcontractOrder,
 		SourceDocumentTypeSubcontractPaymentMilestone,
 		SourceDocumentTypeCODRemittance,

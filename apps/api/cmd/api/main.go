@@ -1979,6 +1979,11 @@ func main() {
 	}
 	customerReceivableService := financeapp.NewCustomerReceivableService(financeStores.customerReceivables, auditLogStore)
 	supplierPayableService := financeapp.NewSupplierPayableService(financeStores.supplierPayables, auditLogStore)
+	supplierInvoiceService := financeapp.NewSupplierInvoiceService(
+		financeStores.supplierInvoices,
+		financeStores.supplierPayables,
+		auditLogStore,
+	)
 	warehouseReceiving = warehouseReceiving.WithSupplierPayableCreator(
 		warehouseReceiptSupplierPayableAdapter{service: supplierPayableService},
 	)
@@ -2081,6 +2086,9 @@ func main() {
 		supplierPayableRejectPayment:    supplierPayableRejectPaymentHandler(supplierPayableService),
 		supplierPayableRecordPayment:    supplierPayableRecordPaymentHandler(supplierPayableService),
 		supplierPayableVoid:             supplierPayableVoidHandler(supplierPayableService),
+		supplierInvoices:                supplierInvoicesHandler(supplierInvoiceService),
+		supplierInvoiceDetail:           supplierInvoiceDetailHandler(supplierInvoiceService),
+		supplierInvoiceVoid:             supplierInvoiceVoidHandler(supplierInvoiceService),
 		cashTransactions:                cashTransactionsHandler(cashTransactionService),
 		cashTransactionDetail:           cashTransactionDetailHandler(cashTransactionService),
 		financeDashboard:                financeDashboardHandler(financeDashboardService),

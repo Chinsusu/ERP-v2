@@ -314,6 +314,21 @@ const sprint6Routes = [
     operationIds: ["voidSupplierPayable"]
   },
   {
+    path: "/supplier-invoices",
+    apiRoute: "/api/v1/supplier-invoices",
+    operationIds: ["listSupplierInvoices", "createSupplierInvoice"]
+  },
+  {
+    path: "/supplier-invoices/{supplier_invoice_id}",
+    apiRoute: "/api/v1/supplier-invoices/{supplier_invoice_id}",
+    operationIds: ["getSupplierInvoice"]
+  },
+  {
+    path: "/supplier-invoices/{supplier_invoice_id}/void",
+    apiRoute: "/api/v1/supplier-invoices/{supplier_invoice_id}/void",
+    operationIds: ["voidSupplierInvoice"]
+  },
+  {
     path: "/cash-transactions",
     apiRoute: "/api/v1/cash-transactions",
     operationIds: ["listCashTransactions", "createCashTransaction"]
@@ -467,7 +482,7 @@ for (const schemaName of requiredSuccessSchemas) {
 }
 
 const colonActionPattern =
-  /^  \/(purchase-orders|purchase-requests|goods-receipts|inbound-qc-inspections|supplier-rejections|subcontract-orders|customer-receivables|supplier-payables|cash-transactions|finance\/dashboard|cod-remittances|reports\/(inventory-snapshot|operations-daily|finance-summary)|warehouse\/daily-board\/(inbound|subcontract)-metrics)[^\n]*:[A-Za-z0-9_-]+:/m;
+  /^  \/(purchase-orders|purchase-requests|goods-receipts|inbound-qc-inspections|supplier-rejections|subcontract-orders|customer-receivables|supplier-payables|supplier-invoices|cash-transactions|finance\/dashboard|cod-remittances|reports\/(inventory-snapshot|operations-daily|finance-summary)|warehouse\/daily-board\/(inbound|subcontract)-metrics)[^\n]*:[A-Za-z0-9_-]+:/m;
 if (colonActionPattern.test(openapi)) {
   failures.push("Tracked OpenAPI paths must use slash action style, not colon action style.");
 }

@@ -28,6 +28,7 @@ export type FinanceSourceDocumentType =
   | "purchase_order"
   | "warehouse_receipt"
   | "qc_inspection"
+  | "supplier_payable"
   | "subcontract_order"
   | "subcontract_payment_milestone"
   | "cod_remittance"
@@ -39,10 +40,16 @@ export type FinanceSourceDocument = {
   no?: string;
 };
 
+export type CustomerReceivableSourceDocument = {
+  type: Exclude<FinanceSourceDocumentType, "supplier_payable">;
+  id?: string;
+  no?: string;
+};
+
 export type CustomerReceivableLine = {
   id: string;
   description: string;
-  sourceDocument: FinanceSourceDocument;
+  sourceDocument: CustomerReceivableSourceDocument;
   amount: string;
 };
 
@@ -54,7 +61,7 @@ export type CustomerReceivable = {
   customerCode?: string;
   customerName: string;
   status: CustomerReceivableStatus;
-  sourceDocument?: FinanceSourceDocument;
+  sourceDocument?: CustomerReceivableSourceDocument;
   lines: CustomerReceivableLine[];
   totalAmount: string;
   paidAmount: string;
@@ -78,7 +85,7 @@ export type CustomerReceivableQuery = {
 export type CreateCustomerReceivableLineInput = {
   id: string;
   description: string;
-  sourceDocument: FinanceSourceDocument;
+  sourceDocument: CustomerReceivableSourceDocument;
   amount: string;
 };
 
@@ -89,7 +96,7 @@ export type CreateCustomerReceivableInput = {
   customerCode?: string;
   customerName: string;
   status?: CustomerReceivableStatus;
-  sourceDocument: FinanceSourceDocument;
+  sourceDocument: CustomerReceivableSourceDocument;
   lines: CreateCustomerReceivableLineInput[];
   totalAmount: string;
   currencyCode: string;
@@ -150,6 +157,67 @@ export type SupplierPayableActionResult = {
   supplierPayable: SupplierPayable;
   previousStatus: SupplierPayableStatus;
   currentStatus: SupplierPayableStatus;
+  auditLogId?: string;
+};
+
+export type SupplierInvoiceStatus = "draft" | "matched" | "mismatch" | "void";
+export type SupplierInvoiceMatchStatus = "pending" | "matched" | "mismatch";
+
+export type SupplierInvoiceLine = {
+  id: string;
+  description: string;
+  sourceDocument: FinanceSourceDocument;
+  amount: string;
+};
+
+export type SupplierInvoice = {
+  id: string;
+  orgId?: string;
+  invoiceNo: string;
+  supplierId: string;
+  supplierCode?: string;
+  supplierName: string;
+  payableId: string;
+  payableNo: string;
+  status: SupplierInvoiceStatus;
+  matchStatus: SupplierInvoiceMatchStatus;
+  sourceDocument: FinanceSourceDocument;
+  lines: SupplierInvoiceLine[];
+  invoiceAmount: string;
+  expectedAmount: string;
+  varianceAmount: string;
+  currencyCode: string;
+  invoiceDate: string;
+  voidReason?: string;
+  auditLogId?: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
+export type SupplierInvoiceQuery = {
+  search?: string;
+  status?: SupplierInvoiceStatus;
+  supplierId?: string;
+  payableId?: string;
+};
+
+export type CreateSupplierInvoiceInput = {
+  id?: string;
+  invoiceNo?: string;
+  supplierId?: string;
+  supplierCode?: string;
+  supplierName?: string;
+  payableId: string;
+  invoiceDate?: string;
+  invoiceAmount: string;
+  currencyCode: string;
+};
+
+export type SupplierInvoiceActionResult = {
+  supplierInvoice: SupplierInvoice;
+  previousStatus: SupplierInvoiceStatus;
+  currentStatus: SupplierInvoiceStatus;
   auditLogId?: string;
 };
 

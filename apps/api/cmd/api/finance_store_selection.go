@@ -13,6 +13,7 @@ import (
 type financeRuntimeStores struct {
 	customerReceivables financeapp.CustomerReceivableStore
 	supplierPayables    financeapp.SupplierPayableStore
+	supplierInvoices    financeapp.SupplierInvoiceStore
 	codRemittances      financeapp.CODRemittanceStore
 	cashTransactions    financeapp.CashTransactionStore
 }
@@ -22,6 +23,7 @@ func newRuntimeFinanceStores(cfg config.Config) (financeRuntimeStores, func() er
 		return financeRuntimeStores{
 			customerReceivables: financeapp.NewPrototypeCustomerReceivableStore(),
 			supplierPayables:    financeapp.NewPrototypeSupplierPayableStore(),
+			supplierInvoices:    financeapp.NewPrototypeSupplierInvoiceStore(),
 			codRemittances:      financeapp.NewPrototypeCODRemittanceStore(),
 			cashTransactions:    financeapp.NewPrototypeCashTransactionStore(),
 		}, nil, nil
@@ -34,11 +36,13 @@ func newRuntimeFinanceStores(cfg config.Config) (financeRuntimeStores, func() er
 
 	customerReceivableConfig := financeapp.PostgresCustomerReceivableStoreConfig{}
 	supplierPayableConfig := financeapp.PostgresSupplierPayableStoreConfig{}
+	supplierInvoiceConfig := financeapp.PostgresSupplierInvoiceStoreConfig{}
 	codRemittanceConfig := financeapp.PostgresCODRemittanceStoreConfig{}
 	cashTransactionConfig := financeapp.PostgresCashTransactionStoreConfig{}
 	if config.AllowsStaticAuthAccessToken(cfg.AppEnv) {
 		customerReceivableConfig.DefaultOrgID = localAuditOrgID
 		supplierPayableConfig.DefaultOrgID = localAuditOrgID
+		supplierInvoiceConfig.DefaultOrgID = localAuditOrgID
 		codRemittanceConfig.DefaultOrgID = localAuditOrgID
 		cashTransactionConfig.DefaultOrgID = localAuditOrgID
 	}
@@ -46,6 +50,7 @@ func newRuntimeFinanceStores(cfg config.Config) (financeRuntimeStores, func() er
 	return financeRuntimeStores{
 		customerReceivables: financeapp.NewPostgresCustomerReceivableStore(db, customerReceivableConfig),
 		supplierPayables:    financeapp.NewPostgresSupplierPayableStore(db, supplierPayableConfig),
+		supplierInvoices:    financeapp.NewPostgresSupplierInvoiceStore(db, supplierInvoiceConfig),
 		codRemittances:      financeapp.NewPostgresCODRemittanceStore(db, codRemittanceConfig),
 		cashTransactions:    financeapp.NewPostgresCashTransactionStore(db, cashTransactionConfig),
 	}, db.Close, nil

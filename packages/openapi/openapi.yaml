@@ -3895,6 +3895,129 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /supplier-invoices:
+    get:
+      summary: List supplier invoices
+      operationId: listSupplierInvoices
+      tags:
+        - finance
+      parameters:
+        - $ref: "#/components/parameters/SearchParam"
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated supplier invoice statuses.
+        - name: supplier_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: payable_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier invoice rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierInvoiceListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create a supplier invoice linked to supplier payable
+      operationId: createSupplierInvoice
+      tags:
+        - finance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierInvoiceRequest"
+      responses:
+        "201":
+          description: Supplier invoice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierInvoiceSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /supplier-invoices/{supplier_invoice_id}:
+    get:
+      summary: Get supplier invoice detail
+      operationId: getSupplierInvoice
+      tags:
+        - finance
+      parameters:
+        - name: supplier_invoice_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier invoice detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierInvoiceSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /supplier-invoices/{supplier_invoice_id}/void:
+    post:
+      summary: Void a supplier invoice
+      operationId: voidSupplierInvoice
+      tags:
+        - finance
+      parameters:
+        - name: supplier_invoice_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierInvoiceActionRequest"
+      responses:
+        "200":
+          description: Supplier invoice voided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierInvoiceActionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /cash-transactions:
     get:
       summary: List cash transactions
@@ -10849,6 +10972,7 @@ components:
             - purchase_order
             - warehouse_receipt
             - qc_inspection
+            - supplier_payable
             - subcontract_order
             - subcontract_payment_milestone
             - cod_remittance
@@ -11355,6 +11479,267 @@ components:
           $ref: "#/components/schemas/SupplierPayableStatus"
         current_status:
           $ref: "#/components/schemas/SupplierPayableStatus"
+        audit_log_id:
+          type: string
+    SupplierInvoiceStatus:
+      type: string
+      enum:
+        - draft
+        - matched
+        - mismatch
+        - void
+    SupplierInvoiceMatchStatus:
+      type: string
+      enum:
+        - pending
+        - matched
+        - mismatch
+    SupplierInvoiceListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/SupplierInvoiceListItem"
+    SupplierInvoiceSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SupplierInvoice"
+    SupplierInvoiceActionSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SupplierInvoiceActionResult"
+    SupplierInvoiceListItem:
+      type: object
+      required:
+        - id
+        - invoice_no
+        - supplier_id
+        - supplier_name
+        - payable_id
+        - payable_no
+        - status
+        - match_status
+        - source_document
+        - invoice_amount
+        - expected_amount
+        - variance_amount
+        - currency_code
+        - invoice_date
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        invoice_no:
+          type: string
+        supplier_id:
+          type: string
+        supplier_code:
+          type: string
+        supplier_name:
+          type: string
+        payable_id:
+          type: string
+        payable_no:
+          type: string
+        status:
+          $ref: "#/components/schemas/SupplierInvoiceStatus"
+        match_status:
+          $ref: "#/components/schemas/SupplierInvoiceMatchStatus"
+        source_document:
+          $ref: "#/components/schemas/FinanceSourceDocument"
+        invoice_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        expected_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        variance_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        invoice_date:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+    SupplierInvoice:
+      type: object
+      required:
+        - id
+        - org_id
+        - invoice_no
+        - supplier_id
+        - supplier_name
+        - payable_id
+        - payable_no
+        - status
+        - match_status
+        - source_document
+        - lines
+        - invoice_amount
+        - expected_amount
+        - variance_amount
+        - currency_code
+        - invoice_date
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        invoice_no:
+          type: string
+        supplier_id:
+          type: string
+        supplier_code:
+          type: string
+        supplier_name:
+          type: string
+        payable_id:
+          type: string
+        payable_no:
+          type: string
+        status:
+          $ref: "#/components/schemas/SupplierInvoiceStatus"
+        match_status:
+          $ref: "#/components/schemas/SupplierInvoiceMatchStatus"
+        source_document:
+          $ref: "#/components/schemas/FinanceSourceDocument"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupplierInvoiceLine"
+        invoice_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        expected_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        variance_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        invoice_date:
+          type: string
+          format: date
+        void_reason:
+          type: string
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+    SupplierInvoiceLine:
+      type: object
+      required:
+        - id
+        - description
+        - source_document
+        - amount
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        source_document:
+          $ref: "#/components/schemas/FinanceSourceDocument"
+        amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    CreateSupplierInvoiceRequest:
+      type: object
+      required:
+        - payable_id
+        - invoice_amount
+        - currency_code
+      properties:
+        id:
+          type: string
+        invoice_no:
+          type: string
+        supplier_id:
+          type: string
+        supplier_code:
+          type: string
+        supplier_name:
+          type: string
+        payable_id:
+          type: string
+        invoice_date:
+          type: string
+          format: date
+        invoice_amount:
+          $ref: "#/components/schemas/MoneyAmount"
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateSupplierInvoiceLineRequest"
+    CreateSupplierInvoiceLineRequest:
+      type: object
+      required:
+        - id
+        - description
+        - source_document
+        - amount
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        source_document:
+          $ref: "#/components/schemas/FinanceSourceDocument"
+        amount:
+          $ref: "#/components/schemas/MoneyAmount"
+    SupplierInvoiceActionRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          minLength: 1
+    SupplierInvoiceActionResult:
+      type: object
+      required:
+        - supplier_invoice
+        - previous_status
+        - current_status
+      properties:
+        supplier_invoice:
+          $ref: "#/components/schemas/SupplierInvoice"
+        previous_status:
+          $ref: "#/components/schemas/SupplierInvoiceStatus"
+        current_status:
+          $ref: "#/components/schemas/SupplierInvoiceStatus"
         audit_log_id:
           type: string
     CashTransactionStatus:
