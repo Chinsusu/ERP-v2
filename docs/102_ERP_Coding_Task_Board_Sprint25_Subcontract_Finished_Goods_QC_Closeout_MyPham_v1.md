@@ -6,7 +6,7 @@ Sprint: Sprint 25 - Subcontract finished goods QC closeout traceability
 Document role: Coding task board
 Version: v1
 Date: 2026-05-06
-Status: Implementation branch verified locally; PR/CI/merge/dev smoke pending
+Status: Completed and merged
 
 ---
 
@@ -96,7 +96,10 @@ Verification:
 - Existing FG receipt/QC runtime confirmed present.
 - Implementation focus set to Production Plan -> Subcontract traceability and closeout visibility.
 - Source production plan fields, API/OpenAPI contract, PostgreSQL migration, Production Plan detail closeout visibility, and Subcontract deep-link filtering implemented on branch.
-- Local backend/web/OpenAPI verification completed; GitHub CI, manual merge, dev deploy, and browser smoke remain pending.
+- Local backend/web/OpenAPI verification completed before PR.
+- PR #589 merged at a4b96c84 with CI green.
+- Dev deploy passed with migration 43 applied and full dev smoke passed.
+- Browser smoke passed for Production Plan detail showing source-linked subcontract orders and /subcontract source filtering.
 ```
 
 ---

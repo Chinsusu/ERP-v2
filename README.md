@@ -50,7 +50,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 25 subcontract finished goods QC closeout traceability implementation in progress.
+Current line: Sprint 25 subcontract finished goods QC closeout traceability merged and deployed to dev.
 
 Latest release tag:
 
@@ -112,7 +112,10 @@ Sprint 25 implementation status:
 Sprint 25 is documented in file 102, flow design is locked in file 103, and changelog/evidence is tracked in file 104.
 Scope is Production Plan -> source-linked Subcontract Order traceability and Production Plan detail visibility for subcontract receipt/QC/claim/final-payment closeout.
 Existing subcontract finished goods receipt/QC/factory claim/final payment runtime remains the execution surface; Sprint 25 does not add internal MES or factory dispatch.
-CI, merge, dev deploy, browser smoke, and v0.25 tag are pending.
+PR #589 merged at a4b96c84 with GitHub CI green.
+Dev deploy passed on 2026-05-06 with migration 43 applied and full dev smoke passed.
+Browser smoke passed for Production Plan detail -> source-linked Subcontract Order visibility -> /subcontract source filter.
+No v0.25 tag has been created.
 ```
 
 Phase 1 production scope:
