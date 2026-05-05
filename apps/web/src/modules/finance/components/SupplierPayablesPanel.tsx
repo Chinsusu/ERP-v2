@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { DataTable, EmptyState, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
+import { useSupplierInvoices } from "../hooks/useSupplierInvoices";
 import { useSupplierPayables } from "../hooks/useSupplierPayables";
+import {
+  createSupplierInvoice,
+  formatSupplierInvoiceStatus,
+  supplierInvoiceStatusTone
+} from "../services/supplierInvoiceService";
 import {
   approveSupplierPayablePayment,
   canApproveSupplierPayablePayment,
@@ -20,7 +26,15 @@ import {
   voidSupplierPayable
 } from "../services/supplierPayableService";
 import { formatFinanceDate, formatFinanceMoney } from "../services/customerReceivableService";
-import type { SupplierPayable, SupplierPayableLine, SupplierPayableQuery, SupplierPayableStatus } from "../types";
+import type {
+  SupplierInvoice,
+  SupplierInvoiceLine,
+  SupplierInvoiceQuery,
+  SupplierPayable,
+  SupplierPayableLine,
+  SupplierPayableQuery,
+  SupplierPayableStatus
+} from "../types";
 
 type SupplierPayableStatusFilter = "" | SupplierPayableStatus;
 
@@ -104,6 +118,26 @@ const lineColumns: DataTableColumn<SupplierPayableLine>[] = [
   }
 ];
 
+const invoiceLineColumns: DataTableColumn<SupplierInvoiceLine>[] = [
+  {
+    key: "description",
+    header: "Nguồn",
+    render: (row) => (
+      <span className="erp-finance-receivable-cell">
+        <strong>{row.description}</strong>
+        <small>{sourceDocumentLabel(row.sourceDocument)}</small>
+      </span>
+    )
+  },
+  {
+    key: "amount",
+    header: "Số tiền",
+    render: (row) => formatFinanceMoney(row.amount),
+    align: "right",
+    width: "140px"
+  }
+];
+
 export function SupplierPayablesPanel() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<SupplierPayableStatusFilter>("");
@@ -112,6 +146,10 @@ export function SupplierPayablesPanel() {
   const [detailById, setDetailById] = useState<Record<string, SupplierPayable>>({});
   const [detailLoadingId, setDetailLoadingId] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [invoiceNo, setInvoiceNo] = useState("");
+  const [invoiceAmount, setInvoiceAmount] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState(defaultFinanceDate());
+  const [localInvoices, setLocalInvoices] = useState<SupplierInvoice[]>([]);
   const [rejectReason, setRejectReason] = useState("Supplier invoice mismatch");
   const [voidReason, setVoidReason] = useState("Duplicate supplier invoice");
   const [busyAction, setBusyAction] = useState("");
@@ -128,6 +166,18 @@ export function SupplierPayablesPanel() {
   const selectedListPayable =
     visiblePayables.find((payable) => payable.id === selectedPayableId) ?? visiblePayables[0] ?? null;
   const selectedPayable = selectedListPayable ? detailById[selectedListPayable.id] ?? selectedListPayable : null;
+  const invoiceQuery = useMemo<SupplierInvoiceQuery>(
+    () => ({
+      payableId: selectedPayable?.id
+    }),
+    [selectedPayable?.id]
+  );
+  const { invoices, loading: invoicesLoading, error: invoicesError } = useSupplierInvoices(invoiceQuery);
+  const visibleInvoices = useMemo(
+    () => mergeSupplierInvoices(localInvoices, invoices, invoiceQuery),
+    [invoiceQuery, invoices, localInvoices]
+  );
+  const selectedInvoice = visibleInvoices[0] ?? null;
   const totals = useMemo(() => summarizePayables(visiblePayables), [visiblePayables]);
 
   useEffect(() => {
@@ -181,9 +231,19 @@ export function SupplierPayablesPanel() {
     }
   }, [paymentAmount, selectedPayable]);
 
+  useEffect(() => {
+    if (!selectedPayable) {
+      return;
+    }
+    setInvoiceAmount(selectedPayable.totalAmount);
+    setInvoiceNo((current) => current || `INV-${selectedPayable.payableNo}`);
+  }, [selectedPayable?.id]);
+
   function handleSelect(payable: SupplierPayable) {
     setSelectedPayableId(payable.id);
     setPaymentAmount(payable.outstandingAmount);
+    setInvoiceAmount(payable.totalAmount);
+    setInvoiceNo(`INV-${payable.payableNo}`);
     setFeedback(null);
   }
 
@@ -263,6 +323,33 @@ export function SupplierPayablesPanel() {
       setFeedback({
         tone: "danger",
         message: `${result.supplierPayable.payableNo} voided`
+      });
+    });
+  }
+
+  async function handleCreateSupplierInvoice(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedPayable || busyAction) {
+      return;
+    }
+
+    await runAction("invoice", async () => {
+      const invoice = await createSupplierInvoice({
+        invoiceNo: invoiceNo.trim(),
+        payableId: selectedPayable.id,
+        invoiceDate,
+        invoiceAmount,
+        currencyCode: selectedPayable.currencyCode
+      });
+      setLocalInvoices((current) => [invoice, ...current.filter((candidate) => candidate.id !== invoice.id)]);
+      setInvoiceNo(`INV-${selectedPayable.payableNo}`);
+      setInvoiceAmount(selectedPayable.totalAmount);
+      setFeedback({
+        tone: invoice.status === "matched" ? "success" : "warning",
+        message:
+          invoice.status === "matched"
+            ? `${invoice.invoiceNo} đã khớp với ${invoice.payableNo}`
+            : `${invoice.invoiceNo} lệch ${formatFinanceMoney(invoice.varianceAmount, invoice.currencyCode)}`
       });
     });
   }
@@ -424,6 +511,98 @@ export function SupplierPayablesPanel() {
             />
           </section>
 
+          <section className="erp-card erp-card--padded" id="supplier-invoice-match">
+            <div className="erp-section-header">
+              <div>
+                <h2 className="erp-section-title">Hóa đơn NCC</h2>
+                <p className="erp-section-description">Đối chiếu hóa đơn với AP trước khi thanh toán</p>
+              </div>
+              <StatusChip tone={invoicesLoading ? "warning" : selectedInvoice ? supplierInvoiceStatusTone(selectedInvoice.status) : "normal"}>
+                {invoicesLoading ? "Đang tải" : selectedInvoice ? formatSupplierInvoiceStatus(selectedInvoice.status) : "Chưa có"}
+              </StatusChip>
+            </div>
+
+            {invoicesError ? <p className="erp-finance-note">{invoicesError.message}</p> : null}
+
+            {selectedInvoice ? (
+              <div className="erp-finance-detail">
+                <strong>{selectedInvoice.invoiceNo}</strong>
+                <span>{selectedInvoice.payableNo}</span>
+                <dl className="erp-finance-detail-list">
+                  <div>
+                    <dt>Ngày hóa đơn</dt>
+                    <dd>{formatFinanceDate(selectedInvoice.invoiceDate)}</dd>
+                  </div>
+                  <div>
+                    <dt>Số tiền hóa đơn</dt>
+                    <dd>{formatFinanceMoney(selectedInvoice.invoiceAmount, selectedInvoice.currencyCode)}</dd>
+                  </div>
+                  <div>
+                    <dt>Số tiền AP</dt>
+                    <dd>{formatFinanceMoney(selectedInvoice.expectedAmount, selectedInvoice.currencyCode)}</dd>
+                  </div>
+                  <div>
+                    <dt>Chênh lệch</dt>
+                    <dd>{formatFinanceMoney(selectedInvoice.varianceAmount, selectedInvoice.currencyCode)}</dd>
+                  </div>
+                  <div>
+                    <dt>Nguồn nhận hàng</dt>
+                    <dd>{sourceDocumentLabel(selectedInvoice.sourceDocument)}</dd>
+                  </div>
+                </dl>
+                <DataTable
+                  columns={invoiceLineColumns}
+                  rows={selectedInvoice.lines}
+                  getRowKey={(row) => row.id}
+                  emptyState={<EmptyState title="Chưa có dòng hóa đơn" />}
+                />
+              </div>
+            ) : (
+              <EmptyState title="Chưa có hóa đơn NCC" description="Tạo hóa đơn từ AP đang chọn để kiểm tra khớp/lệch." />
+            )}
+
+            <form className="erp-finance-action-form" onSubmit={handleCreateSupplierInvoice}>
+              <label className="erp-field">
+                <span>Số hóa đơn</span>
+                <input
+                  className="erp-input"
+                  type="text"
+                  value={invoiceNo}
+                  disabled={!selectedPayable || busyAction !== ""}
+                  onChange={(event) => setInvoiceNo(event.target.value)}
+                />
+              </label>
+              <label className="erp-field">
+                <span>Ngày hóa đơn</span>
+                <input
+                  className="erp-input"
+                  type="date"
+                  value={invoiceDate}
+                  disabled={!selectedPayable || busyAction !== ""}
+                  onChange={(event) => setInvoiceDate(event.target.value)}
+                />
+              </label>
+              <label className="erp-field">
+                <span>Số tiền hóa đơn</span>
+                <input
+                  className="erp-input"
+                  type="text"
+                  inputMode="decimal"
+                  value={invoiceAmount}
+                  disabled={!selectedPayable || busyAction !== ""}
+                  onChange={(event) => setInvoiceAmount(event.target.value)}
+                />
+              </label>
+              <button
+                className="erp-button erp-button--secondary"
+                type="submit"
+                disabled={!selectedPayable || invoiceNo.trim() === "" || invoiceAmount.trim() === "" || busyAction !== ""}
+              >
+                Tạo hóa đơn NCC
+              </button>
+            </form>
+          </section>
+
           <section className="erp-card erp-card--padded" id="ap-actions">
             <div className="erp-section-header">
               <h2 className="erp-section-title">Payment action</h2>
@@ -533,6 +712,17 @@ function mergePayables(localPayables: SupplierPayable[], payables: SupplierPayab
   return [...localMatches, ...payables.filter((payable) => !localIds.has(payable.id))];
 }
 
+function mergeSupplierInvoices(
+  localInvoices: SupplierInvoice[],
+  invoices: SupplierInvoice[],
+  query: SupplierInvoiceQuery
+) {
+  const localMatches = localInvoices.filter((invoice) => matchesSupplierInvoiceQuery(invoice, query));
+  const localIds = new Set(localMatches.map((invoice) => invoice.id));
+
+  return [...localMatches, ...invoices.filter((invoice) => !localIds.has(invoice.id))];
+}
+
 function matchesPayableQuery(payable: SupplierPayable, query: SupplierPayableQuery) {
   const search = query.search?.trim().toLowerCase();
   return (
@@ -545,6 +735,27 @@ function matchesPayableQuery(payable: SupplierPayable, query: SupplierPayableQue
         payable.sourceDocument?.id,
         payable.sourceDocument?.no,
         ...payable.lines.flatMap((line) => [line.description, line.sourceDocument.id, line.sourceDocument.no])
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(search)))
+  );
+}
+
+function matchesSupplierInvoiceQuery(invoice: SupplierInvoice, query: SupplierInvoiceQuery) {
+  const search = query.search?.trim().toLowerCase();
+  return (
+    (!query.status || invoice.status === query.status) &&
+    (!query.supplierId || invoice.supplierId === query.supplierId) &&
+    (!query.payableId || invoice.payableId === query.payableId) &&
+    (!search ||
+      [
+        invoice.invoiceNo,
+        invoice.supplierCode,
+        invoice.supplierName,
+        invoice.payableNo,
+        invoice.sourceDocument.id,
+        invoice.sourceDocument.no,
+        ...invoice.lines.flatMap((line) => [line.description, line.sourceDocument.id, line.sourceDocument.no])
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(search)))
@@ -573,4 +784,8 @@ function summarizePayables(payables: SupplierPayable[]) {
 
 function sourceDocumentLabel(source: { type: string; no?: string; id?: string }) {
   return `${source.type.replaceAll("_", " ")} / ${source.no ?? source.id ?? "-"}`;
+}
+
+function defaultFinanceDate() {
+  return new Date().toISOString().slice(0, 10);
 }

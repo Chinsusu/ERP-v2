@@ -14,7 +14,7 @@ import type {
   CustomerReceivableLine,
   CustomerReceivableQuery,
   CustomerReceivableStatus,
-  FinanceSourceDocument
+  CustomerReceivableSourceDocument
 } from "../types";
 
 type CustomerReceivableApi = components["schemas"]["CustomerReceivable"];
@@ -255,7 +255,7 @@ function fromApiCustomerReceivableLine(line: CustomerReceivableLineApi): Custome
   };
 }
 
-function fromApiSourceDocument(source: components["schemas"]["FinanceSourceDocument"]): FinanceSourceDocument {
+function fromApiSourceDocument(source: components["schemas"]["FinanceSourceDocument"]): CustomerReceivableSourceDocument {
   return {
     type: source.type,
     id: source.id,
@@ -487,7 +487,7 @@ function createReceivableSeed(input: {
   status: CustomerReceivableStatus;
   totalAmount: string;
   paidAmount: string;
-  sourceDocument: FinanceSourceDocument;
+  sourceDocument: CustomerReceivableSourceDocument;
   dueDate: string;
   disputeReason?: string;
   lines: CustomerReceivableLine[];
