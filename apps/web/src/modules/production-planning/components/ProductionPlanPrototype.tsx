@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   DataTable,
@@ -200,17 +201,25 @@ export function ProductionPlanPrototype() {
         const isSelected = plan.id === selectedPlan?.id;
 
         return (
-          <button
-            aria-current={isSelected ? "true" : undefined}
-            className={`erp-button erp-button--${isSelected ? "primary" : "secondary"} erp-button--compact`}
-            type="button"
-            onClick={() => setSelectedPlanId(plan.id)}
-          >
-            {isSelected ? "Đang chọn" : "Chọn"}
-          </button>
+          <div className="erp-masterdata-row-actions">
+            <button
+              aria-current={isSelected ? "true" : undefined}
+              className={`erp-button erp-button--${isSelected ? "primary" : "secondary"} erp-button--compact`}
+              type="button"
+              onClick={() => setSelectedPlanId(plan.id)}
+            >
+              {isSelected ? "Đang chọn" : "Chọn"}
+            </button>
+            <Link
+              className="erp-button erp-button--secondary erp-button--compact"
+              href={`/production/plans/${encodeURIComponent(plan.id)}`}
+            >
+              Mở kế hoạch
+            </Link>
+          </div>
         );
       },
-      width: "120px"
+      width: "230px"
     }
   ];
 
