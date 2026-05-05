@@ -31,7 +31,7 @@ x-web-environment: &web-environment
   PORT: 3000
   NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV:-dev}
   NEXT_PUBLIC_APP_VERSION: ${NEXT_PUBLIC_APP_VERSION:-dev}
-  NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8088/api/v1}
+  NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
   NEXT_PUBLIC_MOCK_AUTH_STATE: ${NEXT_PUBLIC_MOCK_AUTH_STATE:-signed-out}
   AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
 
@@ -184,7 +184,7 @@ services:
       args:
         NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV:-dev}
         NEXT_PUBLIC_APP_VERSION: ${NEXT_PUBLIC_APP_VERSION:-dev}
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8088/api/v1}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
         NEXT_PUBLIC_MOCK_AUTH_STATE: ${NEXT_PUBLIC_MOCK_AUTH_STATE:-signed-out}
     environment: *web-environment
     depends_on:
