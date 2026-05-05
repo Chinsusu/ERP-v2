@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createProductionPlan, createProductionPlans, formatProductionPlanQuantity, summarizeProductionPlans } from "./productionPlanService";
+import {
+  createProductionPlan,
+  createProductionPlans,
+  formatProductionPlanQuantity,
+  getProductionPlan,
+  summarizeProductionPlans
+} from "./productionPlanService";
 
 describe("productionPlanService", () => {
   afterEach(() => {
@@ -124,6 +130,51 @@ describe("productionPlanService", () => {
     expect(formatProductionPlanQuantity("0.000001", "KG")).toBe("1 mg");
     expect(formatProductionPlanQuantity("0.001500", "KG")).toBe("1,5 g");
     expect(formatProductionPlanQuantity("2.000000", "PCS")).toBe("2 PCS");
+  });
+
+  it("loads production plan detail by id", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          request_id: "req-production-plan-detail",
+          data: {
+            id: "plan-001",
+            org_id: "org-my-pham",
+            plan_no: "PP-260504-0001",
+            output_item_id: "item-aah",
+            output_sku: "AAH",
+            output_item_name: "Kem u phuc hoi AS A HABIT BIO 350GR",
+            output_item_type: "finished_good",
+            planned_qty: "999.000000",
+            uom_code: "PCS",
+            formula_id: "formula-aah-v1",
+            formula_code: "S23SMK260504200049",
+            formula_version: "v260504200049",
+            formula_batch_qty: "1.000000",
+            formula_batch_uom_code: "PCS",
+            status: "purchase_request_draft_created",
+            lines: [],
+            purchase_request_draft: { lines: [] },
+            created_at: "2026-05-04T03:00:00Z",
+            created_by: "user-production",
+            updated_at: "2026-05-04T03:00:00Z",
+            updated_by: "user-production",
+            version: 1
+          }
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const plan = await getProductionPlan("plan-001");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/production-plans/plan-001"),
+      expect.any(Object)
+    );
+    expect(plan.planNo).toBe("PP-260504-0001");
   });
 
   it("creates multiple production plans from one submission", async () => {

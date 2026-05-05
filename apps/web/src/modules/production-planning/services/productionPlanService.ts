@@ -117,6 +117,27 @@ export async function getProductionPlans(query: ProductionPlanQuery = {}): Promi
   }
 }
 
+export async function getProductionPlan(id: string): Promise<ProductionPlan> {
+  try {
+    const plan = await apiGetRaw<ProductionPlanApi>(`/production-plans/${encodeURIComponent(id)}`, {
+      accessToken: defaultAccessToken
+    });
+
+    return fromApiProductionPlan(plan);
+  } catch (reason) {
+    if (!shouldUsePrototypeFallback(reason)) {
+      throw reason;
+    }
+
+    const localPlan = localPlans.find((plan) => plan.id === id);
+    if (!localPlan) {
+      throw new Error("Production plan was not found");
+    }
+
+    return cloneProductionPlan(localPlan);
+  }
+}
+
 export async function createProductionPlan(input: ProductionPlanInput): Promise<ProductionPlan> {
   const normalized = normalizeProductionPlanInput(input);
   validateProductionPlanInput(normalized);
