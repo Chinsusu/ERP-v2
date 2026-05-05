@@ -8,15 +8,19 @@ import type { SubcontractOrder } from "../types";
 
 describe("subcontractOrderTimeline", () => {
   it("builds a factory-order timeline with the current factory confirmation gate", () => {
-    const timeline = buildSubcontractOrderTimeline({
-      ...baseOrder,
-      status: "approved"
-    });
+    const timeline = buildSubcontractOrderTimeline(
+      {
+        ...baseOrder,
+        status: "approved"
+      },
+      { dispatchStatus: "sent" }
+    );
 
     expect(timeline.map((item) => [item.id, item.status])).toEqual([
       ["created", "complete"],
       ["submitted", "complete"],
       ["approved", "complete"],
+      ["factory-dispatch", "complete"],
       ["factory-confirmed", "current"],
       ["deposit", "pending"],
       ["materials-issued", "pending"],
@@ -34,6 +38,23 @@ describe("subcontractOrderTimeline", () => {
         href: "/subcontract?source_production_plan_id=plan-001&search=PP-260505-0001#subcontract-orders",
         disabled: false
       }
+    });
+  });
+
+  it("keeps factory confirmation pending until the dispatch is sent", () => {
+    const timeline = buildSubcontractOrderTimeline(
+      {
+        ...baseOrder,
+        status: "approved"
+      },
+      { dispatchStatus: "draft" }
+    );
+
+    expect(timeline.find((item) => item.id === "factory-dispatch")).toMatchObject({
+      status: "current"
+    });
+    expect(timeline.find((item) => item.id === "factory-confirmed")).toMatchObject({
+      status: "pending"
     });
   });
 

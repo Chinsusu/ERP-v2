@@ -246,6 +246,26 @@ const sprint5Routes = [
     operationIds: ["closeSubcontractOrder"]
   },
   {
+    path: "/subcontract-orders/{subcontract_order_id}/factory-dispatches",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/factory-dispatches",
+    operationIds: ["listSubcontractFactoryDispatches", "createSubcontractFactoryDispatch"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/mark-ready",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/mark-ready",
+    operationIds: ["markSubcontractFactoryDispatchReady"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/mark-sent",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/mark-sent",
+    operationIds: ["markSubcontractFactoryDispatchSent"]
+  },
+  {
+    path: "/subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/record-response",
+    apiRoute: "/api/v1/subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/record-response",
+    operationIds: ["recordSubcontractFactoryDispatchResponse"]
+  },
+  {
     path: "/warehouse/daily-board/subcontract-metrics",
     apiRoute: "/api/v1/warehouse/daily-board/subcontract-metrics",
     operationIds: ["getWarehouseDailyBoardSubcontractMetrics"]
@@ -483,6 +503,8 @@ const requiredSuccessSchemas = [
   "AcceptSubcontractFinishedGoodsSuccessResponse",
   "PartialAcceptSubcontractFinishedGoodsSuccessResponse",
   "SubcontractSampleApprovalResultSuccessResponse",
+  "SubcontractFactoryDispatchListSuccessResponse",
+  "SubcontractFactoryDispatchResultSuccessResponse",
   "WarehouseSubcontractMetricsSuccessResponse",
   "CustomerReceivableListSuccessResponse",
   "CustomerReceivableSuccessResponse",

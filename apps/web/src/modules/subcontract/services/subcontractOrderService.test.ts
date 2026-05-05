@@ -6,15 +6,20 @@ import {
   changeSubcontractOrderStatus,
   confirmFactorySubcontractOrder,
   createSubcontractFactoryClaim,
+  createSubcontractFactoryDispatch,
   createSubcontractOrder,
   formatSubcontractDepositStatus,
+  getSubcontractFactoryDispatches,
   formatSubcontractOrderStatus,
   getSubcontractOrders,
   issueSubcontractMaterials,
   markSubcontractFinalPaymentReady,
+  markSubcontractFactoryDispatchReady,
+  markSubcontractFactoryDispatchSent,
   prototypeSubcontractOrders,
   receiveSubcontractFinishedGoods,
   recordSubcontractDeposit,
+  recordSubcontractFactoryDispatchResponse,
   rejectSubcontractSample,
   resetPrototypeSubcontractOrdersForTest,
   startMassProductionSubcontractOrder,
@@ -241,6 +246,90 @@ describe("subcontractOrderService", () => {
 
     expect(submitted.order.status).toBe("submitted");
     expect(approved.order.status).toBe("approved");
+  });
+
+  it("records manual factory dispatch and confirms the factory order", async () => {
+    const draft = await createSubcontractOrder({
+      factoryId: "sup-out-lotus",
+      productId: "item-serum-30ml",
+      quantity: 1200,
+      specVersion: "SPEC-SERUM-2026.04",
+      sampleRequired: true,
+      expectedDeliveryDate: "2026-05-20",
+      depositStatus: "pending",
+      materialLines: [
+        {
+          itemId: "item-act-baicapil",
+          skuCode: "ACT_BAICAPIL",
+          itemName: "BAICAPIL",
+          plannedQty: "0.001500",
+          uomCode: "KG",
+          unitCost: "0",
+          lotTraceRequired: true
+        }
+      ]
+    });
+    const submitted = await submitSubcontractOrder(draft.id, draft.version);
+    const approved = await approveSubcontractOrder(submitted.order.id, submitted.order.version);
+
+    const created = await createSubcontractFactoryDispatch({ order: approved.order, note: "Manual send pack" });
+    const ready = await markSubcontractFactoryDispatchReady(created.order, created.dispatch);
+    const sent = await markSubcontractFactoryDispatchSent({
+      order: ready.order,
+      dispatch: ready.dispatch,
+      sentBy: "subcontract-user",
+      sentAt: "2026-05-06T01:00:00Z",
+      note: "Sent outside ERP",
+      evidence: [
+        {
+          id: "fdp-evidence-001",
+          evidenceType: "manual_send",
+          objectKey: "manual/fdp-evidence-001",
+          note: "Manual dispatch evidence"
+        }
+      ]
+    });
+    const confirmed = await recordSubcontractFactoryDispatchResponse({
+      order: sent.order,
+      dispatch: sent.dispatch,
+      responseStatus: "confirmed",
+      responseBy: "factory-user",
+      respondedAt: "2026-05-06T02:00:00Z",
+      responseNote: "Factory confirmed"
+    });
+
+    expect(created.dispatch).toMatchObject({
+      orderId: approved.order.id,
+      status: "draft",
+      note: "Manual send pack"
+    });
+    expect(created.dispatch.lines).toEqual([
+      expect.objectContaining({
+        skuCode: "ACT_BAICAPIL",
+        plannedQty: "0.001500",
+        uomCode: "KG"
+      })
+    ]);
+    expect(ready.dispatch.status).toBe("ready");
+    expect(sent.dispatch).toMatchObject({
+      status: "sent",
+      sentBy: "subcontract-user"
+    });
+    expect(sent.dispatch.evidence).toEqual([
+      expect.objectContaining({
+        evidenceType: "manual_send",
+        objectKey: "manual/fdp-evidence-001"
+      })
+    ]);
+    expect(confirmed.dispatch).toMatchObject({
+      status: "confirmed",
+      responseBy: "factory-user",
+      factoryResponseNote: "Factory confirmed"
+    });
+    expect(confirmed.order.status).toBe("factory_confirmed");
+    await expect(getSubcontractFactoryDispatches(approved.order.id)).resolves.toEqual([
+      expect.objectContaining({ id: confirmed.dispatch.id, status: "confirmed" })
+    ]);
   });
 
   it("issues subcontract materials through the prototype fallback", async () => {

@@ -21,6 +21,7 @@ import (
 var ErrSubcontractOrderNotFound = errors.New("subcontract order not found")
 var ErrSubcontractOrderVersionConflict = errors.New("subcontract order version conflict")
 var ErrSubcontractSampleApprovalNotFound = errors.New("subcontract sample approval not found")
+var ErrSubcontractFactoryDispatchNotFound = errors.New("subcontract factory dispatch not found")
 
 const (
 	ErrorCodeSubcontractOrderNotFound        response.ErrorCode = "SUBCONTRACT_ORDER_NOT_FOUND"
@@ -28,17 +29,22 @@ const (
 	ErrorCodeSubcontractOrderInvalidState    response.ErrorCode = "SUBCONTRACT_ORDER_INVALID_STATE"
 	ErrorCodeSubcontractOrderVersionConflict response.ErrorCode = "SUBCONTRACT_ORDER_VERSION_CONFLICT"
 
-	defaultSubcontractOrderOrgID           = "org-my-pham"
-	subcontractOrderEntityType             = "production.subcontract_order"
-	subcontractMaterialsIssuedAction       = "subcontract.materials_issued"
-	subcontractSampleSubmittedAction       = "subcontract.sample_submitted"
-	subcontractSampleApprovedAction        = "subcontract.sample_approved"
-	subcontractSampleRejectedAction        = "subcontract.sample_rejected"
-	subcontractFinishedGoodsAction         = "subcontract.finished_goods_received"
-	subcontractFinishedGoodsAcceptedAction = "subcontract.finished_goods_accepted"
-	subcontractFactoryClaimAction          = "subcontract.factory_claim_opened"
-	subcontractDepositRecordedAction       = "subcontract.deposit_recorded"
-	subcontractFinalPaymentAction          = "subcontract.final_payment_ready"
+	defaultSubcontractOrderOrgID              = "org-my-pham"
+	subcontractOrderEntityType                = "production.subcontract_order"
+	subcontractMaterialsIssuedAction          = "subcontract.materials_issued"
+	subcontractSampleSubmittedAction          = "subcontract.sample_submitted"
+	subcontractSampleApprovedAction           = "subcontract.sample_approved"
+	subcontractSampleRejectedAction           = "subcontract.sample_rejected"
+	subcontractFinishedGoodsAction            = "subcontract.finished_goods_received"
+	subcontractFinishedGoodsAcceptedAction    = "subcontract.finished_goods_accepted"
+	subcontractFactoryClaimAction             = "subcontract.factory_claim_opened"
+	subcontractDepositRecordedAction          = "subcontract.deposit_recorded"
+	subcontractFinalPaymentAction             = "subcontract.final_payment_ready"
+	subcontractFactoryDispatchCreatedAction   = "subcontract.factory_dispatch_created"
+	subcontractFactoryDispatchReadyAction     = "subcontract.factory_dispatch_ready"
+	subcontractFactoryDispatchSentAction      = "subcontract.factory_dispatch_sent"
+	subcontractFactoryDispatchConfirmedAction = "subcontract.factory_dispatch_confirmed"
+	subcontractFactoryDispatchResponseAction  = "subcontract.factory_dispatch_response"
 )
 
 type SubcontractOrderStore interface {
@@ -86,6 +92,13 @@ type SubcontractSampleApprovalStore interface {
 	GetLatestBySubcontractOrder(ctx context.Context, subcontractOrderID string) (productiondomain.SubcontractSampleApproval, error)
 }
 
+type SubcontractFactoryDispatchStore interface {
+	Save(ctx context.Context, dispatch productiondomain.SubcontractFactoryDispatch) error
+	Get(ctx context.Context, id string) (productiondomain.SubcontractFactoryDispatch, error)
+	ListBySubcontractOrder(ctx context.Context, subcontractOrderID string) ([]productiondomain.SubcontractFactoryDispatch, error)
+	GetLatestBySubcontractOrder(ctx context.Context, subcontractOrderID string) (productiondomain.SubcontractFactoryDispatch, error)
+}
+
 type ConvertSubcontractOrderLineToBaseInput struct {
 	ItemID      string
 	SKU         string
@@ -120,6 +133,8 @@ type SubcontractOrderService struct {
 	paymentMilestoneStore SubcontractPaymentMilestoneStore
 	paymentMilestoneBuild SubcontractPaymentMilestoneService
 	payableCreator        SubcontractPayableCreator
+	factoryDispatchStore  SubcontractFactoryDispatchStore
+	factoryDispatchBuild  SubcontractFactoryDispatchService
 	clock                 func() time.Time
 }
 
@@ -529,6 +544,7 @@ func NewSubcontractOrderService(
 		finishedGoodsBuild:    NewSubcontractFinishedGoodsReceiptService(),
 		factoryClaimBuild:     NewSubcontractFactoryClaimService(),
 		paymentMilestoneBuild: NewSubcontractPaymentMilestoneService(),
+		factoryDispatchBuild:  NewSubcontractFactoryDispatchService(),
 		clock:                 func() time.Time { return time.Now().UTC() },
 	}
 }
@@ -581,6 +597,14 @@ func (s SubcontractOrderService) WithSubcontractPayableCreator(
 	payableCreator SubcontractPayableCreator,
 ) SubcontractOrderService {
 	s.payableCreator = payableCreator
+
+	return s
+}
+
+func (s SubcontractOrderService) WithFactoryDispatchStore(
+	dispatchStore SubcontractFactoryDispatchStore,
+) SubcontractOrderService {
+	s.factoryDispatchStore = dispatchStore
 
 	return s
 }
@@ -2612,6 +2636,9 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 	if errors.Is(err, ErrSubcontractSampleApprovalNotFound) {
 		return apperrors.NotFound(ErrorCodeSubcontractOrderNotFound, "Subcontract sample approval not found", err, details)
 	}
+	if errors.Is(err, ErrSubcontractFactoryDispatchNotFound) {
+		return apperrors.NotFound(ErrorCodeSubcontractOrderNotFound, "Subcontract factory dispatch not found", err, details)
+	}
 	if errors.Is(err, ErrSubcontractFactoryClaimNotFound) {
 		return apperrors.NotFound(ErrorCodeSubcontractOrderNotFound, "Subcontract factory claim not found", err, details)
 	}
@@ -2626,7 +2653,9 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 		errors.Is(err, productiondomain.ErrSubcontractFactoryClaimInvalidStatus) ||
 		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneInvalidStatus) ||
 		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneInvalidTransition) ||
-		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneBlocked) {
+		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneBlocked) ||
+		errors.Is(err, productiondomain.ErrSubcontractFactoryDispatchInvalidStatus) ||
+		errors.Is(err, productiondomain.ErrSubcontractFactoryDispatchInvalidTransition) {
 		return apperrors.Conflict(ErrorCodeSubcontractOrderInvalidState, "Subcontract order state is invalid", err, details)
 	}
 	if errors.Is(err, productiondomain.ErrSubcontractMaterialTransferInvalidStatus) {
@@ -2652,7 +2681,9 @@ func MapSubcontractOrderError(err error, details map[string]any) error {
 		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneRequiredField) ||
 		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneInvalidKind) ||
 		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneInvalidCurrency) ||
-		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneInvalidAmount) {
+		errors.Is(err, productiondomain.ErrSubcontractPaymentMilestoneInvalidAmount) ||
+		errors.Is(err, productiondomain.ErrSubcontractFactoryDispatchRequiredField) ||
+		errors.Is(err, productiondomain.ErrSubcontractFactoryDispatchInvalidQuantity) {
 		return subcontractOrderValidationError(err, details)
 	}
 

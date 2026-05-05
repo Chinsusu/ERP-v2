@@ -43,6 +43,15 @@ export type SubcontractPaymentMilestoneKind = "deposit" | "final_payment";
 
 export type SubcontractPaymentMilestoneStatus = "pending" | "recorded" | "ready" | "blocked" | "cancelled";
 
+export type SubcontractFactoryDispatchStatus =
+  | "draft"
+  | "ready"
+  | "sent"
+  | "confirmed"
+  | "revision_requested"
+  | "rejected"
+  | "cancelled";
+
 export type SubcontractFactory = {
   id: string;
   code: string;
@@ -512,6 +521,95 @@ export type MarkSubcontractFinalPaymentReadyInput = {
 export type SubcontractPaymentMilestoneResult = {
   order: SubcontractOrder;
   milestone: SubcontractPaymentMilestone;
+  auditLog: AuditLogItem;
+  auditLogId?: string;
+};
+
+export type SubcontractFactoryDispatchLine = {
+  id: string;
+  lineNo: number;
+  orderMaterialLineId: string;
+  itemId: string;
+  skuCode: string;
+  itemName: string;
+  plannedQty: string;
+  uomCode: string;
+  lotTraceRequired: boolean;
+  note?: string;
+};
+
+export type SubcontractFactoryDispatchEvidence = {
+  id: string;
+  evidenceType: string;
+  fileName?: string;
+  objectKey?: string;
+  externalURL?: string;
+  note?: string;
+};
+
+export type SubcontractFactoryDispatch = {
+  id: string;
+  dispatchNo: string;
+  orderId: string;
+  orderNo: string;
+  sourceProductionPlanId?: string;
+  sourceProductionPlanNo?: string;
+  factoryId: string;
+  factoryCode?: string;
+  factoryName: string;
+  productId: string;
+  sku: string;
+  productName: string;
+  plannedQty: string;
+  uomCode: string;
+  specSummary?: string;
+  sampleRequired: boolean;
+  targetStartDate?: string;
+  expectedReceiptDate?: string;
+  status: SubcontractFactoryDispatchStatus;
+  lines: SubcontractFactoryDispatchLine[];
+  evidence: SubcontractFactoryDispatchEvidence[];
+  readyAt?: string;
+  readyBy?: string;
+  sentAt?: string;
+  sentBy?: string;
+  respondedAt?: string;
+  responseBy?: string;
+  factoryResponseNote?: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
+export type CreateSubcontractFactoryDispatchInput = {
+  order: SubcontractOrder;
+  dispatchId?: string;
+  dispatchNo?: string;
+  note?: string;
+};
+
+export type MarkSubcontractFactoryDispatchSentInput = {
+  order: SubcontractOrder;
+  dispatch: SubcontractFactoryDispatch;
+  sentBy?: string;
+  sentAt?: string;
+  note?: string;
+  evidence?: SubcontractFactoryDispatchEvidence[];
+};
+
+export type RecordSubcontractFactoryDispatchResponseInput = {
+  order: SubcontractOrder;
+  dispatch: SubcontractFactoryDispatch;
+  responseStatus: Extract<SubcontractFactoryDispatchStatus, "confirmed" | "revision_requested" | "rejected">;
+  responseBy?: string;
+  respondedAt?: string;
+  responseNote?: string;
+};
+
+export type SubcontractFactoryDispatchResult = {
+  order: SubcontractOrder;
+  dispatch: SubcontractFactoryDispatch;
   auditLog: AuditLogItem;
   auditLogId?: string;
 };

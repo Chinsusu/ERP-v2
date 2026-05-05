@@ -18,6 +18,7 @@ type subcontractRuntimeStores struct {
 	finishedGoodsReceipts productionapp.SubcontractFinishedGoodsReceiptStore
 	factoryClaims         productionapp.SubcontractFactoryClaimStore
 	paymentMilestones     productionapp.SubcontractPaymentMilestoneStore
+	factoryDispatches     productionapp.SubcontractFactoryDispatchStore
 }
 
 func newRuntimeSubcontractStores(
@@ -32,6 +33,7 @@ func newRuntimeSubcontractStores(
 			finishedGoodsReceipts: productionapp.NewPrototypeSubcontractFinishedGoodsReceiptStore(),
 			factoryClaims:         productionapp.NewPrototypeSubcontractFactoryClaimStore(),
 			paymentMilestones:     productionapp.NewPrototypeSubcontractPaymentMilestoneStore(),
+			factoryDispatches:     productionapp.NewPrototypeSubcontractFactoryDispatchStore(),
 		}, nil, nil
 	}
 
@@ -46,6 +48,7 @@ func newRuntimeSubcontractStores(
 	finishedGoodsReceiptConfig := productionapp.PostgresSubcontractFinishedGoodsReceiptStoreConfig{}
 	factoryClaimConfig := productionapp.PostgresSubcontractFactoryClaimStoreConfig{}
 	paymentMilestoneConfig := productionapp.PostgresSubcontractPaymentMilestoneStoreConfig{}
+	factoryDispatchConfig := productionapp.PostgresSubcontractFactoryDispatchStoreConfig{}
 	if config.AllowsStaticAuthAccessToken(cfg.AppEnv) {
 		orderConfig.DefaultOrgID = localAuditOrgID
 		materialTransferConfig.DefaultOrgID = localAuditOrgID
@@ -53,6 +56,7 @@ func newRuntimeSubcontractStores(
 		finishedGoodsReceiptConfig.DefaultOrgID = localAuditOrgID
 		factoryClaimConfig.DefaultOrgID = localAuditOrgID
 		paymentMilestoneConfig.DefaultOrgID = localAuditOrgID
+		factoryDispatchConfig.DefaultOrgID = localAuditOrgID
 	}
 
 	return subcontractRuntimeStores{
@@ -79,6 +83,10 @@ func newRuntimeSubcontractStores(
 		paymentMilestones: productionapp.NewPostgresSubcontractPaymentMilestoneStore(
 			db,
 			paymentMilestoneConfig,
+		),
+		factoryDispatches: productionapp.NewPostgresSubcontractFactoryDispatchStore(
+			db,
+			factoryDispatchConfig,
 		),
 	}, db.Close, nil
 }

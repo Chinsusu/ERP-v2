@@ -2337,6 +2337,156 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/factory-dispatches:
+    get:
+      summary: List factory dispatch packs for a subcontract order
+      operationId: listSubcontractFactoryDispatches
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      responses:
+        "200":
+          description: Factory dispatch packs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractFactoryDispatchListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    post:
+      summary: Create a factory dispatch pack from an approved subcontract order
+      operationId: createSubcontractFactoryDispatch
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSubcontractFactoryDispatchRequest"
+      responses:
+        "201":
+          description: Factory dispatch pack created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractFactoryDispatchResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/mark-ready:
+    post:
+      summary: Mark a factory dispatch pack ready to send
+      operationId: markSubcontractFactoryDispatchReady
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+        - $ref: "#/components/parameters/SubcontractFactoryDispatchIDParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubcontractOrderActionRequest"
+      responses:
+        "200":
+          description: Factory dispatch pack marked ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractFactoryDispatchResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/mark-sent:
+    post:
+      summary: Mark a factory dispatch pack sent outside the system
+      operationId: markSubcontractFactoryDispatchSent
+      description: Records manual send evidence only; email, Zalo, and factory API delivery are out of scope.
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+        - $ref: "#/components/parameters/SubcontractFactoryDispatchIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkSubcontractFactoryDispatchSentRequest"
+      responses:
+        "200":
+          description: Factory dispatch pack marked sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractFactoryDispatchResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/record-response:
+    post:
+      summary: Record the factory response to a dispatch pack
+      operationId: recordSubcontractFactoryDispatchResponse
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+        - $ref: "#/components/parameters/SubcontractFactoryDispatchIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordSubcontractFactoryDispatchResponseRequest"
+      responses:
+        "200":
+          description: Factory dispatch response recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractFactoryDispatchResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /inventory/stock-movements:
     post:
       summary: Record stock movement
@@ -5430,6 +5580,12 @@ components:
       required: true
       schema:
         type: string
+    SubcontractFactoryDispatchIDParam:
+      name: factory_dispatch_id
+      in: path
+      required: true
+      schema:
+        type: string
   securitySchemes:
     bearerAuth:
       type: http
@@ -8467,6 +8623,16 @@ components:
         - submitted
         - approved
         - rejected
+    SubcontractFactoryDispatchStatus:
+      type: string
+      enum:
+        - draft
+        - ready
+        - sent
+        - confirmed
+        - revision_requested
+        - rejected
+        - cancelled
     SubcontractPaymentMilestoneKind:
       type: string
       enum:
@@ -8572,6 +8738,26 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/SubcontractSampleApprovalResult"
+    SubcontractFactoryDispatchListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/SubcontractFactoryDispatch"
+    SubcontractFactoryDispatchResultSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SubcontractFactoryDispatchResult"
     CreateSubcontractOrderRequest:
       type: object
       required:
@@ -9076,6 +9262,59 @@ components:
           type: string
         storage_status:
           type: string
+    CreateSubcontractFactoryDispatchRequest:
+      type: object
+      required:
+        - expected_version
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        dispatch_id:
+          type: string
+        dispatch_no:
+          type: string
+        note:
+          type: string
+    MarkSubcontractFactoryDispatchSentRequest:
+      type: object
+      required:
+        - expected_version
+        - evidence
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        sent_by:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+        note:
+          type: string
+        evidence:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SubcontractEvidenceRequest"
+    RecordSubcontractFactoryDispatchResponseRequest:
+      type: object
+      required:
+        - expected_version
+        - response_status
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        response_status:
+          $ref: "#/components/schemas/SubcontractFactoryDispatchStatus"
+        response_by:
+          type: string
+        responded_at:
+          type: string
+          format: date-time
+        response_note:
+          type: string
     SubcontractEvidenceRequest:
       type: object
       properties:
@@ -9496,6 +9735,152 @@ components:
         version:
           type: integer
           minimum: 0
+    SubcontractFactoryDispatchResult:
+      type: object
+      required:
+        - subcontract_order
+        - factory_dispatch
+      properties:
+        subcontract_order:
+          $ref: "#/components/schemas/SubcontractOrder"
+        factory_dispatch:
+          $ref: "#/components/schemas/SubcontractFactoryDispatch"
+        audit_log_id:
+          type: string
+    SubcontractFactoryDispatch:
+      type: object
+      required:
+        - id
+        - org_id
+        - dispatch_no
+        - subcontract_order_id
+        - subcontract_order_no
+        - factory_id
+        - factory_name
+        - finished_item_id
+        - finished_sku_code
+        - finished_item_name
+        - planned_qty
+        - uom_code
+        - sample_required
+        - status
+        - lines
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        dispatch_no:
+          type: string
+        subcontract_order_id:
+          type: string
+        subcontract_order_no:
+          type: string
+        source_production_plan_id:
+          type: string
+        source_production_plan_no:
+          type: string
+        factory_id:
+          type: string
+        factory_code:
+          type: string
+        factory_name:
+          type: string
+        finished_item_id:
+          type: string
+        finished_sku_code:
+          type: string
+        finished_item_name:
+          type: string
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        spec_summary:
+          type: string
+        sample_required:
+          type: boolean
+        target_start_date:
+          type: string
+          format: date
+        expected_receipt_date:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/SubcontractFactoryDispatchStatus"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractFactoryDispatchLine"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcontractEvidence"
+        ready_at:
+          type: string
+          format: date-time
+        ready_by:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+        sent_by:
+          type: string
+        responded_at:
+          type: string
+          format: date-time
+        response_by:
+          type: string
+        factory_response_note:
+          type: string
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 0
+    SubcontractFactoryDispatchLine:
+      type: object
+      required:
+        - id
+        - line_no
+        - order_material_line_id
+        - item_id
+        - sku_code
+        - item_name
+        - planned_qty
+        - uom_code
+        - lot_trace_required
+      properties:
+        id:
+          type: string
+        line_no:
+          type: integer
+          minimum: 1
+        order_material_line_id:
+          type: string
+        item_id:
+          type: string
+        sku_code:
+          type: string
+        item_name:
+          type: string
+        planned_qty:
+          $ref: "#/components/schemas/Quantity"
+        uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        lot_trace_required:
+          type: boolean
+        note:
+          type: string
     IssueSubcontractMaterialsResult:
       type: object
       required:

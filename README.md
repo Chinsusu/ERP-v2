@@ -46,6 +46,9 @@ Start with:
 - `docs/105_ERP_Coding_Task_Board_Sprint26_Production_IA_External_Factory_Order_Detail_MyPham_v1.md`
 - `docs/106_ERP_Production_IA_External_Factory_Order_Detail_Flow_MyPham_v1.md`
 - `docs/107_ERP_Sprint26_Changelog_Production_IA_External_Factory_Order_Detail_MyPham_v1.md`
+- `docs/108_ERP_Coding_Task_Board_Sprint27_Factory_Dispatch_MyPham_v1.md`
+- `docs/109_ERP_Factory_Dispatch_Flow_Sprint27_MyPham_v1.md`
+- `docs/110_ERP_Sprint27_Changelog_Factory_Dispatch_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -53,7 +56,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 26 production IA cleanup and external factory order detail completed on main.
+Current line: Sprint 27 factory dispatch MVP for external-factory production.
 
 Latest release tag:
 
@@ -134,6 +137,16 @@ Browser smoke passed for /production sidebar consolidation and /production/facto
 No v0.26 tag has been created.
 ```
 
+Sprint 27 implementation status:
+
+```text
+Sprint 27 is documented in file 108, and the factory dispatch flow is locked in file 109.
+Scope is manual factory dispatch pack creation, ready/sent evidence, and factory response on /production/factory-orders/:orderId.
+Confirmed factory response advances the external factory order to factory_confirmed.
+Email, Zalo, factory portal/API delivery, digital signatures, and internal MES production remain out of scope.
+No v0.27 tag has been created.
+```
+
 Phase 1 production scope:
 
 ```text
@@ -160,7 +173,7 @@ main baseline 020d6a13: Sprint 20 traceability cleanup merged after required-ci 
 required-migration after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed
 ```
 
-Completed focus through Sprint 21:
+Completed focus through Sprint 27:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
@@ -170,6 +183,7 @@ Completed focus through Sprint 21:
 - Sprint 23 production planning bridge: `/production` planning surface, backend production-plan API, formula snapshot demand calculation, shortage comparison, first-class Purchase Request submit/approve/convert-to-PO flow, and controlled PO/receiving traceability
 - Post-PO payable traceability: PO-linked posted receipts create supplier payables only for QC PASS accepted lines, with AP search traceable back to PO and receipt
 - Inventory warehouse document runtime: Stock Transfer and Warehouse Issue Note lifecycle with PostgreSQL document persistence and posted ledger movement effects
+- External factory dispatch MVP: manual dispatch pack, ready/sent evidence, factory response, and production-facing timeline step before factory confirmation
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 
@@ -196,6 +210,9 @@ Production runtime reference:
 - `docs/105_ERP_Coding_Task_Board_Sprint26_Production_IA_External_Factory_Order_Detail_MyPham_v1.md`
 - `docs/106_ERP_Production_IA_External_Factory_Order_Detail_Flow_MyPham_v1.md`
 - `docs/107_ERP_Sprint26_Changelog_Production_IA_External_Factory_Order_Detail_MyPham_v1.md`
+- `docs/108_ERP_Coding_Task_Board_Sprint27_Factory_Dispatch_MyPham_v1.md`
+- `docs/109_ERP_Factory_Dispatch_Flow_Sprint27_MyPham_v1.md`
+- `docs/110_ERP_Sprint27_Changelog_Factory_Dispatch_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
