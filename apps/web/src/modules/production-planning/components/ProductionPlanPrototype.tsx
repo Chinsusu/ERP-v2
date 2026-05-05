@@ -49,6 +49,7 @@ export function ProductionPlanPrototype() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [nextActionSaving, setNextActionSaving] = useState<"" | "purchase" | "subcontract">("");
+  const [showCreatePlanForm, setShowCreatePlanForm] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | undefined>();
   const [nextActionError, setNextActionError] = useState<string | undefined>();
@@ -100,6 +101,7 @@ export function ProductionPlanPrototype() {
         if (planRows[0]) {
           setSelectedPlanId(planRows[0].id);
         }
+        setShowCreatePlanForm(planRows.length === 0);
         const firstProduct = productRows.find(
           (product) => product.status === "active" && finishedProductTypes.includes(product.itemType) && product.isProducible
         );
@@ -271,6 +273,7 @@ export function ProductionPlanPrototype() {
       if (created[0]) {
         setSelectedPlanId(created[0].id);
       }
+      setShowCreatePlanForm(false);
       pushToast("Đã tạo kế hoạch", `${created.length} thành phẩm: ${created.map((plan) => plan.outputSku).join(", ")}`, "success");
     } catch (saveError) {
       setFormError(errorText(saveError));
@@ -367,6 +370,10 @@ export function ProductionPlanPrototype() {
     setToast([{ id: `${Date.now()}`, title, description, tone }]);
   }
 
+  function dismissToast(id: string) {
+    setToast((current) => current.filter((message) => message.id !== id));
+  }
+
   if (error) {
     return <ErrorState title="Không tải được dữ liệu sản xuất" description={error} />;
   }
@@ -420,6 +427,14 @@ export function ProductionPlanPrototype() {
               <h2 className="erp-section-title">Kế hoạch sản xuất</h2>
               <p className="erp-page-description">Chọn một kế hoạch để tính nhu cầu vật tư và tạo chứng từ tiếp theo.</p>
             </div>
+            <button
+              aria-expanded={showCreatePlanForm}
+              className="erp-button erp-button--secondary"
+              type="button"
+              onClick={() => setShowCreatePlanForm((current) => !current)}
+            >
+              {showCreatePlanForm ? "Ẩn form tạo" : "Tạo kế hoạch mới"}
+            </button>
           </header>
           <DataTable
             columns={planColumns}
@@ -433,110 +448,112 @@ export function ProductionPlanPrototype() {
           />
         </article>
 
-        <form onSubmit={submit}>
-          <FormSection
-            title="Bước 1: Tạo kế hoạch sản xuất"
-            description="Thêm nhiều thành phẩm trong một lần nhập; hệ thống sẽ tạo mỗi thành phẩm thành một kế hoạch riêng để giữ traceability theo công thức."
-            footer={
-              <>
-                {formError ? <span className="erp-form-error">{formError}</span> : null}
-                <button className="erp-button erp-button--secondary" type="button" onClick={addDraftLine} disabled={saving || loading}>
-                  Thêm thành phẩm
-                </button>
-                <button className="erp-button erp-button--primary" type="submit" disabled={saving || loading}>
-                  {saving ? "Đang tạo" : `Tạo ${draftLines.filter((line) => line.outputItemId).length || 1} kế hoạch`}
-                </button>
-              </>
-            }
-          >
-            <div className="erp-production-plan-lines">
-              {draftLines.map((line, index) => {
-                const lineFormulas = formulasForLine(line);
+        {showCreatePlanForm ? (
+          <form onSubmit={submit}>
+            <FormSection
+              title="Tạo kế hoạch mới"
+              description="Form này tạo thêm kế hoạch sản xuất mới. Nếu đang xử lý kế hoạch đã chọn, tiếp tục ở phần nhu cầu vật tư và tạo PO bên dưới."
+              footer={
+                <>
+                  {formError ? <span className="erp-form-error">{formError}</span> : null}
+                  <button className="erp-button erp-button--secondary" type="button" onClick={addDraftLine} disabled={saving || loading}>
+                    Thêm thành phẩm
+                  </button>
+                  <button className="erp-button erp-button--primary" type="submit" disabled={saving || loading}>
+                    {saving ? "Đang tạo" : `Tạo ${draftLines.filter((line) => line.outputItemId).length || 1} kế hoạch`}
+                  </button>
+                </>
+              }
+            >
+              <div className="erp-production-plan-lines">
+                {draftLines.map((line, index) => {
+                  const lineFormulas = formulasForLine(line);
 
-                return (
-                  <div className="erp-production-plan-line" key={line.rowId}>
-                    <label className="erp-field">
-                      <span>Thành phẩm {index + 1}</span>
-                      <select
-                        className="erp-input"
-                        value={line.outputItemId}
-                        onChange={(event) => changeProduct(line.rowId, event.currentTarget.value)}
-                      >
-                        <option value="">Chọn thành phẩm</option>
-                        {activeFinishedProducts.map((product) => (
-                          <option key={product.id} value={product.id}>
-                            {product.skuCode} - {product.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="erp-field">
-                      <span>Công thức</span>
-                      <select
-                        className="erp-input"
-                        value={line.formulaId ?? ""}
-                        onChange={(event) => changeFormula(line, event.currentTarget.value)}
-                      >
-                        <option value="">Tự chọn công thức active</option>
-                        {lineFormulas.map((formula) => (
-                          <option key={formula.id} value={formula.id}>
-                            {formula.formulaCode} - {formula.formulaVersion}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="erp-field">
-                      <span>Số lượng</span>
-                      <input
-                        className="erp-input"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={line.plannedQty}
-                        onChange={(event) => updateDraftLine(line.rowId, { plannedQty: integerText(event.currentTarget.value) })}
-                      />
-                    </label>
-                    <label className="erp-field">
-                      <span>Đơn vị</span>
-                      <input
-                        className="erp-input"
-                        value={line.uomCode}
-                        onChange={(event) => updateDraftLine(line.rowId, { uomCode: event.currentTarget.value.toUpperCase() })}
-                      />
-                    </label>
-                    <label className="erp-field">
-                      <span>Ngày bắt đầu</span>
-                      <input
-                        className="erp-input"
-                        type="date"
-                        value={line.plannedStartDate ?? ""}
-                        onChange={(event) => updateDraftLine(line.rowId, { plannedStartDate: event.currentTarget.value })}
-                      />
-                    </label>
-                    <label className="erp-field">
-                      <span>Ngày kết thúc</span>
-                      <input
-                        className="erp-input"
-                        type="date"
-                        value={line.plannedEndDate ?? ""}
-                        onChange={(event) => updateDraftLine(line.rowId, { plannedEndDate: event.currentTarget.value })}
-                      />
-                    </label>
-                    <div className="erp-production-plan-line-actions">
-                      <button
-                        className="erp-button erp-button--secondary erp-button--compact"
-                        type="button"
-                        onClick={() => removeDraftLine(line.rowId)}
-                        disabled={saving}
-                      >
-                        Xóa
-                      </button>
+                  return (
+                    <div className="erp-production-plan-line" key={line.rowId}>
+                      <label className="erp-field">
+                        <span>Thành phẩm {index + 1}</span>
+                        <select
+                          className="erp-input"
+                          value={line.outputItemId}
+                          onChange={(event) => changeProduct(line.rowId, event.currentTarget.value)}
+                        >
+                          <option value="">Chọn thành phẩm</option>
+                          {activeFinishedProducts.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.skuCode} - {product.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="erp-field">
+                        <span>Công thức</span>
+                        <select
+                          className="erp-input"
+                          value={line.formulaId ?? ""}
+                          onChange={(event) => changeFormula(line, event.currentTarget.value)}
+                        >
+                          <option value="">Tự chọn công thức active</option>
+                          {lineFormulas.map((formula) => (
+                            <option key={formula.id} value={formula.id}>
+                              {formula.formulaCode} - {formula.formulaVersion}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="erp-field">
+                        <span>Số lượng</span>
+                        <input
+                          className="erp-input"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={line.plannedQty}
+                          onChange={(event) => updateDraftLine(line.rowId, { plannedQty: integerText(event.currentTarget.value) })}
+                        />
+                      </label>
+                      <label className="erp-field">
+                        <span>Đơn vị</span>
+                        <input
+                          className="erp-input"
+                          value={line.uomCode}
+                          onChange={(event) => updateDraftLine(line.rowId, { uomCode: event.currentTarget.value.toUpperCase() })}
+                        />
+                      </label>
+                      <label className="erp-field">
+                        <span>Ngày bắt đầu</span>
+                        <input
+                          className="erp-input"
+                          type="date"
+                          value={line.plannedStartDate ?? ""}
+                          onChange={(event) => updateDraftLine(line.rowId, { plannedStartDate: event.currentTarget.value })}
+                        />
+                      </label>
+                      <label className="erp-field">
+                        <span>Ngày kết thúc</span>
+                        <input
+                          className="erp-input"
+                          type="date"
+                          value={line.plannedEndDate ?? ""}
+                          onChange={(event) => updateDraftLine(line.rowId, { plannedEndDate: event.currentTarget.value })}
+                        />
+                      </label>
+                      <div className="erp-production-plan-line-actions">
+                        <button
+                          className="erp-button erp-button--secondary erp-button--compact"
+                          type="button"
+                          onClick={() => removeDraftLine(line.rowId)}
+                          disabled={saving}
+                        >
+                          Xóa
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </FormSection>
-        </form>
+                  );
+                })}
+              </div>
+            </FormSection>
+          </form>
+        ) : null}
 
         {selectedPlan && selectedWorkflowContext ? (
           <article className="erp-production-selected-plan-card" aria-label="Kế hoạch sản xuất đang xử lý">
@@ -700,7 +717,7 @@ export function ProductionPlanPrototype() {
         ) : null}
       </section>
 
-      <ToastStack messages={toast} />
+      <ToastStack messages={toast} onDismiss={dismissToast} />
     </main>
   );
 }

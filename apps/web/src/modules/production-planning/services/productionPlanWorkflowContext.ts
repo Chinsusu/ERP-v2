@@ -4,8 +4,8 @@ import type { ProductionPlan } from "../types";
 export const productionPlanWorkflowSteps = [
   {
     number: 1,
-    label: "Tạo kế hoạch sản xuất",
-    description: "Chọn thành phẩm, công thức và số lượng cần sản xuất."
+    label: "Chọn kế hoạch sản xuất",
+    description: "Chọn kế hoạch đang xử lý trước khi tính vật tư và tạo chứng từ."
   },
   {
     number: 2,

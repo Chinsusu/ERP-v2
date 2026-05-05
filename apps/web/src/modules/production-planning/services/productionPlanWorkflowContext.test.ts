@@ -7,7 +7,7 @@ describe("productionPlanWorkflowContext", () => {
     const context = buildProductionPlanWorkflowContext(shortagePlan);
 
     expect(productionPlanWorkflowSteps.map((step) => `Bước ${step.number}: ${step.label}`)).toEqual([
-      "Bước 1: Tạo kế hoạch sản xuất",
+      "Bước 1: Chọn kế hoạch sản xuất",
       "Bước 2: Tính nhu cầu vật tư",
       "Bước 3: Tạo PO",
       "Bước 4: Tạo lệnh gia công"
