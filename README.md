@@ -37,6 +37,8 @@ Start with:
 - `docs/96_ERP_Supplier_Invoice_Three_Way_Matching_Flow_MyPham_v1.md`
 - `docs/97_ERP_AP_Payment_Readiness_Gate_Supplier_Invoice_Matching_MyPham_v1.md`
 - `docs/98_ERP_Stock_Transfer_Warehouse_Issue_Runtime_Flow_MyPham_v1.md`
+- `docs/99_ERP_Coding_Task_Board_Sprint24_Production_Material_Issue_Readiness_MyPham_v1.md`
+- `docs/100_ERP_Production_Material_Issue_Subcontract_Readiness_Flow_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -44,7 +46,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 23 production planning and material-demand bridge after Sprint 22 Session 0 readiness.
+Current line: Sprint 24 opened for production material issue and subcontract readiness after Sprint 23 runtime bridge.
 
 Latest release tag:
 
@@ -83,8 +85,18 @@ Supplier invoice and 3-way matching follow-up is documented in file 96: supplier
 AP payment readiness gate is documented in file 97: request/approval/payment recording are blocked unless a matched supplier invoice exists for the AP.
 Stock transfer and warehouse issue runtime flow is documented in file 98: inventory now has first-class Stock Transfer and Warehouse Issue Note documents with submit/approve/post lifecycle, PostgreSQL persistence, OpenAPI coverage, and posted stock movements.
 The Sprint 23 runtime bridge adds /production planning UI, backend production-plan API, active-formula snapshot, material demand/shortage calculation, internal Purchase Request lines, PostgreSQL persistence, and OpenAPI contract coverage.
-Costing, payment tolerance policy, production-linked issue automation, and ledger-backed inventory dashboard implementation remain pending follow-up scope.
+Costing, payment tolerance policy, finished goods receipt/QC automation, factory dispatch, and ledger-backed inventory dashboard implementation remain pending follow-up scope.
 No v0.23 tag has been created.
+```
+
+Sprint 24 planning status:
+
+```text
+Sprint 24 is opened in file 99, with flow design in file 100.
+Production-plan material demand should create source-linked Warehouse Issue Notes only for available issue-ready stock.
+Shortage remains a Purchase Request / PO / receiving / QC problem before warehouse issue.
+Subcontract readiness should be gated on posted material issue evidence or explicit waiver.
+No v0.24 tag has been created.
 ```
 
 Phase 1 production scope:
@@ -139,6 +151,8 @@ Production runtime reference:
 - `docs/96_ERP_Supplier_Invoice_Three_Way_Matching_Flow_MyPham_v1.md`
 - `docs/97_ERP_AP_Payment_Readiness_Gate_Supplier_Invoice_Matching_MyPham_v1.md`
 - `docs/98_ERP_Stock_Transfer_Warehouse_Issue_Runtime_Flow_MyPham_v1.md`
+- `docs/99_ERP_Coding_Task_Board_Sprint24_Production_Material_Issue_Readiness_MyPham_v1.md`
+- `docs/100_ERP_Production_Material_Issue_Subcontract_Readiness_Flow_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
