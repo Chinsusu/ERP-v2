@@ -90,6 +90,7 @@ type purchaseOrderListItemResponse struct {
 	Status        string `json:"status"`
 	CurrencyCode  string `json:"currency_code"`
 	TotalAmount   string `json:"total_amount"`
+	Note          string `json:"note,omitempty"`
 	LineCount     int    `json:"line_count"`
 	ReceivedLines int    `json:"received_line_count"`
 	CreatedAt     string `json:"created_at"`
@@ -419,6 +420,7 @@ func newPurchaseOrderListItemResponse(order purchasedomain.PurchaseOrder) purcha
 		Status:        string(order.Status),
 		CurrencyCode:  order.CurrencyCode.String(),
 		TotalAmount:   order.TotalAmount.String(),
+		Note:          order.Note,
 		LineCount:     len(order.Lines),
 		ReceivedLines: receivedLines,
 		CreatedAt:     timeString(order.CreatedAt),

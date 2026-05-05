@@ -32,7 +32,8 @@
     "supplier": "Supplier",
     "warehouse": "Warehouse",
     "allStatuses": "All statuses",
-    "allSuppliers": "All suppliers"
+    "allSuppliers": "All suppliers",
+    "allWarehouses": "All warehouses"
   },
   "summary": {
     "label": "Purchase order summary",

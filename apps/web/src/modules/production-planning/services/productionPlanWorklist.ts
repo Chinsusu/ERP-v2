@@ -57,7 +57,7 @@ export function buildProductionPlanWorklist(plan: ProductionPlan): ProductionPla
         purchaseLineCount > 0
           ? {
               label: "Mở mua hàng",
-              href: "/purchase",
+              href: purchaseOrderHref(plan.planNo),
               disabled: false
             }
           : undefined
@@ -139,4 +139,8 @@ export function buildProductionPlanWorklist(plan: ProductionPlan): ProductionPla
       }
     }
   ];
+}
+
+function purchaseOrderHref(planNo: string) {
+  return `/purchase?search=${encodeURIComponent(planNo)}#purchase-detail`;
 }

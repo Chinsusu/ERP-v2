@@ -900,6 +900,7 @@ func purchaseOrderMatchesFilter(order purchasedomain.PurchaseOrder, filter Purch
 			order.SupplierCode,
 			order.SupplierName,
 			order.WarehouseCode,
+			order.Note,
 		}, " "))
 		if !strings.Contains(haystack, search) {
 			return false

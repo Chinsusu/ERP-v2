@@ -34,6 +34,21 @@ describe("purchaseOrderService", () => {
     });
   });
 
+  it("finds purchase orders created from a production plan by plan note", async () => {
+    const created = await createPurchaseOrder({
+      supplierId: "sup-rm-bioactive",
+      warehouseId: "wh-hcm-rm",
+      expectedDate: "2026-05-05",
+      currencyCode: "VND",
+      note: "Tạo từ kế hoạch sản xuất PP-260505-968033 / PR-DRAFT-260505-968033",
+      lines: [{ itemId: "item-serum-30ml", orderedQty: "1", uomCode: "EA", unitPrice: "0" }]
+    });
+
+    const orders = await getPurchaseOrders({ search: "PP-260505-968033" });
+
+    expect(orders.map((order) => order.id)).toContain(created.id);
+  });
+
   it("maps API list metadata without loading detail lines", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -52,6 +67,7 @@ describe("purchaseOrderService", () => {
               status: "approved",
               currency_code: "VND",
               total_amount: "2020000.00",
+              note: "Tạo từ kế hoạch sản xuất PP-260505-968033",
               line_count: 2,
               received_line_count: 1,
               created_at: "2026-04-29T09:00:00Z",
@@ -82,6 +98,7 @@ describe("purchaseOrderService", () => {
       receivedLineCount: 1,
       lines: [],
       totalAmount: "2020000.00",
+      note: "Tạo từ kế hoạch sản xuất PP-260505-968033",
       version: 3
     });
   });

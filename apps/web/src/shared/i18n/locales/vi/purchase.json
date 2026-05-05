@@ -32,7 +32,8 @@
     "supplier": "Nhà cung cấp",
     "warehouse": "Kho",
     "allStatuses": "Tất cả trạng thái",
-    "allSuppliers": "Tất cả nhà cung cấp"
+    "allSuppliers": "Tất cả nhà cung cấp",
+    "allWarehouses": "Tất cả kho"
   },
   "summary": {
     "label": "Tổng quan đơn mua hàng",
