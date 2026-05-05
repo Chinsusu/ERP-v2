@@ -6,7 +6,7 @@ Sprint: Sprint 27 - Factory Dispatch
 Document role: Changelog and verification evidence
 Version: v1
 Date: 2026-05-06
-Status: Implementation complete on branch; PR, merge, dev deploy, and smoke pending
+Status: Implementation complete on branch; PR #593 opened; merge, dev deploy, and smoke pending
 
 ---
 
@@ -77,7 +77,7 @@ Local verification caveats:
 ## 4. Evidence Pending
 
 ```text
-PR number: pending
+PR number: #593
 Merge commit: pending
 Dev deploy: pending
 Browser smoke: pending
