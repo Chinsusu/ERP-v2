@@ -4,6 +4,12 @@
 
 Implemented in Sprint 23 production planning / purchase bridge hardening.
 
+Follow-up traceability hardening added:
+
+- PO timeline links to the receiving screen with the selected PO and warehouse context.
+- PO detail shows related goods receipts for the PO.
+- Production Plan detail aggregates related goods receipts from its related PO list.
+
 This document defines the UI and data boundary for:
 
 - Purchase Order detail page.
@@ -105,6 +111,7 @@ Timeline
 - Closed
 - Cancelled
 - Rejected
+- Receiving action link scoped to the PO and warehouse
 
 Line table
 - SKU
@@ -121,6 +128,14 @@ Actions
 - Approve when status is submitted
 - Close when status is approved, partially_received, or received
 - Cancel when status is draft, submitted, or approved
+
+Related receiving
+- Goods receipt number
+- Receipt status
+- Receipt line count
+- QC summary
+- Posted date
+- Link back to the receiving list scoped to the PO
 ```
 
 The first implementation uses the existing Purchase Order detail API.
@@ -187,6 +202,7 @@ Timeline / Worklist
 Related documents
 - Related PO list filtered by production plan number in PO note
 - Each PO row links to /purchase/orders/[poId]
+- Related goods receipt list aggregated from those related POs
 ```
 
 Production Plan should not show full PO detail tables. It should show enough summary for control:
@@ -233,10 +249,14 @@ Open
 - Purchase list "Open" navigates to the PO detail page.
 - Production Plan detail shows related PO summaries for the plan number.
 - Production Plan related PO rows link to PO detail pages.
+- PO detail shows goods receipts referencing that PO.
+- PO detail "Open receiving" opens the receiving screen with `po_id` and `warehouse_id`.
+- Production Plan detail shows goods receipts aggregated from related POs.
 - Production Plan detail remains the parent timeline and does not embed full PO detail.
 - CI passes.
 - Dev deploy passes.
 - Browser smoke verifies production plan to PO detail navigation.
+- Browser smoke verifies PO detail to receiving navigation.
 
 ## Out of Scope
 

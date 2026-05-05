@@ -22,11 +22,21 @@ import {
   getPurchaseOrders,
   purchaseOrderStatusTone
 } from "../../purchase/services/purchaseOrderService";
+import { getGoodsReceipts } from "../../receiving/services/warehouseReceivingService";
+import {
+  buildPurchaseOrderReceiptRows,
+  type PurchaseOrderReceiptRow
+} from "../../purchase/services/purchaseOrderReceivingTraceability";
 import { buildProductionPlanWorkflowContext } from "../services/productionPlanWorkflowContext";
 import { buildProductionPlanWorklist, type ProductionPlanWorkTask } from "../services/productionPlanWorklist";
 import { t } from "@/shared/i18n";
 import type { PurchaseOrder, PurchaseOrderStatus } from "../../purchase/types";
 import type { ProductionPlan, ProductionPlanLine, PurchaseRequestDraftLine } from "../types";
+
+type ProductionPlanReceiptRow = PurchaseOrderReceiptRow & {
+  poNo: string;
+  supplierName: string;
+};
 
 type ProductionPlanDetailPrototypeProps = {
   planId: string;
@@ -37,6 +47,9 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
   const [relatedPurchaseOrders, setRelatedPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [relatedPurchaseOrdersLoading, setRelatedPurchaseOrdersLoading] = useState(false);
   const [relatedPurchaseOrdersError, setRelatedPurchaseOrdersError] = useState<string | undefined>();
+  const [relatedReceiptRows, setRelatedReceiptRows] = useState<ProductionPlanReceiptRow[]>([]);
+  const [relatedReceiptsLoading, setRelatedReceiptsLoading] = useState(false);
+  const [relatedReceiptsError, setRelatedReceiptsError] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
 
@@ -70,6 +83,8 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
   useEffect(() => {
     if (!plan?.planNo) {
       setRelatedPurchaseOrders([]);
+      setRelatedPurchaseOrdersLoading(false);
+      setRelatedPurchaseOrdersError(undefined);
       return;
     }
 
@@ -98,6 +113,48 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
       active = false;
     };
   }, [plan?.planNo]);
+
+  useEffect(() => {
+    if (relatedPurchaseOrders.length === 0) {
+      setRelatedReceiptRows([]);
+      setRelatedReceiptsLoading(false);
+      setRelatedReceiptsError(undefined);
+      return;
+    }
+
+    let active = true;
+    setRelatedReceiptsLoading(true);
+    setRelatedReceiptsError(undefined);
+
+    getGoodsReceipts()
+      .then((receipts) => {
+        const nextRows = relatedPurchaseOrders.flatMap((order) =>
+          buildPurchaseOrderReceiptRows(order, receipts).map((receipt) => ({
+            ...receipt,
+            poNo: order.poNo,
+            supplierName: order.supplierName
+          }))
+        );
+
+        if (active) {
+          setRelatedReceiptRows(nextRows);
+        }
+      })
+      .catch((loadError) => {
+        if (active) {
+          setRelatedReceiptsError(errorText(loadError));
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setRelatedReceiptsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [relatedPurchaseOrders]);
 
   const workflowContext = useMemo(() => (plan ? buildProductionPlanWorkflowContext(plan) : undefined), [plan]);
   const workTasks = useMemo(() => (plan ? buildProductionPlanWorklist(plan) : []), [plan]);
@@ -197,6 +254,30 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
           pagination
           preserveColumnWidths
           emptyState={<EmptyState title="Chưa có PO liên quan đến kế hoạch này" />}
+        />
+      </section>
+
+      <section className="erp-masterdata-list-card">
+        <header className="erp-section-header">
+          <div>
+            <h2 className="erp-section-title">Phiếu nhập theo kế hoạch</h2>
+            <p className="erp-page-description">
+              Các phiếu nhập kho được gom từ những PO liên quan tới {plan.planNo}; dùng để kiểm soát vật tư đã về kho và trạng thái QC.
+            </p>
+          </div>
+          <Link className="erp-button erp-button--secondary" href="/receiving#receiving-list">
+            Mở nhập hàng
+          </Link>
+        </header>
+        <DataTable
+          columns={relatedReceiptColumns}
+          rows={relatedReceiptRows}
+          getRowKey={(receipt) => receipt.id}
+          loading={relatedReceiptsLoading}
+          error={relatedReceiptsError}
+          pagination
+          preserveColumnWidths
+          emptyState={<EmptyState title="Chưa có phiếu nhập liên quan đến các PO của kế hoạch này" />}
         />
       </section>
 
@@ -410,6 +491,62 @@ const relatedPurchaseOrderColumns: DataTableColumn<PurchaseOrder>[] = [
       </Link>
     ),
     width: "120px"
+  }
+];
+
+const relatedReceiptColumns: DataTableColumn<ProductionPlanReceiptRow>[] = [
+  {
+    key: "receiptNo",
+    header: "Phiếu nhập",
+    render: (receipt) => (
+      <div className="erp-masterdata-product-cell">
+        <strong>{receipt.receiptNo}</strong>
+        <small>{formatPurchaseDate(receipt.createdAt)}</small>
+      </div>
+    ),
+    width: "220px"
+  },
+  {
+    key: "po",
+    header: "PO nguồn",
+    render: (receipt) => (
+      <div className="erp-masterdata-product-cell">
+        <strong>{receipt.poNo}</strong>
+        <small>{receipt.supplierName}</small>
+      </div>
+    ),
+    width: "220px"
+  },
+  {
+    key: "status",
+    header: "Trạng thái",
+    render: (receipt) => <StatusChip tone={receipt.statusTone}>{receipt.statusLabel}</StatusChip>,
+    width: "150px"
+  },
+  {
+    key: "lines",
+    header: "Dòng",
+    render: (receipt) => receipt.lineCount,
+    align: "right",
+    width: "90px"
+  },
+  {
+    key: "qc",
+    header: "QC",
+    render: (receipt) => receipt.qcSummary,
+    width: "180px"
+  },
+  {
+    key: "action",
+    header: "Thao tác",
+    align: "right",
+    sticky: true,
+    render: (receipt) => (
+      <Link className="erp-button erp-button--secondary erp-button--compact" href={receipt.href}>
+        Mở nhập hàng
+      </Link>
+    ),
+    width: "140px"
   }
 ];
 
