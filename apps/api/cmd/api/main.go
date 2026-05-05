@@ -2061,6 +2061,7 @@ func main() {
 		WithFinishedGoodsReceiptStores(subcontractStores.finishedGoodsReceipts, stockMovementStore).
 		WithFactoryClaimStore(subcontractStores.factoryClaims).
 		WithPaymentMilestoneStore(subcontractStores.paymentMilestones).
+		WithFactoryDispatchStore(subcontractStores.factoryDispatches).
 		WithSubcontractPayableCreator(subcontractSupplierPayableAdapter{service: supplierPayableService})
 	operationsDailySignals := operationsDailyRuntimeSignalSource{
 		receivings:           warehouseReceiving,
@@ -2178,6 +2179,10 @@ func main() {
 		subcontractOrderRejectSample:      subcontractOrderRejectSampleHandler(subcontractOrderService),
 		subcontractOrderCancel:            subcontractOrderCancelHandler(subcontractOrderService),
 		subcontractOrderClose:             subcontractOrderCloseHandler(subcontractOrderService),
+		subcontractFactoryDispatches:      subcontractFactoryDispatchesHandler(subcontractOrderService),
+		subcontractFactoryDispatchReady:   subcontractFactoryDispatchReadyHandler(subcontractOrderService),
+		subcontractFactoryDispatchSent:    subcontractFactoryDispatchSentHandler(subcontractOrderService),
+		subcontractFactoryDispatchRespond: subcontractFactoryDispatchRespondHandler(subcontractOrderService),
 	})
 	registerInventoryRoutes(routes, inventoryRouteHandlers{
 		stockMovement:          stockMovementHandler(auditLogStore),

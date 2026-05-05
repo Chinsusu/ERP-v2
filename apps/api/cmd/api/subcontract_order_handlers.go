@@ -164,6 +164,38 @@ type decideSubcontractSampleRequest struct {
 	StorageStatus    string `json:"storage_status"`
 }
 
+type createSubcontractFactoryDispatchRequest struct {
+	ExpectedVersion int    `json:"expected_version"`
+	DispatchID      string `json:"dispatch_id"`
+	DispatchNo      string `json:"dispatch_no"`
+	Note            string `json:"note"`
+}
+
+type subcontractFactoryDispatchEvidenceRequest struct {
+	ID           string `json:"id"`
+	EvidenceType string `json:"evidence_type"`
+	FileName     string `json:"file_name"`
+	ObjectKey    string `json:"object_key"`
+	ExternalURL  string `json:"external_url"`
+	Note         string `json:"note"`
+}
+
+type markSubcontractFactoryDispatchSentRequest struct {
+	ExpectedVersion int                                         `json:"expected_version"`
+	SentBy          string                                      `json:"sent_by"`
+	SentAt          string                                      `json:"sent_at"`
+	Note            string                                      `json:"note"`
+	Evidence        []subcontractFactoryDispatchEvidenceRequest `json:"evidence"`
+}
+
+type recordSubcontractFactoryDispatchResponseRequest struct {
+	ExpectedVersion int    `json:"expected_version"`
+	ResponseStatus  string `json:"response_status"`
+	ResponseBy      string `json:"response_by"`
+	RespondedAt     string `json:"responded_at"`
+	ResponseNote    string `json:"response_note"`
+}
+
 type receiveSubcontractFinishedGoodsLineRequest struct {
 	ID               string `json:"id"`
 	LineNo           int    `json:"line_no"`
@@ -657,6 +689,70 @@ type subcontractSampleApprovalResultResponse struct {
 	PreviousStatus   string                            `json:"previous_status"`
 	CurrentStatus    string                            `json:"current_status"`
 	AuditLogID       string                            `json:"audit_log_id,omitempty"`
+}
+
+type subcontractFactoryDispatchLineResponse struct {
+	ID                  string `json:"id"`
+	LineNo              int    `json:"line_no"`
+	OrderMaterialLineID string `json:"order_material_line_id"`
+	ItemID              string `json:"item_id"`
+	SKUCode             string `json:"sku_code"`
+	ItemName            string `json:"item_name"`
+	PlannedQty          string `json:"planned_qty"`
+	UOMCode             string `json:"uom_code"`
+	LotTraceRequired    bool   `json:"lot_trace_required"`
+	Note                string `json:"note,omitempty"`
+}
+
+type subcontractFactoryDispatchEvidenceResponse struct {
+	ID           string `json:"id"`
+	EvidenceType string `json:"evidence_type"`
+	FileName     string `json:"file_name,omitempty"`
+	ObjectKey    string `json:"object_key,omitempty"`
+	ExternalURL  string `json:"external_url,omitempty"`
+	Note         string `json:"note,omitempty"`
+}
+
+type subcontractFactoryDispatchResponse struct {
+	ID                     string                                       `json:"id"`
+	OrgID                  string                                       `json:"org_id"`
+	DispatchNo             string                                       `json:"dispatch_no"`
+	SubcontractOrderID     string                                       `json:"subcontract_order_id"`
+	SubcontractOrderNo     string                                       `json:"subcontract_order_no"`
+	SourceProductionPlanID string                                       `json:"source_production_plan_id,omitempty"`
+	SourceProductionPlanNo string                                       `json:"source_production_plan_no,omitempty"`
+	FactoryID              string                                       `json:"factory_id"`
+	FactoryCode            string                                       `json:"factory_code,omitempty"`
+	FactoryName            string                                       `json:"factory_name"`
+	FinishedItemID         string                                       `json:"finished_item_id"`
+	FinishedSKUCode        string                                       `json:"finished_sku_code"`
+	FinishedItemName       string                                       `json:"finished_item_name"`
+	PlannedQty             string                                       `json:"planned_qty"`
+	UOMCode                string                                       `json:"uom_code"`
+	SpecSummary            string                                       `json:"spec_summary,omitempty"`
+	SampleRequired         bool                                         `json:"sample_required"`
+	TargetStartDate        string                                       `json:"target_start_date,omitempty"`
+	ExpectedReceiptDate    string                                       `json:"expected_receipt_date,omitempty"`
+	Status                 string                                       `json:"status"`
+	Lines                  []subcontractFactoryDispatchLineResponse     `json:"lines"`
+	Evidence               []subcontractFactoryDispatchEvidenceResponse `json:"evidence,omitempty"`
+	ReadyAt                string                                       `json:"ready_at,omitempty"`
+	ReadyBy                string                                       `json:"ready_by,omitempty"`
+	SentAt                 string                                       `json:"sent_at,omitempty"`
+	SentBy                 string                                       `json:"sent_by,omitempty"`
+	RespondedAt            string                                       `json:"responded_at,omitempty"`
+	ResponseBy             string                                       `json:"response_by,omitempty"`
+	FactoryResponseNote    string                                       `json:"factory_response_note,omitempty"`
+	Note                   string                                       `json:"note,omitempty"`
+	CreatedAt              string                                       `json:"created_at"`
+	UpdatedAt              string                                       `json:"updated_at"`
+	Version                int                                          `json:"version"`
+}
+
+type subcontractFactoryDispatchResultResponse struct {
+	SubcontractOrder subcontractOrderResponse           `json:"subcontract_order"`
+	Dispatch         subcontractFactoryDispatchResponse `json:"factory_dispatch"`
+	AuditLogID       string                             `json:"audit_log_id,omitempty"`
 }
 
 func (a subcontractOrderUOMConverterAdapter) ConvertToBase(
@@ -1338,6 +1434,204 @@ func subcontractOrderRejectSampleHandler(service productionapp.SubcontractOrderS
 	return subcontractOrderDecideSampleHandler(service, "reject")
 }
 
+func subcontractFactoryDispatchesHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			dispatches, err := service.ListFactoryDispatches(r.Context(), r.PathValue("subcontract_order_id"))
+			if err != nil {
+				writeSubcontractOrderError(w, r, err)
+				return
+			}
+			payload := make([]subcontractFactoryDispatchResponse, 0, len(dispatches))
+			for _, dispatch := range dispatches {
+				payload = append(payload, newSubcontractFactoryDispatchResponse(dispatch))
+			}
+			response.WriteSuccess(w, r, http.StatusOK, payload)
+		case http.MethodPost:
+			if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+				writePermissionDenied(w, r, auth.PermissionRecordCreate)
+				return
+			}
+			r = requestWithStableID(r)
+			var payload createSubcontractFactoryDispatchRequest
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory dispatch payload", nil)
+				return
+			}
+			result, err := service.CreateFactoryDispatch(r.Context(), productionapp.CreateFactoryDispatchInput{
+				ID:                 payload.DispatchID,
+				DispatchNo:         payload.DispatchNo,
+				SubcontractOrderID: r.PathValue("subcontract_order_id"),
+				ExpectedVersion:    payload.ExpectedVersion,
+				ActorID:            principal.UserID,
+				RequestID:          response.RequestID(r),
+				Note:               payload.Note,
+			})
+			if err != nil {
+				writeSubcontractOrderError(w, r, err)
+				return
+			}
+			response.WriteSuccess(w, r, http.StatusCreated, newSubcontractFactoryDispatchResultResponse(result))
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func subcontractFactoryDispatchReadyHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload subcontractOrderActionRequest
+		if r.Body != nil {
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil && !errors.Is(err, io.EOF) {
+				response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory dispatch payload", nil)
+				return
+			}
+		}
+		result, err := service.MarkFactoryDispatchReady(r.Context(), productionapp.FactoryDispatchActionInput{
+			SubcontractOrderID: r.PathValue("subcontract_order_id"),
+			DispatchID:         r.PathValue("factory_dispatch_id"),
+			ExpectedVersion:    payload.ExpectedVersion,
+			ActorID:            principal.UserID,
+			RequestID:          response.RequestID(r),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+		response.WriteSuccess(w, r, http.StatusOK, newSubcontractFactoryDispatchResultResponse(result))
+	}
+}
+
+func subcontractFactoryDispatchSentHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload markSubcontractFactoryDispatchSentRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory dispatch payload", nil)
+			return
+		}
+		sentAt, err := parseSubcontractOptionalTime(payload.SentAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory dispatch payload", map[string]any{"field": "sent_at"})
+			return
+		}
+		result, err := service.MarkFactoryDispatchSent(r.Context(), productionapp.MarkFactoryDispatchSentInput{
+			SubcontractOrderID: r.PathValue("subcontract_order_id"),
+			DispatchID:         r.PathValue("factory_dispatch_id"),
+			ExpectedVersion:    payload.ExpectedVersion,
+			SentBy:             payload.SentBy,
+			SentAt:             sentAt,
+			ActorID:            principal.UserID,
+			RequestID:          response.RequestID(r),
+			Note:               payload.Note,
+			Evidence:           subcontractFactoryDispatchEvidenceInputs(payload.Evidence),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+		response.WriteSuccess(w, r, http.StatusOK, newSubcontractFactoryDispatchResultResponse(result))
+	}
+}
+
+func subcontractFactoryDispatchRespondHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload recordSubcontractFactoryDispatchResponseRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory dispatch payload", nil)
+			return
+		}
+		respondedAt, err := parseSubcontractOptionalTime(payload.RespondedAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory dispatch payload", map[string]any{"field": "responded_at"})
+			return
+		}
+		result, err := service.RecordFactoryDispatchResponse(r.Context(), productionapp.RecordFactoryDispatchResponseInput{
+			SubcontractOrderID: r.PathValue("subcontract_order_id"),
+			DispatchID:         r.PathValue("factory_dispatch_id"),
+			ExpectedVersion:    payload.ExpectedVersion,
+			ResponseStatus:     payload.ResponseStatus,
+			ResponseBy:         payload.ResponseBy,
+			RespondedAt:        respondedAt,
+			ResponseNote:       payload.ResponseNote,
+			ActorID:            principal.UserID,
+			RequestID:          response.RequestID(r),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+		response.WriteSuccess(w, r, http.StatusOK, newSubcontractFactoryDispatchResultResponse(result))
+	}
+}
+
 func subcontractOrderDecideSampleHandler(service productionapp.SubcontractOrderService, decision string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -1630,6 +1924,24 @@ func reportSubcontractFactoryDefectEvidenceInputs(
 	evidence := make([]productionapp.CreateSubcontractFactoryClaimEvidenceInput, 0, len(inputs))
 	for _, input := range inputs {
 		evidence = append(evidence, productionapp.CreateSubcontractFactoryClaimEvidenceInput{
+			ID:           input.ID,
+			EvidenceType: input.EvidenceType,
+			FileName:     input.FileName,
+			ObjectKey:    input.ObjectKey,
+			ExternalURL:  input.ExternalURL,
+			Note:         input.Note,
+		})
+	}
+
+	return evidence
+}
+
+func subcontractFactoryDispatchEvidenceInputs(
+	inputs []subcontractFactoryDispatchEvidenceRequest,
+) []productionapp.FactoryDispatchEvidenceInput {
+	evidence := make([]productionapp.FactoryDispatchEvidenceInput, 0, len(inputs))
+	for _, input := range inputs {
+		evidence = append(evidence, productionapp.FactoryDispatchEvidenceInput{
 			ID:           input.ID,
 			EvidenceType: input.EvidenceType,
 			FileName:     input.FileName,
@@ -2020,6 +2332,82 @@ func newSubcontractSampleApprovalResponse(
 			Note:         evidence.Note,
 			CreatedAt:    timeString(evidence.CreatedAt),
 			CreatedBy:    evidence.CreatedBy,
+		})
+	}
+
+	return payload
+}
+
+func newSubcontractFactoryDispatchResultResponse(
+	result productionapp.FactoryDispatchResult,
+) subcontractFactoryDispatchResultResponse {
+	return subcontractFactoryDispatchResultResponse{
+		SubcontractOrder: newSubcontractOrderResponse(result.SubcontractOrder, ""),
+		Dispatch:         newSubcontractFactoryDispatchResponse(result.Dispatch),
+		AuditLogID:       result.AuditLogID,
+	}
+}
+
+func newSubcontractFactoryDispatchResponse(
+	dispatch productiondomain.SubcontractFactoryDispatch,
+) subcontractFactoryDispatchResponse {
+	payload := subcontractFactoryDispatchResponse{
+		ID:                     dispatch.ID,
+		OrgID:                  dispatch.OrgID,
+		DispatchNo:             dispatch.DispatchNo,
+		SubcontractOrderID:     dispatch.SubcontractOrderID,
+		SubcontractOrderNo:     dispatch.SubcontractOrderNo,
+		SourceProductionPlanID: dispatch.SourceProductionPlanID,
+		SourceProductionPlanNo: dispatch.SourceProductionPlanNo,
+		FactoryID:              dispatch.FactoryID,
+		FactoryCode:            dispatch.FactoryCode,
+		FactoryName:            dispatch.FactoryName,
+		FinishedItemID:         dispatch.FinishedItemID,
+		FinishedSKUCode:        dispatch.FinishedSKUCode,
+		FinishedItemName:       dispatch.FinishedItemName,
+		PlannedQty:             dispatch.PlannedQty.String(),
+		UOMCode:                dispatch.UOMCode.String(),
+		SpecSummary:            dispatch.SpecSummary,
+		SampleRequired:         dispatch.SampleRequired,
+		TargetStartDate:        dispatch.TargetStartDate,
+		ExpectedReceiptDate:    dispatch.ExpectedReceiptDate,
+		Status:                 string(dispatch.Status),
+		Lines:                  make([]subcontractFactoryDispatchLineResponse, 0, len(dispatch.Lines)),
+		Evidence:               make([]subcontractFactoryDispatchEvidenceResponse, 0, len(dispatch.Evidence)),
+		ReadyAt:                timeString(dispatch.ReadyAt),
+		ReadyBy:                dispatch.ReadyBy,
+		SentAt:                 timeString(dispatch.SentAt),
+		SentBy:                 dispatch.SentBy,
+		RespondedAt:            timeString(dispatch.RespondedAt),
+		ResponseBy:             dispatch.ResponseBy,
+		FactoryResponseNote:    dispatch.FactoryResponseNote,
+		Note:                   dispatch.Note,
+		CreatedAt:              timeString(dispatch.CreatedAt),
+		UpdatedAt:              timeString(dispatch.UpdatedAt),
+		Version:                dispatch.Version,
+	}
+	for _, line := range dispatch.Lines {
+		payload.Lines = append(payload.Lines, subcontractFactoryDispatchLineResponse{
+			ID:                  line.ID,
+			LineNo:              line.LineNo,
+			OrderMaterialLineID: line.OrderMaterialLineID,
+			ItemID:              line.ItemID,
+			SKUCode:             line.SKUCode,
+			ItemName:            line.ItemName,
+			PlannedQty:          line.PlannedQty.String(),
+			UOMCode:             line.UOMCode.String(),
+			LotTraceRequired:    line.LotTraceRequired,
+			Note:                line.Note,
+		})
+	}
+	for _, evidence := range dispatch.Evidence {
+		payload.Evidence = append(payload.Evidence, subcontractFactoryDispatchEvidenceResponse{
+			ID:           evidence.ID,
+			EvidenceType: evidence.EvidenceType,
+			FileName:     evidence.FileName,
+			ObjectKey:    evidence.ObjectKey,
+			ExternalURL:  evidence.ExternalURL,
+			Note:         evidence.Note,
 		})
 	}
 

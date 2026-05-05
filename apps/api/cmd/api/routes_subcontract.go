@@ -21,6 +21,10 @@ type subcontractRouteHandlers struct {
 	subcontractOrderRejectSample      routeHandler
 	subcontractOrderCancel            routeHandler
 	subcontractOrderClose             routeHandler
+	subcontractFactoryDispatches      routeHandler
+	subcontractFactoryDispatchReady   routeHandler
+	subcontractFactoryDispatchSent    routeHandler
+	subcontractFactoryDispatchRespond routeHandler
 }
 
 func registerSubcontractRoutes(routes routeGroup, handlers subcontractRouteHandlers) {
@@ -42,4 +46,8 @@ func registerSubcontractRoutes(routes routeGroup, handlers subcontractRouteHandl
 	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/reject-sample", auth.PermissionRecordCreate, handlers.subcontractOrderRejectSample)
 	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/cancel", auth.PermissionRecordCreate, handlers.subcontractOrderCancel)
 	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/close", auth.PermissionRecordCreate, handlers.subcontractOrderClose)
+	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/factory-dispatches", auth.PermissionSubcontractView, handlers.subcontractFactoryDispatches)
+	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/mark-ready", auth.PermissionRecordCreate, handlers.subcontractFactoryDispatchReady)
+	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/mark-sent", auth.PermissionRecordCreate, handlers.subcontractFactoryDispatchSent)
+	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/record-response", auth.PermissionRecordCreate, handlers.subcontractFactoryDispatchRespond)
 }

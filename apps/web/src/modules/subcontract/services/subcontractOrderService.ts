@@ -4,6 +4,7 @@ import { decimalScales, normalizeDecimalInput } from "../../../shared/format/num
 import type { AuditLogItem } from "@/modules/audit/types";
 import type {
   ChangeSubcontractOrderStatusInput,
+  CreateSubcontractFactoryDispatchInput,
   CreateSubcontractOrderMaterialLineInput,
   CreateSubcontractFactoryClaimInput,
   CreateSubcontractOrderInput,
@@ -11,7 +12,9 @@ import type {
   IssueSubcontractMaterialsInput,
   IssueSubcontractMaterialsResult,
   MarkSubcontractFinalPaymentReadyInput,
+  MarkSubcontractFactoryDispatchSentInput,
   RecordSubcontractDepositInput,
+  RecordSubcontractFactoryDispatchResponseInput,
   ReceiveSubcontractFinishedGoodsInput,
   ReceiveSubcontractFinishedGoodsResult,
   SubcontractDepositStatus,
@@ -20,6 +23,10 @@ import type {
   SubcontractFactoryClaimEvidenceInput,
   SubcontractFactoryClaimResult,
   SubcontractFactoryClaimStatus,
+  SubcontractFactoryDispatch,
+  SubcontractFactoryDispatchEvidence,
+  SubcontractFactoryDispatchResult,
+  SubcontractFactoryDispatchStatus,
   SubcontractFinishedGoodsReceipt,
   SubcontractFinalPaymentStatus,
   SubcontractMaterialTransfer,
@@ -482,6 +489,101 @@ type SubcontractSampleApprovalApiResult = {
   audit_log_id?: string;
 };
 
+type CreateSubcontractFactoryDispatchApiRequest = {
+  expected_version: number;
+  dispatch_id?: string;
+  dispatch_no?: string;
+  note?: string;
+};
+
+type SubcontractFactoryDispatchApiEvidenceRequest = {
+  id?: string;
+  evidence_type: string;
+  file_name?: string;
+  object_key?: string;
+  external_url?: string;
+  note?: string;
+};
+
+type MarkSubcontractFactoryDispatchSentApiRequest = {
+  expected_version: number;
+  sent_by?: string;
+  sent_at?: string;
+  note?: string;
+  evidence?: SubcontractFactoryDispatchApiEvidenceRequest[];
+};
+
+type RecordSubcontractFactoryDispatchResponseApiRequest = {
+  expected_version: number;
+  response_status: SubcontractFactoryDispatchStatus;
+  response_by?: string;
+  responded_at?: string;
+  response_note?: string;
+};
+
+type SubcontractFactoryDispatchApiLine = {
+  id: string;
+  line_no: number;
+  order_material_line_id: string;
+  item_id: string;
+  sku_code: string;
+  item_name: string;
+  planned_qty: string;
+  uom_code: string;
+  lot_trace_required: boolean;
+  note?: string;
+};
+
+type SubcontractFactoryDispatchApiEvidence = {
+  id: string;
+  evidence_type: string;
+  file_name?: string;
+  object_key?: string;
+  external_url?: string;
+  note?: string;
+};
+
+type SubcontractFactoryDispatchApi = {
+  id: string;
+  dispatch_no: string;
+  subcontract_order_id: string;
+  subcontract_order_no: string;
+  source_production_plan_id?: string;
+  source_production_plan_no?: string;
+  factory_id: string;
+  factory_code?: string;
+  factory_name: string;
+  finished_item_id: string;
+  finished_sku_code: string;
+  finished_item_name: string;
+  planned_qty: string;
+  uom_code: string;
+  spec_summary?: string;
+  sample_required: boolean;
+  target_start_date?: string;
+  expected_receipt_date?: string;
+  status: SubcontractFactoryDispatchStatus;
+  lines: SubcontractFactoryDispatchApiLine[];
+  evidence?: SubcontractFactoryDispatchApiEvidence[];
+  ready_at?: string;
+  ready_by?: string;
+  sent_at?: string;
+  sent_by?: string;
+  responded_at?: string;
+  response_by?: string;
+  factory_response_note?: string;
+  note?: string;
+  created_at: string;
+  updated_at: string;
+  version: number;
+};
+
+type SubcontractFactoryDispatchApiResult = {
+  subcontract_order: SubcontractOrderApi;
+  factory_dispatch: SubcontractFactoryDispatchApi;
+  audit_log_id?: string;
+};
+
 type SubcontractOrderAction = "submit" | "approve" | "confirm-factory" | "start-mass-production" | "cancel" | "close";
 
 const defaultAccessToken = "local-dev-access-token";
@@ -495,6 +597,8 @@ let prototypeFactoryClaimSequence = 1;
 let prototypeFactoryClaimStore: SubcontractFactoryClaim[] = [];
 let prototypePaymentMilestoneSequence = 1;
 let prototypePaymentMilestoneStore: SubcontractPaymentMilestone[] = [];
+let prototypeFactoryDispatchSequence = 1;
+let prototypeFactoryDispatchStore: SubcontractFactoryDispatch[] = [];
 
 export const subcontractFactoryOptions: SubcontractFactory[] = [
   { id: "sup-out-lotus", code: "SUP-OUT-LOTUS", name: "Lotus Filling Partner" },
@@ -824,6 +928,124 @@ export async function rejectSubcontractSample(
   }
 }
 
+export async function getSubcontractFactoryDispatches(orderId: string): Promise<SubcontractFactoryDispatch[]> {
+  try {
+    const dispatches = await apiGetRaw<SubcontractFactoryDispatchApi[]>(
+      `/subcontract-orders/${encodeURIComponent(orderId)}/factory-dispatches`,
+      { accessToken: defaultAccessToken }
+    );
+
+    return dispatches.map(fromApiSubcontractFactoryDispatch);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return prototypeFactoryDispatchStore
+      .filter((dispatch) => dispatch.orderId === orderId)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .map(cloneSubcontractFactoryDispatch);
+  }
+}
+
+export async function createSubcontractFactoryDispatch(
+  input: CreateSubcontractFactoryDispatchInput
+): Promise<SubcontractFactoryDispatchResult> {
+  try {
+    const result = await apiPost<SubcontractFactoryDispatchApiResult, CreateSubcontractFactoryDispatchApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/factory-dispatches`,
+      {
+        expected_version: input.order.version,
+        dispatch_id: input.dispatchId,
+        dispatch_no: input.dispatchNo,
+        note: input.note
+      },
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiFactoryDispatchResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return createPrototypeSubcontractFactoryDispatch(input);
+  }
+}
+
+export async function markSubcontractFactoryDispatchReady(
+  order: SubcontractOrder,
+  dispatch: SubcontractFactoryDispatch
+): Promise<SubcontractFactoryDispatchResult> {
+  try {
+    const result = await apiPost<SubcontractFactoryDispatchApiResult, SubcontractOrderActionApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(order.id)}/factory-dispatches/${encodeURIComponent(dispatch.id)}/mark-ready`,
+      { expected_version: dispatch.version },
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiFactoryDispatchResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return transitionPrototypeSubcontractFactoryDispatch(order, dispatch, "ready");
+  }
+}
+
+export async function markSubcontractFactoryDispatchSent(
+  input: MarkSubcontractFactoryDispatchSentInput
+): Promise<SubcontractFactoryDispatchResult> {
+  try {
+    const result = await apiPost<SubcontractFactoryDispatchApiResult, MarkSubcontractFactoryDispatchSentApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/factory-dispatches/${encodeURIComponent(input.dispatch.id)}/mark-sent`,
+      {
+        expected_version: input.dispatch.version,
+        sent_by: input.sentBy,
+        sent_at: input.sentAt,
+        note: input.note,
+        evidence: input.evidence?.map(toApiFactoryDispatchEvidenceInput)
+      },
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiFactoryDispatchResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return transitionPrototypeSubcontractFactoryDispatch(input.order, input.dispatch, "sent", input);
+  }
+}
+
+export async function recordSubcontractFactoryDispatchResponse(
+  input: RecordSubcontractFactoryDispatchResponseInput
+): Promise<SubcontractFactoryDispatchResult> {
+  try {
+    const result = await apiPost<SubcontractFactoryDispatchApiResult, RecordSubcontractFactoryDispatchResponseApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/factory-dispatches/${encodeURIComponent(input.dispatch.id)}/record-response`,
+      {
+        expected_version: input.dispatch.version,
+        response_status: input.responseStatus,
+        response_by: input.responseBy,
+        responded_at: input.respondedAt,
+        response_note: input.responseNote
+      },
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiFactoryDispatchResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return transitionPrototypeSubcontractFactoryDispatch(input.order, input.dispatch, input.responseStatus, input);
+  }
+}
+
 export async function receiveSubcontractFinishedGoods(
   input: ReceiveSubcontractFinishedGoodsInput
 ): Promise<ReceiveSubcontractFinishedGoodsResult> {
@@ -994,6 +1216,47 @@ export function formatSubcontractDepositStatus(status: SubcontractDepositStatus)
   return subcontractDepositStatusOptions.find((option) => option.value === status)?.label ?? status;
 }
 
+export function formatSubcontractFactoryDispatchStatus(status: SubcontractFactoryDispatchStatus) {
+  switch (status) {
+    case "draft":
+      return "Nháp";
+    case "ready":
+      return "Sẵn sàng gửi";
+    case "sent":
+      return "Đã gửi";
+    case "confirmed":
+      return "Nhà máy xác nhận";
+    case "revision_requested":
+      return "Cần chỉnh";
+    case "rejected":
+      return "Từ chối";
+    case "cancelled":
+      return "Đã huỷ";
+    default:
+      return status;
+  }
+}
+
+export function subcontractFactoryDispatchStatusTone(
+  status: SubcontractFactoryDispatchStatus
+): "normal" | "success" | "warning" | "danger" | "info" {
+  switch (status) {
+    case "confirmed":
+      return "success";
+    case "revision_requested":
+    case "ready":
+      return "warning";
+    case "rejected":
+    case "cancelled":
+      return "danger";
+    case "sent":
+      return "info";
+    case "draft":
+    default:
+      return "normal";
+  }
+}
+
 export function availableSubcontractOrderActions(
   status: SubcontractOrderStatus,
   sampleRequired = true
@@ -1027,6 +1290,8 @@ export function resetPrototypeSubcontractOrdersForTest() {
   prototypeFactoryClaimStore = [];
   prototypePaymentMilestoneSequence = 1;
   prototypePaymentMilestoneStore = [];
+  prototypeFactoryDispatchSequence = 1;
+  prototypeFactoryDispatchStore = [];
   prototypeStore = prototypeSubcontractOrders.map(cloneSubcontractOrder);
 }
 
@@ -1223,6 +1488,74 @@ function fromApiReceiveFinishedGoodsResult(
     stockMovements,
     auditLog,
     auditLogId: result.audit_log_id
+  };
+}
+
+function fromApiFactoryDispatchResult(result: SubcontractFactoryDispatchApiResult): SubcontractFactoryDispatchResult {
+  const order = fromApiSubcontractOrder(result.subcontract_order);
+  const dispatch = fromApiSubcontractFactoryDispatch(result.factory_dispatch);
+  const auditLog = createFactoryDispatchAuditLog(order, dispatch, result.audit_log_id);
+
+  return {
+    order,
+    dispatch,
+    auditLog,
+    auditLogId: result.audit_log_id
+  };
+}
+
+function fromApiSubcontractFactoryDispatch(dispatch: SubcontractFactoryDispatchApi): SubcontractFactoryDispatch {
+  return {
+    id: dispatch.id,
+    dispatchNo: dispatch.dispatch_no,
+    orderId: dispatch.subcontract_order_id,
+    orderNo: dispatch.subcontract_order_no,
+    sourceProductionPlanId: dispatch.source_production_plan_id,
+    sourceProductionPlanNo: dispatch.source_production_plan_no,
+    factoryId: dispatch.factory_id,
+    factoryCode: dispatch.factory_code,
+    factoryName: dispatch.factory_name,
+    productId: dispatch.finished_item_id,
+    sku: dispatch.finished_sku_code,
+    productName: dispatch.finished_item_name,
+    plannedQty: dispatch.planned_qty,
+    uomCode: dispatch.uom_code,
+    specSummary: dispatch.spec_summary,
+    sampleRequired: dispatch.sample_required,
+    targetStartDate: dispatch.target_start_date,
+    expectedReceiptDate: dispatch.expected_receipt_date,
+    status: dispatch.status,
+    lines: dispatch.lines.map((line) => ({
+      id: line.id,
+      lineNo: line.line_no,
+      orderMaterialLineId: line.order_material_line_id,
+      itemId: line.item_id,
+      skuCode: line.sku_code,
+      itemName: line.item_name,
+      plannedQty: line.planned_qty,
+      uomCode: line.uom_code,
+      lotTraceRequired: line.lot_trace_required,
+      note: line.note
+    })),
+    evidence: (dispatch.evidence ?? []).map((evidence) => ({
+      id: evidence.id,
+      evidenceType: evidence.evidence_type,
+      fileName: evidence.file_name,
+      objectKey: evidence.object_key,
+      externalURL: evidence.external_url,
+      note: evidence.note
+    })),
+    readyAt: dispatch.ready_at,
+    readyBy: dispatch.ready_by,
+    sentAt: dispatch.sent_at,
+    sentBy: dispatch.sent_by,
+    respondedAt: dispatch.responded_at,
+    responseBy: dispatch.response_by,
+    factoryResponseNote: dispatch.factory_response_note,
+    note: dispatch.note,
+    createdAt: dispatch.created_at,
+    updatedAt: dispatch.updated_at,
+    version: dispatch.version
   };
 }
 
@@ -1483,6 +1816,19 @@ function toApiDecideSampleInput(input: DecideSubcontractSampleInput): DecideSubc
     decision_at: input.decisionAt,
     reason: input.reason,
     storage_status: input.storageStatus
+  };
+}
+
+function toApiFactoryDispatchEvidenceInput(
+  evidence: SubcontractFactoryDispatchEvidence
+): SubcontractFactoryDispatchApiEvidenceRequest {
+  return {
+    id: evidence.id,
+    evidence_type: evidence.evidenceType,
+    file_name: evidence.fileName,
+    object_key: evidence.objectKey,
+    external_url: evidence.externalURL,
+    note: evidence.note
   };
 }
 
@@ -1969,6 +2315,131 @@ function decidePrototypeSubcontractSample(
   return {
     order,
     sampleApproval,
+    auditLog,
+    auditLogId: auditLog.id
+  };
+}
+
+function createPrototypeSubcontractFactoryDispatch(
+  input: CreateSubcontractFactoryDispatchInput
+): SubcontractFactoryDispatchResult {
+  const current = getPrototypeSubcontractOrder(input.order.id);
+  if (input.order.version && input.order.version !== current.version) {
+    throw new Error("Subcontract order version changed");
+  }
+  if (current.status !== "approved") {
+    throw new Error(`Cannot create factory dispatch from ${formatSubcontractOrderStatus(current.status)}`);
+  }
+
+  const sequence = prototypeFactoryDispatchSequence++;
+  const dispatchId = input.dispatchId || `fdp-${current.id}-${String(sequence).padStart(4, "0")}`;
+  const dispatch: SubcontractFactoryDispatch = {
+    id: dispatchId,
+    dispatchNo: input.dispatchNo || `FDP-260429-${String(sequence).padStart(4, "0")}`,
+    orderId: current.id,
+    orderNo: current.orderNo,
+    sourceProductionPlanId: current.sourceProductionPlanId,
+    sourceProductionPlanNo: current.sourceProductionPlanNo,
+    factoryId: current.factoryId,
+    factoryCode: current.factoryCode,
+    factoryName: current.factoryName,
+    productId: current.productId,
+    sku: current.sku,
+    productName: current.productName,
+    plannedQty: normalizeDecimalInput(String(current.quantity), decimalScales.quantity),
+    uomCode: current.uomCode || "PCS",
+    specSummary: current.specVersion,
+    sampleRequired: current.sampleRequired,
+    expectedReceiptDate: current.expectedDeliveryDate,
+    status: "draft",
+    lines: current.materialLines.map((line, index) => ({
+      id: `${dispatchId}-line-${String(index + 1).padStart(2, "0")}`,
+      lineNo: index + 1,
+      orderMaterialLineId: line.id,
+      itemId: line.itemId,
+      skuCode: line.skuCode,
+      itemName: line.itemName,
+      plannedQty: line.plannedQty,
+      uomCode: line.uomCode,
+      lotTraceRequired: line.lotTraceRequired,
+      note: line.note
+    })),
+    evidence: [],
+    note: input.note,
+    createdAt: prototypeNow,
+    updatedAt: prototypeNow,
+    version: 1
+  };
+  prototypeFactoryDispatchStore = [
+    dispatch,
+    ...prototypeFactoryDispatchStore.filter((candidate) => candidate.id !== dispatch.id)
+  ];
+  const auditLog = createFactoryDispatchAuditLog(current, dispatch);
+
+  return {
+    order: current,
+    dispatch,
+    auditLog,
+    auditLogId: auditLog.id
+  };
+}
+
+function transitionPrototypeSubcontractFactoryDispatch(
+  orderInput: SubcontractOrder,
+  dispatchInput: SubcontractFactoryDispatch,
+  status: SubcontractFactoryDispatchStatus,
+  input?: MarkSubcontractFactoryDispatchSentInput | RecordSubcontractFactoryDispatchResponseInput
+): SubcontractFactoryDispatchResult {
+  const currentOrder = getPrototypeSubcontractOrder(orderInput.id);
+  const currentDispatch =
+    prototypeFactoryDispatchStore.find((candidate) => candidate.id === dispatchInput.id) ?? dispatchInput;
+  if (dispatchInput.version && dispatchInput.version !== currentDispatch.version) {
+    throw new Error("Factory dispatch version changed");
+  }
+
+  const sentInput = input && "sentAt" in input ? input : undefined;
+  const responseInput = input && "respondedAt" in input ? input : undefined;
+  const changedAt = sentInput?.sentAt || responseInput?.respondedAt || prototypeNow;
+  let order = currentOrder;
+  let dispatch: SubcontractFactoryDispatch = {
+    ...currentDispatch,
+    status,
+    updatedAt: changedAt,
+    version: currentDispatch.version + 1
+  };
+  if (status === "ready") {
+    dispatch.readyAt = changedAt;
+    dispatch.readyBy = "subcontract-user";
+  }
+  if (status === "sent" && sentInput) {
+    dispatch.sentAt = changedAt;
+    dispatch.sentBy = sentInput.sentBy || "subcontract-user";
+    dispatch.note = sentInput.note || dispatch.note;
+    dispatch.evidence = sentInput.evidence?.length ? sentInput.evidence : dispatch.evidence;
+  }
+  if ((status === "confirmed" || status === "revision_requested" || status === "rejected") && responseInput) {
+    dispatch.respondedAt = changedAt;
+    dispatch.responseBy = responseInput.responseBy || "factory-user";
+    dispatch.factoryResponseNote = responseInput.responseNote;
+  }
+  if (status === "confirmed") {
+    order = createSubcontractOrderRecord({
+      ...currentOrder,
+      status: "factory_confirmed",
+      updatedAt: changedAt,
+      version: currentOrder.version + 1
+    });
+    prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== order.id)];
+  }
+  prototypeFactoryDispatchStore = [
+    dispatch,
+    ...prototypeFactoryDispatchStore.filter((candidate) => candidate.id !== dispatch.id)
+  ];
+  const auditLog = createFactoryDispatchAuditLog(order, dispatch);
+
+  return {
+    order,
+    dispatch,
     auditLog,
     auditLogId: auditLog.id
   };
@@ -2530,6 +3001,43 @@ function createFinishedGoodsReceiptAuditLog(
   };
 }
 
+function createFactoryDispatchAuditLog(
+  order: SubcontractOrder,
+  dispatch: SubcontractFactoryDispatch,
+  auditLogId?: string
+): AuditLogItem {
+  const id = auditLogId ?? `audit-subcontract-factory-dispatch-${String(subcontractAuditSequence++).padStart(4, "0")}`;
+
+  return {
+    id,
+    actorId: dispatch.sentBy || dispatch.responseBy || dispatch.readyBy || "user-subcontract-coordinator",
+    action:
+      dispatch.status === "confirmed"
+        ? "subcontract.factory_dispatch_confirmed"
+        : dispatch.status === "sent"
+          ? "subcontract.factory_dispatch_sent"
+          : "subcontract.factory_dispatch_updated",
+    entityType: "subcontract_order",
+    entityId: order.id,
+    requestId: `req_${id}`,
+    beforeData: {
+      status: order.status
+    },
+    afterData: {
+      status: order.status,
+      factory_dispatch_no: dispatch.dispatchNo,
+      factory_dispatch_status: dispatch.status
+    },
+    metadata: {
+      order_no: order.orderNo,
+      factory: order.factoryName,
+      evidence_count: dispatch.evidence.length,
+      response_note: dispatch.factoryResponseNote ?? ""
+    },
+    createdAt: dispatch.respondedAt || dispatch.sentAt || dispatch.readyAt || dispatch.updatedAt || prototypeNow
+  };
+}
+
 function createFactoryClaimAuditLog(
   order: SubcontractOrder,
   claim: SubcontractFactoryClaim,
@@ -2810,6 +3318,14 @@ function cloneSubcontractOrder(order: SubcontractOrder): SubcontractOrder {
     ...order,
     auditLogIds: [...order.auditLogIds],
     materialLines: order.materialLines.map((line) => ({ ...line }))
+  };
+}
+
+function cloneSubcontractFactoryDispatch(dispatch: SubcontractFactoryDispatch): SubcontractFactoryDispatch {
+  return {
+    ...dispatch,
+    lines: dispatch.lines.map((line) => ({ ...line })),
+    evidence: dispatch.evidence.map((evidence) => ({ ...evidence }))
   };
 }
 
