@@ -612,6 +612,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/purchase-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List purchase requests generated from production plans */
+        get: operations["listPurchaseRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/purchase-requests/{purchase_request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get purchase request detail */
+        get: operations["getPurchaseRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/purchase-requests/{purchase_request_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a purchase request */
+        post: operations["submitPurchaseRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/purchase-requests/{purchase_request_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a purchase request */
+        post: operations["approvePurchaseRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/purchase-requests/{purchase_request_id}/convert-to-po": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Convert an approved purchase request to a purchase order */
+        post: operations["convertPurchaseRequestToPurchaseOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/production-plans": {
         parameters: {
             query?: never;
@@ -983,6 +1068,144 @@ export interface paths {
         get: operations["listAvailableStock"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stock-transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List stock transfer documents */
+        get: operations["listStockTransfers"];
+        put?: never;
+        /** Create a stock transfer draft */
+        post: operations["createStockTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stock-transfers/{stock_transfer_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a stock transfer for approval */
+        post: operations["submitStockTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stock-transfers/{stock_transfer_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a stock transfer */
+        post: operations["approveStockTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stock-transfers/{stock_transfer_id}/post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post a stock transfer into inventory ledger */
+        post: operations["postStockTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/warehouse-issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List warehouse issue notes */
+        get: operations["listWarehouseIssues"];
+        put?: never;
+        /** Create a warehouse issue note draft */
+        post: operations["createWarehouseIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/warehouse-issues/{warehouse_issue_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a warehouse issue note for approval */
+        post: operations["submitWarehouseIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/warehouse-issues/{warehouse_issue_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a warehouse issue note */
+        post: operations["approveWarehouseIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/warehouse-issues/{warehouse_issue_id}/post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post a warehouse issue note into inventory ledger */
+        post: operations["postWarehouseIssue"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1671,6 +1894,58 @@ export interface paths {
         put?: never;
         /** Void a supplier payable */
         post: operations["voidSupplierPayable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List supplier invoices */
+        get: operations["listSupplierInvoices"];
+        put?: never;
+        /** Create a supplier invoice linked to supplier payable */
+        post: operations["createSupplierInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-invoices/{supplier_invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get supplier invoice detail */
+        get: operations["getSupplierInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier-invoices/{supplier_invoice_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a supplier invoice */
+        post: operations["voidSupplierInvoice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2571,7 +2846,7 @@ export interface components {
         /** @enum {string} */
         ProductionPlanStatus: "draft" | "purchase_request_draft_created" | "cancelled";
         /** @enum {string} */
-        PurchaseRequestDraftStatus: "draft";
+        PurchaseRequestDraftStatus: "draft" | "submitted" | "approved" | "converted_to_po" | "cancelled" | "rejected";
         CreateProductionPlanRequest: {
             output_item_id: string;
             formula_id?: string;
@@ -2651,6 +2926,24 @@ export interface components {
             /** Format: date-time */
             created_at?: string;
             created_by?: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            submitted_by?: string;
+            /** Format: date-time */
+            approved_at?: string;
+            approved_by?: string;
+            /** Format: date-time */
+            converted_at?: string;
+            converted_by?: string;
+            converted_purchase_order_id?: string;
+            converted_purchase_order_no?: string;
+            /** Format: date-time */
+            cancelled_at?: string;
+            cancelled_by?: string;
+            /** Format: date-time */
+            rejected_at?: string;
+            rejected_by?: string;
+            reject_reason?: string;
         };
         PurchaseRequestDraftLine: {
             id: string;
@@ -2662,6 +2955,40 @@ export interface components {
             requested_qty: components["schemas"]["Quantity"];
             uom_code: components["schemas"]["UOMCode"];
             note?: string;
+        };
+        PurchaseRequestListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["PurchaseRequestDraft"][];
+        };
+        PurchaseRequestSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["PurchaseRequestDraft"];
+        };
+        PurchaseRequestActionResultSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["PurchaseRequestActionResult"];
+        };
+        ConvertPurchaseRequestToPurchaseOrderSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["ConvertPurchaseRequestToPurchaseOrderResult"];
+        };
+        PurchaseRequestActionRequest: {
+            expected_status?: components["schemas"]["PurchaseRequestDraftStatus"];
+        };
+        ConvertPurchaseRequestToPurchaseOrderRequest: {
+            supplier_id: string;
+            warehouse_id: string;
+            /** Format: date */
+            expected_date: string;
+            currency_code?: components["schemas"]["CurrencyCode"];
+            unit_price?: components["schemas"]["UnitPriceAmount"];
+        };
+        PurchaseRequestActionResult: {
+            purchase_request: components["schemas"]["PurchaseRequestDraft"];
+            previous_status: components["schemas"]["PurchaseRequestDraftStatus"];
+            current_status: components["schemas"]["PurchaseRequestDraftStatus"];
+            audit_log_id?: string;
+        };
+        ConvertPurchaseRequestToPurchaseOrderResult: {
+            purchase_request: components["schemas"]["PurchaseRequestDraft"];
+            purchase_order: components["schemas"]["PurchaseOrder"];
+            audit_log_id?: string;
         };
         SupplierListSuccessResponse: {
             /** @example true */
@@ -2999,6 +3326,131 @@ export interface components {
             blocked_qty: components["schemas"]["Quantity"];
             hold_qty: components["schemas"]["Quantity"];
             available_qty: components["schemas"]["Quantity"];
+        };
+        /** @enum {string} */
+        StockTransferStatus: "draft" | "submitted" | "approved" | "posted" | "cancelled";
+        StockTransferListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["StockTransfer"][];
+        };
+        StockTransferSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["StockTransfer"];
+        };
+        CreateStockTransferRequest: {
+            transfer_no?: string;
+            source_warehouse_id: string;
+            source_warehouse_code?: string;
+            destination_warehouse_id: string;
+            destination_warehouse_code?: string;
+            reason_code: string;
+            lines: components["schemas"]["CreateStockTransferLine"][];
+        };
+        CreateStockTransferLine: {
+            id?: string;
+            item_id?: string;
+            sku: string;
+            batch_id?: string;
+            batch_no?: string;
+            source_location_id?: string;
+            source_location_code?: string;
+            destination_location_id?: string;
+            destination_location_code?: string;
+            quantity: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            note?: string;
+        };
+        StockTransfer: {
+            id: string;
+            transfer_no: string;
+            org_id: string;
+            source_warehouse_id: string;
+            source_warehouse_code?: string;
+            destination_warehouse_id: string;
+            destination_warehouse_code?: string;
+            reason_code: string;
+            status: components["schemas"]["StockTransferStatus"];
+            requested_by: string;
+            submitted_by?: string;
+            approved_by?: string;
+            posted_by?: string;
+            lines: components["schemas"]["StockTransferLine"][];
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            /** Format: date-time */
+            approved_at?: string;
+            /** Format: date-time */
+            posted_at?: string;
+        };
+        StockTransferLine: components["schemas"]["CreateStockTransferLine"] & {
+            id: string;
+        };
+        /** @enum {string} */
+        WarehouseIssueStatus: "draft" | "submitted" | "approved" | "posted" | "cancelled";
+        WarehouseIssueListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["WarehouseIssue"][];
+        };
+        WarehouseIssueSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["WarehouseIssue"];
+        };
+        CreateWarehouseIssueRequest: {
+            issue_no?: string;
+            warehouse_id: string;
+            warehouse_code?: string;
+            destination_type: string;
+            destination_name: string;
+            reason_code: string;
+            lines: components["schemas"]["CreateWarehouseIssueLine"][];
+        };
+        CreateWarehouseIssueLine: {
+            id?: string;
+            item_id?: string;
+            sku: string;
+            item_name?: string;
+            category?: string;
+            batch_id?: string;
+            batch_no?: string;
+            location_id?: string;
+            location_code?: string;
+            quantity: components["schemas"]["Quantity"];
+            base_uom_code: components["schemas"]["UOMCode"];
+            specification?: string;
+            source_document_type?: string;
+            source_document_id?: string;
+            note?: string;
+        };
+        WarehouseIssue: {
+            id: string;
+            issue_no: string;
+            org_id: string;
+            warehouse_id: string;
+            warehouse_code?: string;
+            destination_type: string;
+            destination_name: string;
+            reason_code: string;
+            status: components["schemas"]["WarehouseIssueStatus"];
+            requested_by: string;
+            submitted_by?: string;
+            approved_by?: string;
+            posted_by?: string;
+            lines: components["schemas"]["WarehouseIssueLine"][];
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            /** Format: date-time */
+            approved_at?: string;
+            /** Format: date-time */
+            posted_at?: string;
+        };
+        WarehouseIssueLine: components["schemas"]["CreateWarehouseIssueLine"] & {
+            id: string;
         };
         BatchListSuccessResponse: components["schemas"]["SuccessResponse"] & {
             data: components["schemas"]["Batch"][];
@@ -4420,7 +4872,7 @@ export interface components {
         CustomerReceivableStatus: "draft" | "open" | "partially_paid" | "paid" | "disputed" | "void";
         FinanceSourceDocument: {
             /** @enum {string} */
-            type: "sales_order" | "shipment" | "return_order" | "purchase_order" | "warehouse_receipt" | "qc_inspection" | "subcontract_order" | "subcontract_payment_milestone" | "cod_remittance" | "manual_adjustment";
+            type: "sales_order" | "shipment" | "return_order" | "purchase_order" | "warehouse_receipt" | "qc_inspection" | "supplier_payable" | "subcontract_order" | "subcontract_payment_milestone" | "cod_remittance" | "manual_adjustment";
             id?: string;
             no?: string;
         };
@@ -4615,6 +5067,103 @@ export interface components {
             supplier_payable: components["schemas"]["SupplierPayable"];
             previous_status: components["schemas"]["SupplierPayableStatus"];
             current_status: components["schemas"]["SupplierPayableStatus"];
+            audit_log_id?: string;
+        };
+        /** @enum {string} */
+        SupplierInvoiceStatus: "draft" | "matched" | "mismatch" | "void";
+        /** @enum {string} */
+        SupplierInvoiceMatchStatus: "pending" | "matched" | "mismatch";
+        SupplierInvoiceListSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SupplierInvoiceListItem"][];
+        };
+        SupplierInvoiceSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SupplierInvoice"];
+        };
+        SupplierInvoiceActionSuccessResponse: components["schemas"]["SuccessResponse"] & {
+            data: components["schemas"]["SupplierInvoiceActionResult"];
+        };
+        SupplierInvoiceListItem: {
+            id: string;
+            invoice_no: string;
+            supplier_id: string;
+            supplier_code?: string;
+            supplier_name: string;
+            payable_id: string;
+            payable_no: string;
+            status: components["schemas"]["SupplierInvoiceStatus"];
+            match_status: components["schemas"]["SupplierInvoiceMatchStatus"];
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            invoice_amount: components["schemas"]["MoneyAmount"];
+            expected_amount: components["schemas"]["MoneyAmount"];
+            variance_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            /** Format: date */
+            invoice_date: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        SupplierInvoice: {
+            id: string;
+            org_id: string;
+            invoice_no: string;
+            supplier_id: string;
+            supplier_code?: string;
+            supplier_name: string;
+            payable_id: string;
+            payable_no: string;
+            status: components["schemas"]["SupplierInvoiceStatus"];
+            match_status: components["schemas"]["SupplierInvoiceMatchStatus"];
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            lines: components["schemas"]["SupplierInvoiceLine"][];
+            invoice_amount: components["schemas"]["MoneyAmount"];
+            expected_amount: components["schemas"]["MoneyAmount"];
+            variance_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            /** Format: date */
+            invoice_date: string;
+            void_reason?: string;
+            audit_log_id?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            version: number;
+        };
+        SupplierInvoiceLine: {
+            id: string;
+            description: string;
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            amount: components["schemas"]["MoneyAmount"];
+        };
+        CreateSupplierInvoiceRequest: {
+            id?: string;
+            invoice_no?: string;
+            supplier_id?: string;
+            supplier_code?: string;
+            supplier_name?: string;
+            payable_id: string;
+            /** Format: date */
+            invoice_date?: string;
+            invoice_amount: components["schemas"]["MoneyAmount"];
+            currency_code: components["schemas"]["CurrencyCode"];
+            lines?: components["schemas"]["CreateSupplierInvoiceLineRequest"][];
+        };
+        CreateSupplierInvoiceLineRequest: {
+            id: string;
+            description: string;
+            source_document: components["schemas"]["FinanceSourceDocument"];
+            amount: components["schemas"]["MoneyAmount"];
+        };
+        SupplierInvoiceActionRequest: {
+            reason: string;
+        };
+        SupplierInvoiceActionResult: {
+            supplier_invoice: components["schemas"]["SupplierInvoice"];
+            previous_status: components["schemas"]["SupplierInvoiceStatus"];
+            current_status: components["schemas"]["SupplierInvoiceStatus"];
             audit_log_id?: string;
         };
         /** @enum {string} */
@@ -6837,6 +7386,151 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    listPurchaseRequests: {
+        parameters: {
+            query?: {
+                q?: string;
+                /** @description Comma-separated purchase request statuses. */
+                status?: string;
+                source_production_plan_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Purchase request rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRequestListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getPurchaseRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Purchase request detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRequestSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    submitPurchaseRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PurchaseRequestActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Purchase request submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRequestActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    approvePurchaseRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PurchaseRequestActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Purchase request approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseRequestActionResultSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    convertPurchaseRequestToPurchaseOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertPurchaseRequestToPurchaseOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Purchase order created from purchase request */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvertPurchaseRequestToPurchaseOrderSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     listProductionPlans: {
         parameters: {
             query?: {
@@ -7583,6 +8277,264 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listStockTransfers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stock transfer documents */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockTransferListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createStockTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateStockTransferRequest"];
+            };
+        };
+        responses: {
+            /** @description Stock transfer draft created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockTransferSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    submitStockTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stock_transfer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stock transfer submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockTransferSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    approveStockTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stock_transfer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stock transfer approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockTransferSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    postStockTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stock_transfer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stock transfer posted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockTransferSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listWarehouseIssues: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse issue notes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseIssueListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createWarehouseIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWarehouseIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description Warehouse issue note draft created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseIssueSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    submitWarehouseIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                warehouse_issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse issue note submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseIssueSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    approveWarehouseIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                warehouse_issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse issue note approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseIssueSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    postWarehouseIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                warehouse_issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Warehouse issue note posted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseIssueSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
         };
     };
@@ -8942,6 +9894,120 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupplierPayableActionSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listSupplierInvoices: {
+        parameters: {
+            query?: {
+                /** @description Quick search term for code, name, phone, or other whitelisted fields. */
+                q?: components["parameters"]["SearchParam"];
+                /** @description Comma-separated supplier invoice statuses. */
+                status?: string;
+                supplier_id?: string;
+                payable_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supplier invoice rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierInvoiceListSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createSupplierInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupplierInvoiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier invoice created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierInvoiceSuccessResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getSupplierInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supplier invoice detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierInvoiceSuccessResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    voidSupplierInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplierInvoiceActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Supplier invoice voided */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierInvoiceActionSuccessResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];

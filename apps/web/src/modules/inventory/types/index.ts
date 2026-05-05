@@ -168,3 +168,137 @@ export type StockAdjustment = {
 };
 
 export type StockAdjustmentAction = "submit" | "approve" | "reject" | "post";
+
+export type StockTransferStatus = "draft" | "submitted" | "approved" | "posted" | "cancelled";
+
+export type StockTransferLine = {
+  id: string;
+  itemId?: string;
+  sku: string;
+  batchId?: string;
+  batchNo?: string;
+  sourceLocationId?: string;
+  sourceLocationCode?: string;
+  destinationLocationId?: string;
+  destinationLocationCode?: string;
+  quantity: string;
+  baseUomCode: string;
+  note?: string;
+};
+
+export type StockTransfer = {
+  id: string;
+  transferNo: string;
+  orgId: string;
+  sourceWarehouseId: string;
+  sourceWarehouseCode?: string;
+  destinationWarehouseId: string;
+  destinationWarehouseCode?: string;
+  reasonCode: string;
+  status: StockTransferStatus;
+  requestedBy: string;
+  submittedBy?: string;
+  approvedBy?: string;
+  postedBy?: string;
+  lines: StockTransferLine[];
+  auditLogId?: string;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt?: string;
+  approvedAt?: string;
+  postedAt?: string;
+};
+
+export type CreateStockTransferInput = {
+  transferNo?: string;
+  sourceWarehouseId: string;
+  sourceWarehouseCode?: string;
+  destinationWarehouseId: string;
+  destinationWarehouseCode?: string;
+  reasonCode: string;
+  lines: Array<{
+    id?: string;
+    itemId?: string;
+    sku: string;
+    batchId?: string;
+    batchNo?: string;
+    sourceLocationId?: string;
+    sourceLocationCode?: string;
+    destinationLocationId?: string;
+    destinationLocationCode?: string;
+    quantity: string;
+    baseUomCode: string;
+    note?: string;
+  }>;
+};
+
+export type WarehouseIssueStatus = "draft" | "submitted" | "approved" | "posted" | "cancelled";
+
+export type WarehouseIssueLine = {
+  id: string;
+  itemId?: string;
+  sku: string;
+  itemName?: string;
+  category?: string;
+  batchId?: string;
+  batchNo?: string;
+  locationId?: string;
+  locationCode?: string;
+  quantity: string;
+  baseUomCode: string;
+  specification?: string;
+  sourceDocumentType?: string;
+  sourceDocumentId?: string;
+  note?: string;
+};
+
+export type WarehouseIssue = {
+  id: string;
+  issueNo: string;
+  orgId: string;
+  warehouseId: string;
+  warehouseCode?: string;
+  destinationType: string;
+  destinationName: string;
+  reasonCode: string;
+  status: WarehouseIssueStatus;
+  requestedBy: string;
+  submittedBy?: string;
+  approvedBy?: string;
+  postedBy?: string;
+  lines: WarehouseIssueLine[];
+  auditLogId?: string;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt?: string;
+  approvedAt?: string;
+  postedAt?: string;
+};
+
+export type CreateWarehouseIssueInput = {
+  issueNo?: string;
+  warehouseId: string;
+  warehouseCode?: string;
+  destinationType: string;
+  destinationName: string;
+  reasonCode: string;
+  lines: Array<{
+    id?: string;
+    itemId?: string;
+    sku: string;
+    itemName?: string;
+    category?: string;
+    batchId?: string;
+    batchNo?: string;
+    locationId?: string;
+    locationCode?: string;
+    quantity: string;
+    baseUomCode: string;
+    specification?: string;
+    sourceDocumentType?: string;
+    sourceDocumentId?: string;
+    note?: string;
+  }>;
+};
+
+export type WarehouseDocumentAction = "submit" | "approve" | "post";

@@ -1274,9 +1274,43 @@ func main() {
 		}
 		log.Fatalf("configure stock movement store: %v", err)
 	}
+	warehouseDocumentStores, closeWarehouseDocumentStores, err := newRuntimeWarehouseDocumentStores(cfg)
+	if err != nil {
+		if closeStockMovementStore != nil {
+			if closeErr := closeStockMovementStore(); closeErr != nil {
+				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeStockCountStore != nil {
+			if closeErr := closeStockCountStore(); closeErr != nil {
+				log.Printf("close stock count store: %v", closeErr)
+			}
+		}
+		if closeStockAdjustmentStore != nil {
+			if closeErr := closeStockAdjustmentStore(); closeErr != nil {
+				log.Printf("close stock adjustment store: %v", closeErr)
+			}
+		}
+		if closeAuditLogStore != nil {
+			if closeErr := closeAuditLogStore(); closeErr != nil {
+				log.Printf("close audit log store: %v", closeErr)
+			}
+		}
+		log.Fatalf("configure warehouse document stores: %v", err)
+	}
 	listStockAdjustments := inventoryapp.NewListStockAdjustments(stockAdjustmentStore)
 	createStockAdjustment := inventoryapp.NewCreateStockAdjustment(stockAdjustmentStore, auditLogStore)
 	transitionStockAdjustment := inventoryapp.NewTransitionStockAdjustment(stockAdjustmentStore, stockMovementStore, auditLogStore)
+	stockTransferService := inventoryapp.NewStockTransferService(
+		warehouseDocumentStores.stockTransfers,
+		stockMovementStore,
+		auditLogStore,
+	)
+	warehouseIssueService := inventoryapp.NewWarehouseIssueService(
+		warehouseDocumentStores.warehouseIssues,
+		stockMovementStore,
+		auditLogStore,
+	)
 	listStockCounts := inventoryapp.NewListStockCounts(stockCountStore)
 	createStockCount := inventoryapp.NewCreateStockCount(stockCountStore, auditLogStore)
 	submitStockCount := inventoryapp.NewSubmitStockCount(stockCountStore, auditLogStore)
@@ -2148,6 +2182,14 @@ func main() {
 		stockAdjustmentApprove: stockAdjustmentActionHandler(transitionStockAdjustment, "approve"),
 		stockAdjustmentReject:  stockAdjustmentActionHandler(transitionStockAdjustment, "reject"),
 		stockAdjustmentPost:    stockAdjustmentActionHandler(transitionStockAdjustment, "post"),
+		stockTransfers:         stockTransfersHandler(stockTransferService),
+		stockTransferSubmit:    stockTransferActionHandler(stockTransferService, "submit"),
+		stockTransferApprove:   stockTransferActionHandler(stockTransferService, "approve"),
+		stockTransferPost:      stockTransferActionHandler(stockTransferService, "post"),
+		warehouseIssues:        warehouseIssuesHandler(warehouseIssueService),
+		warehouseIssueSubmit:   warehouseIssueActionHandler(warehouseIssueService, "submit"),
+		warehouseIssueApprove:  warehouseIssueActionHandler(warehouseIssueService, "approve"),
+		warehouseIssuePost:     warehouseIssueActionHandler(warehouseIssueService, "post"),
 		stockCounts:            stockCountsHandler(listStockCounts, createStockCount),
 		stockCountSubmit:       stockCountSubmitHandler(submitStockCount),
 		batches:                batchesHandler(batchCatalog),
@@ -2353,6 +2395,11 @@ func main() {
 		if closeStockMovementStore != nil {
 			if closeErr := closeStockMovementStore(); closeErr != nil {
 				log.Printf("close stock movement store: %v", closeErr)
+			}
+		}
+		if closeWarehouseDocumentStores != nil {
+			if closeErr := closeWarehouseDocumentStores(); closeErr != nil {
+				log.Printf("close warehouse document stores: %v", closeErr)
 			}
 		}
 		log.Fatal(err)

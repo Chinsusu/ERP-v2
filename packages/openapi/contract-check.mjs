@@ -413,6 +413,49 @@ const sprint7Routes = [
   }
 ];
 
+const inventoryDocumentRoutes = [
+  {
+    path: "/stock-transfers",
+    apiRoute: "/api/v1/stock-transfers",
+    operationIds: ["listStockTransfers", "createStockTransfer"]
+  },
+  {
+    path: "/stock-transfers/{stock_transfer_id}/submit",
+    apiRoute: "/api/v1/stock-transfers/{stock_transfer_id}/submit",
+    operationIds: ["submitStockTransfer"]
+  },
+  {
+    path: "/stock-transfers/{stock_transfer_id}/approve",
+    apiRoute: "/api/v1/stock-transfers/{stock_transfer_id}/approve",
+    operationIds: ["approveStockTransfer"]
+  },
+  {
+    path: "/stock-transfers/{stock_transfer_id}/post",
+    apiRoute: "/api/v1/stock-transfers/{stock_transfer_id}/post",
+    operationIds: ["postStockTransfer"]
+  },
+  {
+    path: "/warehouse-issues",
+    apiRoute: "/api/v1/warehouse-issues",
+    operationIds: ["listWarehouseIssues", "createWarehouseIssue"]
+  },
+  {
+    path: "/warehouse-issues/{warehouse_issue_id}/submit",
+    apiRoute: "/api/v1/warehouse-issues/{warehouse_issue_id}/submit",
+    operationIds: ["submitWarehouseIssue"]
+  },
+  {
+    path: "/warehouse-issues/{warehouse_issue_id}/approve",
+    apiRoute: "/api/v1/warehouse-issues/{warehouse_issue_id}/approve",
+    operationIds: ["approveWarehouseIssue"]
+  },
+  {
+    path: "/warehouse-issues/{warehouse_issue_id}/post",
+    apiRoute: "/api/v1/warehouse-issues/{warehouse_issue_id}/post",
+    operationIds: ["postWarehouseIssue"]
+  }
+];
+
 const requiredSuccessSchemas = [
   "PurchaseOrderListSuccessResponse",
   "PurchaseOrderSuccessResponse",
@@ -455,12 +498,16 @@ const requiredSuccessSchemas = [
   "CODRemittanceActionSuccessResponse",
   "InventorySnapshotReportSuccessResponse",
   "OperationsDailyReportSuccessResponse",
-  "FinanceSummaryReportSuccessResponse"
+  "FinanceSummaryReportSuccessResponse",
+  "StockTransferListSuccessResponse",
+  "StockTransferSuccessResponse",
+  "WarehouseIssueListSuccessResponse",
+  "WarehouseIssueSuccessResponse"
 ];
 
 const failures = [];
 
-const routes = [...sprint4Routes, ...sprint5Routes, ...sprint6Routes, ...sprint7Routes];
+const routes = [...sprint4Routes, ...sprint5Routes, ...sprint6Routes, ...sprint7Routes, ...inventoryDocumentRoutes];
 
 for (const route of routes) {
   requireContains(openapi, `  ${route.path}:`, `OpenAPI path missing: ${route.path}`);
@@ -482,7 +529,7 @@ for (const schemaName of requiredSuccessSchemas) {
 }
 
 const colonActionPattern =
-  /^  \/(purchase-orders|purchase-requests|goods-receipts|inbound-qc-inspections|supplier-rejections|subcontract-orders|customer-receivables|supplier-payables|supplier-invoices|cash-transactions|finance\/dashboard|cod-remittances|reports\/(inventory-snapshot|operations-daily|finance-summary)|warehouse\/daily-board\/(inbound|subcontract)-metrics)[^\n]*:[A-Za-z0-9_-]+:/m;
+  /^  \/(purchase-orders|purchase-requests|goods-receipts|inbound-qc-inspections|supplier-rejections|subcontract-orders|customer-receivables|supplier-payables|supplier-invoices|cash-transactions|finance\/dashboard|cod-remittances|reports\/(inventory-snapshot|operations-daily|finance-summary)|warehouse\/daily-board\/(inbound|subcontract)-metrics|stock-transfers|warehouse-issues)[^\n]*:[A-Za-z0-9_-]+:/m;
 if (colonActionPattern.test(openapi)) {
   failures.push("Tracked OpenAPI paths must use slash action style, not colon action style.");
 }

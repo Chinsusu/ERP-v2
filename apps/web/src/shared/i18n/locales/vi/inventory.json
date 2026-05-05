@@ -136,5 +136,73 @@
       "posted": "Đã ghi sổ điều chỉnh",
       "actionError": "Không thể thực hiện: {action}"
     }
+  },
+  "warehouseDocument": {
+    "actions": {
+      "submit": "Gửi duyệt",
+      "approve": "Duyệt",
+      "post": "Ghi sổ"
+    },
+    "status": {
+      "draft": "Nháp",
+      "submitted": "Chờ duyệt",
+      "approved": "Đã duyệt",
+      "posted": "Đã ghi sổ",
+      "cancelled": "Đã hủy"
+    },
+    "messages": {
+      "submitted": "Đã gửi duyệt",
+      "approved": "Đã duyệt",
+      "posted": "Đã ghi sổ"
+    }
+  },
+  "stockTransfer": {
+    "title": "Chuyển kho",
+    "documents": "{count} phiếu",
+    "lines": "{count} dòng",
+    "stockRow": "Dòng tồn",
+    "destinationWarehouse": "Kho nhận",
+    "quantity": "Số lượng",
+    "create": "Tạo phiếu chuyển",
+    "document": "Phiếu chuyển",
+    "columns": {
+      "transfer": "Phiếu chuyển",
+      "route": "Tuyến chuyển",
+      "status": "Trạng thái",
+      "line": "Dòng",
+      "quantity": "Số lượng",
+      "updated": "Cập nhật"
+    },
+    "messages": {
+      "created": "Đã tạo phiếu chuyển",
+      "createError": "Không thể tạo phiếu chuyển",
+      "invalidQty": "Số lượng chuyển không hợp lệ",
+      "actionError": "Không thể thực hiện: {action}"
+    }
+  },
+  "warehouseIssue": {
+    "title": "Phiếu xuất kho",
+    "documents": "{count} phiếu",
+    "lines": "{count} dòng",
+    "stockRow": "Dòng tồn",
+    "destination": "Nơi nhận",
+    "defaultDestination": "Nhà máy gia công",
+    "quantity": "Số lượng",
+    "create": "Tạo phiếu xuất",
+    "document": "Phiếu xuất",
+    "columns": {
+      "issue": "Phiếu xuất",
+      "destination": "Nơi nhận",
+      "status": "Trạng thái",
+      "line": "Dòng",
+      "quantity": "Số lượng",
+      "updated": "Cập nhật"
+    },
+    "messages": {
+      "created": "Đã tạo phiếu xuất",
+      "createError": "Không thể tạo phiếu xuất",
+      "invalidQty": "Số lượng xuất không hợp lệ",
+      "actionError": "Không thể thực hiện: {action}"
+    }
   }
 }

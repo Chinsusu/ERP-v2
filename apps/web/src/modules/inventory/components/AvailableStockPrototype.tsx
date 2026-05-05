@@ -19,6 +19,14 @@ import {
   summarizeStockAdjustmentDelta,
   transitionStockAdjustment
 } from "../services/stockAdjustmentService";
+import {
+  createStockTransfer,
+  createWarehouseIssue,
+  getStockTransfers,
+  getWarehouseIssues,
+  transitionStockTransfer,
+  transitionWarehouseIssue
+} from "../services/warehouseDocumentService";
 import type {
   AvailableStockItem,
   AvailableStockQuery,
@@ -27,8 +35,13 @@ import type {
   StockAdjustment,
   StockAdjustmentAction,
   StockAdjustmentStatus,
+  StockTransfer,
+  StockTransferStatus,
   StockCountSession,
-  StockCountStatus
+  StockCountStatus,
+  WarehouseDocumentAction,
+  WarehouseIssue,
+  WarehouseIssueStatus
 } from "../types";
 
 const warehouseOptions = [
@@ -262,6 +275,84 @@ const stockAdjustmentColumns: DataTableColumn<StockAdjustment>[] = [
   }
 ];
 
+const stockTransferColumns: DataTableColumn<StockTransfer>[] = [
+  {
+    key: "transferNo",
+    header: inventoryCopy("stockTransfer.columns.transfer"),
+    render: (row) => row.transferNo,
+    width: "160px"
+  },
+  {
+    key: "route",
+    header: inventoryCopy("stockTransfer.columns.route"),
+    render: (row) => `${row.sourceWarehouseCode || row.sourceWarehouseId} -> ${row.destinationWarehouseCode || row.destinationWarehouseId}`,
+    width: "170px"
+  },
+  {
+    key: "status",
+    header: inventoryCopy("stockTransfer.columns.status"),
+    render: (row) => <StatusChip tone={warehouseDocumentStatusTone(row.status)}>{stockTransferStatusLabel(row.status)}</StatusChip>,
+    width: "140px"
+  },
+  {
+    key: "line",
+    header: inventoryCopy("stockTransfer.columns.line"),
+    render: (row) => stockTransferLineLabel(row)
+  },
+  {
+    key: "quantity",
+    header: inventoryCopy("stockTransfer.columns.quantity"),
+    render: (row) => stockTransferQuantity(row),
+    align: "right",
+    width: "130px"
+  },
+  {
+    key: "updated",
+    header: inventoryCopy("stockTransfer.columns.updated"),
+    render: (row) => formatDateTime(row.updatedAt),
+    width: "170px"
+  }
+];
+
+const warehouseIssueColumns: DataTableColumn<WarehouseIssue>[] = [
+  {
+    key: "issueNo",
+    header: inventoryCopy("warehouseIssue.columns.issue"),
+    render: (row) => row.issueNo,
+    width: "160px"
+  },
+  {
+    key: "destination",
+    header: inventoryCopy("warehouseIssue.columns.destination"),
+    render: (row) => row.destinationName,
+    width: "180px"
+  },
+  {
+    key: "status",
+    header: inventoryCopy("warehouseIssue.columns.status"),
+    render: (row) => <StatusChip tone={warehouseDocumentStatusTone(row.status)}>{warehouseIssueStatusLabel(row.status)}</StatusChip>,
+    width: "140px"
+  },
+  {
+    key: "line",
+    header: inventoryCopy("warehouseIssue.columns.line"),
+    render: (row) => warehouseIssueLineLabel(row)
+  },
+  {
+    key: "quantity",
+    header: inventoryCopy("warehouseIssue.columns.quantity"),
+    render: (row) => warehouseIssueQuantity(row),
+    align: "right",
+    width: "130px"
+  },
+  {
+    key: "updated",
+    header: inventoryCopy("warehouseIssue.columns.updated"),
+    render: (row) => formatDateTime(row.updatedAt),
+    width: "170px"
+  }
+];
+
 export function AvailableStockPrototype() {
   const [warehouseId, setWarehouseId] = useState("");
   const [locationId, setLocationId] = useState("");
@@ -289,6 +380,23 @@ export function AvailableStockPrototype() {
   const [adjustmentSubmitting, setAdjustmentSubmitting] = useState(false);
   const [adjustmentMessage, setAdjustmentMessage] = useState("");
   const [adjustmentMessageTone, setAdjustmentMessageTone] = useState<StatusTone>("info");
+  const [stockTransfers, setStockTransfers] = useState<StockTransfer[]>([]);
+  const [stockTransfersLoading, setStockTransfersLoading] = useState(false);
+  const [selectedTransferId, setSelectedTransferId] = useState("");
+  const [transferDestinationWarehouseId, setTransferDestinationWarehouseId] = useState("wh-hn");
+  const [transferDestinationWarehouseCode, setTransferDestinationWarehouseCode] = useState("HN");
+  const [transferQty, setTransferQty] = useState("");
+  const [transferSubmitting, setTransferSubmitting] = useState(false);
+  const [transferMessage, setTransferMessage] = useState("");
+  const [transferMessageTone, setTransferMessageTone] = useState<StatusTone>("info");
+  const [warehouseIssues, setWarehouseIssues] = useState<WarehouseIssue[]>([]);
+  const [warehouseIssuesLoading, setWarehouseIssuesLoading] = useState(false);
+  const [selectedIssueId, setSelectedIssueId] = useState("");
+  const [issueDestinationName, setIssueDestinationName] = useState(inventoryCopy("warehouseIssue.defaultDestination"));
+  const [issueQty, setIssueQty] = useState("");
+  const [issueSubmitting, setIssueSubmitting] = useState(false);
+  const [issueMessage, setIssueMessage] = useState("");
+  const [issueMessageTone, setIssueMessageTone] = useState<StatusTone>("info");
   const query = useMemo<AvailableStockQuery>(
     () => ({
       warehouseId: warehouseId || undefined,
@@ -317,6 +425,16 @@ export function AvailableStockPrototype() {
       stockAdjustments[0],
     [actionableAdjustment, selectedAdjustmentId, stockAdjustments]
   );
+  const actionableTransfer = useMemo(() => firstActionableWarehouseDocument(stockTransfers), [stockTransfers]);
+  const selectedTransfer = useMemo(
+    () => stockTransfers.find((transfer) => transfer.id === selectedTransferId) ?? actionableTransfer ?? stockTransfers[0],
+    [actionableTransfer, selectedTransferId, stockTransfers]
+  );
+  const actionableIssue = useMemo(() => firstActionableWarehouseDocument(warehouseIssues), [warehouseIssues]);
+  const selectedIssue = useMemo(
+    () => warehouseIssues.find((issue) => issue.id === selectedIssueId) ?? actionableIssue ?? warehouseIssues[0],
+    [actionableIssue, selectedIssueId, warehouseIssues]
+  );
   const selectedBatch = useMemo(
     () => batchOptions.find((batch) => batch.id === selectedBatchId),
     [batchOptions, selectedBatchId]
@@ -340,6 +458,24 @@ export function AvailableStockPrototype() {
   useEffect(() => {
     setCountedQty(selectedStock?.physicalQty ?? "");
   }, [selectedStock?.physicalQty, selectedStockKey]);
+
+  useEffect(() => {
+    const defaultQty = selectedStock?.availableQty !== "0.000000" ? selectedStock?.availableQty : selectedStock?.physicalQty;
+    setTransferQty(defaultQty ?? "");
+    setIssueQty(defaultQty ?? "");
+  }, [selectedStock?.availableQty, selectedStock?.physicalQty, selectedStockKey]);
+
+  useEffect(() => {
+    if (!selectedStock || transferDestinationWarehouseId !== selectedStock.warehouseId) {
+      return;
+    }
+    const nextDestination = warehouseOptions.find((option) => option.value && option.value !== selectedStock.warehouseId);
+    if (!nextDestination) {
+      return;
+    }
+    setTransferDestinationWarehouseId(nextDestination.value);
+    setTransferDestinationWarehouseCode(nextDestination.label);
+  }, [selectedStock, transferDestinationWarehouseId]);
 
   useEffect(() => {
     let active = true;
@@ -400,6 +536,48 @@ export function AvailableStockPrototype() {
       .finally(() => {
         if (active) {
           setStockAdjustmentsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setStockTransfersLoading(true);
+    getStockTransfers()
+      .then((rows) => {
+        if (active) {
+          setStockTransfers(rows);
+          setSelectedTransferId((current) => current || firstActionableWarehouseDocument(rows)?.id || rows[0]?.id || "");
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setStockTransfersLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setWarehouseIssuesLoading(true);
+    getWarehouseIssues()
+      .then((rows) => {
+        if (active) {
+          setWarehouseIssues(rows);
+          setSelectedIssueId((current) => current || firstActionableWarehouseDocument(rows)?.id || rows[0]?.id || "");
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setWarehouseIssuesLoading(false);
         }
       });
 
@@ -531,6 +709,145 @@ export function AvailableStockPrototype() {
       setAdjustmentMessage(inventoryCopy("stockAdjustment.messages.actionError", { action: stockAdjustmentActionLabel(action) }));
     } finally {
       setAdjustmentSubmitting(false);
+    }
+  }
+
+  async function handleCreateStockTransfer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedStock || transferQty.trim() === "" || transferDestinationWarehouseId === selectedStock.warehouseId) {
+      return;
+    }
+
+    let normalizedQty: string;
+    try {
+      normalizedQty = normalizeDecimalInput(transferQty, decimalScales.quantity);
+    } catch {
+      setTransferMessageTone("danger");
+      setTransferMessage(inventoryCopy("stockTransfer.messages.invalidQty"));
+      return;
+    }
+
+    setTransferSubmitting(true);
+    setTransferMessage("");
+    try {
+      const created = await createStockTransfer({
+        sourceWarehouseId: selectedStock.warehouseId,
+        sourceWarehouseCode: selectedStock.warehouseCode,
+        destinationWarehouseId: transferDestinationWarehouseId,
+        destinationWarehouseCode: transferDestinationWarehouseCode,
+        reasonCode: "warehouse_replenishment",
+        lines: [
+          {
+            sku: selectedStock.sku,
+            batchId: selectedStock.batchId,
+            batchNo: selectedStock.batchNo,
+            sourceLocationId: selectedStock.locationId,
+            sourceLocationCode: selectedStock.locationCode,
+            quantity: normalizedQty,
+            baseUomCode: selectedStock.baseUomCode
+          }
+        ]
+      });
+      setSelectedTransferId(created.id);
+      setStockTransfers((current) => replaceWarehouseDocument(current, created));
+      setTransferMessageTone("success");
+      setTransferMessage(inventoryCopy("stockTransfer.messages.created"));
+    } catch {
+      setTransferMessageTone("danger");
+      setTransferMessage(inventoryCopy("stockTransfer.messages.createError"));
+    } finally {
+      setTransferSubmitting(false);
+    }
+  }
+
+  async function handleTransferAction(action: WarehouseDocumentAction) {
+    if (!selectedTransfer) {
+      return;
+    }
+
+    setTransferSubmitting(true);
+    setTransferMessage("");
+    try {
+      const updated = await transitionStockTransfer(selectedTransfer.id, action);
+      setSelectedTransferId(updated.id);
+      setStockTransfers((current) => replaceWarehouseDocument(current, updated));
+      setTransferMessageTone("success");
+      setTransferMessage(warehouseDocumentActionResultLabel(action));
+    } catch {
+      setTransferMessageTone("danger");
+      setTransferMessage(inventoryCopy("stockTransfer.messages.actionError", { action: warehouseDocumentActionLabel(action) }));
+    } finally {
+      setTransferSubmitting(false);
+    }
+  }
+
+  async function handleCreateWarehouseIssue(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedStock || issueQty.trim() === "" || issueDestinationName.trim() === "") {
+      return;
+    }
+
+    let normalizedQty: string;
+    try {
+      normalizedQty = normalizeDecimalInput(issueQty, decimalScales.quantity);
+    } catch {
+      setIssueMessageTone("danger");
+      setIssueMessage(inventoryCopy("warehouseIssue.messages.invalidQty"));
+      return;
+    }
+
+    setIssueSubmitting(true);
+    setIssueMessage("");
+    try {
+      const created = await createWarehouseIssue({
+        warehouseId: selectedStock.warehouseId,
+        warehouseCode: selectedStock.warehouseCode,
+        destinationType: "factory",
+        destinationName: issueDestinationName,
+        reasonCode: "production_plan_issue",
+        lines: [
+          {
+            sku: selectedStock.sku,
+            batchId: selectedStock.batchId,
+            batchNo: selectedStock.batchNo,
+            locationId: selectedStock.locationId,
+            locationCode: selectedStock.locationCode,
+            quantity: normalizedQty,
+            baseUomCode: selectedStock.baseUomCode,
+            sourceDocumentType: "manual_inventory_issue"
+          }
+        ]
+      });
+      setSelectedIssueId(created.id);
+      setWarehouseIssues((current) => replaceWarehouseDocument(current, created));
+      setIssueMessageTone("success");
+      setIssueMessage(inventoryCopy("warehouseIssue.messages.created"));
+    } catch {
+      setIssueMessageTone("danger");
+      setIssueMessage(inventoryCopy("warehouseIssue.messages.createError"));
+    } finally {
+      setIssueSubmitting(false);
+    }
+  }
+
+  async function handleIssueAction(action: WarehouseDocumentAction) {
+    if (!selectedIssue) {
+      return;
+    }
+
+    setIssueSubmitting(true);
+    setIssueMessage("");
+    try {
+      const updated = await transitionWarehouseIssue(selectedIssue.id, action);
+      setSelectedIssueId(updated.id);
+      setWarehouseIssues((current) => replaceWarehouseDocument(current, updated));
+      setIssueMessageTone("success");
+      setIssueMessage(warehouseDocumentActionResultLabel(action));
+    } catch {
+      setIssueMessageTone("danger");
+      setIssueMessage(inventoryCopy("warehouseIssue.messages.actionError", { action: warehouseDocumentActionLabel(action) }));
+    } finally {
+      setIssueSubmitting(false);
     }
   }
 
@@ -729,6 +1046,226 @@ export function AvailableStockPrototype() {
           rows={stockAdjustments}
           getRowKey={(row) => row.id}
           loading={stockAdjustmentsLoading}
+        />
+      </section>
+
+      <section className="erp-card erp-card--padded erp-module-table-card" id="stock-transfers">
+        <div className="erp-section-header">
+          <h2 className="erp-section-title">{inventoryCopy("stockTransfer.title")}</h2>
+          <StatusChip tone={selectedTransfer ? warehouseDocumentStatusTone(selectedTransfer.status) : "info"}>
+            {selectedTransfer ? selectedTransfer.transferNo : inventoryCopy("stockTransfer.documents", { count: stockTransfers.length })}
+          </StatusChip>
+        </div>
+
+        <form className="erp-warehouse-document-form" onSubmit={handleCreateStockTransfer}>
+          <label className="erp-field">
+            <span>{inventoryCopy("stockTransfer.stockRow")}</span>
+            <select
+              className="erp-input"
+              value={selectedStockKey}
+              onChange={(event) => setSelectedStockKey(event.target.value)}
+            >
+              {stockOptions.map((item) => (
+                <option key={stockRowKey(item)} value={stockRowKey(item)}>
+                  {stockRowLabel(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="erp-field">
+            <span>{inventoryCopy("stockTransfer.destinationWarehouse")}</span>
+            <select
+              className="erp-input"
+              value={transferDestinationWarehouseId}
+              onChange={(event) => {
+                const option = warehouseOptions.find((item) => item.value === event.target.value);
+                setTransferDestinationWarehouseId(event.target.value);
+                setTransferDestinationWarehouseCode(option?.label || event.target.value);
+              }}
+            >
+              {warehouseOptions
+                .filter((option) => option.value !== "" && option.value !== selectedStock?.warehouseId)
+                .map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label className="erp-field">
+            <span>{inventoryCopy("stockTransfer.quantity")}</span>
+            <input
+              className="erp-input"
+              inputMode="decimal"
+              type="text"
+              value={transferQty}
+              placeholder="1.000000"
+              onChange={(event) => setTransferQty(event.target.value)}
+            />
+          </label>
+          <button
+            className="erp-button erp-button--primary"
+            type="submit"
+            disabled={
+              !selectedStock ||
+              transferQty.trim() === "" ||
+              transferDestinationWarehouseId === selectedStock.warehouseId ||
+              transferSubmitting
+            }
+          >
+            {inventoryCopy("stockTransfer.create")}
+          </button>
+          {transferMessage ? <StatusChip tone={transferMessageTone}>{transferMessage}</StatusChip> : null}
+        </form>
+
+        <div className="erp-warehouse-document-actions">
+          <label className="erp-field">
+            <span>{inventoryCopy("stockTransfer.document")}</span>
+            <select
+              className="erp-input"
+              value={selectedTransfer?.id ?? ""}
+              onChange={(event) => setSelectedTransferId(event.target.value)}
+            >
+              {stockTransfers.map((transfer) => (
+                <option key={transfer.id} value={transfer.id}>
+                  {transfer.transferNo} / {stockTransferStatusLabel(transfer.status)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={!canTransitionWarehouseDocument(selectedTransfer, "submit") || transferSubmitting}
+            onClick={() => handleTransferAction("submit")}
+          >
+            {warehouseDocumentActionLabel("submit")}
+          </button>
+          <button
+            className="erp-button erp-button--primary"
+            type="button"
+            disabled={!canTransitionWarehouseDocument(selectedTransfer, "approve") || transferSubmitting}
+            onClick={() => handleTransferAction("approve")}
+          >
+            {warehouseDocumentActionLabel("approve")}
+          </button>
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={!canTransitionWarehouseDocument(selectedTransfer, "post") || transferSubmitting}
+            onClick={() => handleTransferAction("post")}
+          >
+            {warehouseDocumentActionLabel("post")}
+          </button>
+        </div>
+
+        <DataTable
+          columns={stockTransferColumns}
+          rows={stockTransfers}
+          getRowKey={(row) => row.id}
+          loading={stockTransfersLoading}
+        />
+      </section>
+
+      <section className="erp-card erp-card--padded erp-module-table-card" id="warehouse-issues">
+        <div className="erp-section-header">
+          <h2 className="erp-section-title">{inventoryCopy("warehouseIssue.title")}</h2>
+          <StatusChip tone={selectedIssue ? warehouseDocumentStatusTone(selectedIssue.status) : "info"}>
+            {selectedIssue ? selectedIssue.issueNo : inventoryCopy("warehouseIssue.documents", { count: warehouseIssues.length })}
+          </StatusChip>
+        </div>
+
+        <form className="erp-warehouse-document-form" onSubmit={handleCreateWarehouseIssue}>
+          <label className="erp-field">
+            <span>{inventoryCopy("warehouseIssue.stockRow")}</span>
+            <select
+              className="erp-input"
+              value={selectedStockKey}
+              onChange={(event) => setSelectedStockKey(event.target.value)}
+            >
+              {stockOptions.map((item) => (
+                <option key={stockRowKey(item)} value={stockRowKey(item)}>
+                  {stockRowLabel(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="erp-field">
+            <span>{inventoryCopy("warehouseIssue.destination")}</span>
+            <input
+              className="erp-input"
+              type="text"
+              value={issueDestinationName}
+              onChange={(event) => setIssueDestinationName(event.target.value)}
+            />
+          </label>
+          <label className="erp-field">
+            <span>{inventoryCopy("warehouseIssue.quantity")}</span>
+            <input
+              className="erp-input"
+              inputMode="decimal"
+              type="text"
+              value={issueQty}
+              placeholder="1.000000"
+              onChange={(event) => setIssueQty(event.target.value)}
+            />
+          </label>
+          <button
+            className="erp-button erp-button--primary"
+            type="submit"
+            disabled={!selectedStock || issueQty.trim() === "" || issueDestinationName.trim() === "" || issueSubmitting}
+          >
+            {inventoryCopy("warehouseIssue.create")}
+          </button>
+          {issueMessage ? <StatusChip tone={issueMessageTone}>{issueMessage}</StatusChip> : null}
+        </form>
+
+        <div className="erp-warehouse-document-actions">
+          <label className="erp-field">
+            <span>{inventoryCopy("warehouseIssue.document")}</span>
+            <select
+              className="erp-input"
+              value={selectedIssue?.id ?? ""}
+              onChange={(event) => setSelectedIssueId(event.target.value)}
+            >
+              {warehouseIssues.map((issue) => (
+                <option key={issue.id} value={issue.id}>
+                  {issue.issueNo} / {warehouseIssueStatusLabel(issue.status)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={!canTransitionWarehouseDocument(selectedIssue, "submit") || issueSubmitting}
+            onClick={() => handleIssueAction("submit")}
+          >
+            {warehouseDocumentActionLabel("submit")}
+          </button>
+          <button
+            className="erp-button erp-button--primary"
+            type="button"
+            disabled={!canTransitionWarehouseDocument(selectedIssue, "approve") || issueSubmitting}
+            onClick={() => handleIssueAction("approve")}
+          >
+            {warehouseDocumentActionLabel("approve")}
+          </button>
+          <button
+            className="erp-button erp-button--secondary"
+            type="button"
+            disabled={!canTransitionWarehouseDocument(selectedIssue, "post") || issueSubmitting}
+            onClick={() => handleIssueAction("post")}
+          >
+            {warehouseDocumentActionLabel("post")}
+          </button>
+        </div>
+
+        <DataTable
+          columns={warehouseIssueColumns}
+          rows={warehouseIssues}
+          getRowKey={(row) => row.id}
+          loading={warehouseIssuesLoading}
         />
       </section>
 
@@ -940,6 +1477,24 @@ function replaceStockAdjustment(rows: StockAdjustment[], updated: StockAdjustmen
   return [updated, ...rows];
 }
 
+function replaceWarehouseDocument<TDocument extends { id: string }>(rows: TDocument[], updated: TDocument) {
+  if (rows.some((row) => row.id === updated.id)) {
+    return rows.map((row) => (row.id === updated.id ? updated : row));
+  }
+
+  return [updated, ...rows];
+}
+
+function firstActionableWarehouseDocument<TDocument extends { status: StockTransferStatus | WarehouseIssueStatus }>(
+  documents: TDocument[]
+) {
+  return (
+    documents.find((document) => document.status === "submitted") ??
+    documents.find((document) => document.status === "approved") ??
+    documents.find((document) => document.status === "draft")
+  );
+}
+
 function canTransitionAdjustment(adjustment: StockAdjustment | undefined, action: StockAdjustmentAction) {
   if (!adjustment) {
     return false;
@@ -955,6 +1510,50 @@ function canTransitionAdjustment(adjustment: StockAdjustment | undefined, action
   }
 
   return false;
+}
+
+function canTransitionWarehouseDocument(
+  document: { status: StockTransferStatus | WarehouseIssueStatus } | undefined,
+  action: WarehouseDocumentAction
+) {
+  if (!document) {
+    return false;
+  }
+  if (action === "submit") {
+    return document.status === "draft";
+  }
+  if (action === "approve") {
+    return document.status === "submitted";
+  }
+  if (action === "post") {
+    return document.status === "approved";
+  }
+
+  return false;
+}
+
+function warehouseDocumentActionLabel(action: WarehouseDocumentAction) {
+  switch (action) {
+    case "submit":
+      return inventoryCopy("warehouseDocument.actions.submit");
+    case "approve":
+      return inventoryCopy("warehouseDocument.actions.approve");
+    case "post":
+    default:
+      return inventoryCopy("warehouseDocument.actions.post");
+  }
+}
+
+function warehouseDocumentActionResultLabel(action: WarehouseDocumentAction) {
+  switch (action) {
+    case "submit":
+      return inventoryCopy("warehouseDocument.messages.submitted");
+    case "approve":
+      return inventoryCopy("warehouseDocument.messages.approved");
+    case "post":
+    default:
+      return inventoryCopy("warehouseDocument.messages.posted");
+  }
 }
 
 function stockAdjustmentActionLabel(action: StockAdjustmentAction) {
@@ -1034,6 +1633,93 @@ function stockAdjustmentStatusLabel(status: StockAdjustmentStatus) {
     default:
       return inventoryCopy("stockAdjustment.status.cancelled");
   }
+}
+
+function stockTransferStatusLabel(status: StockTransferStatus) {
+  return warehouseDocumentStatusLabel(status);
+}
+
+function warehouseIssueStatusLabel(status: WarehouseIssueStatus) {
+  return warehouseDocumentStatusLabel(status);
+}
+
+function warehouseDocumentStatusLabel(status: StockTransferStatus | WarehouseIssueStatus) {
+  switch (status) {
+    case "draft":
+      return inventoryCopy("warehouseDocument.status.draft");
+    case "submitted":
+      return inventoryCopy("warehouseDocument.status.submitted");
+    case "approved":
+      return inventoryCopy("warehouseDocument.status.approved");
+    case "posted":
+      return inventoryCopy("warehouseDocument.status.posted");
+    case "cancelled":
+    default:
+      return inventoryCopy("warehouseDocument.status.cancelled");
+  }
+}
+
+function warehouseDocumentStatusTone(status: StockTransferStatus | WarehouseIssueStatus): StatusTone {
+  switch (status) {
+    case "posted":
+      return "success";
+    case "approved":
+      return "info";
+    case "submitted":
+    case "draft":
+      return "warning";
+    case "cancelled":
+    default:
+      return "danger";
+  }
+}
+
+function stockTransferLineLabel(transfer: StockTransfer) {
+  const firstLine = transfer.lines[0];
+  if (!firstLine) {
+    return "-";
+  }
+  if (transfer.lines.length > 1) {
+    return inventoryCopy("stockTransfer.lines", { count: transfer.lines.length });
+  }
+
+  return `${firstLine.sku} / ${firstLine.batchNo ?? "-"} / ${firstLine.sourceLocationCode ?? "-"}`;
+}
+
+function stockTransferQuantity(transfer: StockTransfer) {
+  const firstLine = transfer.lines[0];
+  if (!firstLine) {
+    return "-";
+  }
+  if (transfer.lines.length > 1) {
+    return inventoryCopy("stockTransfer.lines", { count: transfer.lines.length });
+  }
+
+  return formatQuantity(firstLine.quantity, firstLine.baseUomCode);
+}
+
+function warehouseIssueLineLabel(issue: WarehouseIssue) {
+  const firstLine = issue.lines[0];
+  if (!firstLine) {
+    return "-";
+  }
+  if (issue.lines.length > 1) {
+    return inventoryCopy("warehouseIssue.lines", { count: issue.lines.length });
+  }
+
+  return `${firstLine.sku} / ${firstLine.batchNo ?? "-"} / ${firstLine.locationCode ?? "-"}`;
+}
+
+function warehouseIssueQuantity(issue: WarehouseIssue) {
+  const firstLine = issue.lines[0];
+  if (!firstLine) {
+    return "-";
+  }
+  if (issue.lines.length > 1) {
+    return inventoryCopy("warehouseIssue.lines", { count: issue.lines.length });
+  }
+
+  return formatQuantity(firstLine.quantity, firstLine.baseUomCode);
 }
 
 function inventoryCopy(key: string, values?: Record<string, string | number>) {
