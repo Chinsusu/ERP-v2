@@ -39,7 +39,7 @@ export const productionPlanWorkflowSteps = [
   },
   {
     number: 8,
-    label: "Tạo lệnh gia công",
+    label: "Tạo lệnh nhà máy",
     description: "Chỉ tạo lệnh sau khi vật tư đã xuất đủ hoặc có waiver."
   }
 ] as const;
@@ -89,11 +89,11 @@ export function buildProductionPlanWorkflowContext(plan: ProductionPlan): Produc
         ? `${purchaseLineCount} dòng vật tư cần mua cho ${plan.outputSku} - ${quantityLabel}; mở đề nghị mua để gửi duyệt và tạo PO.`
         : "Kế hoạch này không có dòng đề nghị mua.",
     purchaseButtonLabel: "Mở đề nghị mua",
-    subcontractTitle: `Tạo lệnh gia công từ ${plan.planNo}`,
+    subcontractTitle: `Tạo lệnh nhà máy từ ${plan.planNo}`,
     subcontractSummary: allIssued
-      ? `Vật tư đã đủ bằng chứng xuất kho để tạo lệnh gia công từ ${plan.planNo}.`
+      ? `Vật tư đã đủ bằng chứng xuất kho để tạo lệnh nhà máy từ ${plan.planNo}.`
       : `Còn vật tư chưa xuất kho cho ${plan.planNo}; cần hoàn tất phiếu xuất trước khi tạo lệnh.`,
-    subcontractButtonLabel: "Tạo lệnh gia công từ kế hoạch này"
+    subcontractButtonLabel: "Tạo lệnh nhà máy từ kế hoạch này"
   };
 }
 

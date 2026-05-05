@@ -102,15 +102,15 @@ export function buildProductionPlanWorklist(plan: ProductionPlan): ProductionPla
     {
       id: "subcontract-order",
       step: 8,
-      title: "Lệnh gia công",
+      title: "Lệnh nhà máy",
       statusLabel: materialIssue.readyForSubcontract ? "Sẵn sàng tạo lệnh" : "Chờ xuất vật tư",
       statusTone: materialIssue.readyForSubcontract ? "success" : "warning",
       detail: materialIssue.readyForSubcontract
-        ? "Mở module Gia công để tạo hoặc theo dõi lệnh sản xuất từ kế hoạch này."
-        : "Tạo lệnh gia công sau khi vật tư đã được xuất kho hoặc có waiver.",
+        ? "Mở Sản xuất để tạo hoặc theo dõi lệnh gửi nhà máy ngoài từ kế hoạch này."
+        : "Tạo lệnh gửi nhà máy sau khi vật tư đã được xuất kho hoặc có waiver.",
       action: {
-        label: materialIssue.readyForSubcontract ? "Mở gia công" : "Chờ bước 7",
-        href: materialIssue.readyForSubcontract ? subcontractHref(plan) : undefined,
+        label: materialIssue.readyForSubcontract ? "Mở sản xuất" : "Chờ bước 7",
+        href: materialIssue.readyForSubcontract ? "/production" : undefined,
         disabled: !materialIssue.readyForSubcontract
       }
     }
@@ -268,7 +268,7 @@ function buildMaterialIssueTaskState(
     return {
       statusLabel: "Có phiếu xuất đang xử lý",
       statusTone: "info",
-      detail: `${pendingCount} dòng đã có phiếu xuất chưa post; chỉ mở gia công sau khi post.`,
+      detail: `${pendingCount} dòng đã có phiếu xuất chưa post; chỉ tạo lệnh nhà máy sau khi post.`,
       action: { label: "Mở phiếu xuất", href: "/inventory#warehouse-issues", disabled: false },
       readyForSubcontract: false
     };
@@ -331,8 +331,4 @@ function purchaseRequestStatusTone(status = "draft"): WorkTaskTone {
 function purchaseRequestHref(plan: ProductionPlan) {
   const requestID = plan.purchaseRequestDraft.id;
   return requestID ? `/purchase/requests/${encodeURIComponent(requestID)}` : `/purchase?search=${encodeURIComponent(plan.planNo)}#purchase-list`;
-}
-
-function subcontractHref(plan: ProductionPlan) {
-  return `/subcontract?source_production_plan_id=${encodeURIComponent(plan.id)}&search=${encodeURIComponent(plan.planNo)}#subcontract-orders`;
 }

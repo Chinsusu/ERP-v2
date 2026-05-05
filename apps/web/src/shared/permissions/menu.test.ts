@@ -151,14 +151,14 @@ describe("permission menu", () => {
     });
   });
 
-  it("separates production planning from subcontract manufacturing entrypoints", () => {
+  it("keeps subcontract manufacturing hidden under the production entrypoint", () => {
     const labels = getVisibleMenuGroups(productionUser).flatMap((group) => group.items.map((item) => item.label));
     const entrypoints = getVisibleMenuGroups(productionUser)
       .flatMap((group) => group.items)
       .filter((item) => item.href === "/production" || item.href === "/subcontract");
 
     expect(labels).toContain("Production");
-    expect(labels).toContain("Subcontract");
+    expect(labels).not.toContain("Subcontract");
     expect(labels).not.toContain("Production / Subcontract");
     expect(entrypoints).toEqual([
       {
@@ -166,16 +166,15 @@ describe("permission menu", () => {
         href: "/production",
         code: "PD",
         permission: "production:view"
-      },
-      {
-        label: "Subcontract",
-        href: "/subcontract",
-        code: "SC",
-        permission: "subcontract:view"
       }
     ]);
     expect(getMenuItemForModule("production")).toEqual(entrypoints[0]);
-    expect(getMenuItemForModule("subcontract")).toEqual(entrypoints[1]);
+    expect(getMenuItemForModule("subcontract")).toEqual({
+      label: "Subcontract",
+      href: "/subcontract",
+      code: "SC",
+      permission: "subcontract:view"
+    });
   });
 
   it("shows purchase and finance menus to their Sprint 4 roles", () => {

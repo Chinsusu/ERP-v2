@@ -14,7 +14,7 @@ describe("productionPlanWorkflowContext", () => {
       "Bước 5: Tạo PO",
       "Bước 6: Nhập kho/QC vật tư",
       "Bước 7: Xuất kho vật tư",
-      "Bước 8: Tạo lệnh gia công"
+      "Bước 8: Tạo lệnh nhà máy"
     ]);
     expect(context.planLabel).toBe("PP-260504-0001 - XFF - 162 PCS");
     expect(context.outputLabel).toBe("XFF - Tinh chat buoi Fast & Furious 150ML");
@@ -24,7 +24,7 @@ describe("productionPlanWorkflowContext", () => {
     expect(context.purchaseTitle).toBe("Đề nghị mua từ PP-260504-0001");
     expect(context.purchaseSummary).toBe("1 dòng vật tư cần mua cho XFF - 162 PCS; mở đề nghị mua để gửi duyệt và tạo PO.");
     expect(context.purchaseButtonLabel).toBe("Mở đề nghị mua");
-    expect(context.subcontractTitle).toBe("Tạo lệnh gia công từ PP-260504-0001");
+    expect(context.subcontractTitle).toBe("Tạo lệnh nhà máy từ PP-260504-0001");
     expect(context.subcontractSummary).toBe("Còn vật tư chưa xuất kho cho PP-260504-0001; cần hoàn tất phiếu xuất trước khi tạo lệnh.");
   });
 
@@ -34,7 +34,7 @@ describe("productionPlanWorkflowContext", () => {
     expect(context.materialStatusLabel).toBe("Đã xuất đủ vật tư");
     expect(context.materialStatusTone).toBe("success");
     expect(context.purchaseSummary).toBe("Kế hoạch này không có dòng đề nghị mua.");
-    expect(context.subcontractSummary).toBe("Vật tư đã đủ bằng chứng xuất kho để tạo lệnh gia công từ PP-260504-0002.");
+    expect(context.subcontractSummary).toBe("Vật tư đã đủ bằng chứng xuất kho để tạo lệnh nhà máy từ PP-260504-0002.");
   });
 });
 

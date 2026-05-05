@@ -341,7 +341,7 @@ export function ProductionPlanPrototype() {
         factoryId: subcontractFactoryId,
         expectedDeliveryDate: subcontractExpectedDate
       });
-      pushToast("Đã tạo lệnh gia công", `${order.orderNo} từ ${selectedPlan.planNo}`, "success");
+      pushToast("Đã tạo lệnh nhà máy", `${order.orderNo} từ ${selectedPlan.planNo}`, "success");
     } catch (actionError) {
       setNextActionError(errorText(actionError));
     } finally {
@@ -562,7 +562,7 @@ export function ProductionPlanPrototype() {
               </div>
               <div>
                 <dt>Bước tiếp theo</dt>
-                <dd>{selectedWorkflowContext.shortageLineCount > 0 ? "Mở đề nghị mua xử lý thiếu vật tư" : "Tạo lệnh gia công"}</dd>
+                <dd>{selectedWorkflowContext.shortageLineCount > 0 ? "Mở đề nghị mua xử lý thiếu vật tư" : "Tạo lệnh nhà máy"}</dd>
               </div>
             </dl>
           </article>

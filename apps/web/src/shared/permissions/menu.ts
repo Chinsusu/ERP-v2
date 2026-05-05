@@ -227,7 +227,6 @@ export const appMenuGroups: AppMenuGroup[] = [
       { label: "Purchase", href: "/purchase", code: "PU", permission: "purchase:view" },
       { label: "QC", href: "/qc", code: "QC", permission: "qc:view" },
       { label: "Production", href: "/production", code: "PD", permission: "production:view" },
-      { label: "Subcontract", href: "/subcontract", code: "SC", permission: "subcontract:view" },
       { label: "Sales Orders", href: "/sales", code: "SO", permission: "sales:view" },
       { label: "Shipping", href: "/shipping", code: "SH", permission: "shipping:view" },
       { label: "Returns", href: "/returns", code: "RT", permission: "returns:view" }
@@ -249,6 +248,10 @@ export const appMenuGroups: AppMenuGroup[] = [
       { label: "Settings", href: "/settings", code: "ST", permission: "settings:view" }
     ]
   }
+];
+
+const hiddenModuleItems: AppMenuItem[] = [
+  { label: "Subcontract", href: "/subcontract", code: "SC", permission: "subcontract:view" }
 ];
 
 export const topbarActions: AppAction[] = [
@@ -281,7 +284,7 @@ export function canAccessMenuItem(user: AuthenticatedUser, item: AppMenuItem) {
 export function getMenuItemForModule(module: string) {
   const href = `/${module}`;
 
-  return appMenuGroups.flatMap((group) => group.items).find((item) => item.href === href);
+  return [...appMenuGroups.flatMap((group) => group.items), ...hiddenModuleItems].find((item) => item.href === href);
 }
 
 export function getVisibleMenuGroups(user: AuthenticatedUser): AppMenuGroup[] {
