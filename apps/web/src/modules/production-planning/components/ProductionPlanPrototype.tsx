@@ -25,6 +25,10 @@ import {
   summarizeProductionPlans
 } from "../services/productionPlanService";
 import {
+  buildProductionPlanWorkflowContext,
+  productionPlanWorkflowSteps
+} from "../services/productionPlanWorkflowContext";
+import {
   applyFormulaToProductionPlanDraftLine,
   applyProductToProductionPlanDraftLine,
   createProductionPlanDraftLine,
@@ -67,6 +71,10 @@ export function ProductionPlanPrototype() {
   const selectedPlan = useMemo(
     () => plans.find((plan) => plan.id === selectedPlanId) ?? plans[0],
     [plans, selectedPlanId]
+  );
+  const selectedWorkflowContext = useMemo(
+    () => (selectedPlan ? buildProductionPlanWorkflowContext(selectedPlan) : undefined),
+    [selectedPlan]
   );
   const selectedPlanPurchaseLineCount = selectedPlan?.purchaseRequestDraft.lines.length ?? 0;
   const selectedPlanShortageLineCount =
@@ -135,6 +143,7 @@ export function ProductionPlanPrototype() {
         <div className="erp-masterdata-product-cell">
           <strong>{plan.planNo}</strong>
           <small>{formatDate(plan.createdAt)}</small>
+          {plan.id === selectedPlan?.id ? <StatusChip tone="info">Đang xử lý</StatusChip> : null}
         </div>
       ),
       width: "160px"
@@ -185,12 +194,21 @@ export function ProductionPlanPrototype() {
       header: "",
       align: "right",
       sticky: true,
-      render: (plan) => (
-        <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => setSelectedPlanId(plan.id)}>
-          Chi tiết
-        </button>
-      ),
-      width: "110px"
+      render: (plan) => {
+        const isSelected = plan.id === selectedPlan?.id;
+
+        return (
+          <button
+            aria-current={isSelected ? "true" : undefined}
+            className={`erp-button erp-button--${isSelected ? "primary" : "secondary"} erp-button--compact`}
+            type="button"
+            onClick={() => setSelectedPlanId(plan.id)}
+          >
+            {isSelected ? "Đang chọn" : "Chọn"}
+          </button>
+        );
+      },
+      width: "120px"
     }
   ];
 
@@ -385,8 +403,24 @@ export function ProductionPlanPrototype() {
         </article>
       </section>
 
+      <section className="erp-production-workflow-steps" aria-label="Luồng xử lý kế hoạch sản xuất">
+        {productionPlanWorkflowSteps.map((step) => (
+          <article className="erp-production-workflow-step" key={step.number}>
+            <span>Bước {step.number}</span>
+            <strong>{step.label}</strong>
+            <small>{step.description}</small>
+          </article>
+        ))}
+      </section>
+
       <section className="erp-masterdata-workspace">
         <article className="erp-masterdata-list-card">
+          <header className="erp-section-header">
+            <div>
+              <h2 className="erp-section-title">Kế hoạch sản xuất</h2>
+              <p className="erp-page-description">Chọn một kế hoạch để tính nhu cầu vật tư và tạo chứng từ tiếp theo.</p>
+            </div>
+          </header>
           <DataTable
             columns={planColumns}
             rows={plans}
@@ -394,13 +428,14 @@ export function ProductionPlanPrototype() {
             loading={loading}
             pagination
             preserveColumnWidths
+            rowClassName={(plan) => (plan.id === selectedPlan?.id ? "erp-ds-table-row--selected" : undefined)}
             emptyState={<EmptyState title="Chưa có kế hoạch sản xuất" />}
           />
         </article>
 
         <form onSubmit={submit}>
           <FormSection
-            title="Tạo kế hoạch sản xuất"
+            title="Bước 1: Tạo kế hoạch sản xuất"
             description="Thêm nhiều thành phẩm trong một lần nhập; hệ thống sẽ tạo mỗi thành phẩm thành một kế hoạch riêng để giữ traceability theo công thức."
             footer={
               <>
@@ -503,16 +538,43 @@ export function ProductionPlanPrototype() {
           </FormSection>
         </form>
 
+        {selectedPlan && selectedWorkflowContext ? (
+          <article className="erp-production-selected-plan-card" aria-label="Kế hoạch sản xuất đang xử lý">
+            <div className="erp-production-selected-plan-main">
+              <span className="erp-production-step-label">Kế hoạch đang xử lý</span>
+              <h2>{selectedPlan.planNo}</h2>
+              <p>{selectedWorkflowContext.outputLabel}</p>
+              <div className="erp-production-selected-plan-badges">
+                <StatusChip tone={selectedWorkflowContext.materialStatusTone}>{selectedWorkflowContext.materialStatusLabel}</StatusChip>
+                <StatusChip tone={selectedWorkflowContext.purchaseLineCount > 0 ? "warning" : "info"}>
+                  {selectedWorkflowContext.purchaseLineCount} dòng đề nghị mua
+                </StatusChip>
+              </div>
+            </div>
+            <dl className="erp-production-selected-plan-meta">
+              <div>
+                <dt>Số lượng</dt>
+                <dd>{selectedWorkflowContext.quantityLabel}</dd>
+              </div>
+              <div>
+                <dt>Công thức</dt>
+                <dd>{selectedWorkflowContext.formulaLabel}</dd>
+              </div>
+              <div>
+                <dt>Bước tiếp theo</dt>
+                <dd>{selectedWorkflowContext.shortageLineCount > 0 ? "Tạo PO xử lý thiếu vật tư" : "Tạo lệnh gia công"}</dd>
+              </div>
+            </dl>
+          </article>
+        ) : null}
+
         <article className="erp-masterdata-list-card">
           <header className="erp-section-header">
             <div>
-              <h2 className="erp-section-title">Nhu cầu vật tư</h2>
+              <h2 className="erp-section-title">Bước 2: Tính nhu cầu vật tư</h2>
               <p className="erp-page-description">
-                {selectedPlan
-                  ? `${selectedPlan.planNo} - ${selectedPlan.outputSku} - ${formatProductionPlanQuantity(
-                      selectedPlan.plannedQty,
-                      selectedPlan.uomCode
-                    )}`
+                {selectedWorkflowContext
+                  ? `${selectedWorkflowContext.planLabel}; công thức ${selectedWorkflowContext.formulaLabel}; công thức tính cho 1 thành phẩm.`
                   : "Chọn một kế hoạch để xem nhu cầu vật tư."}
               </p>
             </div>
@@ -527,20 +589,17 @@ export function ProductionPlanPrototype() {
           />
         </article>
 
-        {selectedPlan ? (
+        {selectedPlan && selectedWorkflowContext ? (
           <FormSection
-            title="Bước tiếp theo"
-            description="Từ kế hoạch đã chọn, tạo chứng từ mua hàng nếu còn thiếu vật tư hoặc tạo lệnh gia công khi vật tư đã đủ."
+            title="Bước 3 và 4: Tạo chứng từ tiếp theo"
+            description={`Các chứng từ bên dưới luôn tạo từ kế hoạch đang xử lý: ${selectedPlan.planNo}.`}
           >
             <div className="erp-production-next-actions">
               <article className="erp-production-next-action-panel">
                 <header>
-                  <h3>Tạo PO từ đề nghị mua</h3>
-                  <p>
-                    {selectedPlanPurchaseLineCount > 0
-                      ? `${selectedPlanPurchaseLineCount} dòng vật tư cần mua từ ${selectedPlan.planNo}.`
-                      : "Kế hoạch này không có dòng đề nghị mua."}
-                  </p>
+                  <span className="erp-production-step-label">Bước 3</span>
+                  <h3>{selectedWorkflowContext.purchaseTitle}</h3>
+                  <p>{selectedWorkflowContext.purchaseSummary}</p>
                 </header>
                 <div className="erp-production-next-action-fields">
                   <label className="erp-field">
@@ -588,19 +647,16 @@ export function ProductionPlanPrototype() {
                     onClick={createPurchaseOrderFromSelectedPlan}
                     disabled={nextActionSaving !== "" || selectedPlanPurchaseLineCount === 0}
                   >
-                    {nextActionSaving === "purchase" ? "Đang tạo PO" : "Tạo PO"}
+                    {nextActionSaving === "purchase" ? "Đang tạo PO" : selectedWorkflowContext.purchaseButtonLabel}
                   </button>
                 </footer>
               </article>
 
               <article className="erp-production-next-action-panel">
                 <header>
-                  <h3>Tạo lệnh gia công</h3>
-                  <p>
-                    {selectedPlanShortageLineCount === 0
-                      ? "Vật tư đã đủ, có thể chuyển kế hoạch thành lệnh gia công."
-                      : `Còn ${selectedPlanShortageLineCount} dòng thiếu vật tư, cần xử lý mua hàng trước.`}
-                  </p>
+                  <span className="erp-production-step-label">Bước 4</span>
+                  <h3>{selectedWorkflowContext.subcontractTitle}</h3>
+                  <p>{selectedWorkflowContext.subcontractSummary}</p>
                 </header>
                 <div className="erp-production-next-action-fields">
                   <label className="erp-field">
@@ -634,7 +690,7 @@ export function ProductionPlanPrototype() {
                     onClick={createSubcontractOrderFromSelectedPlan}
                     disabled={nextActionSaving !== "" || selectedPlanShortageLineCount > 0}
                   >
-                    {nextActionSaving === "subcontract" ? "Đang tạo lệnh" : "Tạo lệnh gia công"}
+                    {nextActionSaving === "subcontract" ? "Đang tạo lệnh" : selectedWorkflowContext.subcontractButtonLabel}
                   </button>
                 </footer>
               </article>
