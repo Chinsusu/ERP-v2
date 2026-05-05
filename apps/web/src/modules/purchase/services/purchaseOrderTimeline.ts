@@ -1,5 +1,5 @@
-import { decimalScales, normalizeDecimalInput } from "@/shared/format/numberFormat";
-import type { StatusTone } from "@/shared/design-system/components";
+import type { StatusTone } from "../../../shared/design-system/components";
+import { decimalScales, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type { PurchaseOrder, PurchaseOrderLine, PurchaseOrderStatus } from "../types";
 
 export type PurchaseOrderTimelineStatus = "complete" | "current" | "pending" | "blocked";
