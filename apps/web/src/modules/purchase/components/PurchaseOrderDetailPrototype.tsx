@@ -323,6 +323,17 @@ function TimelineItem({ item }: { item: PurchaseOrderTimelineItem }) {
           <StatusChip tone={item.tone}>{timelineStatusLabel(item.status)}</StatusChip>
         </div>
         <p>{item.description}</p>
+        {item.action ? (
+          item.action.disabled ? (
+            <button className="erp-button erp-button--secondary erp-button--compact erp-document-timeline-action" type="button" disabled>
+              {item.action.label}
+            </button>
+          ) : (
+            <Link className="erp-button erp-button--secondary erp-button--compact erp-document-timeline-action" href={item.action.href}>
+              {item.action.label}
+            </Link>
+          )
+        ) : null}
         {item.occurredAt ? <small>{formatPurchaseDate(item.occurredAt)}</small> : null}
       </div>
     </li>

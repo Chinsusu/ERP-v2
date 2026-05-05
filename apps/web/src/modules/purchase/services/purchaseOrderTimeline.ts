@@ -11,6 +11,11 @@ export type PurchaseOrderTimelineItem = {
   status: PurchaseOrderTimelineStatus;
   tone: StatusTone;
   occurredAt?: string;
+  action?: {
+    label: string;
+    href: string;
+    disabled?: boolean;
+  };
 };
 
 const quantityScale = decimalScales.quantity;
@@ -48,7 +53,12 @@ export function buildPurchaseOrderTimeline(order: PurchaseOrder): PurchaseOrderT
       description: receivingDescription(order),
       status: receivingStatus(order, terminalStatus),
       tone: toneForTimelineStatus(receivingStatus(order, terminalStatus)),
-      occurredAt: order.receivedAt ?? order.partiallyReceivedAt
+      occurredAt: order.receivedAt ?? order.partiallyReceivedAt,
+      action: {
+        label: "Mở nhập hàng",
+        href: purchaseOrderReceivingHref(order),
+        disabled: !["approved", "partially_received", "received", "closed"].includes(order.status)
+      }
     },
     {
       id: "closed",
@@ -93,6 +103,16 @@ export function remainingPurchaseLineQuantity(line: PurchaseOrderLine) {
 export function purchaseOrderSourcePlanNo(order: PurchaseOrder) {
   const match = order.note?.match(/\bPP-\d{6}-\d+\b/i);
   return match ? match[0].toUpperCase() : undefined;
+}
+
+export function purchaseOrderReceivingHref(order: PurchaseOrder) {
+  const params = new URLSearchParams();
+  params.set("po_id", order.id);
+  if (order.warehouseId) {
+    params.set("warehouse_id", order.warehouseId);
+  }
+
+  return `/receiving?${params.toString()}#receiving-draft`;
 }
 
 function submittedStatus(order: PurchaseOrder): PurchaseOrderTimelineStatus {

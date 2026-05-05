@@ -2723,6 +2723,11 @@ textarea {
   line-height: var(--erp-line-height-helper);
 }
 
+.erp-document-timeline-action {
+  justify-self: start;
+  margin-top: 2px;
+}
+
 .erp-receiving-page {
   display: grid;
   gap: 16px;
