@@ -142,5 +142,5 @@ export function buildProductionPlanWorklist(plan: ProductionPlan): ProductionPla
 }
 
 function purchaseOrderHref(planNo: string) {
-  return `/purchase?search=${encodeURIComponent(planNo)}#purchase-detail`;
+  return `/purchase?search=${encodeURIComponent(planNo)}#purchase-list`;
 }

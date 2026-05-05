@@ -2643,6 +2643,86 @@ textarea {
   background: var(--erp-danger-bg);
 }
 
+.erp-purchase-detail-page {
+  display: grid;
+  gap: 14px;
+}
+
+.erp-purchase-page .erp-purchase-feedback,
+.erp-purchase-detail-page .erp-purchase-feedback {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.erp-purchase-detail-actions {
+  margin-top: 0;
+}
+
+.erp-document-timeline {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.erp-document-timeline-step {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 12px;
+  background: var(--erp-section-bg);
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+}
+
+.erp-document-timeline-marker {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: var(--erp-border);
+  box-shadow: 0 0 0 4px var(--erp-surface);
+}
+
+.erp-document-timeline-step[data-status="complete"] .erp-document-timeline-marker {
+  background: var(--erp-success);
+}
+
+.erp-document-timeline-step[data-status="current"] .erp-document-timeline-marker {
+  background: var(--erp-info);
+}
+
+.erp-document-timeline-step[data-status="blocked"] .erp-document-timeline-marker {
+  background: var(--erp-danger);
+}
+
+.erp-document-timeline-content {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.erp-document-timeline-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.erp-document-timeline-content p,
+.erp-document-timeline-content small {
+  margin: 0;
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
 .erp-receiving-page {
   display: grid;
   gap: 16px;

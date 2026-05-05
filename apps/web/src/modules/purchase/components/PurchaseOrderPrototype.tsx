@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   DataTable,
@@ -39,7 +40,7 @@ import type {
 
 type StatusFilter = "" | PurchaseOrderStatus;
 
-const orderColumns = (onSelect: (order: PurchaseOrder) => void): DataTableColumn<PurchaseOrder>[] => [
+const orderColumns: DataTableColumn<PurchaseOrder>[] = [
   {
     key: "order",
     header: purchaseCopy("order.columns.po"),
@@ -96,9 +97,9 @@ const orderColumns = (onSelect: (order: PurchaseOrder) => void): DataTableColumn
     key: "action",
     header: purchaseCopy("order.columns.action"),
     render: (row) => (
-      <button className="erp-button erp-button--secondary" type="button" onClick={() => onSelect(row)}>
+      <Link className="erp-button erp-button--secondary" href={`/purchase/orders/${row.id}`}>
         {purchaseCopy("actions.open")}
-      </button>
+      </Link>
     ),
     width: "96px",
     sticky: true
@@ -327,22 +328,6 @@ export function PurchaseOrderPrototype() {
     }
   }
 
-  async function handleSelectOrder(order: PurchaseOrder) {
-    setSelectedOrderId(order.id);
-    if (order.lines.length > 0 || busyAction) {
-      return;
-    }
-    setBusyAction(`load:${order.id}`);
-    try {
-      const detail = await getPurchaseOrder(order.id);
-      upsertLocalOrder(detail);
-    } catch (reason) {
-      setFeedback({ tone: "danger", message: reason instanceof Error ? reason.message : purchaseCopy("feedback.detailFailed") });
-    } finally {
-      setBusyAction("");
-    }
-  }
-
   useEffect(() => {
     if (!autoOpenPurchaseSearch || loading || busyAction || visibleOrders.length === 0) {
       return;
@@ -496,7 +481,10 @@ export function PurchaseOrderPrototype() {
 
       {feedback ? (
         <p className={`erp-purchase-feedback erp-purchase-feedback--${feedback.tone}`} role="status">
-          {feedback.message}
+          <span>{feedback.message}</span>
+          <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => setFeedback(null)}>
+            Tắt
+          </button>
         </p>
       ) : null}
 
@@ -677,7 +665,7 @@ export function PurchaseOrderPrototype() {
 
       <section id="purchase-list">
         <DataTable
-          columns={orderColumns((order) => void handleSelectOrder(order))}
+          columns={orderColumns}
           rows={visibleOrders}
           getRowKey={(row) => row.id}
           loading={loading}

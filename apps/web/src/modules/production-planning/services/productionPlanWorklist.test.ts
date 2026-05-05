@@ -24,7 +24,7 @@ describe("productionPlanWorklist", () => {
       statusLabel: "Cần theo dõi PO",
       statusTone: "warning",
       detail: "1 dòng đề nghị mua nháp từ PP-260504-0001; mở Mua hàng để tạo hoặc kiểm tra PO đã tạo.",
-      action: { label: "Mở mua hàng", href: "/purchase?search=PP-260504-0001#purchase-detail", disabled: false }
+      action: { label: "Mở mua hàng", href: "/purchase?search=PP-260504-0001#purchase-list", disabled: false }
     });
     expect(tasks[5]).toMatchObject({
       statusLabel: "Chưa sẵn sàng",
