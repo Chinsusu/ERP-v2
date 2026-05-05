@@ -5,7 +5,7 @@ Phase: Phase 1
 Document role: Flow design for Sprint 24 production-plan material issue and subcontract readiness
 Version: v1
 Date: 2026-05-05
-Status: Design locked for Sprint 24 planning; runtime implementation in progress
+Status: Design locked; Sprint 24 runtime implementation merged and deployed to dev
 
 ---
 
