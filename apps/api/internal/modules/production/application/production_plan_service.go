@@ -20,13 +20,17 @@ import (
 var ErrProductionPlanNotFound = errors.New("production plan not found")
 var ErrProductionPlanFormulaNotFound = errors.New("production plan formula not found")
 var ErrProductionPlanFormulaInactive = errors.New("production plan formula must be active")
+var ErrPurchaseRequestDraftNotFound = errors.New("purchase request draft not found")
 
 const (
 	ErrorCodeProductionPlanNotFound   response.ErrorCode = "PRODUCTION_PLAN_NOT_FOUND"
 	ErrorCodeProductionPlanValidation response.ErrorCode = "PRODUCTION_PLAN_VALIDATION_ERROR"
+	ErrorCodePurchaseRequestNotFound  response.ErrorCode = "PURCHASE_REQUEST_NOT_FOUND"
+	ErrorCodePurchaseRequestInvalid   response.ErrorCode = "PURCHASE_REQUEST_INVALID_STATE"
 
 	defaultProductionPlanOrgID = "org-my-pham"
 	productionPlanEntityType   = "production.plan"
+	purchaseRequestEntityType  = "purchase.request"
 )
 
 type ProductionPlanStore interface {
@@ -58,6 +62,12 @@ type ProductionPlanFilter struct {
 	OutputItemID string
 }
 
+type PurchaseRequestDraftFilter struct {
+	Search                 string
+	Statuses               []productiondomain.PurchaseRequestDraftStatus
+	SourceProductionPlanID string
+}
+
 type CreateProductionPlanInput struct {
 	ID               string
 	OrgID            string
@@ -75,6 +85,28 @@ type CreateProductionPlanInput struct {
 type ProductionPlanResult struct {
 	ProductionPlan productiondomain.ProductionPlan
 	AuditLogID     string
+}
+
+type PurchaseRequestDraftActionInput struct {
+	ID             string
+	ExpectedStatus productiondomain.PurchaseRequestDraftStatus
+	ActorID        string
+	RequestID      string
+}
+
+type ConvertPurchaseRequestDraftInput struct {
+	ID              string
+	PurchaseOrderID string
+	PurchaseOrderNo string
+	ActorID         string
+	RequestID       string
+}
+
+type PurchaseRequestDraftResult struct {
+	PurchaseRequestDraft productiondomain.PurchaseRequestDraft
+	PreviousStatus       productiondomain.PurchaseRequestDraftStatus
+	CurrentStatus        productiondomain.PurchaseRequestDraftStatus
+	AuditLogID           string
 }
 
 type PrototypeProductionPlanStore struct {
@@ -121,6 +153,92 @@ func (s ProductionPlanService) GetProductionPlan(ctx context.Context, id string)
 	}
 
 	return plan, nil
+}
+
+func (s ProductionPlanService) ListPurchaseRequestDrafts(
+	ctx context.Context,
+	filter PurchaseRequestDraftFilter,
+) ([]productiondomain.PurchaseRequestDraft, error) {
+	if s.store == nil {
+		return nil, errors.New("production plan store is required")
+	}
+	plans, err := s.store.List(ctx, ProductionPlanFilter{})
+	if err != nil {
+		return nil, err
+	}
+	drafts := make([]productiondomain.PurchaseRequestDraft, 0, len(plans))
+	for _, plan := range plans {
+		if len(plan.PurchaseDraft.Lines) == 0 {
+			continue
+		}
+		if purchaseRequestDraftMatchesFilter(plan.PurchaseDraft, filter) {
+			drafts = append(drafts, plan.PurchaseDraft.Clone())
+		}
+	}
+	sort.SliceStable(drafts, func(i, j int) bool {
+		return drafts[i].CreatedAt.After(drafts[j].CreatedAt)
+	})
+
+	return drafts, nil
+}
+
+func (s ProductionPlanService) GetPurchaseRequestDraft(
+	ctx context.Context,
+	id string,
+) (productiondomain.PurchaseRequestDraft, error) {
+	plan, err := s.findPlanByPurchaseRequestDraft(ctx, id)
+	if err != nil {
+		return productiondomain.PurchaseRequestDraft{}, err
+	}
+
+	return plan.PurchaseDraft.Clone(), nil
+}
+
+func (s ProductionPlanService) SubmitPurchaseRequestDraft(
+	ctx context.Context,
+	input PurchaseRequestDraftActionInput,
+) (PurchaseRequestDraftResult, error) {
+	return s.transitionPurchaseRequestDraft(ctx, input, "purchase.request.submitted", func(
+		draft productiondomain.PurchaseRequestDraft,
+		actorID string,
+		changedAt time.Time,
+	) (productiondomain.PurchaseRequestDraft, error) {
+		return draft.Submit(actorID, changedAt)
+	})
+}
+
+func (s ProductionPlanService) ApprovePurchaseRequestDraft(
+	ctx context.Context,
+	input PurchaseRequestDraftActionInput,
+) (PurchaseRequestDraftResult, error) {
+	return s.transitionPurchaseRequestDraft(ctx, input, "purchase.request.approved", func(
+		draft productiondomain.PurchaseRequestDraft,
+		actorID string,
+		changedAt time.Time,
+	) (productiondomain.PurchaseRequestDraft, error) {
+		return draft.Approve(actorID, changedAt)
+	})
+}
+
+func (s ProductionPlanService) MarkPurchaseRequestDraftConverted(
+	ctx context.Context,
+	input ConvertPurchaseRequestDraftInput,
+) (PurchaseRequestDraftResult, error) {
+	if strings.TrimSpace(input.PurchaseOrderID) == "" || strings.TrimSpace(input.PurchaseOrderNo) == "" {
+		return PurchaseRequestDraftResult{}, productiondomain.ErrProductionPlanRequiredField
+	}
+
+	return s.transitionPurchaseRequestDraft(ctx, PurchaseRequestDraftActionInput{
+		ID:        input.ID,
+		ActorID:   input.ActorID,
+		RequestID: input.RequestID,
+	}, "purchase.request.converted_to_po", func(
+		draft productiondomain.PurchaseRequestDraft,
+		actorID string,
+		changedAt time.Time,
+	) (productiondomain.PurchaseRequestDraft, error) {
+		return draft.MarkConvertedToPO(actorID, changedAt, input.PurchaseOrderID, input.PurchaseOrderNo)
+	})
 }
 
 func (s ProductionPlanService) CreateProductionPlan(ctx context.Context, input CreateProductionPlanInput) (ProductionPlanResult, error) {
@@ -207,6 +325,77 @@ func (s ProductionPlanService) CreateProductionPlan(ctx context.Context, input C
 	}
 
 	return ProductionPlanResult{ProductionPlan: plan, AuditLogID: log.ID}, nil
+}
+
+func (s ProductionPlanService) transitionPurchaseRequestDraft(
+	ctx context.Context,
+	input PurchaseRequestDraftActionInput,
+	action string,
+	transition func(productiondomain.PurchaseRequestDraft, string, time.Time) (productiondomain.PurchaseRequestDraft, error),
+) (PurchaseRequestDraftResult, error) {
+	if s.store == nil {
+		return PurchaseRequestDraftResult{}, errors.New("production plan store is required")
+	}
+	actorID := strings.TrimSpace(input.ActorID)
+	if actorID == "" {
+		return PurchaseRequestDraftResult{}, productiondomain.ErrProductionPlanRequiredField
+	}
+	plan, err := s.findPlanByPurchaseRequestDraft(ctx, input.ID)
+	if err != nil {
+		return PurchaseRequestDraftResult{}, err
+	}
+	before := plan.PurchaseDraft.Clone()
+	if expected := productiondomain.NormalizePurchaseRequestDraftStatus(input.ExpectedStatus); expected != "" && before.Status != expected {
+		return PurchaseRequestDraftResult{}, productiondomain.ErrProductionPlanInvalidPurchaseRequestTransition
+	}
+	now := s.now()
+	after, err := transition(before, actorID, now)
+	if err != nil {
+		return PurchaseRequestDraftResult{}, err
+	}
+	updatedPlan := plan.Clone()
+	updatedPlan.PurchaseDraft = after
+	updatedPlan.UpdatedAt = now
+	updatedPlan.UpdatedBy = actorID
+	if updatedPlan.Version > 0 {
+		updatedPlan.Version++
+	}
+	if err := s.store.Save(ctx, updatedPlan); err != nil {
+		return PurchaseRequestDraftResult{}, err
+	}
+	log, err := newPurchaseRequestDraftAuditLog(actorID, input.RequestID, action, updatedPlan, before, after, updatedPlan.UpdatedAt)
+	if err != nil {
+		return PurchaseRequestDraftResult{}, err
+	}
+	if err := s.store.RecordAudit(ctx, log); err != nil {
+		return PurchaseRequestDraftResult{}, err
+	}
+
+	return PurchaseRequestDraftResult{
+		PurchaseRequestDraft: after,
+		PreviousStatus:       before.Status,
+		CurrentStatus:        after.Status,
+		AuditLogID:           log.ID,
+	}, nil
+}
+
+func (s ProductionPlanService) findPlanByPurchaseRequestDraft(ctx context.Context, id string) (productiondomain.ProductionPlan, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return productiondomain.ProductionPlan{}, ErrPurchaseRequestDraftNotFound
+	}
+	plans, err := s.store.List(ctx, ProductionPlanFilter{})
+	if err != nil {
+		return productiondomain.ProductionPlan{}, err
+	}
+	for _, plan := range plans {
+		draft := plan.PurchaseDraft
+		if strings.EqualFold(draft.ID, id) || strings.EqualFold(draft.RequestNo, id) {
+			return plan.Clone(), nil
+		}
+	}
+
+	return productiondomain.ProductionPlan{}, ErrPurchaseRequestDraftNotFound
 }
 
 func (s ProductionPlanService) resolveFormula(ctx context.Context, input CreateProductionPlanInput) (masterdatadomain.Formula, error) {
@@ -454,6 +643,43 @@ func productionPlanMatchesFilter(plan productiondomain.ProductionPlan, filter Pr
 		strings.Contains(strings.ToLower(plan.OutputItemName), search)
 }
 
+func purchaseRequestDraftMatchesFilter(draft productiondomain.PurchaseRequestDraft, filter PurchaseRequestDraftFilter) bool {
+	if strings.TrimSpace(filter.SourceProductionPlanID) != "" &&
+		!strings.EqualFold(draft.SourceProductionPlanID, strings.TrimSpace(filter.SourceProductionPlanID)) {
+		return false
+	}
+	if len(filter.Statuses) > 0 {
+		matched := false
+		for _, status := range filter.Statuses {
+			if draft.Status == productiondomain.NormalizePurchaseRequestDraftStatus(status) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	search := strings.ToLower(strings.TrimSpace(filter.Search))
+	if search == "" {
+		return true
+	}
+
+	return strings.Contains(strings.ToLower(draft.RequestNo), search) ||
+		strings.Contains(strings.ToLower(draft.SourceProductionPlanNo), search) ||
+		purchaseRequestDraftLinesContain(draft, search)
+}
+
+func purchaseRequestDraftLinesContain(draft productiondomain.PurchaseRequestDraft, search string) bool {
+	for _, line := range draft.Lines {
+		if strings.Contains(strings.ToLower(line.SKU), search) || strings.Contains(strings.ToLower(line.ItemName), search) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func shortageQuantity(required decimal.Decimal, available decimal.Decimal) (decimal.Decimal, error) {
 	diff, err := decimal.SubtractQuantity(required, available)
 	if err != nil {
@@ -492,6 +718,51 @@ func newProductionPlanAuditLog(actorID string, requestID string, action string, 
 		},
 		Metadata: map[string]any{
 			"source": "production planning",
+		},
+		CreatedAt: occurredAt.UTC(),
+	})
+}
+
+func newPurchaseRequestDraftAuditLog(
+	actorID string,
+	requestID string,
+	action string,
+	plan productiondomain.ProductionPlan,
+	before productiondomain.PurchaseRequestDraft,
+	after productiondomain.PurchaseRequestDraft,
+	occurredAt time.Time,
+) (audit.Log, error) {
+	if strings.TrimSpace(actorID) == "" {
+		actorID = "system"
+	}
+	if strings.TrimSpace(requestID) == "" {
+		requestID = fmt.Sprintf("purchase-request-%d", occurredAt.UnixNano())
+	}
+
+	return audit.NewLog(audit.NewLogInput{
+		ID:         fmt.Sprintf("audit-purchase-request-%d", occurredAt.UnixNano()),
+		OrgID:      plan.OrgID,
+		ActorID:    actorID,
+		Action:     action,
+		EntityType: purchaseRequestEntityType,
+		EntityID:   after.ID,
+		RequestID:  requestID,
+		BeforeData: map[string]any{
+			"request_no": after.RequestNo,
+			"status":     string(before.Status),
+		},
+		AfterData: map[string]any{
+			"request_no":                  after.RequestNo,
+			"status":                      string(after.Status),
+			"source_production_plan_id":   after.SourceProductionPlanID,
+			"source_production_plan_no":   after.SourceProductionPlanNo,
+			"converted_purchase_order_id": after.ConvertedPurchaseOrderID,
+			"converted_purchase_order_no": after.ConvertedPurchaseOrderNo,
+		},
+		Metadata: map[string]any{
+			"source":             "production planning",
+			"production_plan_id": plan.ID,
+			"production_plan_no": plan.PlanNo,
 		},
 		CreatedAt: occurredAt.UTC(),
 	})

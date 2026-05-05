@@ -9,10 +9,10 @@ describe("productionPlanWorklist", () => {
     expect(tasks.map((task) => task.title)).toEqual([
       "Kế hoạch sản xuất",
       "Nhu cầu vật tư",
-      "PO vật tư thiếu",
-      "Nhập kho vật tư",
-      "QC vật tư nhập",
-      "Sẵn sàng gia công",
+      "Đề nghị mua",
+      "Duyệt đề nghị mua",
+      "PO vật tư",
+      "Nhập kho/QC vật tư",
       "Lệnh gia công"
     ]);
     expect(tasks[1]).toMatchObject({
@@ -21,15 +21,25 @@ describe("productionPlanWorklist", () => {
       detail: "1/1 dòng vật tư cần mua thêm."
     });
     expect(tasks[2]).toMatchObject({
-      statusLabel: "Cần theo dõi PO",
+      statusLabel: "Đề nghị nháp",
       statusTone: "warning",
-      detail: "1 dòng đề nghị mua nháp từ PP-260504-0001; mở Mua hàng để tạo hoặc kiểm tra PO đã tạo.",
-      action: { label: "Mở mua hàng", href: "/purchase?search=PP-260504-0001#purchase-list", disabled: false }
+      detail: "PR-DRAFT-260504-0001 có 1 dòng vật tư thiếu từ PP-260504-0001.",
+      action: { label: "Mở đề nghị", href: "/purchase/requests/pr-draft-001", disabled: false }
     });
-    expect(tasks[5]).toMatchObject({
-      statusLabel: "Chưa sẵn sàng",
+    expect(tasks[3]).toMatchObject({
+      statusLabel: "Chờ gửi duyệt",
       statusTone: "warning",
-      action: { label: "Chờ đủ vật tư", disabled: true }
+      action: { label: "Mở đề nghị", href: "/purchase/requests/pr-draft-001", disabled: false }
+    });
+    expect(tasks[4]).toMatchObject({
+      statusLabel: "Chờ duyệt đề nghị",
+      statusTone: "info",
+      action: { label: "Mở đề nghị", href: "/purchase/requests/pr-draft-001", disabled: false }
+    });
+    expect(tasks[6]).toMatchObject({
+      statusLabel: "Chờ đủ vật tư",
+      statusTone: "warning",
+      action: { label: "Chờ bước 6", disabled: true }
     });
   });
 
@@ -42,11 +52,11 @@ describe("productionPlanWorklist", () => {
       detail: "1 dòng vật tư đã đủ tồn khả dụng."
     });
     expect(tasks[2]).toMatchObject({
-      statusLabel: "Không cần PO",
+      statusLabel: "Không cần đề nghị mua",
       statusTone: "success"
     });
-    expect(tasks[5]).toMatchObject({
-      statusLabel: "Sẵn sàng",
+    expect(tasks[6]).toMatchObject({
+      statusLabel: "Sẵn sàng tạo lệnh",
       statusTone: "success",
       action: { label: "Mở gia công", href: "/subcontract", disabled: false }
     });

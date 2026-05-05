@@ -107,3 +107,74 @@ export type PurchaseOrderActionResult = {
   currentStatus: PurchaseOrderStatus;
   auditLogId?: string;
 };
+
+export type PurchaseRequestStatus =
+  | "draft"
+  | "submitted"
+  | "approved"
+  | "converted_to_po"
+  | "cancelled"
+  | "rejected";
+
+export type PurchaseRequestLine = {
+  id: string;
+  lineNo: number;
+  sourceProductionPlanLineId: string;
+  itemId?: string;
+  sku: string;
+  itemName: string;
+  requestedQty: string;
+  uomCode: string;
+  note?: string;
+};
+
+export type PurchaseRequest = {
+  id: string;
+  requestNo: string;
+  sourceProductionPlanId: string;
+  sourceProductionPlanNo: string;
+  status: PurchaseRequestStatus;
+  lines: PurchaseRequestLine[];
+  createdAt?: string;
+  createdBy?: string;
+  submittedAt?: string;
+  submittedBy?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  convertedAt?: string;
+  convertedBy?: string;
+  convertedPurchaseOrderId?: string;
+  convertedPurchaseOrderNo?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  rejectedAt?: string;
+  rejectedBy?: string;
+  rejectReason?: string;
+};
+
+export type PurchaseRequestQuery = {
+  search?: string;
+  status?: PurchaseRequestStatus | "";
+  sourceProductionPlanId?: string;
+};
+
+export type PurchaseRequestActionResult = {
+  purchaseRequest: PurchaseRequest;
+  previousStatus: PurchaseRequestStatus;
+  currentStatus: PurchaseRequestStatus;
+  auditLogId?: string;
+};
+
+export type ConvertPurchaseRequestToPurchaseOrderInput = {
+  supplierId: string;
+  warehouseId: string;
+  expectedDate: string;
+  currencyCode?: string;
+  unitPrice?: string;
+};
+
+export type ConvertPurchaseRequestToPurchaseOrderResult = {
+  purchaseRequest: PurchaseRequest;
+  purchaseOrder: PurchaseOrder;
+  auditLogId?: string;
+};

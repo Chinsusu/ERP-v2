@@ -15,7 +15,6 @@ import {
 import { getFormulas } from "@/modules/masterdata/services/formulaMasterDataService";
 import { finishedProductTypes, getProducts } from "@/modules/masterdata/services/productMasterDataService";
 import type { FormulaMasterDataItem, ProductMasterDataItem } from "@/modules/masterdata/types";
-import { purchaseSupplierOptions, purchaseWarehouseOptions } from "@/modules/purchase/services/purchaseOrderService";
 import { subcontractFactoryOptions } from "@/modules/subcontract/services/subcontractOrderService";
 import {
   createProductionPlans,
@@ -36,7 +35,6 @@ import {
   formulaBelongsToProduct
 } from "../services/productionPlanFormDefaults";
 import {
-  createPurchaseOrderFromProductionPlan,
   createSubcontractOrderFromProductionPlan
 } from "../services/productionPlanNextActions";
 import type { ProductionPlan, ProductionPlanDraftLine, ProductionPlanLine } from "../types";
@@ -49,14 +47,11 @@ export function ProductionPlanPrototype() {
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [nextActionSaving, setNextActionSaving] = useState<"" | "purchase" | "subcontract">("");
+  const [nextActionSaving, setNextActionSaving] = useState<"" | "subcontract">("");
   const [showCreatePlanForm, setShowCreatePlanForm] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | undefined>();
   const [nextActionError, setNextActionError] = useState<string | undefined>();
-  const [purchaseSupplierId, setPurchaseSupplierId] = useState(purchaseSupplierOptions[0]?.value ?? "");
-  const [purchaseWarehouseId, setPurchaseWarehouseId] = useState(purchaseWarehouseOptions[0]?.value ?? "");
-  const [purchaseExpectedDate, setPurchaseExpectedDate] = useState(defaultDateOffset(3));
   const [subcontractFactoryId, setSubcontractFactoryId] = useState(subcontractFactoryOptions[0]?.id ?? "");
   const [subcontractExpectedDate, setSubcontractExpectedDate] = useState(defaultDateOffset(14));
   const [toast, setToast] = useState<ToastMessage[]>([]);
@@ -134,9 +129,8 @@ export function ProductionPlanPrototype() {
   }, []);
 
   useEffect(() => {
-    setPurchaseExpectedDate(selectedPlan?.plannedStartDate ?? defaultDateOffset(3));
     setSubcontractExpectedDate(selectedPlan?.plannedEndDate ?? defaultDateOffset(14));
-  }, [selectedPlan?.id, selectedPlan?.plannedEndDate, selectedPlan?.plannedStartDate]);
+  }, [selectedPlan?.id, selectedPlan?.plannedEndDate]);
 
   const planColumns: DataTableColumn<ProductionPlan>[] = [
     {
@@ -334,26 +328,6 @@ export function ProductionPlanPrototype() {
 
   function formulasForLine(line: ProductionPlanDraftLine) {
     return activeFormulas.filter((formula) => formulaBelongsToProduct(formula, productForLine(line)));
-  }
-
-  async function createPurchaseOrderFromSelectedPlan() {
-    if (!selectedPlan) {
-      return;
-    }
-    setNextActionSaving("purchase");
-    setNextActionError(undefined);
-    try {
-      const order = await createPurchaseOrderFromProductionPlan(selectedPlan, {
-        supplierId: purchaseSupplierId,
-        warehouseId: purchaseWarehouseId,
-        expectedDate: purchaseExpectedDate
-      });
-      pushToast("Đã tạo PO", `${order.poNo} từ ${selectedPlan.planNo}`, "success");
-    } catch (actionError) {
-      setNextActionError(errorText(actionError));
-    } finally {
-      setNextActionSaving("");
-    }
   }
 
   async function createSubcontractOrderFromSelectedPlan() {
@@ -588,7 +562,7 @@ export function ProductionPlanPrototype() {
               </div>
               <div>
                 <dt>Bước tiếp theo</dt>
-                <dd>{selectedWorkflowContext.shortageLineCount > 0 ? "Tạo PO xử lý thiếu vật tư" : "Tạo lệnh gia công"}</dd>
+                <dd>{selectedWorkflowContext.shortageLineCount > 0 ? "Mở đề nghị mua xử lý thiếu vật tư" : "Tạo lệnh gia công"}</dd>
               </div>
             </dl>
           </article>
@@ -617,7 +591,7 @@ export function ProductionPlanPrototype() {
 
         {selectedPlan && selectedWorkflowContext ? (
           <FormSection
-            title="Bước 3 và 4: Tạo chứng từ tiếp theo"
+            title="Bước 3 trở đi: Tạo chứng từ tiếp theo"
             description={`Các chứng từ bên dưới luôn tạo từ kế hoạch đang xử lý: ${selectedPlan.planNo}.`}
           >
             <div className="erp-production-next-actions">
@@ -627,60 +601,25 @@ export function ProductionPlanPrototype() {
                   <h3>{selectedWorkflowContext.purchaseTitle}</h3>
                   <p>{selectedWorkflowContext.purchaseSummary}</p>
                 </header>
-                <div className="erp-production-next-action-fields">
-                  <label className="erp-field">
-                    <span>Nhà cung cấp</span>
-                    <select
-                      className="erp-input"
-                      value={purchaseSupplierId}
-                      onChange={(event) => setPurchaseSupplierId(event.currentTarget.value)}
-                    >
-                      {purchaseSupplierOptions.map((supplier) => (
-                        <option key={supplier.value} value={supplier.value}>
-                          {supplier.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="erp-field">
-                    <span>Kho nhận</span>
-                    <select
-                      className="erp-input"
-                      value={purchaseWarehouseId}
-                      onChange={(event) => setPurchaseWarehouseId(event.currentTarget.value)}
-                    >
-                      {purchaseWarehouseOptions.map((warehouse) => (
-                        <option key={warehouse.value} value={warehouse.value}>
-                          {warehouse.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="erp-field">
-                    <span>Ngày dự kiến</span>
-                    <input
-                      className="erp-input"
-                      type="date"
-                      value={purchaseExpectedDate}
-                      onChange={(event) => setPurchaseExpectedDate(event.currentTarget.value)}
-                    />
-                  </label>
-                </div>
                 <footer className="erp-production-next-action-footer">
-                  <button
-                    className="erp-button erp-button--primary"
-                    type="button"
-                    onClick={createPurchaseOrderFromSelectedPlan}
-                    disabled={nextActionSaving !== "" || selectedPlanPurchaseLineCount === 0}
-                  >
-                    {nextActionSaving === "purchase" ? "Đang tạo PO" : selectedWorkflowContext.purchaseButtonLabel}
-                  </button>
+                  {selectedPlanPurchaseLineCount > 0 && selectedPlan.purchaseRequestDraft.id ? (
+                    <Link
+                      className="erp-button erp-button--primary"
+                      href={`/purchase/requests/${encodeURIComponent(selectedPlan.purchaseRequestDraft.id)}`}
+                    >
+                      {selectedWorkflowContext.purchaseButtonLabel}
+                    </Link>
+                  ) : (
+                    <button className="erp-button erp-button--secondary" type="button" disabled>
+                      Không có đề nghị mua
+                    </button>
+                  )}
                 </footer>
               </article>
 
               <article className="erp-production-next-action-panel">
                 <header>
-                  <span className="erp-production-step-label">Bước 4</span>
+                  <span className="erp-production-step-label">Bước 7</span>
                   <h3>{selectedWorkflowContext.subcontractTitle}</h3>
                   <p>{selectedWorkflowContext.subcontractSummary}</p>
                 </header>

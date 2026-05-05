@@ -1418,6 +1418,170 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /purchase-requests:
+    get:
+      summary: List purchase requests generated from production plans
+      operationId: listPurchaseRequests
+      tags:
+        - purchase
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated purchase request statuses.
+        - name: source_production_plan_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Purchase request rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseRequestListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /purchase-requests/{purchase_request_id}:
+    get:
+      summary: Get purchase request detail
+      operationId: getPurchaseRequest
+      tags:
+        - purchase
+      parameters:
+        - name: purchase_request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Purchase request detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseRequestSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /purchase-requests/{purchase_request_id}/submit:
+    post:
+      summary: Submit a purchase request
+      operationId: submitPurchaseRequest
+      tags:
+        - purchase
+      parameters:
+        - name: purchase_request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseRequestActionRequest"
+      responses:
+        "200":
+          description: Purchase request submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseRequestActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /purchase-requests/{purchase_request_id}/approve:
+    post:
+      summary: Approve a purchase request
+      operationId: approvePurchaseRequest
+      tags:
+        - purchase
+      parameters:
+        - name: purchase_request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseRequestActionRequest"
+      responses:
+        "200":
+          description: Purchase request approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseRequestActionResultSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /purchase-requests/{purchase_request_id}/convert-to-po:
+    post:
+      summary: Convert an approved purchase request to a purchase order
+      operationId: convertPurchaseRequestToPurchaseOrder
+      tags:
+        - purchase
+      parameters:
+        - name: purchase_request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConvertPurchaseRequestToPurchaseOrderRequest"
+      responses:
+        "201":
+          description: Purchase order created from purchase request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertPurchaseRequestToPurchaseOrderSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /production-plans:
     get:
       summary: List production planning drafts
@@ -5912,6 +6076,11 @@ components:
       type: string
       enum:
         - draft
+        - submitted
+        - approved
+        - converted_to_po
+        - cancelled
+        - rejected
     CreateProductionPlanRequest:
       type: object
       required:
@@ -6121,6 +6290,37 @@ components:
           format: date-time
         created_by:
           type: string
+        submitted_at:
+          type: string
+          format: date-time
+        submitted_by:
+          type: string
+        approved_at:
+          type: string
+          format: date-time
+        approved_by:
+          type: string
+        converted_at:
+          type: string
+          format: date-time
+        converted_by:
+          type: string
+        converted_purchase_order_id:
+          type: string
+        converted_purchase_order_no:
+          type: string
+        cancelled_at:
+          type: string
+          format: date-time
+        cancelled_by:
+          type: string
+        rejected_at:
+          type: string
+          format: date-time
+        rejected_by:
+          type: string
+        reject_reason:
+          type: string
     PurchaseRequestDraftLine:
       type: object
       required:
@@ -6149,6 +6349,94 @@ components:
         uom_code:
           $ref: "#/components/schemas/UOMCode"
         note:
+          type: string
+    PurchaseRequestListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/PurchaseRequestDraft"
+    PurchaseRequestSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/PurchaseRequestDraft"
+    PurchaseRequestActionResultSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/PurchaseRequestActionResult"
+    ConvertPurchaseRequestToPurchaseOrderSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ConvertPurchaseRequestToPurchaseOrderResult"
+    PurchaseRequestActionRequest:
+      type: object
+      properties:
+        expected_status:
+          $ref: "#/components/schemas/PurchaseRequestDraftStatus"
+    ConvertPurchaseRequestToPurchaseOrderRequest:
+      type: object
+      required:
+        - supplier_id
+        - warehouse_id
+        - expected_date
+      properties:
+        supplier_id:
+          type: string
+        warehouse_id:
+          type: string
+        expected_date:
+          type: string
+          format: date
+        currency_code:
+          $ref: "#/components/schemas/CurrencyCode"
+        unit_price:
+          $ref: "#/components/schemas/UnitPriceAmount"
+    PurchaseRequestActionResult:
+      type: object
+      required:
+        - purchase_request
+        - previous_status
+        - current_status
+      properties:
+        purchase_request:
+          $ref: "#/components/schemas/PurchaseRequestDraft"
+        previous_status:
+          $ref: "#/components/schemas/PurchaseRequestDraftStatus"
+        current_status:
+          $ref: "#/components/schemas/PurchaseRequestDraftStatus"
+        audit_log_id:
+          type: string
+    ConvertPurchaseRequestToPurchaseOrderResult:
+      type: object
+      required:
+        - purchase_request
+        - purchase_order
+      properties:
+        purchase_request:
+          $ref: "#/components/schemas/PurchaseRequestDraft"
+        purchase_order:
+          $ref: "#/components/schemas/PurchaseOrder"
+        audit_log_id:
           type: string
     SupplierListSuccessResponse:
       type: object

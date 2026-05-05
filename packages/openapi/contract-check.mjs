@@ -43,6 +43,31 @@ const sprint4Routes = [
     operationIds: ["closePurchaseOrder"]
   },
   {
+    path: "/purchase-requests",
+    apiRoute: "/api/v1/purchase-requests",
+    operationIds: ["listPurchaseRequests"]
+  },
+  {
+    path: "/purchase-requests/{purchase_request_id}",
+    apiRoute: "/api/v1/purchase-requests/{purchase_request_id}",
+    operationIds: ["getPurchaseRequest"]
+  },
+  {
+    path: "/purchase-requests/{purchase_request_id}/submit",
+    apiRoute: "/api/v1/purchase-requests/{purchase_request_id}/submit",
+    operationIds: ["submitPurchaseRequest"]
+  },
+  {
+    path: "/purchase-requests/{purchase_request_id}/approve",
+    apiRoute: "/api/v1/purchase-requests/{purchase_request_id}/approve",
+    operationIds: ["approvePurchaseRequest"]
+  },
+  {
+    path: "/purchase-requests/{purchase_request_id}/convert-to-po",
+    apiRoute: "/api/v1/purchase-requests/{purchase_request_id}/convert-to-po",
+    operationIds: ["convertPurchaseRequestToPurchaseOrder"]
+  },
+  {
     path: "/goods-receipts",
     apiRoute: "/api/v1/goods-receipts",
     operationIds: ["listGoodsReceipts", "createGoodsReceipt"]
@@ -377,6 +402,10 @@ const requiredSuccessSchemas = [
   "PurchaseOrderListSuccessResponse",
   "PurchaseOrderSuccessResponse",
   "PurchaseOrderActionResultSuccessResponse",
+  "PurchaseRequestListSuccessResponse",
+  "PurchaseRequestSuccessResponse",
+  "PurchaseRequestActionResultSuccessResponse",
+  "ConvertPurchaseRequestToPurchaseOrderSuccessResponse",
   "GoodsReceiptListSuccessResponse",
   "GoodsReceiptSuccessResponse",
   "InboundQCInspectionListSuccessResponse",
@@ -438,7 +467,7 @@ for (const schemaName of requiredSuccessSchemas) {
 }
 
 const colonActionPattern =
-  /^  \/(purchase-orders|goods-receipts|inbound-qc-inspections|supplier-rejections|subcontract-orders|customer-receivables|supplier-payables|cash-transactions|finance\/dashboard|cod-remittances|reports\/(inventory-snapshot|operations-daily|finance-summary)|warehouse\/daily-board\/(inbound|subcontract)-metrics)[^\n]*:[A-Za-z0-9_-]+:/m;
+  /^  \/(purchase-orders|purchase-requests|goods-receipts|inbound-qc-inspections|supplier-rejections|subcontract-orders|customer-receivables|supplier-payables|cash-transactions|finance\/dashboard|cod-remittances|reports\/(inventory-snapshot|operations-daily|finance-summary)|warehouse\/daily-board\/(inbound|subcontract)-metrics)[^\n]*:[A-Za-z0-9_-]+:/m;
 if (colonActionPattern.test(openapi)) {
   failures.push("Tracked OpenAPI paths must use slash action style, not colon action style.");
 }

@@ -1,7 +1,13 @@
 import type { FormulaComponentType, ProductType } from "../../masterdata/types";
 
 export type ProductionPlanStatus = "draft" | "purchase_request_draft_created" | "cancelled";
-export type PurchaseRequestDraftStatus = "draft";
+export type PurchaseRequestDraftStatus =
+  | "draft"
+  | "submitted"
+  | "approved"
+  | "converted_to_po"
+  | "cancelled"
+  | "rejected";
 
 export type ProductionPlanLine = {
   id: string;
@@ -47,6 +53,19 @@ export type PurchaseRequestDraft = {
   lines: PurchaseRequestDraftLine[];
   createdAt?: string;
   createdBy?: string;
+  submittedAt?: string;
+  submittedBy?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  convertedAt?: string;
+  convertedBy?: string;
+  convertedPurchaseOrderId?: string;
+  convertedPurchaseOrderNo?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  rejectedAt?: string;
+  rejectedBy?: string;
+  rejectReason?: string;
 };
 
 export type ProductionPlan = {

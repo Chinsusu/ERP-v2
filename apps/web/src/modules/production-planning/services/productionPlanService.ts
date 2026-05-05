@@ -73,6 +73,19 @@ type PurchaseRequestDraftApi = {
   lines: PurchaseRequestDraftLineApi[];
   created_at?: string;
   created_by?: string;
+  submitted_at?: string;
+  submitted_by?: string;
+  approved_at?: string;
+  approved_by?: string;
+  converted_at?: string;
+  converted_by?: string;
+  converted_purchase_order_id?: string;
+  converted_purchase_order_no?: string;
+  cancelled_at?: string;
+  cancelled_by?: string;
+  rejected_at?: string;
+  rejected_by?: string;
+  reject_reason?: string;
 };
 
 type PurchaseRequestDraftLineApi = {
@@ -347,7 +360,20 @@ function fromApiPurchaseRequestDraft(draft: PurchaseRequestDraftApi): PurchaseRe
     status: draft.status,
     lines: draft.lines.map(fromApiPurchaseRequestDraftLine),
     createdAt: draft.created_at,
-    createdBy: draft.created_by
+    createdBy: draft.created_by,
+    submittedAt: draft.submitted_at,
+    submittedBy: draft.submitted_by,
+    approvedAt: draft.approved_at,
+    approvedBy: draft.approved_by,
+    convertedAt: draft.converted_at,
+    convertedBy: draft.converted_by,
+    convertedPurchaseOrderId: draft.converted_purchase_order_id,
+    convertedPurchaseOrderNo: draft.converted_purchase_order_no,
+    cancelledAt: draft.cancelled_at,
+    cancelledBy: draft.cancelled_by,
+    rejectedAt: draft.rejected_at,
+    rejectedBy: draft.rejected_by,
+    rejectReason: draft.reject_reason
   };
 }
 

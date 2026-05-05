@@ -16,6 +16,7 @@ var ErrProductionPlanInvalidQuantity = errors.New("production plan quantity is i
 var ErrProductionPlanInvalidUOM = errors.New("production plan uom is invalid")
 var ErrProductionPlanInvalidComponentType = errors.New("production plan component type is invalid")
 var ErrProductionPlanInvalidShortage = errors.New("production plan shortage is invalid")
+var ErrProductionPlanInvalidPurchaseRequestTransition = errors.New("purchase request status transition is invalid")
 
 type ProductionPlanStatus string
 
@@ -27,7 +28,14 @@ const (
 
 type PurchaseRequestDraftStatus string
 
-const PurchaseRequestDraftStatusDraft PurchaseRequestDraftStatus = "draft"
+const (
+	PurchaseRequestDraftStatusDraft         PurchaseRequestDraftStatus = "draft"
+	PurchaseRequestDraftStatusSubmitted     PurchaseRequestDraftStatus = "submitted"
+	PurchaseRequestDraftStatusApproved      PurchaseRequestDraftStatus = "approved"
+	PurchaseRequestDraftStatusConvertedToPO PurchaseRequestDraftStatus = "converted_to_po"
+	PurchaseRequestDraftStatusCancelled     PurchaseRequestDraftStatus = "cancelled"
+	PurchaseRequestDraftStatusRejected      PurchaseRequestDraftStatus = "rejected"
+)
 
 type ProductionPlan struct {
 	ID                  string
@@ -81,14 +89,27 @@ type ProductionPlanLine struct {
 }
 
 type PurchaseRequestDraft struct {
-	ID                     string
-	RequestNo              string
-	SourceProductionPlanID string
-	SourceProductionPlanNo string
-	Status                 PurchaseRequestDraftStatus
-	Lines                  []PurchaseRequestDraftLine
-	CreatedAt              time.Time
-	CreatedBy              string
+	ID                       string
+	RequestNo                string
+	SourceProductionPlanID   string
+	SourceProductionPlanNo   string
+	Status                   PurchaseRequestDraftStatus
+	Lines                    []PurchaseRequestDraftLine
+	CreatedAt                time.Time
+	CreatedBy                string
+	SubmittedAt              time.Time
+	SubmittedBy              string
+	ApprovedAt               time.Time
+	ApprovedBy               string
+	ConvertedAt              time.Time
+	ConvertedBy              string
+	ConvertedPurchaseOrderID string
+	ConvertedPurchaseOrderNo string
+	CancelledAt              time.Time
+	CancelledBy              string
+	RejectedAt               time.Time
+	RejectedBy               string
+	RejectReason             string
 }
 
 type PurchaseRequestDraftLine struct {
@@ -390,7 +411,7 @@ func (d PurchaseRequestDraft) Validate() error {
 		len(d.Lines) == 0 {
 		return ErrProductionPlanRequiredField
 	}
-	if d.Status != PurchaseRequestDraftStatusDraft {
+	if !IsValidPurchaseRequestDraftStatus(d.Status) {
 		return ErrProductionPlanInvalidStatus
 	}
 	for _, line := range d.Lines {
@@ -405,8 +426,92 @@ func (d PurchaseRequestDraft) Validate() error {
 			return ErrProductionPlanRequiredField
 		}
 	}
+	if d.Status == PurchaseRequestDraftStatusConvertedToPO &&
+		(strings.TrimSpace(d.ConvertedPurchaseOrderID) == "" || strings.TrimSpace(d.ConvertedPurchaseOrderNo) == "") {
+		return ErrProductionPlanRequiredField
+	}
 
 	return nil
+}
+
+func (d PurchaseRequestDraft) Submit(actorID string, changedAt time.Time) (PurchaseRequestDraft, error) {
+	return d.transitionTo(PurchaseRequestDraftStatusSubmitted, actorID, changedAt)
+}
+
+func (d PurchaseRequestDraft) Approve(actorID string, changedAt time.Time) (PurchaseRequestDraft, error) {
+	return d.transitionTo(PurchaseRequestDraftStatusApproved, actorID, changedAt)
+}
+
+func (d PurchaseRequestDraft) MarkConvertedToPO(actorID string, changedAt time.Time, purchaseOrderID string, purchaseOrderNo string) (PurchaseRequestDraft, error) {
+	actorID = strings.TrimSpace(actorID)
+	purchaseOrderID = strings.TrimSpace(purchaseOrderID)
+	purchaseOrderNo = strings.ToUpper(strings.TrimSpace(purchaseOrderNo))
+	if actorID == "" || purchaseOrderID == "" || purchaseOrderNo == "" {
+		return PurchaseRequestDraft{}, ErrProductionPlanRequiredField
+	}
+	from := NormalizePurchaseRequestDraftStatus(d.Status)
+	to := PurchaseRequestDraftStatusConvertedToPO
+	if !CanTransitionPurchaseRequestDraftStatus(from, to) {
+		return PurchaseRequestDraft{}, ErrProductionPlanInvalidPurchaseRequestTransition
+	}
+	if changedAt.IsZero() {
+		changedAt = time.Now().UTC()
+	}
+
+	converted := d.Clone()
+	converted.Status = to
+	converted.ConvertedPurchaseOrderID = purchaseOrderID
+	converted.ConvertedPurchaseOrderNo = purchaseOrderNo
+	converted.markPurchaseRequestDraftTransition(to, actorID, changedAt.UTC())
+	if err := converted.Validate(); err != nil {
+		return PurchaseRequestDraft{}, err
+	}
+
+	return converted, nil
+}
+
+func (d PurchaseRequestDraft) transitionTo(status PurchaseRequestDraftStatus, actorID string, changedAt time.Time) (PurchaseRequestDraft, error) {
+	actorID = strings.TrimSpace(actorID)
+	if actorID == "" {
+		return PurchaseRequestDraft{}, ErrProductionPlanRequiredField
+	}
+	from := NormalizePurchaseRequestDraftStatus(d.Status)
+	to := NormalizePurchaseRequestDraftStatus(status)
+	if !CanTransitionPurchaseRequestDraftStatus(from, to) {
+		return PurchaseRequestDraft{}, ErrProductionPlanInvalidPurchaseRequestTransition
+	}
+	if changedAt.IsZero() {
+		changedAt = time.Now().UTC()
+	}
+
+	updated := d.Clone()
+	updated.Status = to
+	updated.markPurchaseRequestDraftTransition(to, actorID, changedAt.UTC())
+	if err := updated.Validate(); err != nil {
+		return PurchaseRequestDraft{}, err
+	}
+
+	return updated, nil
+}
+
+func (d *PurchaseRequestDraft) markPurchaseRequestDraftTransition(status PurchaseRequestDraftStatus, actorID string, changedAt time.Time) {
+	switch status {
+	case PurchaseRequestDraftStatusSubmitted:
+		d.SubmittedAt = changedAt
+		d.SubmittedBy = actorID
+	case PurchaseRequestDraftStatusApproved:
+		d.ApprovedAt = changedAt
+		d.ApprovedBy = actorID
+	case PurchaseRequestDraftStatusConvertedToPO:
+		d.ConvertedAt = changedAt
+		d.ConvertedBy = actorID
+	case PurchaseRequestDraftStatusCancelled:
+		d.CancelledAt = changedAt
+		d.CancelledBy = actorID
+	case PurchaseRequestDraftStatusRejected:
+		d.RejectedAt = changedAt
+		d.RejectedBy = actorID
+	}
 }
 
 func (p ProductionPlan) Clone() ProductionPlan {
@@ -434,6 +539,39 @@ func IsValidProductionPlanStatus(status ProductionPlanStatus) bool {
 	switch NormalizeProductionPlanStatus(status) {
 	case ProductionPlanStatusDraft, ProductionPlanStatusPurchaseRequestDraftCreated, ProductionPlanStatusCancelled:
 		return true
+	default:
+		return false
+	}
+}
+
+func IsValidPurchaseRequestDraftStatus(status PurchaseRequestDraftStatus) bool {
+	switch NormalizePurchaseRequestDraftStatus(status) {
+	case PurchaseRequestDraftStatusDraft,
+		PurchaseRequestDraftStatusSubmitted,
+		PurchaseRequestDraftStatusApproved,
+		PurchaseRequestDraftStatusConvertedToPO,
+		PurchaseRequestDraftStatusCancelled,
+		PurchaseRequestDraftStatusRejected:
+		return true
+	default:
+		return false
+	}
+}
+
+func NormalizePurchaseRequestDraftStatus(status PurchaseRequestDraftStatus) PurchaseRequestDraftStatus {
+	return PurchaseRequestDraftStatus(strings.ToLower(strings.TrimSpace(string(status))))
+}
+
+func CanTransitionPurchaseRequestDraftStatus(from PurchaseRequestDraftStatus, to PurchaseRequestDraftStatus) bool {
+	from = NormalizePurchaseRequestDraftStatus(from)
+	to = NormalizePurchaseRequestDraftStatus(to)
+	switch from {
+	case PurchaseRequestDraftStatusDraft:
+		return to == PurchaseRequestDraftStatusSubmitted || to == PurchaseRequestDraftStatusCancelled
+	case PurchaseRequestDraftStatusSubmitted:
+		return to == PurchaseRequestDraftStatusApproved || to == PurchaseRequestDraftStatusRejected || to == PurchaseRequestDraftStatusCancelled
+	case PurchaseRequestDraftStatusApproved:
+		return to == PurchaseRequestDraftStatusConvertedToPO || to == PurchaseRequestDraftStatusCancelled
 	default:
 		return false
 	}
