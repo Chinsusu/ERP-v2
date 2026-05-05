@@ -14,11 +14,26 @@ export const productionPlanWorkflowSteps = [
   },
   {
     number: 3,
-    label: "Tạo PO",
-    description: "Tạo đơn mua từ các dòng vật tư còn thiếu."
+    label: "Mở đề nghị mua",
+    description: "Mở đề nghị mua sinh từ các dòng vật tư còn thiếu."
   },
   {
     number: 4,
+    label: "Duyệt đề nghị mua",
+    description: "Gửi duyệt và duyệt đề nghị mua trước khi tạo PO."
+  },
+  {
+    number: 5,
+    label: "Tạo PO",
+    description: "Tạo PO từ đề nghị mua đã duyệt."
+  },
+  {
+    number: 6,
+    label: "Nhập kho/QC vật tư",
+    description: "Theo dõi vật tư mua về kho và QC nếu cần kiểm soát."
+  },
+  {
+    number: 7,
     label: "Tạo lệnh gia công",
     description: "Chuyển kế hoạch đủ vật tư sang lệnh sản xuất/gia công."
   }
@@ -55,12 +70,12 @@ export function buildProductionPlanWorkflowContext(plan: ProductionPlan): Produc
     purchaseLineCount,
     materialStatusLabel: shortageLineCount > 0 ? `Thiếu ${shortageLineCount} dòng vật tư` : "Đủ vật tư",
     materialStatusTone: shortageLineCount > 0 ? "warning" : "success",
-    purchaseTitle: `Tạo PO từ ${plan.planNo}`,
+    purchaseTitle: `Đề nghị mua từ ${plan.planNo}`,
     purchaseSummary:
       purchaseLineCount > 0
-        ? `${purchaseLineCount} dòng vật tư cần mua cho ${plan.outputSku} - ${quantityLabel}.`
+        ? `${purchaseLineCount} dòng vật tư cần mua cho ${plan.outputSku} - ${quantityLabel}; mở đề nghị mua để gửi duyệt và tạo PO.`
         : "Kế hoạch này không có dòng đề nghị mua.",
-    purchaseButtonLabel: "Tạo PO từ kế hoạch này",
+    purchaseButtonLabel: "Mở đề nghị mua",
     subcontractTitle: `Tạo lệnh gia công từ ${plan.planNo}`,
     subcontractSummary:
       shortageLineCount === 0

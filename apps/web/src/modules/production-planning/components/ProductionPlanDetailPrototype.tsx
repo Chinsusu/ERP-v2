@@ -301,14 +301,23 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
       <section className="erp-masterdata-list-card">
         <header className="erp-section-header">
           <div>
-            <h2 className="erp-section-title">Đề nghị mua nháp từ kế hoạch</h2>
+            <h2 className="erp-section-title">Đề nghị mua từ kế hoạch</h2>
             <p className="erp-page-description">
-              Các dòng này là nguồn để tạo PO vật tư thiếu. PO/Nhập kho/QC thật hiện theo dõi ở module tương ứng.
+              Mở đề nghị mua để gửi duyệt, duyệt và tạo PO vật tư thiếu cho kế hoạch này.
             </p>
           </div>
-          <Link className="erp-button erp-button--secondary" href={`/purchase?search=${encodeURIComponent(plan.planNo)}#purchase-list`}>
-            Mở mua hàng
-          </Link>
+          {plan.purchaseRequestDraft.id ? (
+            <Link
+              className="erp-button erp-button--secondary"
+              href={`/purchase/requests/${encodeURIComponent(plan.purchaseRequestDraft.id)}`}
+            >
+              Mở đề nghị mua
+            </Link>
+          ) : (
+            <Link className="erp-button erp-button--secondary" href={`/purchase?search=${encodeURIComponent(plan.planNo)}#purchase-list`}>
+              Mở mua hàng
+            </Link>
+          )}
         </header>
         <DataTable
           columns={purchaseDraftColumns}

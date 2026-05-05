@@ -8,6 +8,7 @@ import (
 
 	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
+	productiondomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/domain"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/audit"
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
@@ -109,6 +110,111 @@ func TestProductionPlanServiceDoesNotCreatePurchaseDraftWhenEnoughStock(t *testi
 	}
 }
 
+func TestProductionPlanServiceSubmitsApprovesAndConvertsPurchaseRequestDraft(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 5, 5, 9, 0, 0, 0, time.UTC)
+	store := NewPrototypeProductionPlanStore(audit.NewInMemoryLogStore())
+	service := newProductionPlanServiceWithShortage(t, store)
+	service.clock = func() time.Time { return now }
+
+	created, err := service.CreateProductionPlan(ctx, CreateProductionPlanInput{
+		ID:           "plan-001",
+		PlanNo:       "PP-260505-0001",
+		OutputItemID: "item-xff-150",
+		PlannedQty:   "162",
+		UOMCode:      "PCS",
+		ActorID:      "user-production",
+	})
+	if err != nil {
+		t.Fatalf("CreateProductionPlan() error = %v", err)
+	}
+	draftID := created.ProductionPlan.PurchaseDraft.ID
+
+	_, err = service.SubmitPurchaseRequestDraft(ctx, PurchaseRequestDraftActionInput{
+		ID:             draftID,
+		ExpectedStatus: productiondomain.PurchaseRequestDraftStatusSubmitted,
+		ActorID:        "user-purchase",
+		RequestID:      "req-pr-submit-stale",
+	})
+	if !errors.Is(err, productiondomain.ErrProductionPlanInvalidPurchaseRequestTransition) {
+		t.Fatalf("stale submit error = %v, want ErrProductionPlanInvalidPurchaseRequestTransition", err)
+	}
+
+	submitted, err := service.SubmitPurchaseRequestDraft(ctx, PurchaseRequestDraftActionInput{
+		ID:        draftID,
+		ActorID:   "user-purchase",
+		RequestID: "req-pr-submit",
+	})
+	if err != nil {
+		t.Fatalf("SubmitPurchaseRequestDraft() error = %v", err)
+	}
+	if submitted.CurrentStatus != productiondomain.PurchaseRequestDraftStatusSubmitted {
+		t.Fatalf("submitted status = %q, want submitted", submitted.CurrentStatus)
+	}
+	service.clock = func() time.Time { return now.Add(time.Hour) }
+	approved, err := service.ApprovePurchaseRequestDraft(ctx, PurchaseRequestDraftActionInput{
+		ID:        draftID,
+		ActorID:   "user-manager",
+		RequestID: "req-pr-approve",
+	})
+	if err != nil {
+		t.Fatalf("ApprovePurchaseRequestDraft() error = %v", err)
+	}
+	if approved.CurrentStatus != productiondomain.PurchaseRequestDraftStatusApproved {
+		t.Fatalf("approved status = %q, want approved", approved.CurrentStatus)
+	}
+	service.clock = func() time.Time { return now.Add(2 * time.Hour) }
+	converted, err := service.MarkPurchaseRequestDraftConverted(ctx, ConvertPurchaseRequestDraftInput{
+		ID:              draftID,
+		PurchaseOrderID: "po-260505-0001",
+		PurchaseOrderNo: "PO-260505-0001",
+		ActorID:         "user-purchase",
+		RequestID:       "req-pr-convert",
+	})
+	if err != nil {
+		t.Fatalf("MarkPurchaseRequestDraftConverted() error = %v", err)
+	}
+	if converted.PurchaseRequestDraft.Status != productiondomain.PurchaseRequestDraftStatusConvertedToPO {
+		t.Fatalf("converted status = %q, want converted_to_po", converted.PurchaseRequestDraft.Status)
+	}
+	if converted.PurchaseRequestDraft.ConvertedPurchaseOrderID != "po-260505-0001" {
+		t.Fatalf("converted PO id = %q, want po-260505-0001", converted.PurchaseRequestDraft.ConvertedPurchaseOrderID)
+	}
+
+	drafts, err := service.ListPurchaseRequestDrafts(ctx, PurchaseRequestDraftFilter{Search: "PP-260505"})
+	if err != nil {
+		t.Fatalf("ListPurchaseRequestDrafts() error = %v", err)
+	}
+	if len(drafts) != 1 || drafts[0].Status != productiondomain.PurchaseRequestDraftStatusConvertedToPO {
+		t.Fatalf("drafts = %+v, want one converted draft", drafts)
+	}
+}
+
+func TestProductionPlanServiceRejectsPurchaseRequestApprovalBeforeSubmit(t *testing.T) {
+	ctx := context.Background()
+	store := NewPrototypeProductionPlanStore(audit.NewInMemoryLogStore())
+	service := newProductionPlanServiceWithShortage(t, store)
+	created, err := service.CreateProductionPlan(ctx, CreateProductionPlanInput{
+		ID:           "plan-001",
+		PlanNo:       "PP-260505-0001",
+		OutputItemID: "item-xff-150",
+		PlannedQty:   "162",
+		UOMCode:      "PCS",
+		ActorID:      "user-production",
+	})
+	if err != nil {
+		t.Fatalf("CreateProductionPlan() error = %v", err)
+	}
+
+	_, err = service.ApprovePurchaseRequestDraft(ctx, PurchaseRequestDraftActionInput{
+		ID:      created.ProductionPlan.PurchaseDraft.ID,
+		ActorID: "user-manager",
+	})
+	if !errors.Is(err, productiondomain.ErrProductionPlanInvalidPurchaseRequestTransition) {
+		t.Fatalf("error = %v, want ErrProductionPlanInvalidPurchaseRequestTransition", err)
+	}
+}
+
 func TestProductionPlanServiceAcceptsPublicItemReferenceResolvedByFormulaList(t *testing.T) {
 	ctx := context.Background()
 	formula := activeProductionPlanFormula(t)
@@ -134,6 +240,24 @@ func TestProductionPlanServiceAcceptsPublicItemReferenceResolvedByFormulaList(t 
 	if result.ProductionPlan.OutputItemID != formula.FinishedItemID {
 		t.Fatalf("OutputItemID = %q, want formula finished item UUID %q", result.ProductionPlan.OutputItemID, formula.FinishedItemID)
 	}
+}
+
+func newProductionPlanServiceWithShortage(t *testing.T, store *PrototypeProductionPlanStore) ProductionPlanService {
+	t.Helper()
+	return NewProductionPlanService(
+		store,
+		fakeProductionPlanFormulaReader{formula: activeProductionPlanFormula(t)},
+		fakeProductionPlanAvailableStock{
+			rows: []inventorydomain.AvailableStockSnapshot{
+				{
+					ItemID:       "item-act-baicapil",
+					SKU:          "ACT_BAICAPIL",
+					BaseUOMCode:  decimal.MustUOMCode("KG"),
+					AvailableQty: decimal.MustQuantity("0.000500"),
+				},
+			},
+		},
+	)
 }
 
 func TestProductionPlanServiceAcceptsPublicItemReferenceWithExplicitFormulaID(t *testing.T) {

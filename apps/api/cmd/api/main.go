@@ -2090,12 +2090,17 @@ func main() {
 		codRemittanceClose:              codRemittanceCloseHandler(codRemittanceService),
 	})
 	registerPurchaseRoutes(routes, purchaseRouteHandlers{
-		purchaseOrders:       purchaseOrdersHandler(purchaseOrderService),
-		purchaseOrderDetail:  purchaseOrderDetailHandler(purchaseOrderService),
-		purchaseOrderSubmit:  purchaseOrderSubmitHandler(purchaseOrderService),
-		purchaseOrderApprove: purchaseOrderApproveHandler(purchaseOrderService),
-		purchaseOrderCancel:  purchaseOrderCancelHandler(purchaseOrderService),
-		purchaseOrderClose:   purchaseOrderCloseHandler(purchaseOrderService),
+		purchaseOrders:         purchaseOrdersHandler(purchaseOrderService),
+		purchaseOrderDetail:    purchaseOrderDetailHandler(purchaseOrderService),
+		purchaseOrderSubmit:    purchaseOrderSubmitHandler(purchaseOrderService),
+		purchaseOrderApprove:   purchaseOrderApproveHandler(purchaseOrderService),
+		purchaseOrderCancel:    purchaseOrderCancelHandler(purchaseOrderService),
+		purchaseOrderClose:     purchaseOrderCloseHandler(purchaseOrderService),
+		purchaseRequests:       purchaseRequestsHandler(productionPlanService),
+		purchaseRequestDetail:  purchaseRequestDetailHandler(productionPlanService),
+		purchaseRequestSubmit:  purchaseRequestSubmitHandler(productionPlanService),
+		purchaseRequestApprove: purchaseRequestApproveHandler(productionPlanService),
+		purchaseRequestConvert: purchaseRequestConvertToPOHandler(productionPlanService, purchaseOrderService),
 	})
 	registerProductionRoutes(routes, productionRouteHandlers{
 		productionPlans:      productionPlansHandler(productionPlanService),

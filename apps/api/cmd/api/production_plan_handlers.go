@@ -59,14 +59,27 @@ type purchaseRequestDraftLineResponse struct {
 }
 
 type purchaseRequestDraftResponse struct {
-	ID                     string                             `json:"id,omitempty"`
-	RequestNo              string                             `json:"request_no,omitempty"`
-	SourceProductionPlanID string                             `json:"source_production_plan_id,omitempty"`
-	SourceProductionPlanNo string                             `json:"source_production_plan_no,omitempty"`
-	Status                 string                             `json:"status,omitempty"`
-	Lines                  []purchaseRequestDraftLineResponse `json:"lines"`
-	CreatedAt              string                             `json:"created_at,omitempty"`
-	CreatedBy              string                             `json:"created_by,omitempty"`
+	ID                       string                             `json:"id,omitempty"`
+	RequestNo                string                             `json:"request_no,omitempty"`
+	SourceProductionPlanID   string                             `json:"source_production_plan_id,omitempty"`
+	SourceProductionPlanNo   string                             `json:"source_production_plan_no,omitempty"`
+	Status                   string                             `json:"status,omitempty"`
+	Lines                    []purchaseRequestDraftLineResponse `json:"lines"`
+	CreatedAt                string                             `json:"created_at,omitempty"`
+	CreatedBy                string                             `json:"created_by,omitempty"`
+	SubmittedAt              string                             `json:"submitted_at,omitempty"`
+	SubmittedBy              string                             `json:"submitted_by,omitempty"`
+	ApprovedAt               string                             `json:"approved_at,omitempty"`
+	ApprovedBy               string                             `json:"approved_by,omitempty"`
+	ConvertedAt              string                             `json:"converted_at,omitempty"`
+	ConvertedBy              string                             `json:"converted_by,omitempty"`
+	ConvertedPurchaseOrderID string                             `json:"converted_purchase_order_id,omitempty"`
+	ConvertedPurchaseOrderNo string                             `json:"converted_purchase_order_no,omitempty"`
+	CancelledAt              string                             `json:"cancelled_at,omitempty"`
+	CancelledBy              string                             `json:"cancelled_by,omitempty"`
+	RejectedAt               string                             `json:"rejected_at,omitempty"`
+	RejectedBy               string                             `json:"rejected_by,omitempty"`
+	RejectReason             string                             `json:"reject_reason,omitempty"`
 }
 
 type productionPlanResponse struct {
@@ -271,14 +284,27 @@ func newPurchaseRequestDraftResponse(draft productiondomain.PurchaseRequestDraft
 	}
 
 	return purchaseRequestDraftResponse{
-		ID:                     draft.ID,
-		RequestNo:              draft.RequestNo,
-		SourceProductionPlanID: draft.SourceProductionPlanID,
-		SourceProductionPlanNo: draft.SourceProductionPlanNo,
-		Status:                 string(draft.Status),
-		Lines:                  lines,
-		CreatedAt:              timeString(draft.CreatedAt),
-		CreatedBy:              draft.CreatedBy,
+		ID:                       draft.ID,
+		RequestNo:                draft.RequestNo,
+		SourceProductionPlanID:   draft.SourceProductionPlanID,
+		SourceProductionPlanNo:   draft.SourceProductionPlanNo,
+		Status:                   string(draft.Status),
+		Lines:                    lines,
+		CreatedAt:                timeString(draft.CreatedAt),
+		CreatedBy:                draft.CreatedBy,
+		SubmittedAt:              timeString(draft.SubmittedAt),
+		SubmittedBy:              draft.SubmittedBy,
+		ApprovedAt:               timeString(draft.ApprovedAt),
+		ApprovedBy:               draft.ApprovedBy,
+		ConvertedAt:              timeString(draft.ConvertedAt),
+		ConvertedBy:              draft.ConvertedBy,
+		ConvertedPurchaseOrderID: draft.ConvertedPurchaseOrderID,
+		ConvertedPurchaseOrderNo: draft.ConvertedPurchaseOrderNo,
+		CancelledAt:              timeString(draft.CancelledAt),
+		CancelledBy:              draft.CancelledBy,
+		RejectedAt:               timeString(draft.RejectedAt),
+		RejectedBy:               draft.RejectedBy,
+		RejectReason:             draft.RejectReason,
 	}
 }
 
@@ -286,6 +312,8 @@ func writeProductionPlanError(w http.ResponseWriter, r *http.Request, err error)
 	switch {
 	case errors.Is(err, productionapp.ErrProductionPlanNotFound):
 		response.WriteError(w, r, http.StatusNotFound, productionapp.ErrorCodeProductionPlanNotFound, "Production plan was not found", nil)
+	case errors.Is(err, productionapp.ErrPurchaseRequestDraftNotFound):
+		response.WriteError(w, r, http.StatusNotFound, productionapp.ErrorCodePurchaseRequestNotFound, "Purchase request was not found", nil)
 	case errors.Is(err, productionapp.ErrProductionPlanFormulaNotFound):
 		response.WriteError(w, r, http.StatusBadRequest, productionapp.ErrorCodeProductionPlanValidation, "Active formula was not found for the output item", nil)
 	case errors.Is(err, productionapp.ErrProductionPlanFormulaInactive):
@@ -297,6 +325,8 @@ func writeProductionPlanError(w http.ResponseWriter, r *http.Request, err error)
 		errors.Is(err, productiondomain.ErrProductionPlanInvalidComponentType),
 		errors.Is(err, productiondomain.ErrProductionPlanInvalidShortage):
 		response.WriteError(w, r, http.StatusBadRequest, productionapp.ErrorCodeProductionPlanValidation, "Production plan payload is invalid", nil)
+	case errors.Is(err, productiondomain.ErrProductionPlanInvalidPurchaseRequestTransition):
+		response.WriteError(w, r, http.StatusConflict, productionapp.ErrorCodePurchaseRequestInvalid, "Purchase request status transition is invalid", nil)
 	default:
 		response.WriteError(w, r, http.StatusInternalServerError, response.ErrorCodeInvalidState, "Production plan could not be processed", nil)
 	}

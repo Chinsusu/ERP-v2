@@ -230,28 +230,26 @@ Production Plan
 -> Subcontract manufacturing
 ```
 
-The current runtime has already implemented an interim shortcut:
+The follow-up runtime bridge promotes the Purchase Request into a first-class workflow:
 
 ```text
 Production Plan
 -> embedded Purchase Request draft lines
--> direct PO creation from the selected plan
+-> Purchase Request detail page
+-> submit/approve Purchase Request
+-> convert approved Purchase Request to PO
 -> PO detail page
 -> receiving context for that PO
 -> related goods receipt visibility
 ```
 
-This shortcut is acceptable for the controlled Sprint 23 bridge and demo flow, but it is not the final approval boundary. The next hardening sprint should either:
+This replaces the earlier direct-PO shortcut from `/production`. `/production` should now open the generated Purchase Request, while PO creation belongs to the Purchase Request page after approval.
 
-```text
-1. Promote Purchase Request into a first-class module with submit/approve/convert-to-PO states.
-2. Or explicitly document direct PO creation as a temporary production-planning shortcut until PR approval is implemented.
-```
+Reference design: `94_ERP_Purchase_Request_Workflow_Production_Plan_PO_Traceability_MyPham_v1.md`.
 
 Current remaining gaps:
 
 ```text
-- No first-class Purchase Request list/detail/approval page yet.
 - Production Plan status does not yet derive from PO/receiving/QC/subcontract progress.
 - PO and Production Plan receiving visibility is based on PO goods-receipt references, not a full source-document relation table.
 - Inbound QC and subcontract detail pages are still linked as separate module follow-ups.

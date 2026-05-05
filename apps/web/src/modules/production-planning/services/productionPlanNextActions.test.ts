@@ -1,49 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildPurchaseOrderFromProductionPlan,
-  buildSubcontractOrderFromProductionPlan
-} from "./productionPlanNextActions";
+import { buildSubcontractOrderFromProductionPlan } from "./productionPlanNextActions";
 import type { ProductionPlan } from "../types";
 
 describe("productionPlanNextActions", () => {
-  it("builds a purchase order from the production plan purchase request draft", () => {
-    const input = buildPurchaseOrderFromProductionPlan(shortagePlan, {
-      supplierId: "sup-rm-bioactive",
-      warehouseId: "wh-hcm-rm",
-      expectedDate: "2026-05-12",
-      unitPrice: "0"
-    });
-
-    expect(input).toMatchObject({
-      supplierId: "sup-rm-bioactive",
-      warehouseId: "wh-hcm-rm",
-      expectedDate: "2026-05-12",
-      currencyCode: "VND"
-    });
-    expect(input.note).toContain("PP-260504-0001");
-    expect(input.note).toContain("PR-DRAFT-260504-0001");
-    expect(input.lines).toEqual([
-      expect.objectContaining({
-        itemId: "item-act-baicapil",
-        orderedQty: "0.161500",
-        uomCode: "KG",
-        unitPrice: "0",
-        expectedDate: "2026-05-12",
-        note: expect.stringContaining("ACT_BAICAPIL")
-      })
-    ]);
-  });
-
-  it("rejects purchase order creation when the plan has no purchase draft lines", () => {
-    expect(() =>
-      buildPurchaseOrderFromProductionPlan(availablePlan, {
-        supplierId: "sup-rm-bioactive",
-        warehouseId: "wh-hcm-rm",
-        expectedDate: "2026-05-12"
-      })
-    ).toThrow("Production plan has no purchase request draft lines");
-  });
-
   it("builds a subcontract order from a material-ready production plan", () => {
     const input = buildSubcontractOrderFromProductionPlan(availablePlan, {
       factoryId: "sup-out-lotus",

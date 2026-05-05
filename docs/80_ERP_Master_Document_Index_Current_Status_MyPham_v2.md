@@ -34,7 +34,7 @@ Latest release tag: v0.19.0-vietnamese-ui-localization.
 Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
 Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
 Sprint 22 status: UAT pilot pack prepared; S22-ISSUE-001 resolved by PR #546 at db894ddb; Session 0 readiness rerun passed; business UAT execution, business issue triage, Go/No-Go decision, and v0.22 tag are pending.
-Sprint 23 implementation status: first runtime bridge selected in file 92 adds /production planning UI, backend production-plan API, active-formula snapshot, material demand/shortage calculation, internal Purchase Request draft lines, PostgreSQL persistence, and OpenAPI contract coverage; stock transfer, warehouse issue note, Purchase Request approval/PO conversion, costing, and ledger-backed inventory dashboard remain pending; no v0.23 tag exists.
+Sprint 23 implementation status: first runtime bridge selected in file 92 adds /production planning UI, backend production-plan API, active-formula snapshot, material demand/shortage calculation, internal Purchase Request draft lines, PostgreSQL persistence, and OpenAPI contract coverage; follow-up file 94 promotes Purchase Request submit/approve/convert-to-PO workflow in branch scope pending PR/CI/merge/dev-smoke evidence; stock transfer, warehouse issue note, costing, and ledger-backed inventory dashboard remain pending; no v0.23 tag exists.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -44,6 +44,7 @@ Locale: vi-VN.
 Currency: VND.
 Timezone: Asia/Ho_Chi_Minh.
 Phase 1 production entrypoints: /production is planning/material-demand/PR-draft review; /subcontract remains external factory execution.
+Purchase flow boundary: /production opens generated Purchase Request; PO creation belongs to approved Purchase Request conversion, not direct production-page shortcut.
 Internal work-center/MES production remains out of Phase 1 scope.
 ```
 
@@ -76,11 +77,12 @@ For a new engineer or reviewer:
 12. 90_ERP_Coding_Task_Board_Sprint23_Inventory_Purchase_Warehouse_Documents_MyPham_v1.md
 13. 91_ERP_Module_Roadmap_From_Note_Sheet_Production_Purchase_Warehouse_MyPham_v1.md
 14. 92_ERP_Coding_Task_Board_Sprint23_Production_Planning_Material_Demand_MyPham_v1.md
-15. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
-16. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
-17. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
-18. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
-19. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
+15. 94_ERP_Purchase_Request_Workflow_Production_Plan_PO_Traceability_MyPham_v1.md
+16. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
+17. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
+18. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
+19. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
+20. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
 ```
 
 For product or operations review:
@@ -99,8 +101,9 @@ For product or operations review:
 11. 90 Sprint 23 candidate task board
 12. 91 Note-sheet module roadmap and sequencing decision
 13. 92 Selected Sprint 23 production planning/material demand task board
-14. 88 BOM / formula module design
-15. 78 Production runtime checklist
+14. 94 Purchase Request workflow and PO traceability bridge
+15. 88 BOM / formula module design
+16. 78 Production runtime checklist
 ```
 
 ---
@@ -185,6 +188,7 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | `90_ERP_Coding_Task_Board_Sprint23_Inventory_Purchase_Warehouse_Documents_MyPham_v1.md` | Follow-up Sprint 23 candidate task board | Before starting Stock Transfer, Warehouse Issue Note, and ledger-backed Inventory Dashboard implementation after the production-demand bridge is stable |
 | `91_ERP_Module_Roadmap_From_Note_Sheet_Production_Purchase_Warehouse_MyPham_v1.md` | Note-sheet module roadmap and sequencing decision | Before choosing the next implementation order from dashboard, setup, sales, production planning, purchasing, warehouse, and costing requests |
 | `92_ERP_Coding_Task_Board_Sprint23_Production_Planning_Material_Demand_MyPham_v1.md` | Selected first Sprint 23 task board | Before changing production planning, formula snapshot, material demand calculation, and Purchase Request draft generation |
+| `94_ERP_Purchase_Request_Workflow_Production_Plan_PO_Traceability_MyPham_v1.md` | Purchase Request workflow bridge | Before changing production-plan to Purchase Request to PO traceability, approval, or conversion behavior |
 
 ---
 
@@ -224,7 +228,7 @@ Production-like auth smoke evidence must be recorded per target environment befo
 Any future production-like release must record whether prototype fallback gaps remain.
 Sprint 22 business UAT execution remains pending until business users run the prepared scripts.
 Sprint 23 selected implementation track is file 92: production planning, material demand, and Purchase Request draft.
-First Sprint 23 runtime bridge has been implemented in branch scope; PR/CI/merge/dev-smoke evidence must be recorded before claiming mainline completion.
+Sprint 23 follow-up Purchase Request workflow design is file 94; PR/CI/merge/dev-smoke evidence must be recorded before claiming mainline completion.
 File 90 remains the follow-up track for Stock Transfer, Warehouse Issue Note, and ledger-backed Inventory Dashboard hardening.
 Stock Transfer must remain same-SKU only; SKU-changing movements require separate conversion/repack design.
 Purchase Request must remain separate from PO, receiving, payment, and invoice source documents.

@@ -3,23 +3,26 @@ import { buildProductionPlanWorkflowContext, productionPlanWorkflowSteps } from 
 import type { ProductionPlan } from "../types";
 
 describe("productionPlanWorkflowContext", () => {
-  it("builds selected-plan context for the one-page purchase order flow", () => {
+  it("builds selected-plan context for the purchase request workflow", () => {
     const context = buildProductionPlanWorkflowContext(shortagePlan);
 
     expect(productionPlanWorkflowSteps.map((step) => `Bước ${step.number}: ${step.label}`)).toEqual([
       "Bước 1: Chọn kế hoạch sản xuất",
       "Bước 2: Tính nhu cầu vật tư",
-      "Bước 3: Tạo PO",
-      "Bước 4: Tạo lệnh gia công"
+      "Bước 3: Mở đề nghị mua",
+      "Bước 4: Duyệt đề nghị mua",
+      "Bước 5: Tạo PO",
+      "Bước 6: Nhập kho/QC vật tư",
+      "Bước 7: Tạo lệnh gia công"
     ]);
     expect(context.planLabel).toBe("PP-260504-0001 - XFF - 162 PCS");
     expect(context.outputLabel).toBe("XFF - Tinh chat buoi Fast & Furious 150ML");
     expect(context.formulaLabel).toBe("XFF-150ML - v1");
     expect(context.materialStatusLabel).toBe("Thiếu 1 dòng vật tư");
     expect(context.materialStatusTone).toBe("warning");
-    expect(context.purchaseTitle).toBe("Tạo PO từ PP-260504-0001");
-    expect(context.purchaseSummary).toBe("1 dòng vật tư cần mua cho XFF - 162 PCS.");
-    expect(context.purchaseButtonLabel).toBe("Tạo PO từ kế hoạch này");
+    expect(context.purchaseTitle).toBe("Đề nghị mua từ PP-260504-0001");
+    expect(context.purchaseSummary).toBe("1 dòng vật tư cần mua cho XFF - 162 PCS; mở đề nghị mua để gửi duyệt và tạo PO.");
+    expect(context.purchaseButtonLabel).toBe("Mở đề nghị mua");
     expect(context.subcontractTitle).toBe("Tạo lệnh gia công từ PP-260504-0001");
     expect(context.subcontractSummary).toBe("Còn 1 dòng thiếu vật tư, cần xử lý mua hàng trước.");
   });
