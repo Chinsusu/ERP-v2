@@ -3,9 +3,9 @@
 Project: Web ERP for cosmetics operations
 Phase: Phase 1
 Document role: Current master document index and traceability map
-Version: v2.7
+Version: v2.8
 Date: 2026-05-06
-Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, and Sprint 25 subcontract closeout traceability
+Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, and Sprint 25 subcontract closeout traceability evidence
 
 ---
 
@@ -29,14 +29,14 @@ Which document locks Vietnamese operational terminology?
 ## 2. Current Status Snapshot
 
 ```text
-Current line: Sprint 25 subcontract finished goods QC closeout traceability implementation in progress.
+Current line: Sprint 25 subcontract finished goods QC closeout traceability merged and deployed to dev.
 Latest release tag: v0.19.0-vietnamese-ui-localization.
 Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
 Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
 Sprint 22 status: UAT pilot pack prepared; S22-ISSUE-001 resolved by PR #546 at db894ddb; Session 0 readiness rerun passed; business UAT execution, business issue triage, Go/No-Go decision, and v0.22 tag are pending.
 Sprint 23 implementation status: first runtime bridge selected in file 92 adds /production planning UI, backend production-plan API, active-formula snapshot, material demand/shortage calculation, internal Purchase Request draft lines, PostgreSQL persistence, and OpenAPI contract coverage; follow-up file 94 promotes Purchase Request submit/approve/convert-to-PO workflow; follow-up file 95 locks PO -> receiving -> QC PASS -> supplier payable traceability; follow-up file 96 locks supplier invoice and 3-way matching behavior; follow-up file 97 locks AP payment readiness so payment request/approval/recording require a matched supplier invoice; follow-up file 98 adds Stock Transfer and Warehouse Issue Note runtime documents with PostgreSQL persistence, submit/approve/post lifecycle, OpenAPI coverage, and posted inventory movements; no v0.23 tag exists.
 Sprint 24 implementation status: file 99 tracks the task board, file 100 locks the flow, and file 101 records changelog/evidence. Runtime PR #586 merged at 9e28c05e; dev web API-base fix PR #587 merged at 114105b2; CI, dev deploy, full dev smoke, and /production browser smoke passed. No v0.24 tag exists.
-Sprint 25 implementation status: file 102 tracks the task board, file 103 locks the flow, and file 104 tracks changelog/evidence. Scope is Production Plan -> source-linked Subcontract Order traceability plus Production Plan detail visibility for subcontract receipt/QC/factory claim/final payment closeout. CI, merge, dev deploy, browser smoke, and v0.25 tag are pending.
+Sprint 25 implementation status: file 102 tracks the task board, file 103 locks the flow, and file 104 records changelog/evidence. PR #589 merged at a4b96c84 with GitHub CI green. Dev deploy passed on 2026-05-06 with migration 43 applied and full dev smoke passed. Browser smoke passed for Production Plan detail -> source-linked Subcontract Order visibility -> /subcontract source filter. No v0.25 tag exists.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -266,7 +266,8 @@ Sprint 25 tag hold:
 
 ```text
 No v0.25.0-subcontract-finished-goods-qc-closeout tag has been created.
-Sprint 25 implementation/CI/dev deploy/browser smoke evidence must be recorded before a release checkpoint tag is considered.
+Sprint 25 implementation, CI, dev deploy, full smoke, browser smoke, and changelog evidence are complete on main.
+Create a tag only if a release checkpoint is intentionally requested.
 ```
 
 ---
