@@ -39,6 +39,7 @@ Start with:
 - `docs/98_ERP_Stock_Transfer_Warehouse_Issue_Runtime_Flow_MyPham_v1.md`
 - `docs/99_ERP_Coding_Task_Board_Sprint24_Production_Material_Issue_Readiness_MyPham_v1.md`
 - `docs/100_ERP_Production_Material_Issue_Subcontract_Readiness_Flow_MyPham_v1.md`
+- `docs/101_ERP_Sprint24_Changelog_Production_Material_Issue_Readiness_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -46,7 +47,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 24 opened for production material issue and subcontract readiness after Sprint 23 runtime bridge.
+Current line: Sprint 24 production material issue readiness runtime merged and deployed to dev.
 
 Latest release tag:
 
@@ -89,14 +90,16 @@ Costing, payment tolerance policy, finished goods receipt/QC automation, factory
 No v0.23 tag has been created.
 ```
 
-Sprint 24 planning status:
+Sprint 24 implementation status:
 
 ```text
-Sprint 24 is opened in file 99, with flow design in file 100, and runtime implementation is in progress on a codex branch.
-Production-plan material demand should create source-linked Warehouse Issue Notes only for available issue-ready stock.
+Sprint 24 is documented in file 99, flow design is locked in file 100, and changelog/evidence is recorded in file 101.
+Production-plan material demand can create source-linked Warehouse Issue Notes only for available issue-ready stock.
 Shortage remains a Purchase Request / PO / receiving / QC problem before warehouse issue.
-Subcontract readiness should be gated on posted material issue evidence or explicit waiver.
-Sprint 24 completion still requires PR merge, CI green, dev deploy, production-plan/material-issue UI smoke, and changelog evidence.
+Subcontract readiness is gated on posted material issue evidence; waiver remains follow-up scope.
+PR #586 merged runtime at 9e28c05e with CI green.
+PR #587 fixed dev web API base at 114105b2 so browser clients can use the dev server URL.
+Dev deploy passed with full smoke, and browser smoke passed for /production and production-plan detail material issue readiness.
 No v0.24 tag has been created.
 ```
 
@@ -154,6 +157,7 @@ Production runtime reference:
 - `docs/98_ERP_Stock_Transfer_Warehouse_Issue_Runtime_Flow_MyPham_v1.md`
 - `docs/99_ERP_Coding_Task_Board_Sprint24_Production_Material_Issue_Readiness_MyPham_v1.md`
 - `docs/100_ERP_Production_Material_Issue_Subcontract_Readiness_Flow_MyPham_v1.md`
+- `docs/101_ERP_Sprint24_Changelog_Production_Material_Issue_Readiness_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`

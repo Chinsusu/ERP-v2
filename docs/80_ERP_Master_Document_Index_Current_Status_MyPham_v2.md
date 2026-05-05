@@ -3,9 +3,9 @@
 Project: Web ERP for cosmetics operations
 Phase: Phase 1
 Document role: Current master document index and traceability map
-Version: v2.5
+Version: v2.6
 Date: 2026-05-05
-Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, and Sprint 24 production material issue readiness planning
+Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, and Sprint 24 production material issue readiness runtime
 
 ---
 
@@ -29,13 +29,13 @@ Which document locks Vietnamese operational terminology?
 ## 2. Current Status Snapshot
 
 ```text
-Current line: Sprint 24 opened for production material issue and subcontract readiness after Sprint 23 runtime bridge.
+Current line: Sprint 24 production material issue readiness runtime merged and deployed to dev.
 Latest release tag: v0.19.0-vietnamese-ui-localization.
 Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
 Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
 Sprint 22 status: UAT pilot pack prepared; S22-ISSUE-001 resolved by PR #546 at db894ddb; Session 0 readiness rerun passed; business UAT execution, business issue triage, Go/No-Go decision, and v0.22 tag are pending.
 Sprint 23 implementation status: first runtime bridge selected in file 92 adds /production planning UI, backend production-plan API, active-formula snapshot, material demand/shortage calculation, internal Purchase Request draft lines, PostgreSQL persistence, and OpenAPI contract coverage; follow-up file 94 promotes Purchase Request submit/approve/convert-to-PO workflow; follow-up file 95 locks PO -> receiving -> QC PASS -> supplier payable traceability; follow-up file 96 locks supplier invoice and 3-way matching behavior; follow-up file 97 locks AP payment readiness so payment request/approval/recording require a matched supplier invoice; follow-up file 98 adds Stock Transfer and Warehouse Issue Note runtime documents with PostgreSQL persistence, submit/approve/post lifecycle, OpenAPI coverage, and posted inventory movements; no v0.23 tag exists.
-Sprint 24 planning status: file 99 opens Production Material Issue and Subcontract Readiness; file 100 locks the flow that production-plan demand can create source-linked Warehouse Issue Notes only for available issue-ready stock, and subcontract readiness is gated on posted material issue evidence; runtime implementation is in progress on a codex branch; no v0.24 tag exists.
+Sprint 24 implementation status: file 99 tracks the task board, file 100 locks the flow, and file 101 records changelog/evidence. Runtime PR #586 merged at 9e28c05e; dev web API-base fix PR #587 merged at 114105b2; CI, dev deploy, full dev smoke, and /production browser smoke passed. No v0.24 tag exists.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -88,11 +88,12 @@ For a new engineer or reviewer:
 19. 98_ERP_Stock_Transfer_Warehouse_Issue_Runtime_Flow_MyPham_v1.md
 20. 99_ERP_Coding_Task_Board_Sprint24_Production_Material_Issue_Readiness_MyPham_v1.md
 21. 100_ERP_Production_Material_Issue_Subcontract_Readiness_Flow_MyPham_v1.md
-22. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
-23. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
-24. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
-25. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
-26. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
+22. 101_ERP_Sprint24_Changelog_Production_Material_Issue_Readiness_MyPham_v1.md
+23. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
+24. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
+25. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
+26. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
+27. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
 ```
 
 For product or operations review:
@@ -118,8 +119,9 @@ For product or operations review:
 18. 98 Stock transfer and warehouse issue runtime flow
 19. 99 Sprint 24 production material issue task board
 20. 100 Production material issue and subcontract readiness flow
-21. 88 BOM / formula module design
-22. 78 Production runtime checklist
+21. 101 Sprint 24 changelog and runtime evidence
+22. 88 BOM / formula module design
+23. 78 Production runtime checklist
 ```
 
 ---
@@ -185,7 +187,7 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | Sprint 21 | `82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md` | `83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md` | Web auth UI backend integration and production runtime smoke |
 | Sprint 22 | `84_ERP_Coding_Task_Board_Sprint22_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md` | `86_ERP_Sprint22_Changelog_UAT_Pilot_Pack_Warehouse_Sales_QC_MyPham_v1.md` | UAT pilot pack for Warehouse, Sales, and QC |
 | Sprint 23 | `92_ERP_Coding_Task_Board_Sprint23_Production_Planning_Material_Demand_MyPham_v1.md` | Files `94`-`98` runtime flow evidence; changelog pending | Production planning, PR/PO/receiving/AP traceability, supplier invoice/payment gate, stock transfer, and warehouse issue runtime |
-| Sprint 24 | `99_ERP_Coding_Task_Board_Sprint24_Production_Material_Issue_Readiness_MyPham_v1.md` | Changelog pending | Production material issue and subcontract readiness |
+| Sprint 24 | `99_ERP_Coding_Task_Board_Sprint24_Production_Material_Issue_Readiness_MyPham_v1.md` | `101_ERP_Sprint24_Changelog_Production_Material_Issue_Readiness_MyPham_v1.md` | Production material issue and subcontract readiness |
 
 ---
 
@@ -213,6 +215,7 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | `98_ERP_Stock_Transfer_Warehouse_Issue_Runtime_Flow_MyPham_v1.md` | Stock Transfer and Warehouse Issue Note runtime flow | Before changing internal warehouse transfer, operational material issue, posted inventory movements, or warehouse issue UI behavior |
 | `99_ERP_Coding_Task_Board_Sprint24_Production_Material_Issue_Readiness_MyPham_v1.md` | Sprint 24 task board | Before starting production-plan material issue and subcontract readiness work |
 | `100_ERP_Production_Material_Issue_Subcontract_Readiness_Flow_MyPham_v1.md` | Production material issue flow design | Before changing production-plan to Warehouse Issue Note source-linking, material issue readiness, or subcontract readiness gates |
+| `101_ERP_Sprint24_Changelog_Production_Material_Issue_Readiness_MyPham_v1.md` | Sprint 24 changelog and runtime evidence | Before closing Sprint 24 or claiming production material issue readiness evidence |
 
 ---
 
@@ -244,8 +247,8 @@ Sprint 24 tag hold:
 
 ```text
 No v0.24.0-production-material-issue-readiness tag has been created.
-Sprint 24 is opened as documentation only.
-Create the Sprint 24 checkpoint tag only after runtime implementation, CI, dev deploy, smoke evidence, and changelog evidence are complete.
+Sprint 24 runtime implementation, CI, dev deploy, full dev smoke, browser smoke, and changelog evidence are complete on main.
+Create the Sprint 24 checkpoint tag only if a release checkpoint is intentionally requested.
 ```
 
 ---
@@ -260,7 +263,7 @@ Production-like auth smoke evidence must be recorded per target environment befo
 Any future production-like release must record whether prototype fallback gaps remain.
 Sprint 22 business UAT execution remains pending until business users run the prepared scripts.
 Sprint 23 production planning and warehouse document runtime bridge is documented through files 92 and 94-98; no v0.23 tag exists.
-Sprint 24 opened in files 99 and 100 for production-plan material issue readiness and subcontract readiness gating.
+Sprint 24 runtime evidence is recorded in files 99-101 for production-plan material issue readiness and subcontract readiness gating.
 File 90 remains historical planning context for Stock Transfer, Warehouse Issue Note, and future ledger-backed Inventory Dashboard hardening.
 Stock Transfer must remain same-SKU only; SKU-changing movements require separate conversion/repack design.
 Purchase Request must remain separate from PO, receiving, payment, and invoice source documents.

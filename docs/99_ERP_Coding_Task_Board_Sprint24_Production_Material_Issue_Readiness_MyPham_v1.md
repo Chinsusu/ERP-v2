@@ -6,7 +6,7 @@ Sprint: Sprint 24 - Production Material Issue and Subcontract Readiness
 Document role: Selected task board for the next implementation sprint after Stock Transfer and Warehouse Issue runtime
 Version: v1
 Date: 2026-05-05
-Status: Opened; runtime implementation in progress on a codex branch; no release tag created
+Status: Runtime implementation merged and deployed to dev; release tag hold
 Previous sprint: Sprint 23 - Production planning, purchase traceability, supplier invoice/payment gate, stock transfer, and warehouse issue runtime
 
 ---
@@ -63,6 +63,7 @@ The sprint succeeds when:
 | `95_ERP_PO_Receiving_QC_Supplier_Payable_Flow_MyPham_v1.md` | PO/receiving/QC/payable flow | Material becomes available only after accepted receiving/QC behavior |
 | `98_ERP_Stock_Transfer_Warehouse_Issue_Runtime_Flow_MyPham_v1.md` | Warehouse Issue runtime | Issue document lifecycle, API, movement posting, and persistence |
 | `100_ERP_Production_Material_Issue_Subcontract_Readiness_Flow_MyPham_v1.md` | Sprint 24 flow design | Detailed source-link, readiness, and gating rules |
+| `101_ERP_Sprint24_Changelog_Production_Material_Issue_Readiness_MyPham_v1.md` | Sprint 24 changelog | PR, CI, deploy, smoke, known limits, and tag status |
 | `88_ERP_BOM_Formula_Module_Design_MyPham_v1.md` | Formula design | Material demand line and UOM/decimal handling |
 | `47_ERP_Coding_Task_Board_Sprint5_Subcontract_Manufacturing_Core_MyPham_v1.md` | Subcontract manufacturing core | External factory execution boundary |
 | `81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md` | Vietnamese glossary | User-facing copy |
@@ -323,4 +324,21 @@ Do not create v0.24 until code is merged, CI is green, dev deploy and smoke pass
 
 ```text
 Sprint 24 turns production material demand into controlled warehouse issue evidence before subcontract execution.
+```
+
+---
+
+## 16. Current Evidence Status
+
+```text
+Runtime PR: #586 Add production material issue readiness runtime, merged at 9e28c05e.
+Dev runtime fix PR: #587 Use same-origin API base for dev web, merged at 114105b2.
+Required CI for #586 passed: api, web, openapi, e2e, required-api, required-web, required-openapi, required-migration.
+Dev deploy passed: ./infra/scripts/deploy-dev-staging.sh dev.
+Full dev smoke passed.
+Browser smoke passed for /production and /production/plans/{plan_id}.
+Screenshot evidence:
+- output/playwright/s24-production-list.png
+- output/playwright/s24-production-detail.png
+Release tag: hold; no v0.24 tag created.
 ```
