@@ -6,7 +6,7 @@ Sprint: Sprint 27 - Factory Dispatch
 Document role: Changelog and verification evidence
 Version: v1
 Date: 2026-05-06
-Status: Implementation complete on branch; PR #593 opened; merge, dev deploy, and smoke pending
+Status: Completed on main; dev deploy and browser smoke passed
 
 ---
 
@@ -74,14 +74,19 @@ Local verification caveats:
 
 ---
 
-## 4. Evidence Pending
+## 4. Evidence
 
 ```text
 PR number: #593
-Merge commit: pending
-Dev deploy: pending
-Browser smoke: pending
-Screenshots: pending
+Merge commit: 3cc5852d
+GitHub CI: api, web, migration, openapi, e2e, required-api, required-web, required-migration, required-openapi passed
+Dev deploy: ./infra/scripts/deploy-dev-staging.sh dev passed
+Dev migration: 44/u create_subcontract_factory_dispatches applied
+Full dev smoke: passed
+Browser smoke: login -> /production/factory-orders/:orderId -> create dispatch -> ready -> sent -> confirmed passed
+Smoke order: SCO-S27-UI-11653066
+Smoke dispatch: FDP-260505-505747 confirmed
+Screenshots: output/playwright/s27-factory-dispatch-confirmed.png
 ```
 
 ---
