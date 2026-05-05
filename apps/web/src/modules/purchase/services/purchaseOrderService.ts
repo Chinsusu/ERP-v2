@@ -274,6 +274,7 @@ function fromApiPurchaseOrderListItem(order: PurchaseOrderListItemApi): Purchase
     currencyCode: order.currency_code,
     subtotalAmount: order.total_amount,
     totalAmount: order.total_amount,
+    note: order.note,
     lineCount: order.line_count,
     receivedLineCount: order.received_line_count,
     lines: [],
@@ -731,7 +732,9 @@ function createOrderSeed(input: {
 function matchesPurchaseOrderQuery(order: PurchaseOrder, query: PurchaseOrderQuery) {
   const search = query.search?.trim().toLowerCase();
   if (search) {
-    const haystack = [order.poNo, order.supplierCode, order.supplierName, order.warehouseCode].join(" ").toLowerCase();
+    const haystack = [order.poNo, order.supplierCode, order.supplierName, order.warehouseCode, order.note]
+      .join(" ")
+      .toLowerCase();
     if (!haystack.includes(search)) {
       return false;
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   DataTable,
   EmptyState,
@@ -154,6 +154,7 @@ const lineColumns: DataTableColumn<PurchaseOrderLine>[] = [
 ];
 
 export function PurchaseOrderPrototype() {
+  const mountedRef = useRef(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("");
   const [filterSupplierId, setFilterSupplierId] = useState("");
@@ -171,6 +172,7 @@ export function PurchaseOrderPrototype() {
   const [purchaseAttachmentRefs, setPurchaseAttachmentRefs] = useState<Record<string, string[]>>({});
   const [localOrders, setLocalOrders] = useState<PurchaseOrder[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState("po-260429-0001");
+  const [autoOpenPurchaseSearch, setAutoOpenPurchaseSearch] = useState("");
   const [feedback, setFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
   const [busyAction, setBusyAction] = useState("");
   const query = useMemo<PurchaseOrderQuery>(
@@ -216,10 +218,26 @@ export function PurchaseOrderPrototype() {
   );
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const nextSearch = params.get("search");
     const nextStatus = purchaseStatusFromParam(params.get("status"));
     const nextWarehouseId = purchaseWarehouseFromParam(params.get("warehouse_id"));
 
+    if (nextSearch !== null) {
+      const normalizedSearch = nextSearch.trim();
+      setSearch(normalizedSearch);
+      setAutoOpenPurchaseSearch(normalizedSearch);
+      if (!params.has("warehouse_id")) {
+        setFilterWarehouseId("");
+      }
+    }
     if (nextStatus !== null) {
       setStatus(nextStatus);
     }
@@ -325,6 +343,38 @@ export function PurchaseOrderPrototype() {
     }
   }
 
+  useEffect(() => {
+    if (!autoOpenPurchaseSearch || loading || busyAction || visibleOrders.length === 0) {
+      return;
+    }
+
+    const order = visibleOrders[0];
+    setAutoOpenPurchaseSearch("");
+
+    setSelectedOrderId(order.id);
+    if (order.lines.length > 0) {
+      return;
+    }
+
+    setBusyAction(`load:${order.id}`);
+    getPurchaseOrder(order.id)
+      .then((detail) => {
+        if (mountedRef.current) {
+          setLocalOrders((current) => [detail, ...current.filter((candidate) => candidate.id !== detail.id)]);
+        }
+      })
+      .catch((reason) => {
+        if (mountedRef.current) {
+          setFeedback({ tone: "danger", message: reason instanceof Error ? reason.message : purchaseCopy("feedback.detailFailed") });
+        }
+      })
+      .finally(() => {
+        if (mountedRef.current) {
+          setBusyAction("");
+        }
+      });
+  }, [autoOpenPurchaseSearch, busyAction, loading, visibleOrders]);
+
   async function runAction(action: "submit" | "approve" | "cancel" | "close") {
     if (!selectedOrder || busyAction) {
       return;
@@ -427,6 +477,7 @@ export function PurchaseOrderPrototype() {
         <label className="erp-field">
           <span>{purchaseCopy("filters.warehouse")}</span>
           <select className="erp-input" value={filterWarehouseId} onChange={(event) => setFilterWarehouseId(event.target.value)}>
+            <option value="">{purchaseCopy("filters.allWarehouses")}</option>
             {purchaseWarehouseOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -722,7 +773,9 @@ function mergeOrders(localOrders: PurchaseOrder[], fetchedOrders: PurchaseOrder[
 function matchesOrderQuery(order: PurchaseOrder, query: PurchaseOrderQuery) {
   const search = query.search?.trim().toLowerCase();
   if (search) {
-    const haystack = [order.poNo, order.supplierCode, order.supplierName, order.warehouseCode].join(" ").toLowerCase();
+    const haystack = [order.poNo, order.supplierCode, order.supplierName, order.warehouseCode, order.note]
+      .join(" ")
+      .toLowerCase();
     if (!haystack.includes(search)) {
       return false;
     }

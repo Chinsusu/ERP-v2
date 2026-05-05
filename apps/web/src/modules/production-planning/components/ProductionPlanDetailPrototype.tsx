@@ -158,7 +158,7 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
               Các dòng này là nguồn để tạo PO vật tư thiếu. PO/Nhập kho/QC thật hiện theo dõi ở module tương ứng.
             </p>
           </div>
-          <Link className="erp-button erp-button--secondary" href="/purchase">
+          <Link className="erp-button erp-button--secondary" href={`/purchase?search=${encodeURIComponent(plan.planNo)}#purchase-detail`}>
             Mở mua hàng
           </Link>
         </header>

@@ -3117,6 +3117,7 @@ export interface components {
             status: components["schemas"]["PurchaseOrderStatus"];
             currency_code: components["schemas"]["CurrencyCode"];
             total_amount: components["schemas"]["MoneyAmount"];
+            note?: string;
             line_count: number;
             received_line_count: number;
             /** Format: date-time */
