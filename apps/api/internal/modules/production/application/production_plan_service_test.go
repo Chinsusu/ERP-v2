@@ -53,14 +53,14 @@ func TestProductionPlanServiceCreatesFormulaSnapshotDemandAndPurchaseRequestDraf
 		t.Fatalf("plan snapshot = %+v, want active formula snapshot with one line", plan)
 	}
 	line := plan.Lines[0]
-	if line.RequiredStockBaseQty != "0.002000" || line.AvailableQty != "0.000500" || line.ShortageQty != "0.001500" {
+	if line.RequiredStockBaseQty != "0.162000" || line.AvailableQty != "0.000500" || line.ShortageQty != "0.161500" {
 		t.Fatalf("line = %+v, want shortage from formula demand minus available stock", line)
 	}
 	if len(plan.PurchaseDraft.Lines) != 1 {
 		t.Fatalf("purchase draft lines = %d, want 1", len(plan.PurchaseDraft.Lines))
 	}
 	prLine := plan.PurchaseDraft.Lines[0]
-	if prLine.SKU != "ACT_BAICAPIL" || prLine.RequestedQty != "0.001500" || prLine.UOMCode != "KG" {
+	if prLine.SKU != "ACT_BAICAPIL" || prLine.RequestedQty != "0.161500" || prLine.UOMCode != "KG" {
 		t.Fatalf("purchase draft line = %+v, want shortage draft only", prLine)
 	}
 	if result.AuditLogID == "" {
@@ -84,7 +84,7 @@ func TestProductionPlanServiceDoesNotCreatePurchaseDraftWhenEnoughStock(t *testi
 					ItemID:       "item-act-baicapil",
 					SKU:          "ACT_BAICAPIL",
 					BaseUOMCode:  decimal.MustUOMCode("KG"),
-					AvailableQty: decimal.MustQuantity("0.010000"),
+					AvailableQty: decimal.MustQuantity("1.000000"),
 				},
 			},
 		},

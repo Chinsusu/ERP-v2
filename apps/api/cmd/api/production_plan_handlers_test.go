@@ -100,14 +100,14 @@ func TestProductionPlanHandlersCreateDemandAndPurchaseRequestDraft(t *testing.T)
 	if payload.Data.FormulaID != formulaResult.Formula.ID || len(payload.Data.Lines) != 1 {
 		t.Fatalf("plan response = %+v, want formula snapshot and one line", payload.Data)
 	}
-	if payload.Data.Lines[0].ShortageQty != "0.001500" {
-		t.Fatalf("shortage = %s, want 0.001500", payload.Data.Lines[0].ShortageQty)
+	if payload.Data.Lines[0].ShortageQty != "0.161500" {
+		t.Fatalf("shortage = %s, want 0.161500", payload.Data.Lines[0].ShortageQty)
 	}
 	if len(payload.Data.PurchaseRequestDraft.Lines) != 1 {
 		t.Fatalf("purchase request draft = %+v, want one draft line", payload.Data.PurchaseRequestDraft)
 	}
-	if payload.Data.PurchaseRequestDraft.Lines[0].RequestedQty != "0.001500" {
-		t.Fatalf("requested qty = %s, want 0.001500", payload.Data.PurchaseRequestDraft.Lines[0].RequestedQty)
+	if payload.Data.PurchaseRequestDraft.Lines[0].RequestedQty != "0.161500" {
+		t.Fatalf("requested qty = %s, want 0.161500", payload.Data.PurchaseRequestDraft.Lines[0].RequestedQty)
 	}
 }
 

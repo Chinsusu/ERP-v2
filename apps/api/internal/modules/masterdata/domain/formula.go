@@ -407,16 +407,17 @@ func (f Formula) CalculateRequirement(plannedQty decimal.Decimal, plannedUOMCode
 		return nil, ErrFormulaInvalidUOM
 	}
 
+	perUnitFormulaBasisQty := decimal.MustQuantity("1")
 	requirements := make([]FormulaRequirement, 0, len(f.Lines))
 	for _, line := range f.Lines {
 		if line.LineStatus == FormulaLineStatusExcluded {
 			continue
 		}
-		requiredCalcQty, err := scaleFormulaQuantity(line.CalcQty, planned, f.BatchQty)
+		requiredCalcQty, err := scaleFormulaQuantity(line.CalcQty, planned, perUnitFormulaBasisQty)
 		if err != nil {
 			return nil, err
 		}
-		requiredStockBaseQty, err := scaleFormulaQuantity(line.StockBaseQty, planned, f.BatchQty)
+		requiredStockBaseQty, err := scaleFormulaQuantity(line.StockBaseQty, planned, perUnitFormulaBasisQty)
 		if err != nil {
 			return nil, err
 		}
@@ -524,8 +525,8 @@ func normalizeFormulaUOM(value string) (decimal.UOMCode, error) {
 	return code, nil
 }
 
-func scaleFormulaQuantity(quantity decimal.Decimal, planned decimal.Decimal, batch decimal.Decimal) (decimal.Decimal, error) {
-	if batch.IsZero() || batch.IsNegative() || planned.IsZero() || planned.IsNegative() || quantity.IsNegative() {
+func scaleFormulaQuantity(quantity decimal.Decimal, planned decimal.Decimal, basis decimal.Decimal) (decimal.Decimal, error) {
+	if basis.IsZero() || basis.IsNegative() || planned.IsZero() || planned.IsNegative() || quantity.IsNegative() {
 		return "", ErrFormulaInvalidQuantity
 	}
 	quantityScaled, err := formulaQuantityScaledInt(quantity)
@@ -536,15 +537,15 @@ func scaleFormulaQuantity(quantity decimal.Decimal, planned decimal.Decimal, bat
 	if err != nil {
 		return "", err
 	}
-	batchScaled, err := formulaQuantityScaledInt(batch)
+	basisScaled, err := formulaQuantityScaledInt(basis)
 	if err != nil {
 		return "", err
 	}
 
 	numerator := new(big.Int).Mul(quantityScaled, plannedScaled)
-	quotient, remainder := new(big.Int).QuoRem(numerator, batchScaled, new(big.Int))
+	quotient, remainder := new(big.Int).QuoRem(numerator, basisScaled, new(big.Int))
 	threshold := new(big.Int).Mul(new(big.Int).Abs(remainder), big.NewInt(2))
-	if threshold.Cmp(batchScaled) >= 0 {
+	if threshold.Cmp(basisScaled) >= 0 {
 		quotient.Add(quotient, big.NewInt(1))
 	}
 

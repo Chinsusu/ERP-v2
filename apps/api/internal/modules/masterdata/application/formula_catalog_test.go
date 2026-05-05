@@ -92,11 +92,11 @@ func TestFormulaCatalogCalculatesRequirementPreview(t *testing.T) {
 	if len(preview.Requirements) != 1 {
 		t.Fatalf("requirements = %d, want 1", len(preview.Requirements))
 	}
-	if got := preview.Requirements[0].RequiredCalcQty.String(); got != "6000.000000" {
-		t.Fatalf("required calc qty = %s, want 6000.000000", got)
+	if got := preview.Requirements[0].RequiredCalcQty.String(); got != "486000.000000" {
+		t.Fatalf("required calc qty = %s, want 486000.000000", got)
 	}
-	if got := preview.Requirements[0].RequiredStockBaseQty.String(); got != "0.006000" {
-		t.Fatalf("required stock base qty = %s, want 0.006000", got)
+	if got := preview.Requirements[0].RequiredStockBaseQty.String(); got != "0.486000" {
+		t.Fatalf("required stock base qty = %s, want 0.486000", got)
 	}
 }
 

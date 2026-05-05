@@ -25,7 +25,7 @@ describe("productionPlanNextActions", () => {
     expect(input.lines).toEqual([
       expect.objectContaining({
         itemId: "item-act-baicapil",
-        orderedQty: "0.001500",
+        orderedQty: "0.161500",
         uomCode: "KG",
         unitPrice: "0",
         expectedDate: "2026-05-12",
@@ -67,7 +67,7 @@ describe("productionPlanNextActions", () => {
         itemId: "item-act-baicapil",
         skuCode: "ACT_BAICAPIL",
         itemName: "BAICAPIL",
-        plannedQty: "0.002000",
+        plannedQty: "0.162000",
         uomCode: "KG",
         unitCost: "0",
         lotTraceRequired: true
@@ -133,13 +133,13 @@ const shortagePlan: ProductionPlan = {
       componentType: "raw_material",
       formulaQty: "1.000000",
       formulaUomCode: "G",
-      requiredQty: "2.000000",
+      requiredQty: "162.000000",
       requiredUomCode: "G",
-      requiredStockBaseQty: "0.002000",
+      requiredStockBaseQty: "0.162000",
       stockBaseUomCode: "KG",
       availableQty: "0.000500",
-      shortageQty: "0.001500",
-      purchaseDraftQty: "0.001500",
+      shortageQty: "0.161500",
+      purchaseDraftQty: "0.161500",
       purchaseDraftUomCode: "KG",
       isStockManaged: true,
       needsPurchase: true
@@ -159,7 +159,7 @@ const shortagePlan: ProductionPlan = {
         itemId: "item-act-baicapil",
         sku: "ACT_BAICAPIL",
         itemName: "BAICAPIL",
-        requestedQty: "0.001500",
+        requestedQty: "0.161500",
         uomCode: "KG"
       }
     ]
@@ -182,9 +182,9 @@ const availablePlan: ProductionPlan = {
       componentType: "raw_material",
       formulaQty: "1.000000",
       formulaUomCode: "G",
-      requiredQty: "2.000000",
+      requiredQty: "162.000000",
       requiredUomCode: "G",
-      requiredStockBaseQty: "0.002000",
+      requiredStockBaseQty: "0.162000",
       stockBaseUomCode: "KG",
       availableQty: "1.000000",
       shortageQty: "0.000000",

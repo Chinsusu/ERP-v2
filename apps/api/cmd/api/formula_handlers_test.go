@@ -86,8 +86,8 @@ func TestFormulaHandlersCreateListAndCalculateRequirement(t *testing.T) {
 		t.Fatalf("calculate status = %d, want %d: %s", calcRec.Code, http.StatusOK, calcRec.Body.String())
 	}
 	calcPayload := decodeSmokeSuccess[formulaRequirementResponse](t, calcRec)
-	if len(calcPayload.Data.Requirements) != 1 || calcPayload.Data.Requirements[0].RequiredStockBaseQty != "0.002000" {
-		t.Fatalf("requirement payload = %+v, want 0.002000 KG stock-base requirement", calcPayload.Data)
+	if len(calcPayload.Data.Requirements) != 1 || calcPayload.Data.Requirements[0].RequiredStockBaseQty != "0.162000" {
+		t.Fatalf("requirement payload = %+v, want 0.162000 KG stock-base requirement", calcPayload.Data)
 	}
 }
 

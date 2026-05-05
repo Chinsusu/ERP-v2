@@ -79,7 +79,7 @@ The sprint succeeds when:
 - Formula version selection and validation
 - Formula snapshot on the plan
 - Planned output quantity and planned start/end dates
-- Material requirement calculation from formula batch size
+- Material requirement calculation from per-finished-product formula quantity
 - Available-stock comparison
 - Shortage result table
 - Purchase Request draft generation from shortage lines
@@ -169,7 +169,7 @@ S23P-06 Purchase Request draft
 | S23P-02-03 | P1 | BE | Production plan status flow | Draft -> calculated -> submitted -> approved/rejected/cancelled status flow with audit | `11_ERP_Backend_Architecture_Phase1_MyPham_v1.md` |
 | S23P-03-01 | P0 | BE | Formula snapshot on plan | Snapshot stores component code, name, formula quantity, UOM, requirement basis | `88`, section 9 |
 | S23P-03-02 | P0 | BE | Snapshot immutability test | Later formula edits do not mutate existing plan snapshot | `88`, section 9 |
-| S23P-04-01 | P0 | BE | Requirement calculator | Required quantity = formula component quantity / formula batch output * planned output quantity | `88`, section 8 |
+| S23P-04-01 | P0 | BE | Requirement calculator | Required quantity = formula component quantity per finished product * planned output quantity | `88`, section 8 |
 | S23P-04-02 | P0 | BE | Decimal calculation tests | Tests cover 0.000001 KG, mg/g/kg display, and no float rounding | `88`, section 5 |
 | S23P-05-01 | P0 | BE | Available-stock comparison | Requirement result shows required, available, shortage, and UOM per component | `89`, section 2.2 |
 | S23P-05-02 | P1 | BE | QC-held stock exclusion | Available stock excludes QC_HOLD/QC_FAIL where item requires QC | `88`, section 11 |

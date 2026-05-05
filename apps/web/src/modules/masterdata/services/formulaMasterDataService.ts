@@ -274,9 +274,9 @@ export async function calculateFormulaRequirement(
           componentSku: line.componentSku,
           componentName: line.componentName,
           componentType: line.componentType,
-          requiredCalcQty: scaleQuantity(line.calcQty, planned.plannedQty, formula.batchQty),
+          requiredCalcQty: scaleQuantity(line.calcQty, planned.plannedQty),
           calcUomCode: line.calcUomCode,
-          requiredStockBaseQty: scaleQuantity(line.stockBaseQty, planned.plannedQty, formula.batchQty),
+          requiredStockBaseQty: scaleQuantity(line.stockBaseQty, planned.plannedQty),
           stockBaseUomCode: line.stockBaseUomCode,
           isStockManaged: line.isStockManaged
         }))
@@ -636,17 +636,13 @@ function formatLocalNumber(value: number) {
   }).format(value);
 }
 
-function scaleQuantity(value: string, plannedQty: string, batchQty: string) {
+function scaleQuantity(value: string, plannedQty: string) {
   const valueScaled = scaledQuantity(value);
   const plannedScaled = scaledQuantity(plannedQty);
-  const batchScaled = scaledQuantity(batchQty);
-  if (batchScaled <= BigInt(0)) {
-    throw new Error("Formula batch quantity must be greater than zero");
-  }
 
   const numerator = valueScaled * plannedScaled;
-  const quotient = (numerator + batchScaled / BigInt(2)) / batchScaled;
-  return scaledToDecimal(quotient);
+  const denominator = BigInt(10 ** quantityScale);
+  return scaledToDecimal((numerator + denominator / BigInt(2)) / denominator);
 }
 
 function scaledQuantity(value: string) {
