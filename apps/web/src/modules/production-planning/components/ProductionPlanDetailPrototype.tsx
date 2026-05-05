@@ -16,8 +16,16 @@ import {
   productionPlanStatusDisplay,
   productionPlanStatusTone
 } from "../services/productionPlanService";
+import {
+  formatPurchaseDate,
+  formatPurchaseMoney,
+  getPurchaseOrders,
+  purchaseOrderStatusTone
+} from "../../purchase/services/purchaseOrderService";
 import { buildProductionPlanWorkflowContext } from "../services/productionPlanWorkflowContext";
 import { buildProductionPlanWorklist, type ProductionPlanWorkTask } from "../services/productionPlanWorklist";
+import { t } from "@/shared/i18n";
+import type { PurchaseOrder, PurchaseOrderStatus } from "../../purchase/types";
 import type { ProductionPlan, ProductionPlanLine, PurchaseRequestDraftLine } from "../types";
 
 type ProductionPlanDetailPrototypeProps = {
@@ -26,6 +34,9 @@ type ProductionPlanDetailPrototypeProps = {
 
 export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPrototypeProps) {
   const [plan, setPlan] = useState<ProductionPlan>();
+  const [relatedPurchaseOrders, setRelatedPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [relatedPurchaseOrdersLoading, setRelatedPurchaseOrdersLoading] = useState(false);
+  const [relatedPurchaseOrdersError, setRelatedPurchaseOrdersError] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
 
@@ -55,6 +66,38 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
       active = false;
     };
   }, [planId]);
+
+  useEffect(() => {
+    if (!plan?.planNo) {
+      setRelatedPurchaseOrders([]);
+      return;
+    }
+
+    let active = true;
+    setRelatedPurchaseOrdersLoading(true);
+    setRelatedPurchaseOrdersError(undefined);
+
+    getPurchaseOrders({ search: plan.planNo })
+      .then((orders) => {
+        if (active) {
+          setRelatedPurchaseOrders(orders);
+        }
+      })
+      .catch((loadError) => {
+        if (active) {
+          setRelatedPurchaseOrdersError(errorText(loadError));
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setRelatedPurchaseOrdersLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [plan?.planNo]);
 
   const workflowContext = useMemo(() => (plan ? buildProductionPlanWorkflowContext(plan) : undefined), [plan]);
   const workTasks = useMemo(() => (plan ? buildProductionPlanWorklist(plan) : []), [plan]);
@@ -136,6 +179,30 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
       <section className="erp-masterdata-list-card">
         <header className="erp-section-header">
           <div>
+            <h2 className="erp-section-title">PO liên quan</h2>
+            <p className="erp-page-description">
+              Các PO có ghi chú nguồn từ {plan.planNo}; mở từng PO để xem trạng thái, timeline và dòng hàng.
+            </p>
+          </div>
+          <Link className="erp-button erp-button--secondary" href={`/purchase?search=${encodeURIComponent(plan.planNo)}#purchase-list`}>
+            Mở danh sách PO
+          </Link>
+        </header>
+        <DataTable
+          columns={relatedPurchaseOrderColumns}
+          rows={relatedPurchaseOrders}
+          getRowKey={(order) => order.id}
+          loading={relatedPurchaseOrdersLoading}
+          error={relatedPurchaseOrdersError}
+          pagination
+          preserveColumnWidths
+          emptyState={<EmptyState title="Chưa có PO liên quan đến kế hoạch này" />}
+        />
+      </section>
+
+      <section className="erp-masterdata-list-card">
+        <header className="erp-section-header">
+          <div>
             <h2 className="erp-section-title">Nhu cầu vật tư</h2>
             <p className="erp-page-description">Công thức tính cho 1 thành phẩm; nhu cầu dưới đây đã nhân theo số lượng kế hoạch.</p>
           </div>
@@ -158,7 +225,7 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
               Các dòng này là nguồn để tạo PO vật tư thiếu. PO/Nhập kho/QC thật hiện theo dõi ở module tương ứng.
             </p>
           </div>
-          <Link className="erp-button erp-button--secondary" href={`/purchase?search=${encodeURIComponent(plan.planNo)}#purchase-detail`}>
+          <Link className="erp-button erp-button--secondary" href={`/purchase?search=${encodeURIComponent(plan.planNo)}#purchase-list`}>
             Mở mua hàng
           </Link>
         </header>
@@ -287,6 +354,65 @@ const purchaseDraftColumns: DataTableColumn<PurchaseRequestDraftLine>[] = [
   }
 ];
 
+const relatedPurchaseOrderColumns: DataTableColumn<PurchaseOrder>[] = [
+  {
+    key: "po",
+    header: "PO",
+    render: (order) => (
+      <div className="erp-masterdata-product-cell">
+        <strong>{order.poNo}</strong>
+        <small>{order.supplierName}</small>
+      </div>
+    ),
+    width: "230px"
+  },
+  {
+    key: "status",
+    header: "Trạng thái",
+    render: (order) => <StatusChip tone={purchaseOrderStatusTone(order.status)}>{purchaseOrderStatusLabel(order.status)}</StatusChip>,
+    width: "160px"
+  },
+  {
+    key: "expected",
+    header: "Ngày dự kiến",
+    render: (order) => formatPurchaseDate(order.expectedDate),
+    width: "130px"
+  },
+  {
+    key: "lines",
+    header: "Dòng",
+    render: (order) => order.lineCount ?? order.lines.length,
+    align: "right",
+    width: "90px"
+  },
+  {
+    key: "received",
+    header: "Đã nhận",
+    render: (order) => order.receivedLineCount ?? 0,
+    align: "right",
+    width: "100px"
+  },
+  {
+    key: "total",
+    header: "Tổng tiền",
+    render: (order) => formatPurchaseMoney(order.totalAmount, order.currencyCode),
+    align: "right",
+    width: "150px"
+  },
+  {
+    key: "action",
+    header: "Thao tác",
+    align: "right",
+    sticky: true,
+    render: (order) => (
+      <Link className="erp-button erp-button--secondary erp-button--compact" href={`/purchase/orders/${order.id}`}>
+        Mở PO
+      </Link>
+    ),
+    width: "120px"
+  }
+];
+
 function renderTaskAction(task: ProductionPlanWorkTask) {
   if (!task.action) {
     return <span>-</span>;
@@ -320,6 +446,10 @@ function dateRangeLabel(start?: string, end?: string) {
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value));
+}
+
+function purchaseOrderStatusLabel(status: PurchaseOrderStatus) {
+  return t(`purchase.status.${status}`);
 }
 
 function errorText(error: unknown) {

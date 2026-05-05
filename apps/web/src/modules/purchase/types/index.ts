@@ -50,6 +50,8 @@ export type PurchaseOrder = {
   updatedAt: string;
   submittedAt?: string;
   approvedAt?: string;
+  partiallyReceivedAt?: string;
+  receivedAt?: string;
   closedAt?: string;
   cancelledAt?: string;
   rejectedAt?: string;
