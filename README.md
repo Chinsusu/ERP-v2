@@ -53,7 +53,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 26 production IA cleanup and external factory order detail implementation.
+Current line: Sprint 26 production IA cleanup and external factory order detail completed on main.
 
 Latest release tag:
 
@@ -128,6 +128,9 @@ Sprint 26 is documented in file 105, and the Production IA / external factory or
 User-facing production navigation is being consolidated under /production because the current company model is external-factory production, not internal MES/work-center production.
 Subcontract remains the technical/legacy execution surface for external factory operations, but it should not appear as a primary sidebar sibling of Production.
 Factory order detail is production-facing at /production/factory-orders/:orderId.
+PR #591 merged at 5e8003a9 with GitHub CI green.
+Dev deploy passed on 2026-05-06 after Docker builder cache cleanup restored /tmp free-space headroom; full dev smoke passed.
+Browser smoke passed for /production sidebar consolidation and /production/factory-orders/:orderId detail.
 No v0.26 tag has been created.
 ```
 
