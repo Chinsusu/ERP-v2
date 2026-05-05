@@ -6,7 +6,7 @@ Sprint: Sprint 23 - Production Planning, Material Demand, and Purchase Request D
 Document role: Selected first implementation task board after the `note` sheet roadmap review
 Version: v1
 Date: 2026-05-04
-Status: Selected first implementation track; first runtime bridge implemented; follow-up hardening remains pending
+Status: Selected first implementation track; runtime bridge implemented through PO and receiving traceability; follow-up hardening remains pending
 Previous sprint: Sprint 22 - UAT Pilot Pack for Warehouse + Sales + QC
 
 ---
@@ -215,7 +215,52 @@ Downstream purchase, receiving, payment, invoice, and stock movement remain cont
 
 ---
 
-## 10. Release And Tag Rule
+## 10. Current Runtime Bridge Note
+
+The target business boundary remains:
+
+```text
+Production Plan
+-> Purchase Request draft
+-> Purchase Request approval
+-> Purchase Order
+-> Receiving
+-> Inbound QC
+-> Available stock
+-> Subcontract manufacturing
+```
+
+The current runtime has already implemented an interim shortcut:
+
+```text
+Production Plan
+-> embedded Purchase Request draft lines
+-> direct PO creation from the selected plan
+-> PO detail page
+-> receiving context for that PO
+-> related goods receipt visibility
+```
+
+This shortcut is acceptable for the controlled Sprint 23 bridge and demo flow, but it is not the final approval boundary. The next hardening sprint should either:
+
+```text
+1. Promote Purchase Request into a first-class module with submit/approve/convert-to-PO states.
+2. Or explicitly document direct PO creation as a temporary production-planning shortcut until PR approval is implemented.
+```
+
+Current remaining gaps:
+
+```text
+- No first-class Purchase Request list/detail/approval page yet.
+- Production Plan status does not yet derive from PO/receiving/QC/subcontract progress.
+- PO and Production Plan receiving visibility is based on PO goods-receipt references, not a full source-document relation table.
+- Inbound QC and subcontract detail pages are still linked as separate module follow-ups.
+- Receipt/QC completion does not yet automatically refresh material readiness for the production plan.
+```
+
+---
+
+## 11. Release And Tag Rule
 
 Recommended release checkpoint after completed implementation and verification:
 
@@ -231,7 +276,7 @@ Do not create v0.23 until code is merged, CI is green, dev deploy and smoke pass
 
 ---
 
-## 11. Handoff To File 90
+## 12. Handoff To File 90
 
 After this sprint is complete, file 90 becomes the next natural implementation track.
 

@@ -29,6 +29,12 @@ import {
   remainingPurchaseLineQuantity,
   type PurchaseOrderTimelineItem
 } from "../services/purchaseOrderTimeline";
+import {
+  buildPurchaseOrderReceiptRows,
+  type PurchaseOrderReceiptRow
+} from "../services/purchaseOrderReceivingTraceability";
+import { getGoodsReceipts } from "../../receiving/services/warehouseReceivingService";
+import type { GoodsReceipt } from "../../receiving/types";
 import type { PurchaseOrder, PurchaseOrderLine, PurchaseOrderStatus } from "../types";
 
 type PurchaseOrderDetailPrototypeProps = {
@@ -41,6 +47,9 @@ export function PurchaseOrderDetailPrototype({ poId }: PurchaseOrderDetailProtot
   const [error, setError] = useState<string | undefined>();
   const [busyAction, setBusyAction] = useState("");
   const [feedback, setFeedback] = useState<{ tone: StatusTone; message: string }>();
+  const [receipts, setReceipts] = useState<GoodsReceipt[]>([]);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
+  const [receiptsError, setReceiptsError] = useState<string | undefined>();
 
   useEffect(() => {
     let active = true;
@@ -70,8 +79,42 @@ export function PurchaseOrderDetailPrototype({ poId }: PurchaseOrderDetailProtot
     };
   }, [poId]);
 
+  useEffect(() => {
+    if (!order?.id) {
+      setReceipts([]);
+      setReceiptsLoading(false);
+      setReceiptsError(undefined);
+      return;
+    }
+
+    let active = true;
+    setReceiptsLoading(true);
+    setReceiptsError(undefined);
+    getGoodsReceipts({ referenceDocId: order.id })
+      .then((nextReceipts) => {
+        if (active) {
+          setReceipts(nextReceipts);
+        }
+      })
+      .catch((loadError) => {
+        if (active) {
+          setReceiptsError(errorText(loadError));
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setReceiptsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [order?.id]);
+
   const sourcePlanNo = useMemo(() => (order ? purchaseOrderSourcePlanNo(order) : undefined), [order]);
   const timeline = useMemo(() => (order ? buildPurchaseOrderTimeline(order) : []), [order]);
+  const receiptRows = useMemo(() => (order ? buildPurchaseOrderReceiptRows(order, receipts) : []), [order, receipts]);
 
   async function runAction(action: "submit" | "approve" | "cancel" | "close") {
     if (!order || busyAction) {
@@ -204,6 +247,31 @@ export function PurchaseOrderDetailPrototype({ poId }: PurchaseOrderDetailProtot
       <section className="erp-masterdata-list-card">
         <header className="erp-section-header">
           <div>
+            <h2 className="erp-section-title">Phiếu nhập liên quan</h2>
+            <p className="erp-page-description">Các phiếu nhập kho có tham chiếu trực tiếp tới PO này.</p>
+          </div>
+          <Link
+            className="erp-button erp-button--secondary"
+            href={`/receiving?po_id=${encodeURIComponent(order.id)}&warehouse_id=${encodeURIComponent(order.warehouseId)}#receiving-list`}
+          >
+            Mở nhập hàng
+          </Link>
+        </header>
+        <DataTable
+          columns={receiptColumns}
+          rows={receiptRows}
+          getRowKey={(receipt) => receipt.id}
+          loading={receiptsLoading}
+          error={receiptsError}
+          pagination
+          preserveColumnWidths
+          emptyState={<EmptyState title="PO này chưa có phiếu nhập liên quan" />}
+        />
+      </section>
+
+      <section className="erp-masterdata-list-card">
+        <header className="erp-section-header">
+          <div>
             <h2 className="erp-section-title">Dòng hàng PO</h2>
             <p className="erp-page-description">Số lượng mua, đã nhận và còn lại theo từng SKU.</p>
           </div>
@@ -310,6 +378,57 @@ const lineColumns: DataTableColumn<PurchaseOrderLine>[] = [
     render: (line) => formatPurchaseMoney(line.lineAmount, line.currencyCode),
     align: "right",
     width: "150px"
+  }
+];
+
+const receiptColumns: DataTableColumn<PurchaseOrderReceiptRow>[] = [
+  {
+    key: "receiptNo",
+    header: "Phiếu nhập",
+    render: (receipt) => (
+      <span className="erp-purchase-order-cell">
+        <strong>{receipt.receiptNo}</strong>
+        <small>{formatPurchaseDate(receipt.createdAt)}</small>
+      </span>
+    ),
+    width: "220px"
+  },
+  {
+    key: "status",
+    header: "Trạng thái",
+    render: (receipt) => <StatusChip tone={receipt.statusTone}>{receipt.statusLabel}</StatusChip>,
+    width: "150px"
+  },
+  {
+    key: "lines",
+    header: "Dòng",
+    render: (receipt) => receipt.lineCount,
+    align: "right",
+    width: "90px"
+  },
+  {
+    key: "qc",
+    header: "QC",
+    render: (receipt) => receipt.qcSummary,
+    width: "180px"
+  },
+  {
+    key: "posted",
+    header: "Hạch toán",
+    render: (receipt) => (receipt.postedAt ? formatPurchaseDate(receipt.postedAt) : "-"),
+    width: "130px"
+  },
+  {
+    key: "action",
+    header: "Thao tác",
+    align: "right",
+    sticky: true,
+    render: (receipt) => (
+      <Link className="erp-button erp-button--secondary erp-button--compact" href={receipt.href}>
+        Mở nhập hàng
+      </Link>
+    ),
+    width: "140px"
   }
 ];
 
