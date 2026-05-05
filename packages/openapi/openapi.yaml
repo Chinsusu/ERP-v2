@@ -1669,6 +1669,41 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /production-plans/{production_plan_id}/warehouse-issues:
+    post:
+      summary: Create a warehouse issue note from production plan material demand
+      operationId: createProductionPlanWarehouseIssue
+      tags:
+        - production
+      parameters:
+        - name: production_plan_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductionPlanWarehouseIssueRequest"
+      responses:
+        "201":
+          description: Source-linked warehouse issue note created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseIssueSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /subcontract-orders:
     get:
       summary: List subcontract manufacturing orders
@@ -6598,6 +6633,10 @@ components:
         - shortage_qty
         - purchase_draft_qty
         - purchase_draft_uom_code
+        - issued_qty
+        - remaining_issue_qty
+        - issue_status
+        - warehouse_issues
         - is_stock_managed
         - needs_purchase
       properties:
@@ -6635,11 +6674,72 @@ components:
           $ref: "#/components/schemas/Quantity"
         purchase_draft_uom_code:
           $ref: "#/components/schemas/UOMCode"
+        issued_qty:
+          $ref: "#/components/schemas/Quantity"
+        remaining_issue_qty:
+          $ref: "#/components/schemas/Quantity"
+        issue_status:
+          $ref: "#/components/schemas/ProductionPlanIssueStatus"
+        warehouse_issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductionPlanWarehouseIssueRef"
         is_stock_managed:
           type: boolean
         needs_purchase:
           type: boolean
         note:
+          type: string
+    ProductionPlanIssueStatus:
+      type: string
+      enum:
+        - shortage
+        - ready_to_issue
+        - issue_draft
+        - issue_submitted
+        - issue_approved
+        - partially_issued
+        - issued
+        - waived
+        - blocked
+    ProductionPlanWarehouseIssueRef:
+      type: object
+      required:
+        - id
+        - issue_no
+        - line_id
+        - status
+        - quantity
+      properties:
+        id:
+          type: string
+        issue_no:
+          type: string
+        line_id:
+          type: string
+        status:
+          $ref: "#/components/schemas/WarehouseIssueStatus"
+        quantity:
+          $ref: "#/components/schemas/Quantity"
+    CreateProductionPlanWarehouseIssueRequest:
+      type: object
+      required:
+        - line_ids
+      properties:
+        line_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        destination_type:
+          type: string
+        destination_name:
+          type: string
+        reason_code:
           type: string
     PurchaseRequestDraft:
       type: object
@@ -7753,6 +7853,8 @@ components:
         source_document_type:
           type: string
         source_document_id:
+          type: string
+        source_document_line_id:
           type: string
         note:
           type: string

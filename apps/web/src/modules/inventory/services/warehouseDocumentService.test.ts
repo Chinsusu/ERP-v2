@@ -69,7 +69,8 @@ describe("warehouseDocumentService", () => {
           quantity: "0.125000",
           baseUomCode: "KG",
           sourceDocumentType: "production_plan",
-          sourceDocumentId: "PP-260505-000001"
+          sourceDocumentId: "PP-260505-000001",
+          sourceDocumentLineId: "pp-line-001"
         }
       ]
     });
@@ -79,7 +80,8 @@ describe("warehouseDocumentService", () => {
 
     expect(posted).toMatchObject({
       status: "posted",
-      postedBy: "local-dev"
+      postedBy: "local-dev",
+      lines: [expect.objectContaining({ sourceDocumentLineId: "pp-line-001" })]
     });
     await expect(getWarehouseIssues()).resolves.toEqual(expect.arrayContaining([posted]));
   });

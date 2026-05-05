@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createProductionPlan,
   createProductionPlans,
+  createWarehouseIssueFromProductionPlan,
   formatProductionPlanQuantity,
   getProductionPlan,
   summarizeProductionPlans
@@ -175,6 +176,65 @@ describe("productionPlanService", () => {
       expect.any(Object)
     );
     expect(plan.planNo).toBe("PP-260504-0001");
+  });
+
+  it("creates a source-linked warehouse issue from a production plan line", async () => {
+    const fetchMock = vi.fn(async (_url, init) => {
+      expect(String(_url)).toContain("/production-plans/plan-001/warehouse-issues");
+      expect(JSON.parse(String((init as RequestInit).body))).toMatchObject({
+        line_ids: ["pp-line-plan-001-001"],
+        destination_type: "factory",
+        destination_name: "Factory",
+        reason_code: "production_plan_issue"
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          request_id: "req-warehouse-issue",
+          data: {
+            id: "issue-001",
+            issue_no: "WI-260505-0001",
+            org_id: "org-my-pham",
+            warehouse_id: "wh-main",
+            warehouse_code: "MAIN",
+            destination_type: "factory",
+            destination_name: "Factory",
+            reason_code: "production_plan_issue",
+            status: "draft",
+            requested_by: "user-production",
+            lines: [
+              {
+                id: "issue-line-001",
+                item_id: "item-aci-bha",
+                sku: "ACI_BHA",
+                item_name: "ACID SALICYLIC",
+                quantity: "0.099900",
+                base_uom_code: "KG",
+                source_document_type: "production_plan",
+                source_document_id: "plan-001",
+                source_document_line_id: "pp-line-plan-001-001"
+              }
+            ],
+            created_at: "2026-05-05T03:00:00Z",
+            updated_at: "2026-05-05T03:00:00Z"
+          }
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } }
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const issue = await createWarehouseIssueFromProductionPlan("plan-001", {
+      lineIds: ["pp-line-plan-001-001"]
+    });
+
+    expect(issue.issueNo).toBe("WI-260505-0001");
+    expect(issue.lines[0]).toMatchObject({
+      sourceDocumentType: "production_plan",
+      sourceDocumentId: "plan-001",
+      sourceDocumentLineId: "pp-line-plan-001-001"
+    });
   });
 
   it("creates multiple production plans from one submission", async () => {

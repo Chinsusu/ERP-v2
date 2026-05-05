@@ -122,21 +122,22 @@ type CreateWarehouseIssueInput struct {
 }
 
 type CreateWarehouseIssueLineInput struct {
-	ID                 string
-	ItemID             string
-	SKU                string
-	ItemName           string
-	Category           string
-	BatchID            string
-	BatchNo            string
-	LocationID         string
-	LocationCode       string
-	Quantity           string
-	BaseUOMCode        string
-	Specification      string
-	SourceDocumentType string
-	SourceDocumentID   string
-	Note               string
+	ID                   string
+	ItemID               string
+	SKU                  string
+	ItemName             string
+	Category             string
+	BatchID              string
+	BatchNo              string
+	LocationID           string
+	LocationCode         string
+	Quantity             string
+	BaseUOMCode          string
+	Specification        string
+	SourceDocumentType   string
+	SourceDocumentID     string
+	SourceDocumentLineID string
+	Note                 string
 }
 
 type WarehouseIssueTransitionInput struct {
@@ -481,21 +482,22 @@ func newWarehouseIssueLines(inputs []CreateWarehouseIssueLineInput) ([]domain.Ne
 			return nil, domain.ErrWarehouseIssueInvalidQuantity
 		}
 		lines = append(lines, domain.NewWarehouseIssueLineInput{
-			ID:                 input.ID,
-			ItemID:             input.ItemID,
-			SKU:                input.SKU,
-			ItemName:           input.ItemName,
-			Category:           input.Category,
-			BatchID:            input.BatchID,
-			BatchNo:            input.BatchNo,
-			LocationID:         input.LocationID,
-			LocationCode:       input.LocationCode,
-			Quantity:           quantity,
-			BaseUOMCode:        input.BaseUOMCode,
-			Specification:      input.Specification,
-			SourceDocumentType: input.SourceDocumentType,
-			SourceDocumentID:   input.SourceDocumentID,
-			Note:               input.Note,
+			ID:                   input.ID,
+			ItemID:               input.ItemID,
+			SKU:                  input.SKU,
+			ItemName:             input.ItemName,
+			Category:             input.Category,
+			BatchID:              input.BatchID,
+			BatchNo:              input.BatchNo,
+			LocationID:           input.LocationID,
+			LocationCode:         input.LocationCode,
+			Quantity:             quantity,
+			BaseUOMCode:          input.BaseUOMCode,
+			Specification:        input.Specification,
+			SourceDocumentType:   input.SourceDocumentType,
+			SourceDocumentID:     input.SourceDocumentID,
+			SourceDocumentLineID: input.SourceDocumentLineID,
+			Note:                 input.Note,
 		})
 	}
 

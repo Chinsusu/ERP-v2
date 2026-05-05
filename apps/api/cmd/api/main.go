@@ -1738,7 +1738,11 @@ func main() {
 		}
 		log.Fatalf("configure production plan store: %v", err)
 	}
-	productionPlanService := productionapp.NewProductionPlanService(productionPlanStore, formulaCatalog, availableStockService)
+	productionPlanService := productionapp.NewProductionPlanService(
+		productionPlanStore,
+		formulaCatalog,
+		availableStockService,
+	).WithWarehouseIssueService(warehouseIssueService)
 	supplierRejectionStore, closeSupplierRejectionStore, err := newRuntimeSupplierRejectionStore(cfg)
 	if err != nil {
 		if closeProductionPlanStore != nil {
@@ -2151,8 +2155,9 @@ func main() {
 		purchaseRequestConvert: purchaseRequestConvertToPOHandler(productionPlanService, purchaseOrderService),
 	})
 	registerProductionRoutes(routes, productionRouteHandlers{
-		productionPlans:      productionPlansHandler(productionPlanService),
-		productionPlanDetail: productionPlanDetailHandler(productionPlanService),
+		productionPlans:               productionPlansHandler(productionPlanService),
+		productionPlanDetail:          productionPlanDetailHandler(productionPlanService),
+		productionPlanWarehouseIssues: productionPlanWarehouseIssuesHandler(productionPlanService),
 	})
 	registerSubcontractRoutes(routes, subcontractRouteHandlers{
 		subcontractOrders:                 subcontractOrdersHandler(subcontractOrderService),

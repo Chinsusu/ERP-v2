@@ -79,21 +79,22 @@ type stockTransferResponse struct {
 }
 
 type warehouseIssueLineRequest struct {
-	ID                 string `json:"id"`
-	ItemID             string `json:"item_id"`
-	SKU                string `json:"sku"`
-	ItemName           string `json:"item_name"`
-	Category           string `json:"category"`
-	BatchID            string `json:"batch_id"`
-	BatchNo            string `json:"batch_no"`
-	LocationID         string `json:"location_id"`
-	LocationCode       string `json:"location_code"`
-	Quantity           string `json:"quantity"`
-	BaseUOMCode        string `json:"base_uom_code"`
-	Specification      string `json:"specification"`
-	SourceDocumentType string `json:"source_document_type"`
-	SourceDocumentID   string `json:"source_document_id"`
-	Note               string `json:"note"`
+	ID                   string `json:"id"`
+	ItemID               string `json:"item_id"`
+	SKU                  string `json:"sku"`
+	ItemName             string `json:"item_name"`
+	Category             string `json:"category"`
+	BatchID              string `json:"batch_id"`
+	BatchNo              string `json:"batch_no"`
+	LocationID           string `json:"location_id"`
+	LocationCode         string `json:"location_code"`
+	Quantity             string `json:"quantity"`
+	BaseUOMCode          string `json:"base_uom_code"`
+	Specification        string `json:"specification"`
+	SourceDocumentType   string `json:"source_document_type"`
+	SourceDocumentID     string `json:"source_document_id"`
+	SourceDocumentLineID string `json:"source_document_line_id"`
+	Note                 string `json:"note"`
 }
 
 type createWarehouseIssueRequest struct {
@@ -109,21 +110,22 @@ type createWarehouseIssueRequest struct {
 }
 
 type warehouseIssueLineResponse struct {
-	ID                 string `json:"id"`
-	ItemID             string `json:"item_id,omitempty"`
-	SKU                string `json:"sku"`
-	ItemName           string `json:"item_name,omitempty"`
-	Category           string `json:"category,omitempty"`
-	BatchID            string `json:"batch_id,omitempty"`
-	BatchNo            string `json:"batch_no,omitempty"`
-	LocationID         string `json:"location_id,omitempty"`
-	LocationCode       string `json:"location_code,omitempty"`
-	Quantity           string `json:"quantity"`
-	BaseUOMCode        string `json:"base_uom_code"`
-	Specification      string `json:"specification,omitempty"`
-	SourceDocumentType string `json:"source_document_type,omitempty"`
-	SourceDocumentID   string `json:"source_document_id,omitempty"`
-	Note               string `json:"note,omitempty"`
+	ID                   string `json:"id"`
+	ItemID               string `json:"item_id,omitempty"`
+	SKU                  string `json:"sku"`
+	ItemName             string `json:"item_name,omitempty"`
+	Category             string `json:"category,omitempty"`
+	BatchID              string `json:"batch_id,omitempty"`
+	BatchNo              string `json:"batch_no,omitempty"`
+	LocationID           string `json:"location_id,omitempty"`
+	LocationCode         string `json:"location_code,omitempty"`
+	Quantity             string `json:"quantity"`
+	BaseUOMCode          string `json:"base_uom_code"`
+	Specification        string `json:"specification,omitempty"`
+	SourceDocumentType   string `json:"source_document_type,omitempty"`
+	SourceDocumentID     string `json:"source_document_id,omitempty"`
+	SourceDocumentLineID string `json:"source_document_line_id,omitempty"`
+	Note                 string `json:"note,omitempty"`
 }
 
 type warehouseIssueResponse struct {
@@ -347,21 +349,22 @@ func newCreateWarehouseIssueLines(inputs []warehouseIssueLineRequest) []inventor
 	lines := make([]inventoryapp.CreateWarehouseIssueLineInput, 0, len(inputs))
 	for _, input := range inputs {
 		lines = append(lines, inventoryapp.CreateWarehouseIssueLineInput{
-			ID:                 input.ID,
-			ItemID:             input.ItemID,
-			SKU:                input.SKU,
-			ItemName:           input.ItemName,
-			Category:           input.Category,
-			BatchID:            input.BatchID,
-			BatchNo:            input.BatchNo,
-			LocationID:         input.LocationID,
-			LocationCode:       input.LocationCode,
-			Quantity:           input.Quantity,
-			BaseUOMCode:        input.BaseUOMCode,
-			Specification:      input.Specification,
-			SourceDocumentType: input.SourceDocumentType,
-			SourceDocumentID:   input.SourceDocumentID,
-			Note:               input.Note,
+			ID:                   input.ID,
+			ItemID:               input.ItemID,
+			SKU:                  input.SKU,
+			ItemName:             input.ItemName,
+			Category:             input.Category,
+			BatchID:              input.BatchID,
+			BatchNo:              input.BatchNo,
+			LocationID:           input.LocationID,
+			LocationCode:         input.LocationCode,
+			Quantity:             input.Quantity,
+			BaseUOMCode:          input.BaseUOMCode,
+			Specification:        input.Specification,
+			SourceDocumentType:   input.SourceDocumentType,
+			SourceDocumentID:     input.SourceDocumentID,
+			SourceDocumentLineID: input.SourceDocumentLineID,
+			Note:                 input.Note,
 		})
 	}
 
@@ -436,21 +439,22 @@ func newWarehouseIssueResponse(issue domain.WarehouseIssue, auditLogID string) w
 	}
 	for _, line := range issue.Lines {
 		payload.Lines = append(payload.Lines, warehouseIssueLineResponse{
-			ID:                 line.ID,
-			ItemID:             line.ItemID,
-			SKU:                line.SKU,
-			ItemName:           line.ItemName,
-			Category:           line.Category,
-			BatchID:            line.BatchID,
-			BatchNo:            line.BatchNo,
-			LocationID:         line.LocationID,
-			LocationCode:       line.LocationCode,
-			Quantity:           line.Quantity.String(),
-			BaseUOMCode:        line.BaseUOMCode.String(),
-			Specification:      line.Specification,
-			SourceDocumentType: line.SourceDocumentType,
-			SourceDocumentID:   line.SourceDocumentID,
-			Note:               line.Note,
+			ID:                   line.ID,
+			ItemID:               line.ItemID,
+			SKU:                  line.SKU,
+			ItemName:             line.ItemName,
+			Category:             line.Category,
+			BatchID:              line.BatchID,
+			BatchNo:              line.BatchNo,
+			LocationID:           line.LocationID,
+			LocationCode:         line.LocationCode,
+			Quantity:             line.Quantity.String(),
+			BaseUOMCode:          line.BaseUOMCode.String(),
+			Specification:        line.Specification,
+			SourceDocumentType:   line.SourceDocumentType,
+			SourceDocumentID:     line.SourceDocumentID,
+			SourceDocumentLineID: line.SourceDocumentLineID,
+			Note:                 line.Note,
 		})
 	}
 

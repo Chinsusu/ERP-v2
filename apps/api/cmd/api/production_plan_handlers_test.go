@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdataapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/application"
 	productionapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/application"
@@ -195,6 +196,123 @@ func TestProductionPlanHandlersCreateDemandAndPurchaseRequestDraft(t *testing.T)
 	}
 	if converted.PurchaseOrder.Status != "draft" || converted.PurchaseOrder.PONo == "" {
 		t.Fatalf("converted PO = %+v, want draft PO", converted.PurchaseOrder)
+	}
+}
+
+func TestProductionPlanHandlersCreateWarehouseIssueFromPlanLine(t *testing.T) {
+	ctx := context.Background()
+	auditLog := audit.NewInMemoryLogStore()
+	formulas := masterdataapp.NewPrototypeFormulaCatalog(auditLog)
+	formulaResult, err := formulas.Create(ctx, masterdataapp.CreateFormulaInput{
+		FormulaCode:      "XFF-150ML",
+		FinishedItemID:   "item-xff-150",
+		FinishedSKU:      "XFF",
+		FinishedItemName: "Tinh chat buoi Fast & Furious 150ML",
+		FinishedItemType: "finished_good",
+		FormulaVersion:   "v1",
+		BatchQty:         decimal.MustQuantity("81"),
+		BatchUOMCode:     "PCS",
+		BaseBatchQty:     decimal.MustQuantity("81"),
+		BaseBatchUOMCode: "PCS",
+		Lines: []masterdataapp.CreateFormulaLineInput{
+			{
+				LineNo:           1,
+				ComponentItemID:  "item-act-baicapil",
+				ComponentSKU:     "ACT_BAICAPIL",
+				ComponentName:    "BAICAPIL",
+				ComponentType:    "raw_material",
+				EnteredQty:       decimal.MustQuantity("0.001"),
+				EnteredUOMCode:   "KG",
+				CalcQty:          decimal.MustQuantity("1"),
+				CalcUOMCode:      "G",
+				StockBaseQty:     decimal.MustQuantity("0.001"),
+				StockBaseUOMCode: "KG",
+				WastePercent:     decimal.MustRate("0"),
+				IsRequired:       true,
+				IsStockManaged:   true,
+			},
+		},
+		ActorID:   "user-erp-admin",
+		RequestID: "req-formula-create",
+	})
+	if err != nil {
+		t.Fatalf("create formula: %v", err)
+	}
+	if _, err := formulas.Activate(ctx, masterdataapp.ActivateFormulaInput{
+		ID:        formulaResult.Formula.ID,
+		ActorID:   "user-erp-admin",
+		RequestID: "req-formula-activate",
+	}); err != nil {
+		t.Fatalf("activate formula: %v", err)
+	}
+	issueService := inventoryapp.NewWarehouseIssueService(
+		inventoryapp.NewPrototypeWarehouseIssueStore(),
+		inventoryapp.NewInMemoryStockMovementStore(),
+		auditLog,
+	)
+	service := productionapp.NewProductionPlanService(
+		productionapp.NewPrototypeProductionPlanStore(auditLog),
+		formulas,
+		fakeProductionPlanHandlerAvailableStock{
+			rows: []inventorydomain.AvailableStockSnapshot{
+				{
+					WarehouseID:   "wh-hcm-rm",
+					WarehouseCode: "WH-HCM-RM",
+					LocationID:    "bin-rm-a01",
+					LocationCode:  "RM-A01",
+					ItemID:        "item-act-baicapil",
+					SKU:           "ACT_BAICAPIL",
+					BatchID:       "batch-act-baicapil-001",
+					BatchNo:       "LOT-ACT-001",
+					BaseUOMCode:   decimal.MustUOMCode("KG"),
+					AvailableQty:  decimal.MustQuantity("1.000000"),
+				},
+			},
+		},
+	).WithWarehouseIssueService(issueService)
+	body := bytes.NewBufferString(`{
+		"id":"plan-issue-api",
+		"plan_no":"PP-260505-ISSUE-API",
+		"output_item_id":"item-xff-150",
+		"formula_id":"` + formulaResult.Formula.ID + `",
+		"planned_qty":"162",
+		"uom_code":"PCS"
+	}`)
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/production-plans", body)
+	createReq = createReq.WithContext(auth.WithPrincipal(createReq.Context(), auth.MockPrincipalForRole(smokeAuthConfig(), auth.RoleERPAdmin)))
+	createRec := httptest.NewRecorder()
+
+	productionPlansHandler(service).ServeHTTP(createRec, createReq)
+
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create plan status = %d, want %d: %s", createRec.Code, http.StatusCreated, createRec.Body.String())
+	}
+	plan := decodeSmokeSuccess[productionPlanResponse](t, createRec).Data
+	lineID := plan.Lines[0].ID
+	issueReq := smokeRequestAsRole(
+		httptest.NewRequest(http.MethodPost, "/api/v1/production-plans/plan-issue-api/warehouse-issues", bytes.NewBufferString(`{
+			"line_ids":["`+lineID+`"],
+			"destination_type":"factory",
+			"destination_name":"Factory A",
+			"reason_code":"production_plan_issue"
+		}`)),
+		smokeAuthConfig(),
+		auth.RoleERPAdmin,
+	)
+	issueReq.SetPathValue("production_plan_id", "plan-issue-api")
+	issueReq.Header.Set(response.HeaderRequestID, "req-production-plan-issue")
+	issueRec := httptest.NewRecorder()
+
+	productionPlanWarehouseIssuesHandler(service).ServeHTTP(issueRec, issueReq)
+
+	if issueRec.Code != http.StatusCreated {
+		t.Fatalf("create issue status = %d, want %d: %s", issueRec.Code, http.StatusCreated, issueRec.Body.String())
+	}
+	issue := decodeSmokeSuccess[warehouseIssueResponse](t, issueRec).Data
+	if issue.Lines[0].SourceDocumentType != "production_plan" ||
+		issue.Lines[0].SourceDocumentID != "plan-issue-api" ||
+		issue.Lines[0].SourceDocumentLineID != lineID {
+		t.Fatalf("issue line source = %+v, want production plan line source", issue.Lines[0])
 	}
 }
 

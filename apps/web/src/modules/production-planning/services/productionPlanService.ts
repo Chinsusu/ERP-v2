@@ -2,10 +2,12 @@ import { apiGetRaw, apiPost } from "../../../shared/api/client";
 import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallback";
 import { decimalScales, normalizeDecimalInput, normalizeUOMCode } from "../../../shared/format/numberFormat";
 import { formatFormulaQuantity } from "../../masterdata/services/formulaMasterDataService";
+import type { WarehouseIssue } from "../../inventory/types";
 import type {
   ProductionPlan,
   ProductionPlanInput,
   ProductionPlanLine,
+  ProductionPlanWarehouseIssueRef,
   ProductionPlanQuery,
   ProductionPlanStatus,
   ProductionPlanSummary,
@@ -59,9 +61,21 @@ type ProductionPlanLineApi = {
   shortage_qty: string;
   purchase_draft_qty: string;
   purchase_draft_uom_code: string;
+  issued_qty?: string;
+  remaining_issue_qty?: string;
+  issue_status?: ProductionPlanLine["issueStatus"];
+  warehouse_issues?: ProductionPlanWarehouseIssueRefApi[];
   is_stock_managed: boolean;
   needs_purchase: boolean;
   note?: string;
+};
+
+type ProductionPlanWarehouseIssueRefApi = {
+  id: string;
+  issue_no: string;
+  line_id: string;
+  status: string;
+  quantity: string;
 };
 
 type PurchaseRequestDraftApi = {
@@ -107,6 +121,66 @@ type CreateProductionPlanApiRequest = {
   uom_code: string;
   planned_start_date?: string;
   planned_end_date?: string;
+};
+
+type CreateProductionPlanWarehouseIssueInput = {
+  lineIds: string[];
+  warehouseId?: string;
+  warehouseCode?: string;
+  destinationType?: string;
+  destinationName?: string;
+  reasonCode?: string;
+};
+
+type CreateProductionPlanWarehouseIssueApiRequest = {
+  line_ids: string[];
+  warehouse_id?: string;
+  warehouse_code?: string;
+  destination_type?: string;
+  destination_name?: string;
+  reason_code?: string;
+};
+
+type WarehouseIssueApiLine = {
+  id: string;
+  item_id?: string;
+  sku: string;
+  item_name?: string;
+  category?: string;
+  batch_id?: string;
+  batch_no?: string;
+  location_id?: string;
+  location_code?: string;
+  quantity: string;
+  base_uom_code: string;
+  specification?: string;
+  source_document_type?: string;
+  source_document_id?: string;
+  source_document_line_id?: string;
+  note?: string;
+};
+
+type WarehouseIssueApiItem = {
+  id: string;
+  issue_no: string;
+  org_id: string;
+  warehouse_id: string;
+  warehouse_code?: string;
+  destination_type: string;
+  destination_name: string;
+  reason_code: string;
+  status: WarehouseIssue["status"];
+  requested_by: string;
+  submitted_by?: string;
+  approved_by?: string;
+  posted_by?: string;
+  lines: WarehouseIssueApiLine[];
+  audit_log_id?: string;
+  created_at: string;
+  updated_at: string;
+  submitted_at?: string;
+  approved_at?: string;
+  posted_at?: string;
 };
 
 const defaultAccessToken = "local-dev-access-token";
@@ -172,6 +246,26 @@ export async function createProductionPlans(inputs: ProductionPlanInput[]): Prom
   }
 
   return plans;
+}
+
+export async function createWarehouseIssueFromProductionPlan(
+  planId: string,
+  input: CreateProductionPlanWarehouseIssueInput
+): Promise<WarehouseIssue> {
+  const issue = await apiPost<WarehouseIssueApiItem, CreateProductionPlanWarehouseIssueApiRequest>(
+    `/production-plans/${encodeURIComponent(planId)}/warehouse-issues`,
+    {
+      line_ids: input.lineIds,
+      warehouse_id: input.warehouseId,
+      warehouse_code: input.warehouseCode,
+      destination_type: input.destinationType ?? "factory",
+      destination_name: input.destinationName ?? "Factory",
+      reason_code: input.reasonCode ?? "production_plan_issue"
+    },
+    { accessToken: defaultAccessToken }
+  );
+
+  return fromApiWarehouseIssue(issue);
 }
 
 async function createNormalizedProductionPlan(normalized: ProductionPlanInput): Promise<ProductionPlan> {
@@ -345,9 +439,65 @@ function fromApiProductionPlanLine(line: ProductionPlanLineApi): ProductionPlanL
     shortageQty: line.shortage_qty,
     purchaseDraftQty: line.purchase_draft_qty,
     purchaseDraftUomCode: line.purchase_draft_uom_code,
+    issuedQty: line.issued_qty ?? "0.000000",
+    remainingIssueQty: line.remaining_issue_qty ?? line.required_stock_base_qty,
+    issueStatus: line.issue_status ?? (line.needs_purchase ? "shortage" : "ready_to_issue"),
+    warehouseIssues: (line.warehouse_issues ?? []).map(fromApiProductionPlanWarehouseIssueRef),
     isStockManaged: line.is_stock_managed,
     needsPurchase: line.needs_purchase,
     note: line.note
+  };
+}
+
+function fromApiProductionPlanWarehouseIssueRef(ref: ProductionPlanWarehouseIssueRefApi): ProductionPlanWarehouseIssueRef {
+  return {
+    id: ref.id,
+    issueNo: ref.issue_no,
+    lineId: ref.line_id,
+    status: ref.status,
+    quantity: ref.quantity
+  };
+}
+
+function fromApiWarehouseIssue(item: WarehouseIssueApiItem): WarehouseIssue {
+  return {
+    id: item.id,
+    issueNo: item.issue_no,
+    orgId: item.org_id,
+    warehouseId: item.warehouse_id,
+    warehouseCode: item.warehouse_code,
+    destinationType: item.destination_type,
+    destinationName: item.destination_name,
+    reasonCode: item.reason_code,
+    status: item.status,
+    requestedBy: item.requested_by,
+    submittedBy: item.submitted_by,
+    approvedBy: item.approved_by,
+    postedBy: item.posted_by,
+    lines: item.lines.map((line) => ({
+      id: line.id,
+      itemId: line.item_id,
+      sku: line.sku,
+      itemName: line.item_name,
+      category: line.category,
+      batchId: line.batch_id,
+      batchNo: line.batch_no,
+      locationId: line.location_id,
+      locationCode: line.location_code,
+      quantity: line.quantity,
+      baseUomCode: line.base_uom_code,
+      specification: line.specification,
+      sourceDocumentType: line.source_document_type,
+      sourceDocumentId: line.source_document_id,
+      sourceDocumentLineId: line.source_document_line_id,
+      note: line.note
+    })),
+    auditLogId: item.audit_log_id,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+    submittedAt: item.submitted_at,
+    approvedAt: item.approved_at,
+    postedAt: item.posted_at
   };
 }
 
@@ -426,7 +576,10 @@ function filterProductionPlans(plans: ProductionPlan[], query: ProductionPlanQue
 function cloneProductionPlan(plan: ProductionPlan): ProductionPlan {
   return {
     ...plan,
-    lines: plan.lines.map((line) => ({ ...line })),
+    lines: plan.lines.map((line) => ({
+      ...line,
+      warehouseIssues: line.warehouseIssues.map((issue) => ({ ...issue }))
+    })),
     purchaseRequestDraft: {
       ...plan.purchaseRequestDraft,
       lines: plan.purchaseRequestDraft.lines.map((line) => ({ ...line }))

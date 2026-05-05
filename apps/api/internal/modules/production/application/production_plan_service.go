@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
 	productiondomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/domain"
@@ -21,12 +22,15 @@ var ErrProductionPlanNotFound = errors.New("production plan not found")
 var ErrProductionPlanFormulaNotFound = errors.New("production plan formula not found")
 var ErrProductionPlanFormulaInactive = errors.New("production plan formula must be active")
 var ErrPurchaseRequestDraftNotFound = errors.New("purchase request draft not found")
+var ErrProductionPlanLineNotFound = errors.New("production plan line not found")
+var ErrProductionPlanMaterialIssueNotReady = errors.New("production plan material is not ready to issue")
 
 const (
-	ErrorCodeProductionPlanNotFound   response.ErrorCode = "PRODUCTION_PLAN_NOT_FOUND"
-	ErrorCodeProductionPlanValidation response.ErrorCode = "PRODUCTION_PLAN_VALIDATION_ERROR"
-	ErrorCodePurchaseRequestNotFound  response.ErrorCode = "PURCHASE_REQUEST_NOT_FOUND"
-	ErrorCodePurchaseRequestInvalid   response.ErrorCode = "PURCHASE_REQUEST_INVALID_STATE"
+	ErrorCodeProductionPlanNotFound              response.ErrorCode = "PRODUCTION_PLAN_NOT_FOUND"
+	ErrorCodeProductionPlanValidation            response.ErrorCode = "PRODUCTION_PLAN_VALIDATION_ERROR"
+	ErrorCodePurchaseRequestNotFound             response.ErrorCode = "PURCHASE_REQUEST_NOT_FOUND"
+	ErrorCodePurchaseRequestInvalid              response.ErrorCode = "PURCHASE_REQUEST_INVALID_STATE"
+	ErrorCodeProductionPlanMaterialIssueNotReady response.ErrorCode = "PRODUCTION_PLAN_MATERIAL_ISSUE_NOT_READY"
 
 	defaultProductionPlanOrgID = "org-my-pham"
 	productionPlanEntityType   = "production.plan"
@@ -49,10 +53,16 @@ type ProductionPlanAvailableStockLister interface {
 	Execute(ctx context.Context, filter inventorydomain.AvailableStockFilter) ([]inventorydomain.AvailableStockSnapshot, error)
 }
 
+type ProductionPlanWarehouseIssueService interface {
+	ListWarehouseIssues(ctx context.Context) ([]inventorydomain.WarehouseIssue, error)
+	CreateWarehouseIssue(ctx context.Context, input inventoryapp.CreateWarehouseIssueInput) (inventoryapp.WarehouseIssueResult, error)
+}
+
 type ProductionPlanService struct {
 	store          ProductionPlanStore
 	formulaRead    ProductionPlanFormulaReader
 	availableStock ProductionPlanAvailableStockLister
+	warehouseIssue ProductionPlanWarehouseIssueService
 	clock          func() time.Time
 }
 
@@ -109,6 +119,23 @@ type PurchaseRequestDraftResult struct {
 	AuditLogID           string
 }
 
+type CreateProductionPlanWarehouseIssueInput struct {
+	PlanID          string
+	LineIDs         []string
+	WarehouseID     string
+	WarehouseCode   string
+	DestinationType string
+	DestinationName string
+	ReasonCode      string
+	ActorID         string
+	RequestID       string
+}
+
+type ProductionPlanWarehouseIssueResult struct {
+	WarehouseIssue inventorydomain.WarehouseIssue
+	AuditLogID     string
+}
+
 type PrototypeProductionPlanStore struct {
 	mu       sync.RWMutex
 	records  map[string]productiondomain.ProductionPlan
@@ -128,6 +155,12 @@ func NewProductionPlanService(
 	}
 }
 
+func (s ProductionPlanService) WithWarehouseIssueService(service ProductionPlanWarehouseIssueService) ProductionPlanService {
+	s.warehouseIssue = service
+
+	return s
+}
+
 func NewPrototypeProductionPlanStore(auditLog audit.LogStore) *PrototypeProductionPlanStore {
 	return &PrototypeProductionPlanStore{
 		records:  make(map[string]productiondomain.ProductionPlan),
@@ -140,7 +173,19 @@ func (s ProductionPlanService) ListProductionPlans(ctx context.Context, filter P
 		return nil, errors.New("production plan store is required")
 	}
 
-	return s.store.List(ctx, filter)
+	plans, err := s.store.List(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	for index := range plans {
+		enriched, err := s.enrichProductionPlanIssueReadiness(ctx, plans[index])
+		if err != nil {
+			return nil, err
+		}
+		plans[index] = enriched
+	}
+
+	return plans, nil
 }
 
 func (s ProductionPlanService) GetProductionPlan(ctx context.Context, id string) (productiondomain.ProductionPlan, error) {
@@ -152,7 +197,7 @@ func (s ProductionPlanService) GetProductionPlan(ctx context.Context, id string)
 		return productiondomain.ProductionPlan{}, err
 	}
 
-	return plan, nil
+	return s.enrichProductionPlanIssueReadiness(ctx, plan)
 }
 
 func (s ProductionPlanService) ListPurchaseRequestDrafts(
@@ -325,6 +370,102 @@ func (s ProductionPlanService) CreateProductionPlan(ctx context.Context, input C
 	}
 
 	return ProductionPlanResult{ProductionPlan: plan, AuditLogID: log.ID}, nil
+}
+
+func (s ProductionPlanService) CreateWarehouseIssueFromProductionPlan(
+	ctx context.Context,
+	input CreateProductionPlanWarehouseIssueInput,
+) (ProductionPlanWarehouseIssueResult, error) {
+	if s.store == nil {
+		return ProductionPlanWarehouseIssueResult{}, errors.New("production plan store is required")
+	}
+	if s.warehouseIssue == nil {
+		return ProductionPlanWarehouseIssueResult{}, errors.New("warehouse issue service is required")
+	}
+	actorID := strings.TrimSpace(input.ActorID)
+	if actorID == "" || len(input.LineIDs) == 0 {
+		return ProductionPlanWarehouseIssueResult{}, productiondomain.ErrProductionPlanRequiredField
+	}
+	rawPlan, err := s.store.Get(ctx, input.PlanID)
+	if err != nil {
+		return ProductionPlanWarehouseIssueResult{}, err
+	}
+	plan, err := s.enrichProductionPlanIssueReadiness(ctx, rawPlan)
+	if err != nil {
+		return ProductionPlanWarehouseIssueResult{}, err
+	}
+
+	linesByID := make(map[string]productiondomain.ProductionPlanLine, len(plan.Lines))
+	for _, line := range plan.Lines {
+		linesByID[line.ID] = line
+	}
+	issueLines := make([]inventoryapp.CreateWarehouseIssueLineInput, 0, len(input.LineIDs))
+	var selectedWarehouseID string
+	var selectedWarehouseCode string
+	for _, requestedLineID := range input.LineIDs {
+		line, ok := linesByID[strings.TrimSpace(requestedLineID)]
+		if !ok {
+			return ProductionPlanWarehouseIssueResult{}, ErrProductionPlanLineNotFound
+		}
+		if !isIssueReadyProductionPlanLine(line) {
+			return ProductionPlanWarehouseIssueResult{}, ErrProductionPlanMaterialIssueNotReady
+		}
+		allocations, err := s.allocateProductionPlanIssueStock(ctx, line, firstNonBlankProductionPlan(input.WarehouseID, selectedWarehouseID))
+		if err != nil {
+			return ProductionPlanWarehouseIssueResult{}, err
+		}
+		if len(allocations) == 0 {
+			return ProductionPlanWarehouseIssueResult{}, ErrProductionPlanMaterialIssueNotReady
+		}
+		if selectedWarehouseID == "" {
+			selectedWarehouseID = allocations[0].WarehouseID
+			selectedWarehouseCode = allocations[0].WarehouseCode
+		}
+		for _, allocation := range allocations {
+			issueLines = append(issueLines, inventoryapp.CreateWarehouseIssueLineInput{
+				ItemID:               firstNonBlankProductionPlan(line.ComponentItemID, allocation.ItemID),
+				SKU:                  line.ComponentSKU,
+				ItemName:             line.ComponentName,
+				Category:             line.ComponentType,
+				BatchID:              allocation.BatchID,
+				BatchNo:              allocation.BatchNo,
+				LocationID:           allocation.LocationID,
+				LocationCode:         allocation.LocationCode,
+				Quantity:             allocation.Quantity.String(),
+				BaseUOMCode:          line.StockBaseUOMCode.String(),
+				SourceDocumentType:   "production_plan",
+				SourceDocumentID:     plan.ID,
+				SourceDocumentLineID: line.ID,
+				Note:                 fmt.Sprintf("From %s line %d", plan.PlanNo, line.LineNo),
+			})
+		}
+	}
+	if selectedWarehouseID == "" {
+		return ProductionPlanWarehouseIssueResult{}, ErrProductionPlanMaterialIssueNotReady
+	}
+
+	destinationType := firstNonBlankProductionPlan(input.DestinationType, "factory")
+	destinationName := firstNonBlankProductionPlan(input.DestinationName, "Factory")
+	reasonCode := firstNonBlankProductionPlan(input.ReasonCode, "production_plan_issue")
+	result, err := s.warehouseIssue.CreateWarehouseIssue(ctx, inventoryapp.CreateWarehouseIssueInput{
+		OrgID:           plan.OrgID,
+		WarehouseID:     selectedWarehouseID,
+		WarehouseCode:   firstNonBlankProductionPlan(input.WarehouseCode, selectedWarehouseCode),
+		DestinationType: destinationType,
+		DestinationName: destinationName,
+		ReasonCode:      reasonCode,
+		RequestedBy:     actorID,
+		RequestID:       input.RequestID,
+		Lines:           issueLines,
+	})
+	if err != nil {
+		return ProductionPlanWarehouseIssueResult{}, err
+	}
+
+	return ProductionPlanWarehouseIssueResult{
+		WarehouseIssue: result.WarehouseIssue,
+		AuditLogID:     result.AuditLogID,
+	}, nil
 }
 
 func (s ProductionPlanService) transitionPurchaseRequestDraft(
@@ -690,6 +831,327 @@ func shortageQuantity(required decimal.Decimal, available decimal.Decimal) (deci
 	}
 
 	return diff, nil
+}
+
+type productionPlanIssueAllocation struct {
+	WarehouseID   string
+	WarehouseCode string
+	LocationID    string
+	LocationCode  string
+	ItemID        string
+	BatchID       string
+	BatchNo       string
+	Quantity      decimal.Decimal
+}
+
+func (s ProductionPlanService) enrichProductionPlanIssueReadiness(
+	ctx context.Context,
+	plan productiondomain.ProductionPlan,
+) (productiondomain.ProductionPlan, error) {
+	enriched := plan.Clone()
+	issues := []inventorydomain.WarehouseIssue{}
+	if s.warehouseIssue != nil {
+		rows, err := s.warehouseIssue.ListWarehouseIssues(ctx)
+		if err != nil {
+			return productiondomain.ProductionPlan{}, err
+		}
+		issues = rows
+	}
+
+	for index, line := range enriched.Lines {
+		updated, err := s.enrichProductionPlanLineIssueReadiness(ctx, enriched, line, issues)
+		if err != nil {
+			return productiondomain.ProductionPlan{}, err
+		}
+		enriched.Lines[index] = updated
+	}
+
+	return enriched, nil
+}
+
+func (s ProductionPlanService) enrichProductionPlanLineIssueReadiness(
+	ctx context.Context,
+	plan productiondomain.ProductionPlan,
+	line productiondomain.ProductionPlanLine,
+	issues []inventorydomain.WarehouseIssue,
+) (productiondomain.ProductionPlanLine, error) {
+	updated := line
+	if !line.IsStockManaged {
+		updated.AvailableQty = decimal.MustQuantity("0")
+		updated.ShortageQty = decimal.MustQuantity("0")
+		updated.IssuedQty = decimal.MustQuantity("0")
+		updated.RemainingIssueQty = decimal.MustQuantity("0")
+		updated.IssueStatus = productiondomain.ProductionPlanIssueStatusIssued
+		updated.NeedsPurchase = false
+		return updated, nil
+	}
+
+	availableQty, err := s.currentAvailableQtyForProductionLine(ctx, line)
+	if err != nil {
+		return productiondomain.ProductionPlanLine{}, err
+	}
+	issuedQty := decimal.MustQuantity("0")
+	refs := make([]productiondomain.ProductionPlanWarehouseIssueRef, 0)
+	for _, issue := range issues {
+		for _, issueLine := range issue.Lines {
+			if !warehouseIssueLineMatchesProductionPlanLine(issueLine, plan.ID, line.ID) {
+				continue
+			}
+			refs = append(refs, productiondomain.ProductionPlanWarehouseIssueRef{
+				ID:       issue.ID,
+				IssueNo:  issue.IssueNo,
+				LineID:   issueLine.ID,
+				Status:   string(issue.Status),
+				Quantity: issueLine.Quantity,
+			})
+			if issue.Status != inventorydomain.WarehouseIssueStatusPosted {
+				continue
+			}
+			issuedQty, err = decimal.AddQuantity(issuedQty, issueLine.Quantity)
+			if err != nil {
+				return productiondomain.ProductionPlanLine{}, err
+			}
+		}
+	}
+	remainingQty, err := shortageQuantity(line.RequiredStockBaseQty, issuedQty)
+	if err != nil {
+		return productiondomain.ProductionPlanLine{}, err
+	}
+	shortageQty, err := shortageQuantity(remainingQty, availableQty)
+	if err != nil {
+		return productiondomain.ProductionPlanLine{}, err
+	}
+
+	updated.AvailableQty = availableQty
+	updated.ShortageQty = shortageQty
+	updated.NeedsPurchase = !shortageQty.IsZero()
+	updated.IssuedQty = issuedQty
+	updated.RemainingIssueQty = remainingQty
+	updated.WarehouseIssues = refs
+	updated.IssueStatus = productionPlanIssueStatus(updated)
+
+	return updated, nil
+}
+
+func (s ProductionPlanService) currentAvailableQtyForProductionLine(
+	ctx context.Context,
+	line productiondomain.ProductionPlanLine,
+) (decimal.Decimal, error) {
+	if s.availableStock == nil {
+		return line.AvailableQty, nil
+	}
+	snapshots, err := s.availableStock.Execute(ctx, inventorydomain.NewAvailableStockFilter("", "", line.ComponentSKU, ""))
+	if err != nil {
+		return "", err
+	}
+	total := decimal.MustQuantity("0")
+	for _, snapshot := range snapshots {
+		if snapshot.BaseUOMCode != line.StockBaseUOMCode {
+			continue
+		}
+		total, err = decimal.AddQuantity(total, snapshot.AvailableQty)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return total, nil
+}
+
+func productionPlanIssueStatus(line productiondomain.ProductionPlanLine) productiondomain.ProductionPlanIssueStatus {
+	if line.RemainingIssueQty.IsZero() {
+		return productiondomain.ProductionPlanIssueStatusIssued
+	}
+	if hasWarehouseIssueStatus(line.WarehouseIssues, inventorydomain.WarehouseIssueStatusApproved) {
+		return productiondomain.ProductionPlanIssueStatusIssueApproved
+	}
+	if hasWarehouseIssueStatus(line.WarehouseIssues, inventorydomain.WarehouseIssueStatusSubmitted) {
+		return productiondomain.ProductionPlanIssueStatusIssueSubmitted
+	}
+	if hasWarehouseIssueStatus(line.WarehouseIssues, inventorydomain.WarehouseIssueStatusDraft) {
+		return productiondomain.ProductionPlanIssueStatusIssueDraft
+	}
+	if !line.IssuedQty.IsZero() {
+		return productiondomain.ProductionPlanIssueStatusPartiallyIssued
+	}
+	if line.ShortageQty.IsZero() {
+		return productiondomain.ProductionPlanIssueStatusReadyToIssue
+	}
+
+	return productiondomain.ProductionPlanIssueStatusShortage
+}
+
+func hasWarehouseIssueStatus(
+	refs []productiondomain.ProductionPlanWarehouseIssueRef,
+	status inventorydomain.WarehouseIssueStatus,
+) bool {
+	for _, ref := range refs {
+		if ref.Status == string(status) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func warehouseIssueLineMatchesProductionPlanLine(
+	line inventorydomain.WarehouseIssueLine,
+	planID string,
+	lineID string,
+) bool {
+	return strings.EqualFold(line.SourceDocumentType, "production_plan") &&
+		strings.EqualFold(line.SourceDocumentID, strings.TrimSpace(planID)) &&
+		strings.EqualFold(line.SourceDocumentLineID, strings.TrimSpace(lineID))
+}
+
+func isIssueReadyProductionPlanLine(line productiondomain.ProductionPlanLine) bool {
+	if !line.IsStockManaged || line.RemainingIssueQty.IsZero() {
+		return false
+	}
+	switch line.IssueStatus {
+	case productiondomain.ProductionPlanIssueStatusReadyToIssue,
+		productiondomain.ProductionPlanIssueStatusPartiallyIssued:
+		return line.ShortageQty.IsZero()
+	default:
+		return false
+	}
+}
+
+func (s ProductionPlanService) allocateProductionPlanIssueStock(
+	ctx context.Context,
+	line productiondomain.ProductionPlanLine,
+	warehouseID string,
+) ([]productionPlanIssueAllocation, error) {
+	if s.availableStock == nil {
+		return nil, errors.New("production plan stock reader is required")
+	}
+	snapshots, err := s.availableStock.Execute(ctx, inventorydomain.NewAvailableStockFilter(strings.TrimSpace(warehouseID), "", line.ComponentSKU, ""))
+	if err != nil {
+		return nil, err
+	}
+	groups := groupProductionPlanIssueStockByWarehouse(snapshots, line.StockBaseUOMCode)
+	requiredQty := line.RemainingIssueQty
+	for _, group := range groups {
+		shortage, err := shortageQuantity(requiredQty, group.totalQty)
+		if err != nil {
+			return nil, err
+		}
+		if !shortage.IsZero() {
+			continue
+		}
+		return allocateProductionPlanIssueStockFromGroup(group, requiredQty)
+	}
+
+	return nil, ErrProductionPlanMaterialIssueNotReady
+}
+
+type productionPlanIssueWarehouseGroup struct {
+	warehouseID   string
+	warehouseCode string
+	totalQty      decimal.Decimal
+	snapshots     []inventorydomain.AvailableStockSnapshot
+}
+
+func groupProductionPlanIssueStockByWarehouse(
+	snapshots []inventorydomain.AvailableStockSnapshot,
+	uom decimal.UOMCode,
+) []productionPlanIssueWarehouseGroup {
+	byID := make(map[string]int)
+	groups := make([]productionPlanIssueWarehouseGroup, 0)
+	for _, snapshot := range snapshots {
+		if snapshot.BaseUOMCode != uom || snapshot.AvailableQty.IsZero() || snapshot.AvailableQty.IsNegative() {
+			continue
+		}
+		warehouseID := strings.TrimSpace(snapshot.WarehouseID)
+		if warehouseID == "" {
+			continue
+		}
+		index, ok := byID[warehouseID]
+		if !ok {
+			index = len(groups)
+			byID[warehouseID] = index
+			groups = append(groups, productionPlanIssueWarehouseGroup{
+				warehouseID:   warehouseID,
+				warehouseCode: strings.TrimSpace(snapshot.WarehouseCode),
+				totalQty:      decimal.MustQuantity("0"),
+				snapshots:     make([]inventorydomain.AvailableStockSnapshot, 0),
+			})
+		}
+		groups[index].snapshots = append(groups[index].snapshots, snapshot)
+		groups[index].totalQty = mustAddProductionPlanQuantity(groups[index].totalQty, snapshot.AvailableQty)
+	}
+
+	return groups
+}
+
+func allocateProductionPlanIssueStockFromGroup(
+	group productionPlanIssueWarehouseGroup,
+	requiredQty decimal.Decimal,
+) ([]productionPlanIssueAllocation, error) {
+	remaining := requiredQty
+	allocations := make([]productionPlanIssueAllocation, 0, len(group.snapshots))
+	for _, snapshot := range group.snapshots {
+		if remaining.IsZero() {
+			break
+		}
+		takeQty, err := minProductionPlanQuantity(snapshot.AvailableQty, remaining)
+		if err != nil {
+			return nil, err
+		}
+		if takeQty.IsZero() {
+			continue
+		}
+		allocations = append(allocations, productionPlanIssueAllocation{
+			WarehouseID:   group.warehouseID,
+			WarehouseCode: group.warehouseCode,
+			LocationID:    snapshot.LocationID,
+			LocationCode:  snapshot.LocationCode,
+			ItemID:        snapshot.ItemID,
+			BatchID:       snapshot.BatchID,
+			BatchNo:       snapshot.BatchNo,
+			Quantity:      takeQty,
+		})
+		remaining, err = decimal.SubtractQuantity(remaining, takeQty)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if !remaining.IsZero() {
+		return nil, ErrProductionPlanMaterialIssueNotReady
+	}
+
+	return allocations, nil
+}
+
+func minProductionPlanQuantity(left decimal.Decimal, right decimal.Decimal) (decimal.Decimal, error) {
+	diff, err := decimal.SubtractQuantity(left, right)
+	if err != nil {
+		return "", err
+	}
+	if diff.IsNegative() {
+		return left, nil
+	}
+
+	return right, nil
+}
+
+func mustAddProductionPlanQuantity(left decimal.Decimal, right decimal.Decimal) decimal.Decimal {
+	result, err := decimal.AddQuantity(left, right)
+	if err != nil {
+		panic(err)
+	}
+
+	return result
+}
+
+func firstNonBlankProductionPlan(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+
+	return ""
 }
 
 func newProductionPlanAuditLog(actorID string, requestID string, action string, plan productiondomain.ProductionPlan, occurredAt time.Time) (audit.Log, error) {

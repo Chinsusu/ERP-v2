@@ -13,12 +13,13 @@ describe("productionPlanWorklist", () => {
       "Duyệt đề nghị mua",
       "PO vật tư",
       "Nhập kho/QC vật tư",
+      "Phiếu xuất kho vật tư",
       "Lệnh gia công"
     ]);
     expect(tasks[1]).toMatchObject({
       statusLabel: "Thiếu 1 dòng vật tư",
       statusTone: "warning",
-      detail: "1/1 dòng vật tư cần mua thêm."
+      detail: "0/1 dòng vật tư đủ tồn khả dụng; 1 dòng cần mua thêm."
     });
     expect(tasks[2]).toMatchObject({
       statusLabel: "Đề nghị nháp",
@@ -41,6 +42,11 @@ describe("productionPlanWorklist", () => {
       statusTone: "warning",
       action: { label: "Chờ bước 6", disabled: true }
     });
+    expect(tasks[7]).toMatchObject({
+      statusLabel: "Chờ xuất vật tư",
+      statusTone: "warning",
+      action: { label: "Chờ bước 7", disabled: true }
+    });
   });
 
   it("marks purchase and material-gate tasks complete when the plan has no shortages", () => {
@@ -56,6 +62,11 @@ describe("productionPlanWorklist", () => {
       statusTone: "success"
     });
     expect(tasks[6]).toMatchObject({
+      statusLabel: "Đã xuất đủ",
+      statusTone: "success",
+      action: { label: "Mở phiếu xuất", href: "/inventory#warehouse-issues", disabled: false }
+    });
+    expect(tasks[7]).toMatchObject({
       statusLabel: "Sẵn sàng tạo lệnh",
       statusTone: "success",
       action: { label: "Mở gia công", href: "/subcontract", disabled: false }
@@ -110,6 +121,10 @@ const shortagePlan: ProductionPlan = {
       shortageQty: "0.099900",
       purchaseDraftQty: "0.099900",
       purchaseDraftUomCode: "KG",
+      issuedQty: "0.000000",
+      remainingIssueQty: "0.099900",
+      issueStatus: "shortage",
+      warehouseIssues: [],
       isStockManaged: true,
       needsPurchase: true
     }
@@ -147,6 +162,18 @@ const availablePlan: ProductionPlan = {
       availableQty: "1.000000",
       shortageQty: "0.000000",
       purchaseDraftQty: "0.000000",
+      issuedQty: "0.099900",
+      remainingIssueQty: "0.000000",
+      issueStatus: "issued",
+      warehouseIssues: [
+        {
+          id: "issue-001",
+          issueNo: "WI-260505-0001",
+          lineId: "wi-line-001",
+          status: "posted",
+          quantity: "0.099900"
+        }
+      ],
       needsPurchase: false
     }
   ],
