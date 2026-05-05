@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"sync"
 	"time"
@@ -47,11 +48,19 @@ type WarehouseReceivingPurchaseOrderReader interface {
 	GetPurchaseOrder(ctx context.Context, id string) (purchasedomain.PurchaseOrder, error)
 }
 
+type WarehouseReceivingSupplierPayableCreator interface {
+	CreateWarehouseReceiptPayable(
+		ctx context.Context,
+		input CreateWarehouseReceiptPayableInput,
+	) (WarehouseReceiptPayableCreationResult, error)
+}
+
 type WarehouseReceivingService struct {
 	store             WarehouseReceivingStore
 	locationRead      WarehouseReceivingLocationReader
 	batchRead         WarehouseReceivingBatchReader
 	purchaseOrderRead WarehouseReceivingPurchaseOrderReader
+	payableCreator    WarehouseReceivingSupplierPayableCreator
 	movement          StockMovementStore
 	auditLog          audit.LogStore
 	clock             func() time.Time
@@ -98,11 +107,38 @@ type WarehouseReceivingTransitionInput struct {
 type WarehouseReceivingResult struct {
 	Receipt    domain.WarehouseReceiving
 	AuditLogID string
+	Payable    *WarehouseReceiptPayableCreationResult
 }
 
 type PrototypeWarehouseReceivingStore struct {
 	mu       sync.RWMutex
 	receipts map[string]domain.WarehouseReceiving
+}
+
+type CreateWarehouseReceiptPayableInput struct {
+	Receipt       domain.WarehouseReceiving
+	PurchaseOrder purchasedomain.PurchaseOrder
+	Lines         []WarehouseReceiptPayableLineInput
+	TotalAmount   decimal.Decimal
+	ActorID       string
+	RequestID     string
+}
+
+type WarehouseReceiptPayableLineInput struct {
+	ReceiptLineID       string
+	PurchaseOrderLineID string
+	ItemID              string
+	SKU                 string
+	ItemName            string
+	Quantity            decimal.Decimal
+	UOMCode             decimal.UOMCode
+	Amount              decimal.Decimal
+}
+
+type WarehouseReceiptPayableCreationResult struct {
+	PayableID  string
+	PayableNo  string
+	AuditLogID string
 }
 
 func NewWarehouseReceivingService(
@@ -126,6 +162,14 @@ func (s WarehouseReceivingService) WithPurchaseOrderReader(
 	reader WarehouseReceivingPurchaseOrderReader,
 ) WarehouseReceivingService {
 	s.purchaseOrderRead = reader
+
+	return s
+}
+
+func (s WarehouseReceivingService) WithSupplierPayableCreator(
+	creator WarehouseReceivingSupplierPayableCreator,
+) WarehouseReceivingService {
+	s.payableCreator = creator
 
 	return s
 }
@@ -288,8 +332,16 @@ func (s WarehouseReceivingService) PostWarehouseReceiving(
 	if err := s.store.Save(ctx, posted); err != nil {
 		return WarehouseReceivingResult{}, err
 	}
+	payable, err := s.createSupplierPayableForPostedReceipt(ctx, posted, input)
+	if err != nil {
+		return WarehouseReceivingResult{}, err
+	}
 	afterData := receivingAuditData(posted)
 	afterData["stock_movement_count"] = len(posted.StockMovements)
+	if payable != nil {
+		afterData["supplier_payable_id"] = payable.PayableID
+		afterData["supplier_payable_no"] = payable.PayableNo
+	}
 	log, err := newWarehouseReceivingAuditLog(
 		input.ActorID,
 		input.RequestID,
@@ -306,7 +358,7 @@ func (s WarehouseReceivingService) PostWarehouseReceiving(
 		return WarehouseReceivingResult{}, err
 	}
 
-	return WarehouseReceivingResult{Receipt: posted, AuditLogID: log.ID}, nil
+	return WarehouseReceivingResult{Receipt: posted, AuditLogID: log.ID, Payable: payable}, nil
 }
 
 func (s WarehouseReceivingService) transition(
@@ -629,6 +681,147 @@ func (s WarehouseReceivingService) newReceivingMovements(
 	}
 
 	return movements, nil
+}
+
+func (s WarehouseReceivingService) createSupplierPayableForPostedReceipt(
+	ctx context.Context,
+	receipt domain.WarehouseReceiving,
+	input WarehouseReceivingTransitionInput,
+) (*WarehouseReceiptPayableCreationResult, error) {
+	if s.payableCreator == nil ||
+		domain.NormalizeReceivingReferenceDocType(receipt.ReferenceDocType) != domain.ReceivingReferenceDocTypePurchaseOrder {
+		return nil, nil
+	}
+	if s.purchaseOrderRead == nil {
+		return nil, ErrReceivingPurchaseOrderRequired
+	}
+	order, err := s.purchaseOrderRead.GetPurchaseOrder(ctx, receipt.ReferenceDocID)
+	if err != nil {
+		return nil, ErrReceivingPurchaseOrderMismatch
+	}
+	payableInput, ok, err := newWarehouseReceiptPayableInput(receipt, order, input)
+	if err != nil || !ok {
+		return nil, err
+	}
+	result, err := s.payableCreator.CreateWarehouseReceiptPayable(ctx, payableInput)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func newWarehouseReceiptPayableInput(
+	receipt domain.WarehouseReceiving,
+	order purchasedomain.PurchaseOrder,
+	input WarehouseReceivingTransitionInput,
+) (CreateWarehouseReceiptPayableInput, bool, error) {
+	lines := make([]WarehouseReceiptPayableLineInput, 0, len(receipt.Lines))
+	total := decimal.MustMoneyAmount("0")
+	for _, receiptLine := range receipt.Lines {
+		if receiptLine.QCStatus != domain.QCStatusPass {
+			continue
+		}
+		orderLine, ok := purchaseOrderLineByID(order, receiptLine.PurchaseOrderLineID)
+		if !ok {
+			return CreateWarehouseReceiptPayableInput{}, false, ErrReceivingPurchaseOrderMismatch
+		}
+		amount, err := warehouseReceiptPayableLineAmount(receiptLine.Quantity, orderLine.UnitPrice)
+		if err != nil {
+			return CreateWarehouseReceiptPayableInput{}, false, err
+		}
+		if amount.IsZero() {
+			continue
+		}
+		total, err = addWarehouseReceiptMoney(total, amount)
+		if err != nil {
+			return CreateWarehouseReceiptPayableInput{}, false, err
+		}
+		lines = append(lines, WarehouseReceiptPayableLineInput{
+			ReceiptLineID:       receiptLine.ID,
+			PurchaseOrderLineID: receiptLine.PurchaseOrderLineID,
+			ItemID:              receiptLine.ItemID,
+			SKU:                 receiptLine.SKU,
+			ItemName:            receiptLine.ItemName,
+			Quantity:            receiptLine.Quantity,
+			UOMCode:             receiptLine.UOMCode,
+			Amount:              amount,
+		})
+	}
+	if len(lines) == 0 || total.IsZero() {
+		return CreateWarehouseReceiptPayableInput{}, false, nil
+	}
+
+	return CreateWarehouseReceiptPayableInput{
+		Receipt:       receipt.Clone(),
+		PurchaseOrder: order.Clone(),
+		Lines:         lines,
+		TotalAmount:   total,
+		ActorID:       input.ActorID,
+		RequestID:     input.RequestID,
+	}, true, nil
+}
+
+func warehouseReceiptPayableLineAmount(
+	quantity decimal.Decimal,
+	unitPrice decimal.Decimal,
+) (decimal.Decimal, error) {
+	quantityValue, ok := new(big.Rat).SetString(quantity.String())
+	if !ok {
+		return "", domain.ErrReceivingRequiredField
+	}
+	unitPriceValue, ok := new(big.Rat).SetString(unitPrice.String())
+	if !ok {
+		return "", domain.ErrReceivingRequiredField
+	}
+	amount := new(big.Rat).Mul(quantityValue, unitPriceValue)
+	if amount.Sign() < 0 {
+		return "", domain.ErrReceivingRequiredField
+	}
+
+	return roundWarehouseReceiptRatToMoney(amount)
+}
+
+func addWarehouseReceiptMoney(left decimal.Decimal, right decimal.Decimal) (decimal.Decimal, error) {
+	leftValue, ok := new(big.Rat).SetString(left.String())
+	if !ok {
+		return "", domain.ErrReceivingRequiredField
+	}
+	rightValue, ok := new(big.Rat).SetString(right.String())
+	if !ok {
+		return "", domain.ErrReceivingRequiredField
+	}
+	sum := new(big.Rat).Add(leftValue, rightValue)
+	if sum.Sign() < 0 {
+		return "", domain.ErrReceivingRequiredField
+	}
+
+	return roundWarehouseReceiptRatToMoney(sum)
+}
+
+func roundWarehouseReceiptRatToMoney(value *big.Rat) (decimal.Decimal, error) {
+	if value.Sign() < 0 {
+		return "", domain.ErrReceivingRequiredField
+	}
+
+	scaled := new(big.Rat).Mul(value, big.NewRat(100, 1))
+	quotient, remainder := new(big.Int).QuoRem(scaled.Num(), scaled.Denom(), new(big.Int))
+	if new(big.Int).Mul(remainder, big.NewInt(2)).Cmp(scaled.Denom()) >= 0 {
+		quotient.Add(quotient, big.NewInt(1))
+	}
+
+	digits := quotient.String()
+	if len(digits) <= decimal.MoneyScale {
+		digits = strings.Repeat("0", decimal.MoneyScale-len(digits)+1) + digits
+	}
+	intPart := digits[:len(digits)-decimal.MoneyScale]
+	fracPart := digits[len(digits)-decimal.MoneyScale:]
+	money, err := decimal.ParseMoneyAmount(fmt.Sprintf("%s.%s", intPart, fracPart))
+	if err != nil {
+		return "", err
+	}
+
+	return money, nil
 }
 
 func (s *PrototypeWarehouseReceivingStore) List(

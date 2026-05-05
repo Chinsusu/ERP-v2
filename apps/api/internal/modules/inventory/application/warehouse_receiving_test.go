@@ -48,6 +48,72 @@ func TestWarehouseReceivingPostCreatesStockMovementAndAudit(t *testing.T) {
 	}
 }
 
+func TestWarehouseReceivingPostCreatesSupplierPayableForPassedPurchaseReceipt(t *testing.T) {
+	service, _, _ := newTestWarehouseReceivingService()
+	payableCreator := &recordingWarehouseReceiptPayableCreator{}
+	service = service.WithSupplierPayableCreator(payableCreator)
+
+	result, err := service.PostWarehouseReceiving(context.Background(), WarehouseReceivingTransitionInput{
+		ID:        "grn-hcm-260427-inspect",
+		ActorID:   "user-warehouse-lead",
+		RequestID: "req-receive-post-ap",
+	})
+	if err != nil {
+		t.Fatalf("post receiving: %v", err)
+	}
+
+	if result.Payable == nil ||
+		result.Payable.PayableID != "ap-grn-hcm-260427-inspect" ||
+		result.Payable.PayableNo != "AP-GRN-260427-0003" {
+		t.Fatalf("payable result = %+v, want AP linked to posted receipt", result.Payable)
+	}
+	if len(payableCreator.inputs) != 1 {
+		t.Fatalf("payable creator calls = %d, want 1", len(payableCreator.inputs))
+	}
+	input := payableCreator.inputs[0]
+	if input.Receipt.ID != "grn-hcm-260427-inspect" ||
+		input.PurchaseOrder.ID != "PO-260427-0003" ||
+		input.ActorID != "user-warehouse-lead" ||
+		input.RequestID != "req-receive-post-ap" {
+		t.Fatalf("payable input = %+v, want receipt, PO, and actor trace", input)
+	}
+	if len(input.Lines) != 1 {
+		t.Fatalf("payable lines = %d, want 1", len(input.Lines))
+	}
+	line := input.Lines[0]
+	if line.ReceiptLineID != "grn-line-draft-001" ||
+		line.PurchaseOrderLineID != "po-line-260427-0003-001" ||
+		line.SKU != "CREAM-50G" ||
+		line.Quantity.String() != "24.000000" ||
+		line.Amount.String() != "24.00" {
+		t.Fatalf("payable line = %+v, want accepted receipt quantity priced from PO", line)
+	}
+}
+
+func TestWarehouseReceivingPostSkipsSupplierPayableForQCHoldLines(t *testing.T) {
+	service, _, _ := newTestWarehouseReceivingService()
+	payableCreator := &recordingWarehouseReceiptPayableCreator{}
+	service = service.WithSupplierPayableCreator(payableCreator)
+
+	_, err := service.MarkWarehouseReceivingInspectReady(context.Background(), WarehouseReceivingTransitionInput{
+		ID:      "grn-hcm-260427-submitted",
+		ActorID: "user-qa",
+	})
+	if err != nil {
+		t.Fatalf("mark inspect ready: %v", err)
+	}
+	_, err = service.PostWarehouseReceiving(context.Background(), WarehouseReceivingTransitionInput{
+		ID:      "grn-hcm-260427-submitted",
+		ActorID: "user-warehouse-lead",
+	})
+	if err != nil {
+		t.Fatalf("post receiving: %v", err)
+	}
+	if len(payableCreator.inputs) != 0 {
+		t.Fatalf("payable creator calls = %d, want none for QC hold lines", len(payableCreator.inputs))
+	}
+}
+
 func TestWarehouseReceivingRejectsDuplicatePost(t *testing.T) {
 	service, movementStore, _ := newTestWarehouseReceivingService()
 
@@ -314,6 +380,23 @@ func validPurchaseOrderReceivingInputForTest() CreateWarehouseReceivingInput {
 
 type staticWarehouseReceivingPurchaseOrderReader struct {
 	orders map[string]purchasedomain.PurchaseOrder
+}
+
+type recordingWarehouseReceiptPayableCreator struct {
+	inputs []CreateWarehouseReceiptPayableInput
+}
+
+func (c *recordingWarehouseReceiptPayableCreator) CreateWarehouseReceiptPayable(
+	_ context.Context,
+	input CreateWarehouseReceiptPayableInput,
+) (WarehouseReceiptPayableCreationResult, error) {
+	c.inputs = append(c.inputs, input)
+
+	return WarehouseReceiptPayableCreationResult{
+		PayableID:  "ap-" + input.Receipt.ID,
+		PayableNo:  "AP-" + input.Receipt.ReceiptNo,
+		AuditLogID: "audit-ap-" + input.Receipt.ID,
+	}, nil
 }
 
 func (r staticWarehouseReceivingPurchaseOrderReader) GetPurchaseOrder(

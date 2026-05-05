@@ -61,6 +61,18 @@ export function buildPurchaseOrderTimeline(order: PurchaseOrder): PurchaseOrderT
       }
     },
     {
+      id: "payable",
+      label: "Công nợ NCC",
+      description: payableDescription(order),
+      status: payableStatus(order, terminalStatus),
+      tone: toneForTimelineStatus(payableStatus(order, terminalStatus)),
+      action: {
+        label: "Mở AP",
+        href: purchaseOrderPayableHref(order),
+        disabled: !["partially_received", "received", "closed"].includes(order.status)
+      }
+    },
+    {
       id: "closed",
       label: "Đóng PO",
       description: "PO được đóng khi đã xử lý xong mua hàng, nhập kho và đối soát.",
@@ -113,6 +125,13 @@ export function purchaseOrderReceivingHref(order: PurchaseOrder) {
   }
 
   return `/receiving?${params.toString()}#receiving-draft`;
+}
+
+export function purchaseOrderPayableHref(order: PurchaseOrder) {
+  const params = new URLSearchParams();
+  params.set("ap_q", order.poNo || order.id);
+
+  return `/finance?${params.toString()}#supplier-payables`;
 }
 
 function submittedStatus(order: PurchaseOrder): PurchaseOrderTimelineStatus {
@@ -168,6 +187,20 @@ function closedStatus(order: PurchaseOrder, terminalStatus: PurchaseOrderStatus 
   return "pending";
 }
 
+function payableStatus(order: PurchaseOrder, terminalStatus: PurchaseOrderStatus | undefined): PurchaseOrderTimelineStatus {
+  if (terminalStatus) {
+    return "blocked";
+  }
+  if (order.status === "closed") {
+    return "complete";
+  }
+  if (["partially_received", "received"].includes(order.status)) {
+    return "current";
+  }
+
+  return "pending";
+}
+
 function terminalPurchaseOrderStatus(status: PurchaseOrderStatus) {
   return ["cancelled", "rejected"].includes(status) ? status : undefined;
 }
@@ -184,6 +217,17 @@ function receivingDescription(order: PurchaseOrder) {
   }
 
   return "Theo dõi giao hàng, phiếu nhập kho và số lượng còn thiếu.";
+}
+
+function payableDescription(order: PurchaseOrder) {
+  if (order.status === "closed") {
+    return "PO đã đối soát và sẵn sàng theo dõi thanh toán NCC.";
+  }
+  if (["partially_received", "received"].includes(order.status)) {
+    return "Các phiếu nhập đã hạch toán và đạt QC sẽ tạo AP cho NCC.";
+  }
+
+  return "AP chỉ mở sau khi có phiếu nhập theo PO được hạch toán.";
 }
 
 function toneForTimelineStatus(status: PurchaseOrderTimelineStatus): StatusTone {

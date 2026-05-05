@@ -131,6 +131,13 @@ export function SupplierPayablesPanel() {
   const totals = useMemo(() => summarizePayables(visiblePayables), [visiblePayables]);
 
   useEffect(() => {
+    const initialSearch = initialSupplierPayableSearch();
+    if (initialSearch) {
+      setSearch(initialSearch);
+    }
+  }, []);
+
+  useEffect(() => {
     if (visiblePayables.length > 0 && !visiblePayables.some((payable) => payable.id === selectedPayableId)) {
       setSelectedPayableId(visiblePayables[0].id);
     }
@@ -531,10 +538,25 @@ function matchesPayableQuery(payable: SupplierPayable, query: SupplierPayableQue
   return (
     (!query.status || payable.status === query.status) &&
     (!search ||
-      [payable.payableNo, payable.supplierCode, payable.supplierName, payable.sourceDocument?.no]
+      [
+        payable.payableNo,
+        payable.supplierCode,
+        payable.supplierName,
+        payable.sourceDocument?.id,
+        payable.sourceDocument?.no,
+        ...payable.lines.flatMap((line) => [line.description, line.sourceDocument.id, line.sourceDocument.no])
+      ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(search)))
   );
+}
+
+function initialSupplierPayableSearch() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return new URLSearchParams(window.location.search).get("ap_q") ?? "";
 }
 
 function summarizePayables(payables: SupplierPayable[]) {

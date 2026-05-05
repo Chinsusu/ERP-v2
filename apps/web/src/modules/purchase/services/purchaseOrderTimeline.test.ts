@@ -21,6 +21,7 @@ describe("purchaseOrderTimeline", () => {
       ["submitted", "complete"],
       ["approved", "complete"],
       ["receiving", "current"],
+      ["payable", "pending"],
       ["closed", "pending"]
     ]);
     expect(timeline[2].occurredAt).toBe("2026-05-05T10:00:00Z");
@@ -52,6 +53,7 @@ describe("purchaseOrderTimeline", () => {
       ["submitted", "complete"],
       ["approved", "blocked"],
       ["receiving", "blocked"],
+      ["payable", "blocked"],
       ["closed", "blocked"],
       ["cancelled", "complete"]
     ]);
@@ -99,6 +101,23 @@ describe("purchaseOrderTimeline", () => {
     expect(purchaseOrderReceivingHref(basePurchaseOrder)).toBe(
       "/receiving?po_id=po-260505-249546&warehouse_id=wh-hcm-rm#receiving-draft"
     );
+  });
+
+  it("adds an AP deep link scoped to the PO", () => {
+    const payableStep = buildPurchaseOrderTimeline({
+      ...basePurchaseOrder,
+      status: "received",
+      receivedAt: "2026-05-06T10:00:00Z"
+    }).find((item) => item.id === "payable");
+
+    expect(payableStep).toMatchObject({
+      status: "current",
+      action: {
+        label: "Mở AP",
+        href: "/finance?ap_q=PO-260505-249546#supplier-payables",
+        disabled: false
+      }
+    });
   });
 });
 

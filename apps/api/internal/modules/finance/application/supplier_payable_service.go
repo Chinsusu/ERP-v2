@@ -513,6 +513,13 @@ func matchesSupplierPayableFilter(
 		payable.SourceDocument.ID,
 		payable.SourceDocument.No,
 	}, " "))
+	for _, line := range payable.Lines {
+		haystack += " " + strings.ToLower(strings.Join([]string{
+			line.Description,
+			line.SourceDocument.ID,
+			line.SourceDocument.No,
+		}, " "))
+	}
 
 	return strings.Contains(haystack, filter.Search)
 }

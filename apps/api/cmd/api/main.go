@@ -1979,6 +1979,9 @@ func main() {
 	}
 	customerReceivableService := financeapp.NewCustomerReceivableService(financeStores.customerReceivables, auditLogStore)
 	supplierPayableService := financeapp.NewSupplierPayableService(financeStores.supplierPayables, auditLogStore)
+	warehouseReceiving = warehouseReceiving.WithSupplierPayableCreator(
+		warehouseReceiptSupplierPayableAdapter{service: supplierPayableService},
+	)
 	codRemittanceService := financeapp.NewCODRemittanceService(financeStores.codRemittances, auditLogStore)
 	cashTransactionService := financeapp.NewCashTransactionService(financeStores.cashTransactions, auditLogStore)
 	financeDashboardService := financeapp.NewFinanceDashboardService(
