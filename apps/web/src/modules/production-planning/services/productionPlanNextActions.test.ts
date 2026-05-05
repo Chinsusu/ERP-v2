@@ -51,6 +51,26 @@ describe("productionPlanNextActions", () => {
       })
     ).toThrow("Production plan still has material shortages");
   });
+
+  it("blocks subcontract order creation until ready material has posted issue evidence", () => {
+    const readyButNotIssuedPlan: ProductionPlan = {
+      ...availablePlan,
+      lines: availablePlan.lines.map((line) => ({
+        ...line,
+        issuedQty: "0.000000",
+        remainingIssueQty: line.requiredStockBaseQty,
+        issueStatus: "ready_to_issue",
+        warehouseIssues: []
+      }))
+    };
+
+    expect(() =>
+      buildSubcontractOrderFromProductionPlan(readyButNotIssuedPlan, {
+        factoryId: "sup-out-lotus",
+        expectedDeliveryDate: "2026-05-20"
+      })
+    ).toThrow("Production plan materials must be issued before subcontract order creation");
+  });
 });
 
 const basePlan = {
@@ -100,6 +120,10 @@ const shortagePlan: ProductionPlan = {
       shortageQty: "0.161500",
       purchaseDraftQty: "0.161500",
       purchaseDraftUomCode: "KG",
+      issuedQty: "0.000000",
+      remainingIssueQty: "0.162000",
+      issueStatus: "shortage",
+      warehouseIssues: [],
       isStockManaged: true,
       needsPurchase: true
     }
@@ -149,6 +173,18 @@ const availablePlan: ProductionPlan = {
       shortageQty: "0.000000",
       purchaseDraftQty: "0.000000",
       purchaseDraftUomCode: "KG",
+      issuedQty: "0.162000",
+      remainingIssueQty: "0.000000",
+      issueStatus: "issued",
+      warehouseIssues: [
+        {
+          id: "issue-001",
+          issueNo: "WI-260505-0001",
+          lineId: "wi-line-001",
+          status: "posted",
+          quantity: "0.162000"
+        }
+      ],
       isStockManaged: true,
       needsPurchase: false
     },
@@ -170,6 +206,18 @@ const availablePlan: ProductionPlan = {
       shortageQty: "0.000000",
       purchaseDraftQty: "0.000000",
       purchaseDraftUomCode: "PCS",
+      issuedQty: "162.000000",
+      remainingIssueQty: "0.000000",
+      issueStatus: "issued",
+      warehouseIssues: [
+        {
+          id: "issue-002",
+          issueNo: "WI-260505-0001",
+          lineId: "wi-line-002",
+          status: "posted",
+          quantity: "162.000000"
+        }
+      ],
       isStockManaged: true,
       needsPurchase: false
     }

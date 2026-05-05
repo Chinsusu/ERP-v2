@@ -1,5 +1,5 @@
 import { formatProductionPlanQuantity } from "./productionPlanService";
-import type { ProductionPlan } from "../types";
+import type { ProductionPlan, ProductionPlanIssueStatus } from "../types";
 
 type WorkTaskTone = "normal" | "success" | "warning" | "danger" | "info";
 
@@ -19,13 +19,17 @@ export type ProductionPlanWorkTask = {
 
 export function buildProductionPlanWorklist(plan: ProductionPlan): ProductionPlanWorkTask[] {
   const lineCount = plan.lines.length;
-  const shortageLineCount = plan.lines.filter((line) => line.needsPurchase || Number(line.shortageQty) > 0).length;
+  const shortageLineCount = plan.lines.filter(
+    (line) => line.issueStatus === "shortage" || line.needsPurchase || Number(line.shortageQty) > 0
+  ).length;
   const purchaseLineCount = plan.purchaseRequestDraft.lines.length;
   const quantityLabel = formatProductionPlanQuantity(plan.plannedQty, plan.uomCode);
+  const materialDemand = buildMaterialDemandTaskState(lineCount, shortageLineCount);
   const purchaseRequest = buildPurchaseRequestTaskState(plan);
   const approval = buildPurchaseApprovalTaskState(plan);
   const purchaseOrder = buildPurchaseOrderTaskState(plan);
   const receiving = buildReceivingTaskState(plan);
+  const materialIssue = buildMaterialIssueTaskState(plan);
 
   return [
     {
@@ -40,12 +44,9 @@ export function buildProductionPlanWorklist(plan: ProductionPlan): ProductionPla
       id: "material-demand",
       step: 2,
       title: "Nhu cầu vật tư",
-      statusLabel: shortageLineCount > 0 ? `Thiếu ${shortageLineCount} dòng vật tư` : "Đủ vật tư",
-      statusTone: shortageLineCount > 0 ? "warning" : "success",
-      detail:
-        shortageLineCount > 0
-          ? `${shortageLineCount}/${lineCount} dòng vật tư cần mua thêm.`
-          : `${lineCount} dòng vật tư đã đủ tồn khả dụng.`
+      statusLabel: materialDemand.statusLabel,
+      statusTone: materialDemand.statusTone,
+      detail: materialDemand.detail
     },
     {
       id: "purchase-request",
@@ -77,10 +78,7 @@ export function buildProductionPlanWorklist(plan: ProductionPlan): ProductionPla
       title: "PO vật tư",
       statusLabel: purchaseOrder.statusLabel,
       statusTone: purchaseOrder.statusTone,
-      detail:
-        purchaseLineCount > 0
-          ? purchaseOrder.detail
-          : "Kế hoạch không cần PO vật tư.",
+      detail: purchaseLineCount > 0 ? purchaseOrder.detail : "Kế hoạch không cần PO vật tư.",
       action: purchaseOrder.action
     },
     {
@@ -89,29 +87,56 @@ export function buildProductionPlanWorklist(plan: ProductionPlan): ProductionPla
       title: "Nhập kho/QC vật tư",
       statusLabel: receiving.statusLabel,
       statusTone: receiving.statusTone,
-      detail:
-        purchaseLineCount > 0
-          ? receiving.detail
-          : "Không có vật tư mua thêm cần nhập kho hoặc QC.",
+      detail: purchaseLineCount > 0 ? receiving.detail : "Không có vật tư mua thêm cần nhập kho hoặc QC.",
       action: receiving.action
     },
     {
-      id: "subcontract-order",
+      id: "warehouse-issue",
       step: 7,
+      title: "Phiếu xuất kho vật tư",
+      statusLabel: materialIssue.statusLabel,
+      statusTone: materialIssue.statusTone,
+      detail: materialIssue.detail,
+      action: materialIssue.action
+    },
+    {
+      id: "subcontract-order",
+      step: 8,
       title: "Lệnh gia công",
-      statusLabel: shortageLineCount > 0 ? "Chờ đủ vật tư" : "Sẵn sàng tạo lệnh",
-      statusTone: shortageLineCount > 0 ? "warning" : "success",
-      detail:
-        shortageLineCount > 0
-          ? "Tạo lệnh gia công sau khi vật tư thiếu đã được mua, nhập kho và QC đạt."
-          : "Mở module Gia công để tạo hoặc theo dõi lệnh sản xuất từ kế hoạch này.",
+      statusLabel: materialIssue.readyForSubcontract ? "Sẵn sàng tạo lệnh" : "Chờ xuất vật tư",
+      statusTone: materialIssue.readyForSubcontract ? "success" : "warning",
+      detail: materialIssue.readyForSubcontract
+        ? "Mở module Gia công để tạo hoặc theo dõi lệnh sản xuất từ kế hoạch này."
+        : "Tạo lệnh gia công sau khi vật tư đã được xuất kho hoặc có waiver.",
       action: {
-        label: shortageLineCount > 0 ? "Chờ bước 6" : "Mở gia công",
-        href: shortageLineCount > 0 ? undefined : "/subcontract",
-        disabled: shortageLineCount > 0
+        label: materialIssue.readyForSubcontract ? "Mở gia công" : "Chờ bước 7",
+        href: materialIssue.readyForSubcontract ? "/subcontract" : undefined,
+        disabled: !materialIssue.readyForSubcontract
       }
     }
   ];
+}
+
+function buildMaterialDemandTaskState(
+  lineCount: number,
+  shortageLineCount: number
+): Pick<ProductionPlanWorkTask, "statusLabel" | "statusTone" | "detail"> {
+  if (lineCount === 0) {
+    return { statusLabel: "Chưa có dòng vật tư", statusTone: "warning", detail: "Kế hoạch chưa có nhu cầu vật tư." };
+  }
+  if (shortageLineCount > 0) {
+    return {
+      statusLabel: `Thiếu ${shortageLineCount} dòng vật tư`,
+      statusTone: "warning",
+      detail: `${lineCount - shortageLineCount}/${lineCount} dòng vật tư đủ tồn khả dụng; ${shortageLineCount} dòng cần mua thêm.`
+    };
+  }
+
+  return {
+    statusLabel: "Đủ vật tư",
+    statusTone: "success",
+    detail: `${lineCount} dòng vật tư đã đủ tồn khả dụng.`
+  };
 }
 
 function buildPurchaseRequestTaskState(plan: ProductionPlan): Pick<ProductionPlanWorkTask, "statusLabel" | "statusTone" | "action"> {
@@ -212,6 +237,62 @@ function buildReceivingTaskState(plan: ProductionPlan): Pick<ProductionPlanWorkT
     detail: "Chưa thể nhập kho vật tư khi đề nghị mua chưa chuyển thành PO."
   };
 }
+
+function buildMaterialIssueTaskState(
+  plan: ProductionPlan
+): Pick<ProductionPlanWorkTask, "statusLabel" | "statusTone" | "detail" | "action"> & { readyForSubcontract: boolean } {
+  const stockLines = plan.lines.filter((line) => line.isStockManaged);
+  const shortageCount = stockLines.filter((line) => line.issueStatus === "shortage").length;
+  const readyCount = stockLines.filter((line) => line.issueStatus === "ready_to_issue" || line.issueStatus === "partially_issued").length;
+  const pendingCount = stockLines.filter((line) => pendingIssueStatuses.includes(line.issueStatus)).length;
+  const issuedCount = stockLines.filter((line) => line.issueStatus === "issued" || line.issueStatus === "waived").length;
+
+  if (stockLines.length === 0) {
+    return {
+      statusLabel: "Không cần xuất kho",
+      statusTone: "success",
+      detail: "Kế hoạch không có dòng vật tư quản lý tồn.",
+      readyForSubcontract: true
+    };
+  }
+  if (issuedCount === stockLines.length) {
+    return {
+      statusLabel: "Đã xuất đủ",
+      statusTone: "success",
+      detail: `${issuedCount}/${stockLines.length} dòng vật tư đã có bằng chứng xuất kho.`,
+      action: { label: "Mở phiếu xuất", href: "/inventory#warehouse-issues", disabled: false },
+      readyForSubcontract: true
+    };
+  }
+  if (pendingCount > 0) {
+    return {
+      statusLabel: "Có phiếu xuất đang xử lý",
+      statusTone: "info",
+      detail: `${pendingCount} dòng đã có phiếu xuất chưa post; chỉ mở gia công sau khi post.`,
+      action: { label: "Mở phiếu xuất", href: "/inventory#warehouse-issues", disabled: false },
+      readyForSubcontract: false
+    };
+  }
+  if (readyCount > 0 && shortageCount === 0) {
+    return {
+      statusLabel: "Sẵn sàng xuất kho",
+      statusTone: "warning",
+      detail: `${readyCount} dòng đủ tồn; tạo phiếu xuất ở bảng nhu cầu vật tư.`,
+      action: { label: "Tạo ở bảng vật tư", disabled: true },
+      readyForSubcontract: false
+    };
+  }
+
+  return {
+    statusLabel: "Chờ đủ vật tư",
+    statusTone: "warning",
+    detail: `Còn ${shortageCount} dòng thiếu hoặc chưa đủ điều kiện xuất kho.`,
+    action: { label: "Chờ bước 6", disabled: true },
+    readyForSubcontract: false
+  };
+}
+
+const pendingIssueStatuses: ProductionPlanIssueStatus[] = ["issue_draft", "issue_submitted", "issue_approved"];
 
 function purchaseRequestStatusLabel(status = "draft") {
   switch (status) {

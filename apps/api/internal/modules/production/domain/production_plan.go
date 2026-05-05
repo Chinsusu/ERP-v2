@@ -37,6 +37,20 @@ const (
 	PurchaseRequestDraftStatusRejected      PurchaseRequestDraftStatus = "rejected"
 )
 
+type ProductionPlanIssueStatus string
+
+const (
+	ProductionPlanIssueStatusShortage        ProductionPlanIssueStatus = "shortage"
+	ProductionPlanIssueStatusReadyToIssue    ProductionPlanIssueStatus = "ready_to_issue"
+	ProductionPlanIssueStatusIssueDraft      ProductionPlanIssueStatus = "issue_draft"
+	ProductionPlanIssueStatusIssueSubmitted  ProductionPlanIssueStatus = "issue_submitted"
+	ProductionPlanIssueStatusIssueApproved   ProductionPlanIssueStatus = "issue_approved"
+	ProductionPlanIssueStatusPartiallyIssued ProductionPlanIssueStatus = "partially_issued"
+	ProductionPlanIssueStatusIssued          ProductionPlanIssueStatus = "issued"
+	ProductionPlanIssueStatusWaived          ProductionPlanIssueStatus = "waived"
+	ProductionPlanIssueStatusBlocked         ProductionPlanIssueStatus = "blocked"
+)
+
 type ProductionPlan struct {
 	ID                  string
 	OrgID               string
@@ -83,9 +97,21 @@ type ProductionPlanLine struct {
 	ShortageQty          decimal.Decimal
 	PurchaseDraftQty     decimal.Decimal
 	PurchaseDraftUOMCode decimal.UOMCode
+	IssuedQty            decimal.Decimal
+	RemainingIssueQty    decimal.Decimal
+	IssueStatus          ProductionPlanIssueStatus
+	WarehouseIssues      []ProductionPlanWarehouseIssueRef
 	IsStockManaged       bool
 	NeedsPurchase        bool
 	Note                 string
+}
+
+type ProductionPlanWarehouseIssueRef struct {
+	ID       string
+	IssueNo  string
+	LineID   string
+	Status   string
+	Quantity decimal.Decimal
 }
 
 type PurchaseRequestDraft struct {
@@ -316,6 +342,9 @@ func NewProductionPlanLine(input NewProductionPlanLineInput) (ProductionPlanLine
 		ShortageQty:          shortageQty,
 		PurchaseDraftQty:     purchaseDraftQty,
 		PurchaseDraftUOMCode: purchaseDraftUOM,
+		IssuedQty:            decimal.MustQuantity("0"),
+		RemainingIssueQty:    requiredStockBaseQty,
+		IssueStatus:          ProductionPlanIssueStatusShortage,
 		IsStockManaged:       input.IsStockManaged,
 		NeedsPurchase:        input.NeedsPurchase,
 		Note:                 strings.TrimSpace(input.Note),
@@ -517,6 +546,9 @@ func (d *PurchaseRequestDraft) markPurchaseRequestDraftTransition(status Purchas
 func (p ProductionPlan) Clone() ProductionPlan {
 	clone := p
 	clone.Lines = append([]ProductionPlanLine(nil), p.Lines...)
+	for index := range clone.Lines {
+		clone.Lines[index].WarehouseIssues = append([]ProductionPlanWarehouseIssueRef(nil), clone.Lines[index].WarehouseIssues...)
+	}
 	clone.PurchaseDraft = p.PurchaseDraft.Clone()
 
 	return clone

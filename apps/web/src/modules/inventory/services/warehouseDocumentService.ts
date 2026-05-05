@@ -86,6 +86,7 @@ type WarehouseIssueApiLine = {
   specification?: string;
   source_document_type?: string;
   source_document_id?: string;
+  source_document_line_id?: string;
   note?: string;
 };
 
@@ -134,6 +135,7 @@ type CreateWarehouseIssueApiRequest = {
     specification?: string;
     source_document_type?: string;
     source_document_id?: string;
+    source_document_line_id?: string;
     note?: string;
   }>;
 };
@@ -324,6 +326,7 @@ function fromApiWarehouseIssue(item: WarehouseIssueApiItem): WarehouseIssue {
       specification: line.specification,
       sourceDocumentType: line.source_document_type,
       sourceDocumentId: line.source_document_id,
+      sourceDocumentLineId: line.source_document_line_id,
       note: line.note
     })),
     auditLogId: item.audit_log_id,
@@ -383,6 +386,7 @@ function toApiCreateWarehouseIssue(input: CreateWarehouseIssueInput): CreateWare
       specification: line.specification,
       source_document_type: line.sourceDocumentType,
       source_document_id: line.sourceDocumentId,
+      source_document_line_id: line.sourceDocumentLineId,
       note: line.note
     }))
   };
@@ -452,6 +456,7 @@ function createPrototypeWarehouseIssue(input: CreateWarehouseIssueInput): Wareho
       specification: line.specification,
       sourceDocumentType: line.sourceDocumentType,
       sourceDocumentId: line.sourceDocumentId,
+      sourceDocumentLineId: line.sourceDocumentLineId,
       note: line.note
     })),
     auditLogId: `audit-warehouse-issue-create-${Date.now()}`,

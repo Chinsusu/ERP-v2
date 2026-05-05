@@ -23,27 +23,48 @@ type createProductionPlanRequest struct {
 	PlannedEndDate   string `json:"planned_end_date"`
 }
 
+type createProductionPlanWarehouseIssueRequest struct {
+	LineIDs         []string `json:"line_ids"`
+	WarehouseID     string   `json:"warehouse_id"`
+	WarehouseCode   string   `json:"warehouse_code"`
+	DestinationType string   `json:"destination_type"`
+	DestinationName string   `json:"destination_name"`
+	ReasonCode      string   `json:"reason_code"`
+}
+
+type productionPlanWarehouseIssueRefResponse struct {
+	ID       string `json:"id"`
+	IssueNo  string `json:"issue_no"`
+	LineID   string `json:"line_id"`
+	Status   string `json:"status"`
+	Quantity string `json:"quantity"`
+}
+
 type productionPlanLineResponse struct {
-	ID                   string `json:"id"`
-	FormulaLineID        string `json:"formula_line_id"`
-	LineNo               int    `json:"line_no"`
-	ComponentItemID      string `json:"component_item_id,omitempty"`
-	ComponentSKU         string `json:"component_sku"`
-	ComponentName        string `json:"component_name"`
-	ComponentType        string `json:"component_type"`
-	FormulaQty           string `json:"formula_qty"`
-	FormulaUOMCode       string `json:"formula_uom_code"`
-	RequiredQty          string `json:"required_qty"`
-	RequiredUOMCode      string `json:"required_uom_code"`
-	RequiredStockBaseQty string `json:"required_stock_base_qty"`
-	StockBaseUOMCode     string `json:"stock_base_uom_code"`
-	AvailableQty         string `json:"available_qty"`
-	ShortageQty          string `json:"shortage_qty"`
-	PurchaseDraftQty     string `json:"purchase_draft_qty"`
-	PurchaseDraftUOMCode string `json:"purchase_draft_uom_code"`
-	IsStockManaged       bool   `json:"is_stock_managed"`
-	NeedsPurchase        bool   `json:"needs_purchase"`
-	Note                 string `json:"note,omitempty"`
+	ID                   string                                    `json:"id"`
+	FormulaLineID        string                                    `json:"formula_line_id"`
+	LineNo               int                                       `json:"line_no"`
+	ComponentItemID      string                                    `json:"component_item_id,omitempty"`
+	ComponentSKU         string                                    `json:"component_sku"`
+	ComponentName        string                                    `json:"component_name"`
+	ComponentType        string                                    `json:"component_type"`
+	FormulaQty           string                                    `json:"formula_qty"`
+	FormulaUOMCode       string                                    `json:"formula_uom_code"`
+	RequiredQty          string                                    `json:"required_qty"`
+	RequiredUOMCode      string                                    `json:"required_uom_code"`
+	RequiredStockBaseQty string                                    `json:"required_stock_base_qty"`
+	StockBaseUOMCode     string                                    `json:"stock_base_uom_code"`
+	AvailableQty         string                                    `json:"available_qty"`
+	ShortageQty          string                                    `json:"shortage_qty"`
+	PurchaseDraftQty     string                                    `json:"purchase_draft_qty"`
+	PurchaseDraftUOMCode string                                    `json:"purchase_draft_uom_code"`
+	IssuedQty            string                                    `json:"issued_qty"`
+	RemainingIssueQty    string                                    `json:"remaining_issue_qty"`
+	IssueStatus          string                                    `json:"issue_status"`
+	WarehouseIssues      []productionPlanWarehouseIssueRefResponse `json:"warehouse_issues"`
+	IsStockManaged       bool                                      `json:"is_stock_managed"`
+	NeedsPurchase        bool                                      `json:"needs_purchase"`
+	Note                 string                                    `json:"note,omitempty"`
 }
 
 type purchaseRequestDraftLineResponse struct {
@@ -193,6 +214,50 @@ func productionPlanDetailHandler(service productionapp.ProductionPlanService) ht
 	}
 }
 
+func productionPlanWarehouseIssuesHandler(service productionapp.ProductionPlanService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionProductionView) {
+			writePermissionDenied(w, r, auth.PermissionProductionView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+
+		var payload createProductionPlanWarehouseIssueRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid production material issue payload", nil)
+			return
+		}
+		result, err := service.CreateWarehouseIssueFromProductionPlan(r.Context(), productionapp.CreateProductionPlanWarehouseIssueInput{
+			PlanID:          r.PathValue("production_plan_id"),
+			LineIDs:         payload.LineIDs,
+			WarehouseID:     payload.WarehouseID,
+			WarehouseCode:   payload.WarehouseCode,
+			DestinationType: payload.DestinationType,
+			DestinationName: payload.DestinationName,
+			ReasonCode:      payload.ReasonCode,
+			ActorID:         principal.UserID,
+			RequestID:       response.RequestID(r),
+		})
+		if err != nil {
+			writeProductionPlanError(w, r, err)
+			return
+		}
+		response.WriteSuccess(w, r, http.StatusCreated, newWarehouseIssueResponse(result.WarehouseIssue, result.AuditLogID))
+	}
+}
+
 func productionPlanFilterFromRequest(r *http.Request) productionapp.ProductionPlanFilter {
 	query := r.URL.Query()
 	statuses := make([]productiondomain.ProductionPlanStatus, 0)
@@ -214,6 +279,16 @@ func productionPlanFilterFromRequest(r *http.Request) productionapp.ProductionPl
 func newProductionPlanResponse(plan productiondomain.ProductionPlan, auditLogID string) productionPlanResponse {
 	lines := make([]productionPlanLineResponse, 0, len(plan.Lines))
 	for _, line := range plan.Lines {
+		issueRefs := make([]productionPlanWarehouseIssueRefResponse, 0, len(line.WarehouseIssues))
+		for _, ref := range line.WarehouseIssues {
+			issueRefs = append(issueRefs, productionPlanWarehouseIssueRefResponse{
+				ID:       ref.ID,
+				IssueNo:  ref.IssueNo,
+				LineID:   ref.LineID,
+				Status:   ref.Status,
+				Quantity: ref.Quantity.String(),
+			})
+		}
 		lines = append(lines, productionPlanLineResponse{
 			ID:                   line.ID,
 			FormulaLineID:        line.FormulaLineID,
@@ -232,6 +307,10 @@ func newProductionPlanResponse(plan productiondomain.ProductionPlan, auditLogID 
 			ShortageQty:          line.ShortageQty.String(),
 			PurchaseDraftQty:     line.PurchaseDraftQty.String(),
 			PurchaseDraftUOMCode: line.PurchaseDraftUOMCode.String(),
+			IssuedQty:            line.IssuedQty.String(),
+			RemainingIssueQty:    line.RemainingIssueQty.String(),
+			IssueStatus:          string(line.IssueStatus),
+			WarehouseIssues:      issueRefs,
 			IsStockManaged:       line.IsStockManaged,
 			NeedsPurchase:        line.NeedsPurchase,
 			Note:                 line.Note,
@@ -314,6 +393,10 @@ func writeProductionPlanError(w http.ResponseWriter, r *http.Request, err error)
 		response.WriteError(w, r, http.StatusNotFound, productionapp.ErrorCodeProductionPlanNotFound, "Production plan was not found", nil)
 	case errors.Is(err, productionapp.ErrPurchaseRequestDraftNotFound):
 		response.WriteError(w, r, http.StatusNotFound, productionapp.ErrorCodePurchaseRequestNotFound, "Purchase request was not found", nil)
+	case errors.Is(err, productionapp.ErrProductionPlanLineNotFound):
+		response.WriteError(w, r, http.StatusNotFound, productionapp.ErrorCodeProductionPlanNotFound, "Production plan line was not found", nil)
+	case errors.Is(err, productionapp.ErrProductionPlanMaterialIssueNotReady):
+		response.WriteError(w, r, http.StatusConflict, productionapp.ErrorCodeProductionPlanMaterialIssueNotReady, "Production material is not ready to issue", nil)
 	case errors.Is(err, productionapp.ErrProductionPlanFormulaNotFound):
 		response.WriteError(w, r, http.StatusBadRequest, productionapp.ErrorCodeProductionPlanValidation, "Active formula was not found for the output item", nil)
 	case errors.Is(err, productionapp.ErrProductionPlanFormulaInactive):

@@ -13,7 +13,8 @@ describe("productionPlanWorkflowContext", () => {
       "Bước 4: Duyệt đề nghị mua",
       "Bước 5: Tạo PO",
       "Bước 6: Nhập kho/QC vật tư",
-      "Bước 7: Tạo lệnh gia công"
+      "Bước 7: Xuất kho vật tư",
+      "Bước 8: Tạo lệnh gia công"
     ]);
     expect(context.planLabel).toBe("PP-260504-0001 - XFF - 162 PCS");
     expect(context.outputLabel).toBe("XFF - Tinh chat buoi Fast & Furious 150ML");
@@ -24,16 +25,16 @@ describe("productionPlanWorkflowContext", () => {
     expect(context.purchaseSummary).toBe("1 dòng vật tư cần mua cho XFF - 162 PCS; mở đề nghị mua để gửi duyệt và tạo PO.");
     expect(context.purchaseButtonLabel).toBe("Mở đề nghị mua");
     expect(context.subcontractTitle).toBe("Tạo lệnh gia công từ PP-260504-0001");
-    expect(context.subcontractSummary).toBe("Còn 1 dòng thiếu vật tư, cần xử lý mua hàng trước.");
+    expect(context.subcontractSummary).toBe("Còn vật tư chưa xuất kho cho PP-260504-0001; cần hoàn tất phiếu xuất trước khi tạo lệnh.");
   });
 
   it("marks a selected plan as ready for subcontract when materials are available", () => {
     const context = buildProductionPlanWorkflowContext(availablePlan);
 
-    expect(context.materialStatusLabel).toBe("Đủ vật tư");
+    expect(context.materialStatusLabel).toBe("Đã xuất đủ vật tư");
     expect(context.materialStatusTone).toBe("success");
     expect(context.purchaseSummary).toBe("Kế hoạch này không có dòng đề nghị mua.");
-    expect(context.subcontractSummary).toBe("Đủ vật tư để tạo lệnh gia công từ PP-260504-0002.");
+    expect(context.subcontractSummary).toBe("Vật tư đã đủ bằng chứng xuất kho để tạo lệnh gia công từ PP-260504-0002.");
   });
 });
 
@@ -84,6 +85,10 @@ const shortagePlan: ProductionPlan = {
       shortageQty: "0.161500",
       purchaseDraftQty: "0.161500",
       purchaseDraftUomCode: "KG",
+      issuedQty: "0.000000",
+      remainingIssueQty: "0.162000",
+      issueStatus: "shortage",
+      warehouseIssues: [],
       isStockManaged: true,
       needsPurchase: true
     }
@@ -133,6 +138,18 @@ const availablePlan: ProductionPlan = {
       shortageQty: "0.000000",
       purchaseDraftQty: "0.000000",
       purchaseDraftUomCode: "KG",
+      issuedQty: "0.162000",
+      remainingIssueQty: "0.000000",
+      issueStatus: "issued",
+      warehouseIssues: [
+        {
+          id: "issue-001",
+          issueNo: "WI-260505-0001",
+          lineId: "wi-line-001",
+          status: "posted",
+          quantity: "0.162000"
+        }
+      ],
       isStockManaged: true,
       needsPurchase: false
     }

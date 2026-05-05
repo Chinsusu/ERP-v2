@@ -249,6 +249,7 @@ export type WarehouseIssueLine = {
   specification?: string;
   sourceDocumentType?: string;
   sourceDocumentId?: string;
+  sourceDocumentLineId?: string;
   note?: string;
 };
 
@@ -297,6 +298,7 @@ export type CreateWarehouseIssueInput = {
     specification?: string;
     sourceDocumentType?: string;
     sourceDocumentId?: string;
+    sourceDocumentLineId?: string;
     note?: string;
   }>;
 };

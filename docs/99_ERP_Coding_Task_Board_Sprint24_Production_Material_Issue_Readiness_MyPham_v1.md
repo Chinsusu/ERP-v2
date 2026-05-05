@@ -6,7 +6,7 @@ Sprint: Sprint 24 - Production Material Issue and Subcontract Readiness
 Document role: Selected task board for the next implementation sprint after Stock Transfer and Warehouse Issue runtime
 Version: v1
 Date: 2026-05-05
-Status: Opened; implementation not started; no release tag created
+Status: Opened; runtime implementation in progress on a codex branch; no release tag created
 Previous sprint: Sprint 23 - Production planning, purchase traceability, supplier invoice/payment gate, stock transfer, and warehouse issue runtime
 
 ---

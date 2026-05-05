@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	inventoryapp "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/application"
 	inventorydomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/inventory/domain"
 	masterdatadomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/masterdata/domain"
 	productiondomain "github.com/Chinsusu/ERP-v2/apps/api/internal/modules/production/domain"
@@ -107,6 +108,152 @@ func TestProductionPlanServiceDoesNotCreatePurchaseDraftWhenEnoughStock(t *testi
 	}
 	if result.ProductionPlan.Lines[0].NeedsPurchase || result.ProductionPlan.Lines[0].ShortageQty != "0.000000" {
 		t.Fatalf("line = %+v, want no shortage", result.ProductionPlan.Lines[0])
+	}
+}
+
+func TestProductionPlanServiceCreatesWarehouseIssueFromReadyDemandLineAndRollsUpPostedIssue(t *testing.T) {
+	ctx := context.Background()
+	formula := activeProductionPlanFormula(t)
+	auditStore := audit.NewInMemoryLogStore()
+	planStore := NewPrototypeProductionPlanStore(auditStore)
+	issueStore := inventoryapp.NewPrototypeWarehouseIssueStore()
+	issueService := inventoryapp.NewWarehouseIssueService(
+		issueStore,
+		inventoryapp.NewInMemoryStockMovementStore(),
+		auditStore,
+	).WithClock(func() time.Time {
+		return time.Date(2026, 5, 5, 11, 0, 0, 0, time.UTC)
+	})
+	service := NewProductionPlanService(
+		planStore,
+		fakeProductionPlanFormulaReader{formula: formula},
+		fakeProductionPlanAvailableStock{
+			rows: []inventorydomain.AvailableStockSnapshot{
+				{
+					WarehouseID:   "wh-hcm-rm",
+					WarehouseCode: "WH-HCM-RM",
+					LocationID:    "bin-rm-a01",
+					LocationCode:  "RM-A01",
+					ItemID:        "item-act-baicapil",
+					SKU:           "ACT_BAICAPIL",
+					BatchID:       "batch-act-baicapil-001",
+					BatchNo:       "LOT-ACT-001",
+					BaseUOMCode:   decimal.MustUOMCode("KG"),
+					AvailableQty:  decimal.MustQuantity("1.000000"),
+				},
+			},
+		},
+	).WithWarehouseIssueService(issueService)
+
+	created, err := service.CreateProductionPlan(ctx, CreateProductionPlanInput{
+		ID:           "plan-issue-001",
+		PlanNo:       "PP-260505-ISSUE-001",
+		OutputItemID: "item-xff-150",
+		PlannedQty:   "162",
+		UOMCode:      "PCS",
+		ActorID:      "user-production",
+	})
+	if err != nil {
+		t.Fatalf("CreateProductionPlan() error = %v", err)
+	}
+	lineID := created.ProductionPlan.Lines[0].ID
+
+	issueResult, err := service.CreateWarehouseIssueFromProductionPlan(ctx, CreateProductionPlanWarehouseIssueInput{
+		PlanID:          created.ProductionPlan.ID,
+		LineIDs:         []string{lineID},
+		DestinationType: "factory",
+		DestinationName: "Factory A",
+		ReasonCode:      "production_plan_issue",
+		ActorID:         "user-production",
+		RequestID:       "req-plan-issue-create",
+	})
+	if err != nil {
+		t.Fatalf("CreateWarehouseIssueFromProductionPlan() error = %v", err)
+	}
+	issue := issueResult.WarehouseIssue
+	if issue.WarehouseID != "wh-hcm-rm" || issue.Lines[0].LocationID != "bin-rm-a01" {
+		t.Fatalf("issue location = %s/%s, want selected available stock warehouse/bin", issue.WarehouseID, issue.Lines[0].LocationID)
+	}
+	if issue.Lines[0].SourceDocumentType != "production_plan" ||
+		issue.Lines[0].SourceDocumentID != created.ProductionPlan.ID ||
+		issue.Lines[0].SourceDocumentLineID != lineID {
+		t.Fatalf("issue source = %+v, want production plan and demand line source", issue.Lines[0])
+	}
+	if issue.Lines[0].Quantity != created.ProductionPlan.Lines[0].RequiredStockBaseQty {
+		t.Fatalf("issue qty = %s, want required stock base qty %s", issue.Lines[0].Quantity, created.ProductionPlan.Lines[0].RequiredStockBaseQty)
+	}
+
+	for _, action := range []string{"submit", "approve", "post"} {
+		if _, err := issueService.TransitionWarehouseIssue(ctx, inventoryapp.WarehouseIssueTransitionInput{
+			ID:      issue.ID,
+			ActorID: "warehouse-lead",
+			Action:  action,
+		}); err != nil {
+			t.Fatalf("%s issue: %v", action, err)
+		}
+	}
+
+	updated, err := service.GetProductionPlan(ctx, created.ProductionPlan.ID)
+	if err != nil {
+		t.Fatalf("GetProductionPlan() error = %v", err)
+	}
+	updatedLine := updated.Lines[0]
+	if updatedLine.IssuedQty != updatedLine.RequiredStockBaseQty ||
+		updatedLine.RemainingIssueQty != "0.000000" ||
+		updatedLine.IssueStatus != productiondomain.ProductionPlanIssueStatusIssued {
+		t.Fatalf("updated line = %+v, want issued readiness after posted Warehouse Issue", updatedLine)
+	}
+	if len(updatedLine.WarehouseIssues) != 1 || updatedLine.WarehouseIssues[0].IssueNo != issue.IssueNo {
+		t.Fatalf("warehouse issue refs = %+v, want posted issue ref", updatedLine.WarehouseIssues)
+	}
+}
+
+func TestProductionPlanServiceRejectsWarehouseIssueFromShortageLine(t *testing.T) {
+	ctx := context.Background()
+	auditStore := audit.NewInMemoryLogStore()
+	service := NewProductionPlanService(
+		NewPrototypeProductionPlanStore(auditStore),
+		fakeProductionPlanFormulaReader{formula: activeProductionPlanFormula(t)},
+		fakeProductionPlanAvailableStock{
+			rows: []inventorydomain.AvailableStockSnapshot{
+				{
+					WarehouseID:   "wh-hcm-rm",
+					WarehouseCode: "WH-HCM-RM",
+					ItemID:        "item-act-baicapil",
+					SKU:           "ACT_BAICAPIL",
+					BaseUOMCode:   decimal.MustUOMCode("KG"),
+					AvailableQty:  decimal.MustQuantity("0.000500"),
+				},
+			},
+		},
+	).WithWarehouseIssueService(inventoryapp.NewWarehouseIssueService(
+		inventoryapp.NewPrototypeWarehouseIssueStore(),
+		inventoryapp.NewInMemoryStockMovementStore(),
+		auditStore,
+	))
+
+	created, err := service.CreateProductionPlan(ctx, CreateProductionPlanInput{
+		ID:           "plan-shortage-001",
+		PlanNo:       "PP-260505-SHORTAGE-001",
+		OutputItemID: "item-xff-150",
+		PlannedQty:   "162",
+		UOMCode:      "PCS",
+		ActorID:      "user-production",
+	})
+	if err != nil {
+		t.Fatalf("CreateProductionPlan() error = %v", err)
+	}
+
+	_, err = service.CreateWarehouseIssueFromProductionPlan(ctx, CreateProductionPlanWarehouseIssueInput{
+		PlanID:          created.ProductionPlan.ID,
+		LineIDs:         []string{created.ProductionPlan.Lines[0].ID},
+		DestinationType: "factory",
+		DestinationName: "Factory A",
+		ReasonCode:      "production_plan_issue",
+		ActorID:         "user-production",
+	})
+	if !errors.Is(err, ErrProductionPlanMaterialIssueNotReady) {
+		t.Fatalf("CreateWarehouseIssueFromProductionPlan() error = %v, want ErrProductionPlanMaterialIssueNotReady", err)
 	}
 }
 

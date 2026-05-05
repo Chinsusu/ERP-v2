@@ -9,6 +9,25 @@ export type PurchaseRequestDraftStatus =
   | "cancelled"
   | "rejected";
 
+export type ProductionPlanIssueStatus =
+  | "shortage"
+  | "ready_to_issue"
+  | "issue_draft"
+  | "issue_submitted"
+  | "issue_approved"
+  | "partially_issued"
+  | "issued"
+  | "waived"
+  | "blocked";
+
+export type ProductionPlanWarehouseIssueRef = {
+  id: string;
+  issueNo: string;
+  lineId: string;
+  status: string;
+  quantity: string;
+};
+
 export type ProductionPlanLine = {
   id: string;
   formulaLineId: string;
@@ -27,6 +46,10 @@ export type ProductionPlanLine = {
   shortageQty: string;
   purchaseDraftQty: string;
   purchaseDraftUomCode: string;
+  issuedQty: string;
+  remainingIssueQty: string;
+  issueStatus: ProductionPlanIssueStatus;
+  warehouseIssues: ProductionPlanWarehouseIssueRef[];
   isStockManaged: boolean;
   needsPurchase: boolean;
   note?: string;

@@ -124,21 +124,22 @@ type WarehouseIssue struct {
 }
 
 type WarehouseIssueLine struct {
-	ID                 string
-	ItemID             string
-	SKU                string
-	ItemName           string
-	Category           string
-	BatchID            string
-	BatchNo            string
-	LocationID         string
-	LocationCode       string
-	Quantity           decimal.Decimal
-	BaseUOMCode        decimal.UOMCode
-	Specification      string
-	SourceDocumentType string
-	SourceDocumentID   string
-	Note               string
+	ID                   string
+	ItemID               string
+	SKU                  string
+	ItemName             string
+	Category             string
+	BatchID              string
+	BatchNo              string
+	LocationID           string
+	LocationCode         string
+	Quantity             decimal.Decimal
+	BaseUOMCode          decimal.UOMCode
+	Specification        string
+	SourceDocumentType   string
+	SourceDocumentID     string
+	SourceDocumentLineID string
+	Note                 string
 }
 
 type NewWarehouseIssueInput struct {
@@ -156,21 +157,22 @@ type NewWarehouseIssueInput struct {
 }
 
 type NewWarehouseIssueLineInput struct {
-	ID                 string
-	ItemID             string
-	SKU                string
-	ItemName           string
-	Category           string
-	BatchID            string
-	BatchNo            string
-	LocationID         string
-	LocationCode       string
-	Quantity           decimal.Decimal
-	BaseUOMCode        string
-	Specification      string
-	SourceDocumentType string
-	SourceDocumentID   string
-	Note               string
+	ID                   string
+	ItemID               string
+	SKU                  string
+	ItemName             string
+	Category             string
+	BatchID              string
+	BatchNo              string
+	LocationID           string
+	LocationCode         string
+	Quantity             decimal.Decimal
+	BaseUOMCode          string
+	Specification        string
+	SourceDocumentType   string
+	SourceDocumentID     string
+	SourceDocumentLineID string
+	Note                 string
 }
 
 func NewStockTransfer(input NewStockTransferInput) (StockTransfer, error) {
@@ -370,21 +372,22 @@ func NewWarehouseIssueLine(input NewWarehouseIssueLineInput) (WarehouseIssueLine
 		return WarehouseIssueLine{}, err
 	}
 	line := WarehouseIssueLine{
-		ID:                 strings.TrimSpace(input.ID),
-		ItemID:             strings.TrimSpace(input.ItemID),
-		SKU:                strings.ToUpper(strings.TrimSpace(input.SKU)),
-		ItemName:           strings.TrimSpace(input.ItemName),
-		Category:           strings.TrimSpace(input.Category),
-		BatchID:            strings.TrimSpace(input.BatchID),
-		BatchNo:            strings.TrimSpace(input.BatchNo),
-		LocationID:         strings.TrimSpace(input.LocationID),
-		LocationCode:       strings.TrimSpace(input.LocationCode),
-		Quantity:           quantity,
-		BaseUOMCode:        uom,
-		Specification:      strings.TrimSpace(input.Specification),
-		SourceDocumentType: strings.TrimSpace(input.SourceDocumentType),
-		SourceDocumentID:   strings.TrimSpace(input.SourceDocumentID),
-		Note:               strings.TrimSpace(input.Note),
+		ID:                   strings.TrimSpace(input.ID),
+		ItemID:               strings.TrimSpace(input.ItemID),
+		SKU:                  strings.ToUpper(strings.TrimSpace(input.SKU)),
+		ItemName:             strings.TrimSpace(input.ItemName),
+		Category:             strings.TrimSpace(input.Category),
+		BatchID:              strings.TrimSpace(input.BatchID),
+		BatchNo:              strings.TrimSpace(input.BatchNo),
+		LocationID:           strings.TrimSpace(input.LocationID),
+		LocationCode:         strings.TrimSpace(input.LocationCode),
+		Quantity:             quantity,
+		BaseUOMCode:          uom,
+		Specification:        strings.TrimSpace(input.Specification),
+		SourceDocumentType:   strings.TrimSpace(input.SourceDocumentType),
+		SourceDocumentID:     strings.TrimSpace(input.SourceDocumentID),
+		SourceDocumentLineID: strings.TrimSpace(input.SourceDocumentLineID),
+		Note:                 strings.TrimSpace(input.Note),
 	}
 	if line.SKU == "" || line.BaseUOMCode == "" {
 		return WarehouseIssueLine{}, ErrWarehouseIssueRequiredField

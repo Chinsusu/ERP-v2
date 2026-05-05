@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DataTable,
   EmptyState,
@@ -11,6 +11,7 @@ import {
   type DataTableColumn
 } from "@/shared/design-system/components";
 import {
+  createWarehouseIssueFromProductionPlan,
   formatProductionPlanQuantity,
   getProductionPlan,
   productionPlanStatusDisplay,
@@ -33,6 +34,13 @@ import { t } from "@/shared/i18n";
 import type { PurchaseOrder, PurchaseOrderStatus } from "../../purchase/types";
 import type { ProductionPlan, ProductionPlanLine, PurchaseRequestDraftLine } from "../types";
 
+type MaterialIssueActionState = {
+  lineId?: string;
+  loading?: boolean;
+  message?: string;
+  error?: string;
+};
+
 type ProductionPlanReceiptRow = PurchaseOrderReceiptRow & {
   poNo: string;
   supplierName: string;
@@ -50,15 +58,18 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
   const [relatedReceiptRows, setRelatedReceiptRows] = useState<ProductionPlanReceiptRow[]>([]);
   const [relatedReceiptsLoading, setRelatedReceiptsLoading] = useState(false);
   const [relatedReceiptsError, setRelatedReceiptsError] = useState<string | undefined>();
+  const [materialIssueAction, setMaterialIssueAction] = useState<MaterialIssueActionState>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
+
+  const loadPlan = useCallback(() => getProductionPlan(planId), [planId]);
 
   useEffect(() => {
     let active = true;
 
     setLoading(true);
     setError(undefined);
-    getProductionPlan(planId)
+    loadPlan()
       .then((nextPlan) => {
         if (active) {
           setPlan(nextPlan);
@@ -78,7 +89,7 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
     return () => {
       active = false;
     };
-  }, [planId]);
+  }, [loadPlan]);
 
   useEffect(() => {
     if (!plan?.planNo) {
@@ -156,8 +167,32 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
     };
   }, [relatedPurchaseOrders]);
 
+  const handleCreateWarehouseIssue = useCallback(
+    async (line: ProductionPlanLine) => {
+      setMaterialIssueAction({ lineId: line.id, loading: true });
+      try {
+        const issue = await createWarehouseIssueFromProductionPlan(planId, {
+          lineIds: [line.id],
+          destinationType: "factory",
+          destinationName: "Factory",
+          reasonCode: "production_plan_issue"
+        });
+        const nextPlan = await loadPlan();
+        setPlan(nextPlan);
+        setMaterialIssueAction({ message: `Đã tạo phiếu xuất ${issue.issueNo} từ ${line.componentSku}.` });
+      } catch (createError) {
+        setMaterialIssueAction({ lineId: line.id, error: errorText(createError) });
+      }
+    },
+    [loadPlan, planId]
+  );
+
   const workflowContext = useMemo(() => (plan ? buildProductionPlanWorkflowContext(plan) : undefined), [plan]);
   const workTasks = useMemo(() => (plan ? buildProductionPlanWorklist(plan) : []), [plan]);
+  const materialColumns = useMemo(
+    () => buildMaterialColumns(handleCreateWarehouseIssue, materialIssueAction),
+    [handleCreateWarehouseIssue, materialIssueAction]
+  );
 
   if (loading) {
     return <LoadingState title="Đang tải kế hoạch sản xuất" />;
@@ -286,6 +321,14 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
           <div>
             <h2 className="erp-section-title">Nhu cầu vật tư</h2>
             <p className="erp-page-description">Công thức tính cho 1 thành phẩm; nhu cầu dưới đây đã nhân theo số lượng kế hoạch.</p>
+            {materialIssueAction.message || materialIssueAction.error ? (
+              <p className={materialIssueAction.error ? "erp-form-error" : "erp-page-description"}>
+                {materialIssueAction.error ?? materialIssueAction.message}
+                <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => setMaterialIssueAction({})}>
+                  Đóng
+                </button>
+              </p>
+            ) : null}
           </div>
         </header>
         <DataTable
@@ -366,51 +409,74 @@ const workTaskColumns: DataTableColumn<ProductionPlanWorkTask>[] = [
   }
 ];
 
-const materialColumns: DataTableColumn<ProductionPlanLine>[] = [
-  {
-    key: "sku",
-    header: "Vật tư",
-    render: (line) => (
-      <div className="erp-masterdata-product-cell">
-        <strong>{line.componentSku}</strong>
-        <small>{line.componentName}</small>
-      </div>
-    ),
-    width: "260px"
-  },
-  {
-    key: "formula",
-    header: "Định lượng/TP",
-    render: (line) => formatProductionPlanQuantity(line.formulaQty, line.formulaUomCode),
-    width: "140px"
-  },
-  {
-    key: "required",
-    header: "Nhu cầu",
-    render: (line) => formatProductionPlanQuantity(line.requiredStockBaseQty, line.stockBaseUomCode),
-    width: "140px"
-  },
-  {
-    key: "available",
-    header: "Tồn khả dụng",
-    render: (line) => formatProductionPlanQuantity(line.availableQty, line.stockBaseUomCode),
-    width: "140px"
-  },
-  {
-    key: "shortage",
-    header: "Cần mua",
-    render: (line) => formatProductionPlanQuantity(line.shortageQty, line.stockBaseUomCode),
-    width: "140px"
-  },
-  {
-    key: "status",
-    header: "Xử lý",
-    render: (line) => (
-      <StatusChip tone={line.needsPurchase ? "warning" : "success"}>{line.needsPurchase ? "Đề nghị mua nháp" : "Đủ tồn"}</StatusChip>
-    ),
-    width: "160px"
-  }
-];
+function buildMaterialColumns(
+  onCreateWarehouseIssue: (line: ProductionPlanLine) => void,
+  actionState: MaterialIssueActionState
+): DataTableColumn<ProductionPlanLine>[] {
+  return [
+    {
+      key: "sku",
+      header: "Vật tư",
+      render: (line) => (
+        <div className="erp-masterdata-product-cell">
+          <strong>{line.componentSku}</strong>
+          <small>{line.componentName}</small>
+        </div>
+      ),
+      width: "240px"
+    },
+    {
+      key: "formula",
+      header: "Định lượng/TP",
+      render: (line) => formatProductionPlanQuantity(line.formulaQty, line.formulaUomCode),
+      width: "130px"
+    },
+    {
+      key: "required",
+      header: "Nhu cầu",
+      render: (line) => formatProductionPlanQuantity(line.requiredStockBaseQty, line.stockBaseUomCode),
+      width: "130px"
+    },
+    {
+      key: "available",
+      header: "Tồn khả dụng",
+      render: (line) => formatProductionPlanQuantity(line.availableQty, line.stockBaseUomCode),
+      width: "130px"
+    },
+    {
+      key: "issued",
+      header: "Đã xuất",
+      render: (line) => formatProductionPlanQuantity(line.issuedQty, line.stockBaseUomCode),
+      width: "130px"
+    },
+    {
+      key: "remaining",
+      header: "Còn phải xuất",
+      render: (line) => formatProductionPlanQuantity(line.remainingIssueQty, line.stockBaseUomCode),
+      width: "140px"
+    },
+    {
+      key: "shortage",
+      header: "Cần mua",
+      render: (line) => formatProductionPlanQuantity(line.shortageQty, line.stockBaseUomCode),
+      width: "130px"
+    },
+    {
+      key: "status",
+      header: "Trạng thái xuất",
+      render: (line) => <StatusChip tone={issueStatusTone(line.issueStatus)}>{issueStatusLabel(line.issueStatus)}</StatusChip>,
+      width: "160px"
+    },
+    {
+      key: "action",
+      header: "Thao tác",
+      align: "right",
+      sticky: true,
+      render: (line) => renderMaterialIssueAction(line, actionState, onCreateWarehouseIssue),
+      width: "170px"
+    }
+  ];
+}
 
 const purchaseDraftColumns: DataTableColumn<PurchaseRequestDraftLine>[] = [
   {
@@ -577,6 +643,94 @@ function renderTaskAction(task: ProductionPlanWorkTask) {
       {task.action.label}
     </Link>
   );
+}
+
+function renderMaterialIssueAction(
+  line: ProductionPlanLine,
+  actionState: MaterialIssueActionState,
+  onCreateWarehouseIssue: (line: ProductionPlanLine) => void
+) {
+  if (actionState.lineId === line.id && actionState.loading) {
+    return (
+      <button className="erp-button erp-button--secondary erp-button--compact" type="button" disabled>
+        Đang tạo
+      </button>
+    );
+  }
+
+  if (actionState.lineId === line.id && actionState.error) {
+    return (
+      <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => onCreateWarehouseIssue(line)}>
+        Thử lại
+      </button>
+    );
+  }
+
+  if (line.issueStatus === "ready_to_issue" || line.issueStatus === "partially_issued") {
+    return (
+      <button className="erp-button erp-button--secondary erp-button--compact" type="button" onClick={() => onCreateWarehouseIssue(line)}>
+        Tạo phiếu xuất
+      </button>
+    );
+  }
+
+  if (line.warehouseIssues.length > 0) {
+    return (
+      <Link className="erp-button erp-button--secondary erp-button--compact" href="/inventory#warehouse-issues">
+        Mở phiếu xuất
+      </Link>
+    );
+  }
+
+  return (
+    <button className="erp-button erp-button--secondary erp-button--compact" type="button" disabled>
+      {line.issueStatus === "shortage" ? "Chờ vật tư" : "Chờ xử lý"}
+    </button>
+  );
+}
+
+function issueStatusLabel(status: ProductionPlanLine["issueStatus"]) {
+  switch (status) {
+    case "ready_to_issue":
+      return "Sẵn sàng xuất";
+    case "issue_draft":
+      return "Phiếu nháp";
+    case "issue_submitted":
+      return "Chờ duyệt xuất";
+    case "issue_approved":
+      return "Đã duyệt xuất";
+    case "partially_issued":
+      return "Xuất một phần";
+    case "issued":
+      return "Đã xuất đủ";
+    case "waived":
+      return "Đã waiver";
+    case "blocked":
+      return "Bị chặn";
+    case "shortage":
+    default:
+      return "Thiếu vật tư";
+  }
+}
+
+function issueStatusTone(status: ProductionPlanLine["issueStatus"]) {
+  switch (status) {
+    case "issued":
+    case "waived":
+      return "success" as const;
+    case "ready_to_issue":
+    case "partially_issued":
+      return "warning" as const;
+    case "issue_draft":
+    case "issue_submitted":
+    case "issue_approved":
+      return "info" as const;
+    case "blocked":
+      return "danger" as const;
+    case "shortage":
+    default:
+      return "warning" as const;
+  }
 }
 
 function dateRangeLabel(start?: string, end?: string) {

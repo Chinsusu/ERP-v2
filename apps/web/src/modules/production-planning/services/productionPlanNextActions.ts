@@ -17,6 +17,9 @@ export function buildSubcontractOrderFromProductionPlan(
   if (plan.lines.some((line) => line.needsPurchase || Number(line.shortageQty) > 0)) {
     throw new Error("Production plan still has material shortages");
   }
+  if (plan.lines.some((line) => line.isStockManaged && line.issueStatus !== "issued")) {
+    throw new Error("Production plan materials must be issued before subcontract order creation");
+  }
 
   const materialLines = plan.lines
     .filter((line) => line.isStockManaged)

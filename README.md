@@ -92,10 +92,11 @@ No v0.23 tag has been created.
 Sprint 24 planning status:
 
 ```text
-Sprint 24 is opened in file 99, with flow design in file 100.
+Sprint 24 is opened in file 99, with flow design in file 100, and runtime implementation is in progress on a codex branch.
 Production-plan material demand should create source-linked Warehouse Issue Notes only for available issue-ready stock.
 Shortage remains a Purchase Request / PO / receiving / QC problem before warehouse issue.
 Subcontract readiness should be gated on posted material issue evidence or explicit waiver.
+Sprint 24 completion still requires PR merge, CI green, dev deploy, production-plan/material-issue UI smoke, and changelog evidence.
 No v0.24 tag has been created.
 ```
 
