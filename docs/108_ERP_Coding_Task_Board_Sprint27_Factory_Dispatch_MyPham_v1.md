@@ -6,7 +6,7 @@ Sprint: Sprint 27 - Factory Dispatch
 Document role: Coding task board
 Version: v1
 Date: 2026-05-06
-Status: Implementation complete on branch; PR #593 opened; merge, dev deploy, and smoke pending
+Status: Completed on main; dev deploy and browser smoke passed
 
 ---
 

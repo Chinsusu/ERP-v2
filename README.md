@@ -144,6 +144,9 @@ Sprint 27 is documented in file 108, and the factory dispatch flow is locked in 
 Scope is manual factory dispatch pack creation, ready/sent evidence, and factory response on /production/factory-orders/:orderId.
 Confirmed factory response advances the external factory order to factory_confirmed.
 Email, Zalo, factory portal/API delivery, digital signatures, and internal MES production remain out of scope.
+PR #593 merged at 3cc5852d with GitHub CI green.
+Dev deploy passed on 2026-05-06 with migration 44 applied; full dev smoke passed.
+Browser smoke passed for /production/factory-orders/:orderId factory dispatch create -> ready -> sent -> confirmed.
 No v0.27 tag has been created.
 ```
 
