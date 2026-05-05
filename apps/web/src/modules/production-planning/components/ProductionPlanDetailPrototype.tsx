@@ -33,6 +33,7 @@ import {
   getSubcontractOrders,
   subcontractOrderStatusTone
 } from "../../subcontract/services/subcontractOrderService";
+import { productionFactoryOrderHref } from "../../subcontract/services/subcontractOrderTimeline";
 import { buildProductionPlanWorkflowContext } from "../services/productionPlanWorkflowContext";
 import { buildProductionPlanWorklist, type ProductionPlanWorkTask } from "../services/productionPlanWorklist";
 import { t } from "@/shared/i18n";
@@ -305,7 +306,7 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
           <div>
             <h2 className="erp-section-title">Danh sách công việc của kế hoạch</h2>
             <p className="erp-page-description">
-              Theo dõi một kế hoạch từ tạo kế hoạch, vật tư, mua hàng, nhập kho, QC đến gia công.
+              Theo dõi một kế hoạch từ tạo kế hoạch, vật tư, mua hàng, nhập kho, QC đến lệnh nhà máy.
             </p>
           </div>
         </header>
@@ -339,13 +340,13 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
       <section className="erp-masterdata-list-card">
         <header className="erp-section-header">
           <div>
-            <h2 className="erp-section-title">Gia công / thành phẩm</h2>
+            <h2 className="erp-section-title">Lệnh nhà máy / thành phẩm</h2>
             <p className="erp-page-description">
-              Lệnh gia công liên kết với {plan.planNo}; theo dõi nhận thành phẩm, QC, claim nhà máy và sẵn sàng thanh toán cuối.
+              Lệnh gửi nhà máy liên kết với {plan.planNo}; theo dõi nhận thành phẩm, QC, claim nhà máy và sẵn sàng thanh toán cuối.
             </p>
           </div>
-          <Link className="erp-button erp-button--secondary" href={subcontractHref(plan)}>
-            Mở gia công
+          <Link className="erp-button erp-button--secondary" href="/production">
+            Mở sản xuất
           </Link>
         </header>
         <DataTable
@@ -356,7 +357,7 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
           error={relatedSubcontractOrdersError}
           pagination
           preserveColumnWidths
-          emptyState={<EmptyState title="Chưa có lệnh gia công liên kết với kế hoạch này" />}
+          emptyState={<EmptyState title="Chưa có lệnh nhà máy liên kết với kế hoạch này" />}
         />
       </section>
 
@@ -696,7 +697,7 @@ const relatedReceiptColumns: DataTableColumn<ProductionPlanReceiptRow>[] = [
 const relatedSubcontractOrderColumns: DataTableColumn<SubcontractOrder>[] = [
   {
     key: "order",
-    header: "Lệnh gia công",
+    header: "Lệnh nhà máy",
     render: (order) => (
       <div className="erp-masterdata-product-cell">
         <strong>{order.orderNo}</strong>
@@ -746,7 +747,7 @@ const relatedSubcontractOrderColumns: DataTableColumn<SubcontractOrder>[] = [
     sticky: true,
     render: (order) => (
       <Link className="erp-button erp-button--secondary erp-button--compact" href={subcontractOrderHref(order)}>
-        Mở gia công
+        Mở lệnh
       </Link>
     ),
     width: "130px"
@@ -804,18 +805,8 @@ function subcontractFinalPaymentLabel(order: SubcontractOrder) {
   return "Chưa sẵn sàng";
 }
 
-function subcontractHref(plan: ProductionPlan) {
-  return `/subcontract?source_production_plan_id=${encodeURIComponent(plan.id)}&search=${encodeURIComponent(plan.planNo)}#subcontract-orders`;
-}
-
 function subcontractOrderHref(order: SubcontractOrder) {
-  const params = new URLSearchParams();
-  if (order.sourceProductionPlanId) {
-    params.set("source_production_plan_id", order.sourceProductionPlanId);
-  }
-  params.set("search", order.sourceProductionPlanNo || order.orderNo);
-
-  return `/subcontract?${params.toString()}#subcontract-orders`;
+  return productionFactoryOrderHref(order);
 }
 
 function renderMaterialIssueAction(

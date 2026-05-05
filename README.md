@@ -43,6 +43,9 @@ Start with:
 - `docs/102_ERP_Coding_Task_Board_Sprint25_Subcontract_Finished_Goods_QC_Closeout_MyPham_v1.md`
 - `docs/103_ERP_Subcontract_Finished_Goods_QC_Closeout_Flow_MyPham_v1.md`
 - `docs/104_ERP_Sprint25_Changelog_Subcontract_Finished_Goods_QC_Closeout_MyPham_v1.md`
+- `docs/105_ERP_Coding_Task_Board_Sprint26_Production_IA_External_Factory_Order_Detail_MyPham_v1.md`
+- `docs/106_ERP_Production_IA_External_Factory_Order_Detail_Flow_MyPham_v1.md`
+- `docs/107_ERP_Sprint26_Changelog_Production_IA_External_Factory_Order_Detail_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -50,7 +53,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 25 subcontract finished goods QC closeout traceability merged and deployed to dev.
+Current line: Sprint 26 production IA cleanup and external factory order detail implementation.
 
 Latest release tag:
 
@@ -118,12 +121,23 @@ Browser smoke passed for Production Plan detail -> source-linked Subcontract Ord
 No v0.25 tag has been created.
 ```
 
+Sprint 26 implementation status:
+
+```text
+Sprint 26 is documented in file 105, and the Production IA / external factory order detail flow is locked in file 106.
+User-facing production navigation is being consolidated under /production because the current company model is external-factory production, not internal MES/work-center production.
+Subcontract remains the technical/legacy execution surface for external factory operations, but it should not appear as a primary sidebar sibling of Production.
+Factory order detail is production-facing at /production/factory-orders/:orderId.
+No v0.26 tag has been created.
+```
+
 Phase 1 production scope:
 
 ```text
-The user-facing Production entrypoint at /production is for planning, active-formula snapshot, material demand, and generated Purchase Request review.
+The user-facing Production entrypoint at /production is for planning, active-formula snapshot, material demand, generated Purchase Request review, and external-factory production navigation.
 PO creation belongs to the approved Purchase Request conversion flow, not a direct /production shortcut.
-The Subcontract entrypoint at /subcontract remains the external factory execution flow.
+External factory / subcontract is the current production execution method.
+/subcontract remains route-addressable for existing operational execution but is not the primary sidebar entrypoint.
 Internal work-center/MES production remains out of Phase 1 scope.
 ```
 
@@ -176,6 +190,9 @@ Production runtime reference:
 - `docs/102_ERP_Coding_Task_Board_Sprint25_Subcontract_Finished_Goods_QC_Closeout_MyPham_v1.md`
 - `docs/103_ERP_Subcontract_Finished_Goods_QC_Closeout_Flow_MyPham_v1.md`
 - `docs/104_ERP_Sprint25_Changelog_Subcontract_Finished_Goods_QC_Closeout_MyPham_v1.md`
+- `docs/105_ERP_Coding_Task_Board_Sprint26_Production_IA_External_Factory_Order_Detail_MyPham_v1.md`
+- `docs/106_ERP_Production_IA_External_Factory_Order_Detail_Flow_MyPham_v1.md`
+- `docs/107_ERP_Sprint26_Changelog_Production_IA_External_Factory_Order_Detail_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`

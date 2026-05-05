@@ -14,7 +14,7 @@ describe("productionPlanWorklist", () => {
       "PO vật tư",
       "Nhập kho/QC vật tư",
       "Phiếu xuất kho vật tư",
-      "Lệnh gia công"
+      "Lệnh nhà máy"
     ]);
     expect(tasks[1]).toMatchObject({
       statusLabel: "Thiếu 1 dòng vật tư",
@@ -70,8 +70,8 @@ describe("productionPlanWorklist", () => {
       statusLabel: "Sẵn sàng tạo lệnh",
       statusTone: "success",
       action: {
-        label: "Mở gia công",
-        href: "/subcontract?source_production_plan_id=plan-002&search=PP-260504-0002#subcontract-orders",
+        label: "Mở sản xuất",
+        href: "/production",
         disabled: false
       }
     });
