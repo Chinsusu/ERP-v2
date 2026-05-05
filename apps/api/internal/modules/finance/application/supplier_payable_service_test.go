@@ -159,6 +159,23 @@ func TestSupplierPayableServiceReturnsNotFound(t *testing.T) {
 	}
 }
 
+func TestSupplierPayableServiceSearchMatchesLineSourceDocument(t *testing.T) {
+	service, _ := newTestSupplierPayableService()
+	if _, err := service.CreateSupplierPayable(context.Background(), baseCreateSupplierPayableInput()); err != nil {
+		t.Fatalf("create payable: %v", err)
+	}
+
+	payables, err := service.ListSupplierPayables(context.Background(), SupplierPayableFilter{
+		Search: "GR-260430-0001",
+	})
+	if err != nil {
+		t.Fatalf("list payables: %v", err)
+	}
+	if len(payables) != 1 || payables[0].ID != "ap-260430-0001" {
+		t.Fatalf("payables = %+v, want line source document match", payables)
+	}
+}
+
 func TestPostgresSupplierPayableServicePersistsPaymentLifecycleAcrossFreshStores(t *testing.T) {
 	databaseURL := os.Getenv("ERP_TEST_DATABASE_URL")
 	if databaseURL == "" {

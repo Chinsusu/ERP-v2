@@ -33,6 +33,7 @@ Start with:
 - `docs/91_ERP_Module_Roadmap_From_Note_Sheet_Production_Purchase_Warehouse_MyPham_v1.md`
 - `docs/92_ERP_Coding_Task_Board_Sprint23_Production_Planning_Material_Demand_MyPham_v1.md`
 - `docs/94_ERP_Purchase_Request_Workflow_Production_Plan_PO_Traceability_MyPham_v1.md`
+- `docs/95_ERP_PO_Receiving_QC_Supplier_Payable_Flow_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -74,6 +75,7 @@ Inventory/purchase/warehouse task-board candidate is documented in file 90.
 The note-sheet module roadmap and sequencing decision are documented in file 91.
 Selected first Sprint 23 implementation track is documented in file 92: production planning, material demand, and Purchase Request draft.
 Purchase Request workflow follow-up is documented in file 94: production plan -> Purchase Request -> submit/approve -> convert to PO -> receiving/QC traceability.
+Post-PO payable traceability is documented in file 95: posted PO-linked receiving with QC PASS lines creates supplier payable, while QC hold/fail lines do not create AP value.
 The Sprint 23 runtime bridge adds /production planning UI, backend production-plan API, active-formula snapshot, material demand/shortage calculation, internal Purchase Request lines, PostgreSQL persistence, and OpenAPI contract coverage.
 Stock transfer, warehouse issue note, costing, and ledger-backed inventory dashboard implementation remain pending follow-up scope.
 No v0.23 tag has been created.
@@ -112,6 +114,7 @@ Completed focus through Sprint 21:
 - Release hygiene: migration apply -> rollback -> reapply gate, GitHub Actions Node 24 compatibility, modular API route registration, and production-mode prototype fallback blocking
 - Backend-backed web auth UI integration: login, `/me` session bootstrap, refresh rotation, logout, RBAC menu/route guard, Vietnamese auth errors, and production-like mock auth blocking
 - Sprint 23 production planning bridge: `/production` planning surface, backend production-plan API, formula snapshot demand calculation, shortage comparison, first-class Purchase Request submit/approve/convert-to-PO flow, and controlled PO/receiving traceability
+- Post-PO payable traceability: PO-linked posted receipts create supplier payables only for QC PASS accepted lines, with AP search traceable back to PO and receipt
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 
@@ -125,6 +128,7 @@ Production runtime reference:
 - `docs/91_ERP_Module_Roadmap_From_Note_Sheet_Production_Purchase_Warehouse_MyPham_v1.md`
 - `docs/92_ERP_Coding_Task_Board_Sprint23_Production_Planning_Material_Demand_MyPham_v1.md`
 - `docs/94_ERP_Purchase_Request_Workflow_Production_Plan_PO_Traceability_MyPham_v1.md`
+- `docs/95_ERP_PO_Receiving_QC_Supplier_Payable_Flow_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
