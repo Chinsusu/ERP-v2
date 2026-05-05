@@ -22,6 +22,7 @@ const (
 	MovementReturnToLab        MovementType = "return_to_lab"
 	MovementSubcontractIssue   MovementType = "subcontract_issue"
 	MovementSubcontractReceipt MovementType = "subcontract_receipt"
+	MovementWarehouseIssue     MovementType = "warehouse_issue"
 	MovementTransferIn         MovementType = "transfer_in"
 	MovementTransferOut        MovementType = "transfer_out"
 	MovementAdjustmentIn       MovementType = "adjustment_in"
@@ -124,6 +125,7 @@ var movementEffects = map[MovementType]movementEffect{
 	MovementReturnToLab:        {direction: DirectionOut, onHand: -1},
 	MovementSubcontractIssue:   {direction: DirectionOut, onHand: -1, available: -1},
 	MovementSubcontractReceipt: {direction: DirectionIn, onHand: 1},
+	MovementWarehouseIssue:     {direction: DirectionOut, onHand: -1, available: -1},
 	MovementTransferIn:         {direction: DirectionTransfer, onHand: 1, available: 1},
 	MovementTransferOut:        {direction: DirectionTransfer, onHand: -1, available: -1},
 	MovementAdjustmentIn:       {direction: DirectionAdjustment, onHand: 1, available: 1, adjustment: true},
@@ -141,6 +143,7 @@ var movementTypeOrder = []MovementType{
 	MovementReturnToLab,
 	MovementSubcontractIssue,
 	MovementSubcontractReceipt,
+	MovementWarehouseIssue,
 	MovementTransferIn,
 	MovementTransferOut,
 	MovementAdjustmentIn,

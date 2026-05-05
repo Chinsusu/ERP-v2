@@ -657,6 +657,22 @@ textarea {
   margin-bottom: 16px;
 }
 
+.erp-warehouse-document-form {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px) minmax(150px, 180px) auto auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.erp-warehouse-document-actions {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) repeat(3, auto);
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
 .erp-stock-qc-reason {
   min-width: 0;
 }

@@ -2364,6 +2364,258 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+  /stock-transfers:
+    get:
+      summary: List stock transfer documents
+      operationId: listStockTransfers
+      tags:
+        - inventory
+      responses:
+        "200":
+          description: Stock transfer documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockTransferListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    post:
+      summary: Create a stock transfer draft
+      operationId: createStockTransfer
+      tags:
+        - inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStockTransferRequest"
+      responses:
+        "201":
+          description: Stock transfer draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockTransferSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /stock-transfers/{stock_transfer_id}/submit:
+    post:
+      summary: Submit a stock transfer for approval
+      operationId: submitStockTransfer
+      tags:
+        - inventory
+      parameters:
+        - name: stock_transfer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock transfer submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockTransferSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /stock-transfers/{stock_transfer_id}/approve:
+    post:
+      summary: Approve a stock transfer
+      operationId: approveStockTransfer
+      tags:
+        - inventory
+      parameters:
+        - name: stock_transfer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock transfer approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockTransferSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /stock-transfers/{stock_transfer_id}/post:
+    post:
+      summary: Post a stock transfer into inventory ledger
+      operationId: postStockTransfer
+      tags:
+        - inventory
+      parameters:
+        - name: stock_transfer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock transfer posted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockTransferSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /warehouse-issues:
+    get:
+      summary: List warehouse issue notes
+      operationId: listWarehouseIssues
+      tags:
+        - inventory
+      responses:
+        "200":
+          description: Warehouse issue notes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseIssueListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    post:
+      summary: Create a warehouse issue note draft
+      operationId: createWarehouseIssue
+      tags:
+        - inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWarehouseIssueRequest"
+      responses:
+        "201":
+          description: Warehouse issue note draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseIssueSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /warehouse-issues/{warehouse_issue_id}/submit:
+    post:
+      summary: Submit a warehouse issue note for approval
+      operationId: submitWarehouseIssue
+      tags:
+        - inventory
+      parameters:
+        - name: warehouse_issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Warehouse issue note submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseIssueSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /warehouse-issues/{warehouse_issue_id}/approve:
+    post:
+      summary: Approve a warehouse issue note
+      operationId: approveWarehouseIssue
+      tags:
+        - inventory
+      parameters:
+        - name: warehouse_issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Warehouse issue note approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseIssueSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /warehouse-issues/{warehouse_issue_id}/post:
+    post:
+      summary: Post a warehouse issue note into inventory ledger
+      operationId: postWarehouseIssue
+      tags:
+        - inventory
+      parameters:
+        - name: warehouse_issue_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Warehouse issue note posted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseIssueSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /inventory/batches:
     get:
       summary: List inventory batches by SKU, QC status, and batch status
@@ -7254,6 +7506,328 @@ components:
           $ref: "#/components/schemas/Quantity"
         available_qty:
           $ref: "#/components/schemas/Quantity"
+    StockTransferStatus:
+      type: string
+      enum:
+        - draft
+        - submitted
+        - approved
+        - posted
+        - cancelled
+    StockTransferListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/StockTransfer"
+    StockTransferSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/StockTransfer"
+    CreateStockTransferRequest:
+      type: object
+      required:
+        - source_warehouse_id
+        - destination_warehouse_id
+        - reason_code
+        - lines
+      properties:
+        transfer_no:
+          type: string
+        source_warehouse_id:
+          type: string
+        source_warehouse_code:
+          type: string
+        destination_warehouse_id:
+          type: string
+        destination_warehouse_code:
+          type: string
+        reason_code:
+          type: string
+          minLength: 1
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateStockTransferLine"
+    CreateStockTransferLine:
+      type: object
+      required:
+        - sku
+        - quantity
+        - base_uom_code
+      properties:
+        id:
+          type: string
+        item_id:
+          type: string
+        sku:
+          type: string
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        source_location_id:
+          type: string
+        source_location_code:
+          type: string
+        destination_location_id:
+          type: string
+        destination_location_code:
+          type: string
+        quantity:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        note:
+          type: string
+    StockTransfer:
+      type: object
+      required:
+        - id
+        - transfer_no
+        - org_id
+        - source_warehouse_id
+        - destination_warehouse_id
+        - reason_code
+        - status
+        - requested_by
+        - lines
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+        transfer_no:
+          type: string
+        org_id:
+          type: string
+        source_warehouse_id:
+          type: string
+        source_warehouse_code:
+          type: string
+        destination_warehouse_id:
+          type: string
+        destination_warehouse_code:
+          type: string
+        reason_code:
+          type: string
+        status:
+          $ref: "#/components/schemas/StockTransferStatus"
+        requested_by:
+          type: string
+        submitted_by:
+          type: string
+        approved_by:
+          type: string
+        posted_by:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockTransferLine"
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        submitted_at:
+          type: string
+          format: date-time
+        approved_at:
+          type: string
+          format: date-time
+        posted_at:
+          type: string
+          format: date-time
+    StockTransferLine:
+      allOf:
+        - $ref: "#/components/schemas/CreateStockTransferLine"
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+    WarehouseIssueStatus:
+      type: string
+      enum:
+        - draft
+        - submitted
+        - approved
+        - posted
+        - cancelled
+    WarehouseIssueListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/WarehouseIssue"
+    WarehouseIssueSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/WarehouseIssue"
+    CreateWarehouseIssueRequest:
+      type: object
+      required:
+        - warehouse_id
+        - destination_type
+        - destination_name
+        - reason_code
+        - lines
+      properties:
+        issue_no:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        destination_type:
+          type: string
+          minLength: 1
+        destination_name:
+          type: string
+          minLength: 1
+        reason_code:
+          type: string
+          minLength: 1
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateWarehouseIssueLine"
+    CreateWarehouseIssueLine:
+      type: object
+      required:
+        - sku
+        - quantity
+        - base_uom_code
+      properties:
+        id:
+          type: string
+        item_id:
+          type: string
+        sku:
+          type: string
+        item_name:
+          type: string
+        category:
+          type: string
+        batch_id:
+          type: string
+        batch_no:
+          type: string
+        location_id:
+          type: string
+        location_code:
+          type: string
+        quantity:
+          $ref: "#/components/schemas/Quantity"
+        base_uom_code:
+          $ref: "#/components/schemas/UOMCode"
+        specification:
+          type: string
+        source_document_type:
+          type: string
+        source_document_id:
+          type: string
+        note:
+          type: string
+    WarehouseIssue:
+      type: object
+      required:
+        - id
+        - issue_no
+        - org_id
+        - warehouse_id
+        - destination_type
+        - destination_name
+        - reason_code
+        - status
+        - requested_by
+        - lines
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+        issue_no:
+          type: string
+        org_id:
+          type: string
+        warehouse_id:
+          type: string
+        warehouse_code:
+          type: string
+        destination_type:
+          type: string
+        destination_name:
+          type: string
+        reason_code:
+          type: string
+        status:
+          $ref: "#/components/schemas/WarehouseIssueStatus"
+        requested_by:
+          type: string
+        submitted_by:
+          type: string
+        approved_by:
+          type: string
+        posted_by:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/WarehouseIssueLine"
+        audit_log_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        submitted_at:
+          type: string
+          format: date-time
+        approved_at:
+          type: string
+          format: date-time
+        posted_at:
+          type: string
+          format: date-time
+    WarehouseIssueLine:
+      allOf:
+        - $ref: "#/components/schemas/CreateWarehouseIssueLine"
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
     BatchListSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"

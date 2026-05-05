@@ -256,6 +256,10 @@ function fromApiCustomerReceivableLine(line: CustomerReceivableLineApi): Custome
 }
 
 function fromApiSourceDocument(source: components["schemas"]["FinanceSourceDocument"]): CustomerReceivableSourceDocument {
+  if (source.type === "supplier_payable") {
+    throw new Error("Supplier payable is not a valid customer receivable source document");
+  }
+
   return {
     type: source.type,
     id: source.id,

@@ -3,9 +3,9 @@
 Project: Web ERP for cosmetics operations
 Phase: Phase 1
 Document role: Current master document index and traceability map
-Version: v2.3
-Date: 2026-05-04
-Status: Current source-of-truth index for current Phase 1 docs, design addenda, and Sprint 23 production-demand bridge
+Version: v2.4
+Date: 2026-05-05
+Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 production-demand bridge, and inventory warehouse document runtime flow
 
 ---
 
@@ -34,7 +34,7 @@ Latest release tag: v0.19.0-vietnamese-ui-localization.
 Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
 Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
 Sprint 22 status: UAT pilot pack prepared; S22-ISSUE-001 resolved by PR #546 at db894ddb; Session 0 readiness rerun passed; business UAT execution, business issue triage, Go/No-Go decision, and v0.22 tag are pending.
-Sprint 23 implementation status: first runtime bridge selected in file 92 adds /production planning UI, backend production-plan API, active-formula snapshot, material demand/shortage calculation, internal Purchase Request draft lines, PostgreSQL persistence, and OpenAPI contract coverage; follow-up file 94 promotes Purchase Request submit/approve/convert-to-PO workflow; follow-up file 95 locks PO -> receiving -> QC PASS -> supplier payable traceability; follow-up file 96 locks supplier invoice and 3-way matching behavior; follow-up file 97 locks AP payment readiness so payment request/approval/recording require a matched supplier invoice; stock transfer, warehouse issue note, costing, payment tolerance policy, and ledger-backed inventory dashboard remain pending; no v0.23 tag exists.
+Sprint 23 implementation status: first runtime bridge selected in file 92 adds /production planning UI, backend production-plan API, active-formula snapshot, material demand/shortage calculation, internal Purchase Request draft lines, PostgreSQL persistence, and OpenAPI contract coverage; follow-up file 94 promotes Purchase Request submit/approve/convert-to-PO workflow; follow-up file 95 locks PO -> receiving -> QC PASS -> supplier payable traceability; follow-up file 96 locks supplier invoice and 3-way matching behavior; follow-up file 97 locks AP payment readiness so payment request/approval/recording require a matched supplier invoice; follow-up file 98 adds Stock Transfer and Warehouse Issue Note runtime documents with PostgreSQL persistence, submit/approve/post lifecycle, OpenAPI coverage, and posted inventory movements; costing, payment tolerance policy, production-linked issue automation, and ledger-backed inventory dashboard remain pending; no v0.23 tag exists.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -46,6 +46,7 @@ Timezone: Asia/Ho_Chi_Minh.
 Phase 1 production entrypoints: /production is planning/material-demand/PR-draft review; /subcontract remains external factory execution.
 Purchase flow boundary: /production opens generated Purchase Request; PO creation belongs to approved Purchase Request conversion, not direct production-page shortcut.
 Post-PO finance boundary: posted PO-linked goods receipts create supplier payable value only for QC PASS lines; supplier invoice and three-way match are locked in file 96 as separate vendor-bill evidence; AP payment readiness hard gate is locked in file 97.
+Warehouse document boundary: Stock Transfer is internal stock movement; Warehouse Issue Note is operational stock issue to factory/lab/manual destination; both are inventory documents, not costing documents.
 Internal work-center/MES production remains out of Phase 1 scope.
 ```
 
@@ -82,11 +83,12 @@ For a new engineer or reviewer:
 16. 95_ERP_PO_Receiving_QC_Supplier_Payable_Flow_MyPham_v1.md
 17. 96_ERP_Supplier_Invoice_Three_Way_Matching_Flow_MyPham_v1.md
 18. 97_ERP_AP_Payment_Readiness_Gate_Supplier_Invoice_Matching_MyPham_v1.md
-19. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
-20. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
-21. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
-22. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
-23. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
+19. 98_ERP_Stock_Transfer_Warehouse_Issue_Runtime_Flow_MyPham_v1.md
+20. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
+21. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
+22. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
+23. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
+24. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
 ```
 
 For product or operations review:
@@ -109,8 +111,9 @@ For product or operations review:
 15. 95 PO, receiving, QC, supplier payable flow
 16. 96 Supplier invoice and 3-way matching flow
 17. 97 AP payment readiness gate
-18. 88 BOM / formula module design
-19. 78 Production runtime checklist
+18. 98 Stock transfer and warehouse issue runtime flow
+19. 88 BOM / formula module design
+20. 78 Production runtime checklist
 ```
 
 ---
@@ -198,6 +201,8 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | `94_ERP_Purchase_Request_Workflow_Production_Plan_PO_Traceability_MyPham_v1.md` | Purchase Request workflow bridge | Before changing production-plan to Purchase Request to PO traceability, approval, or conversion behavior |
 | `95_ERP_PO_Receiving_QC_Supplier_Payable_Flow_MyPham_v1.md` | PO, receiving, QC, and supplier payable flow | Before changing post-PO receiving, AP creation, PO timeline AP links, or payable traceability behavior |
 | `96_ERP_Supplier_Invoice_Three_Way_Matching_Flow_MyPham_v1.md` | Supplier invoice and 3-way matching flow | Before changing supplier invoice capture, AP invoice matching, or payment-readiness traceability behavior |
+| `97_ERP_AP_Payment_Readiness_Gate_Supplier_Invoice_Matching_MyPham_v1.md` | AP payment readiness gate | Before changing supplier payable payment request, payment approval, payment recording, or matched-invoice enforcement |
+| `98_ERP_Stock_Transfer_Warehouse_Issue_Runtime_Flow_MyPham_v1.md` | Stock Transfer and Warehouse Issue Note runtime flow | Before changing internal warehouse transfer, operational material issue, posted inventory movements, or warehouse issue UI behavior |
 
 ---
 

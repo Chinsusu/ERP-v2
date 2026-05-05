@@ -136,5 +136,73 @@
       "posted": "Post recorded",
       "actionError": "Could not {action}"
     }
+  },
+  "warehouseDocument": {
+    "actions": {
+      "submit": "Submit",
+      "approve": "Approve",
+      "post": "Post"
+    },
+    "status": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "approved": "Approved",
+      "posted": "Posted",
+      "cancelled": "Cancelled"
+    },
+    "messages": {
+      "submitted": "Submitted",
+      "approved": "Approved",
+      "posted": "Posted"
+    }
+  },
+  "stockTransfer": {
+    "title": "Stock transfers",
+    "documents": "{count} documents",
+    "lines": "{count} lines",
+    "stockRow": "Stock row",
+    "destinationWarehouse": "Destination warehouse",
+    "quantity": "Quantity",
+    "create": "Create transfer",
+    "document": "Transfer",
+    "columns": {
+      "transfer": "Transfer",
+      "route": "Route",
+      "status": "Status",
+      "line": "Line",
+      "quantity": "Quantity",
+      "updated": "Updated"
+    },
+    "messages": {
+      "created": "Transfer created",
+      "createError": "Could not create transfer",
+      "invalidQty": "Invalid transfer quantity",
+      "actionError": "Could not {action}"
+    }
+  },
+  "warehouseIssue": {
+    "title": "Warehouse issue notes",
+    "documents": "{count} documents",
+    "lines": "{count} lines",
+    "stockRow": "Stock row",
+    "destination": "Destination",
+    "defaultDestination": "Subcontract factory",
+    "quantity": "Quantity",
+    "create": "Create issue note",
+    "document": "Issue note",
+    "columns": {
+      "issue": "Issue note",
+      "destination": "Destination",
+      "status": "Status",
+      "line": "Line",
+      "quantity": "Quantity",
+      "updated": "Updated"
+    },
+    "messages": {
+      "created": "Issue note created",
+      "createError": "Could not create issue note",
+      "invalidQty": "Invalid issue quantity",
+      "actionError": "Could not {action}"
+    }
   }
 }
