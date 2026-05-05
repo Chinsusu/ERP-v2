@@ -35,33 +35,37 @@ type subcontractOrderMaterialLineRequest struct {
 }
 
 type createSubcontractOrderRequest struct {
-	ID                  string                                `json:"id"`
-	OrderNo             string                                `json:"order_no"`
-	FactoryID           string                                `json:"factory_id"`
-	FinishedItemID      string                                `json:"finished_item_id"`
-	PlannedQty          string                                `json:"planned_qty"`
-	UOMCode             string                                `json:"uom_code"`
-	CurrencyCode        string                                `json:"currency_code"`
-	SpecSummary         string                                `json:"spec_summary"`
-	SampleRequired      bool                                  `json:"sample_required"`
-	ClaimWindowDays     int                                   `json:"claim_window_days"`
-	TargetStartDate     string                                `json:"target_start_date"`
-	ExpectedReceiptDate string                                `json:"expected_receipt_date"`
-	MaterialLines       []subcontractOrderMaterialLineRequest `json:"material_lines"`
+	ID                     string                                `json:"id"`
+	OrderNo                string                                `json:"order_no"`
+	FactoryID              string                                `json:"factory_id"`
+	FinishedItemID         string                                `json:"finished_item_id"`
+	PlannedQty             string                                `json:"planned_qty"`
+	UOMCode                string                                `json:"uom_code"`
+	CurrencyCode           string                                `json:"currency_code"`
+	SpecSummary            string                                `json:"spec_summary"`
+	SourceProductionPlanID string                                `json:"source_production_plan_id"`
+	SourceProductionPlanNo string                                `json:"source_production_plan_no"`
+	SampleRequired         bool                                  `json:"sample_required"`
+	ClaimWindowDays        int                                   `json:"claim_window_days"`
+	TargetStartDate        string                                `json:"target_start_date"`
+	ExpectedReceiptDate    string                                `json:"expected_receipt_date"`
+	MaterialLines          []subcontractOrderMaterialLineRequest `json:"material_lines"`
 }
 
 type updateSubcontractOrderRequest struct {
-	FactoryID           string                                `json:"factory_id"`
-	FinishedItemID      string                                `json:"finished_item_id"`
-	PlannedQty          string                                `json:"planned_qty"`
-	UOMCode             string                                `json:"uom_code"`
-	SpecSummary         string                                `json:"spec_summary"`
-	SampleRequired      *bool                                 `json:"sample_required"`
-	ClaimWindowDays     int                                   `json:"claim_window_days"`
-	TargetStartDate     string                                `json:"target_start_date"`
-	ExpectedReceiptDate string                                `json:"expected_receipt_date"`
-	ExpectedVersion     int                                   `json:"expected_version"`
-	MaterialLines       []subcontractOrderMaterialLineRequest `json:"material_lines"`
+	FactoryID              string                                `json:"factory_id"`
+	FinishedItemID         string                                `json:"finished_item_id"`
+	PlannedQty             string                                `json:"planned_qty"`
+	UOMCode                string                                `json:"uom_code"`
+	SpecSummary            string                                `json:"spec_summary"`
+	SourceProductionPlanID string                                `json:"source_production_plan_id"`
+	SourceProductionPlanNo string                                `json:"source_production_plan_no"`
+	SampleRequired         *bool                                 `json:"sample_required"`
+	ClaimWindowDays        int                                   `json:"claim_window_days"`
+	TargetStartDate        string                                `json:"target_start_date"`
+	ExpectedReceiptDate    string                                `json:"expected_receipt_date"`
+	ExpectedVersion        int                                   `json:"expected_version"`
+	MaterialLines          []subcontractOrderMaterialLineRequest `json:"material_lines"`
 }
 
 type subcontractOrderActionRequest struct {
@@ -284,25 +288,30 @@ type subcontractOrderMaterialLineResponse struct {
 }
 
 type subcontractOrderListItemResponse struct {
-	ID                  string `json:"id"`
-	OrderNo             string `json:"order_no"`
-	FactoryID           string `json:"factory_id"`
-	FactoryCode         string `json:"factory_code,omitempty"`
-	FactoryName         string `json:"factory_name"`
-	FinishedItemID      string `json:"finished_item_id"`
-	FinishedSKUCode     string `json:"finished_sku_code"`
-	FinishedItemName    string `json:"finished_item_name"`
-	PlannedQty          string `json:"planned_qty"`
-	UOMCode             string `json:"uom_code"`
-	ExpectedReceiptDate string `json:"expected_receipt_date"`
-	Status              string `json:"status"`
-	CurrencyCode        string `json:"currency_code"`
-	EstimatedCostAmount string `json:"estimated_cost_amount"`
-	MaterialLineCount   int    `json:"material_line_count"`
-	SampleRequired      bool   `json:"sample_required"`
-	CreatedAt           string `json:"created_at"`
-	UpdatedAt           string `json:"updated_at"`
-	Version             int    `json:"version"`
+	ID                     string `json:"id"`
+	OrderNo                string `json:"order_no"`
+	FactoryID              string `json:"factory_id"`
+	FactoryCode            string `json:"factory_code,omitempty"`
+	FactoryName            string `json:"factory_name"`
+	FinishedItemID         string `json:"finished_item_id"`
+	FinishedSKUCode        string `json:"finished_sku_code"`
+	FinishedItemName       string `json:"finished_item_name"`
+	PlannedQty             string `json:"planned_qty"`
+	UOMCode                string `json:"uom_code"`
+	ExpectedReceiptDate    string `json:"expected_receipt_date"`
+	Status                 string `json:"status"`
+	CurrencyCode           string `json:"currency_code"`
+	EstimatedCostAmount    string `json:"estimated_cost_amount"`
+	ReceivedQty            string `json:"received_qty"`
+	AcceptedQty            string `json:"accepted_qty"`
+	RejectedQty            string `json:"rejected_qty"`
+	SourceProductionPlanID string `json:"source_production_plan_id,omitempty"`
+	SourceProductionPlanNo string `json:"source_production_plan_no,omitempty"`
+	MaterialLineCount      int    `json:"material_line_count"`
+	SampleRequired         bool   `json:"sample_required"`
+	CreatedAt              string `json:"created_at"`
+	UpdatedAt              string `json:"updated_at"`
+	Version                int    `json:"version"`
 }
 
 type subcontractOrderResponse struct {
@@ -330,6 +339,8 @@ type subcontractOrderResponse struct {
 	EstimatedCostAmount     string                                 `json:"estimated_cost_amount"`
 	DepositAmount           string                                 `json:"deposit_amount"`
 	SpecSummary             string                                 `json:"spec_summary,omitempty"`
+	SourceProductionPlanID  string                                 `json:"source_production_plan_id,omitempty"`
+	SourceProductionPlanNo  string                                 `json:"source_production_plan_no,omitempty"`
 	SampleRequired          bool                                   `json:"sample_required"`
 	ClaimWindowDays         int                                    `json:"claim_window_days"`
 	TargetStartDate         string                                 `json:"target_start_date,omitempty"`
@@ -710,21 +721,23 @@ func subcontractOrdersHandler(service productionapp.SubcontractOrderService) htt
 			}
 
 			result, err := service.CreateSubcontractOrder(r.Context(), productionapp.CreateSubcontractOrderInput{
-				ID:                  payload.ID,
-				OrderNo:             payload.OrderNo,
-				FactoryID:           payload.FactoryID,
-				FinishedItemID:      payload.FinishedItemID,
-				PlannedQty:          payload.PlannedQty,
-				UOMCode:             payload.UOMCode,
-				CurrencyCode:        payload.CurrencyCode,
-				SpecSummary:         payload.SpecSummary,
-				SampleRequired:      payload.SampleRequired,
-				ClaimWindowDays:     payload.ClaimWindowDays,
-				TargetStartDate:     payload.TargetStartDate,
-				ExpectedReceiptDate: payload.ExpectedReceiptDate,
-				MaterialLines:       subcontractOrderMaterialLineInputs(payload.MaterialLines),
-				ActorID:             principal.UserID,
-				RequestID:           response.RequestID(r),
+				ID:                     payload.ID,
+				OrderNo:                payload.OrderNo,
+				FactoryID:              payload.FactoryID,
+				FinishedItemID:         payload.FinishedItemID,
+				PlannedQty:             payload.PlannedQty,
+				UOMCode:                payload.UOMCode,
+				CurrencyCode:           payload.CurrencyCode,
+				SpecSummary:            payload.SpecSummary,
+				SourceProductionPlanID: payload.SourceProductionPlanID,
+				SourceProductionPlanNo: payload.SourceProductionPlanNo,
+				SampleRequired:         payload.SampleRequired,
+				ClaimWindowDays:        payload.ClaimWindowDays,
+				TargetStartDate:        payload.TargetStartDate,
+				ExpectedReceiptDate:    payload.ExpectedReceiptDate,
+				MaterialLines:          subcontractOrderMaterialLineInputs(payload.MaterialLines),
+				ActorID:                principal.UserID,
+				RequestID:              response.RequestID(r),
 			})
 			if err != nil {
 				writeSubcontractOrderError(w, r, err)
@@ -771,20 +784,22 @@ func subcontractOrderDetailHandler(service productionapp.SubcontractOrderService
 			}
 
 			result, err := service.UpdateSubcontractOrder(r.Context(), productionapp.UpdateSubcontractOrderInput{
-				ID:                  r.PathValue("subcontract_order_id"),
-				FactoryID:           payload.FactoryID,
-				FinishedItemID:      payload.FinishedItemID,
-				PlannedQty:          payload.PlannedQty,
-				UOMCode:             payload.UOMCode,
-				SpecSummary:         payload.SpecSummary,
-				SampleRequired:      payload.SampleRequired,
-				ClaimWindowDays:     payload.ClaimWindowDays,
-				TargetStartDate:     payload.TargetStartDate,
-				ExpectedReceiptDate: payload.ExpectedReceiptDate,
-				MaterialLines:       subcontractOrderMaterialLineInputs(payload.MaterialLines),
-				ExpectedVersion:     payload.ExpectedVersion,
-				ActorID:             principal.UserID,
-				RequestID:           response.RequestID(r),
+				ID:                     r.PathValue("subcontract_order_id"),
+				FactoryID:              payload.FactoryID,
+				FinishedItemID:         payload.FinishedItemID,
+				PlannedQty:             payload.PlannedQty,
+				UOMCode:                payload.UOMCode,
+				SpecSummary:            payload.SpecSummary,
+				SourceProductionPlanID: payload.SourceProductionPlanID,
+				SourceProductionPlanNo: payload.SourceProductionPlanNo,
+				SampleRequired:         payload.SampleRequired,
+				ClaimWindowDays:        payload.ClaimWindowDays,
+				TargetStartDate:        payload.TargetStartDate,
+				ExpectedReceiptDate:    payload.ExpectedReceiptDate,
+				MaterialLines:          subcontractOrderMaterialLineInputs(payload.MaterialLines),
+				ExpectedVersion:        payload.ExpectedVersion,
+				ActorID:                principal.UserID,
+				RequestID:              response.RequestID(r),
 			})
 			if err != nil {
 				writeSubcontractOrderError(w, r, err)
@@ -1468,12 +1483,13 @@ func subcontractOrderFilterFromRequest(r *http.Request) productionapp.Subcontrac
 	}
 
 	return productionapp.SubcontractOrderFilter{
-		Search:              query.Get("search"),
-		Statuses:            statuses,
-		FactoryID:           query.Get("factory_id"),
-		FinishedItemID:      query.Get("finished_item_id"),
-		ExpectedReceiptFrom: query.Get("expected_receipt_from"),
-		ExpectedReceiptTo:   query.Get("expected_receipt_to"),
+		Search:                 query.Get("search"),
+		Statuses:               statuses,
+		FactoryID:              query.Get("factory_id"),
+		FinishedItemID:         query.Get("finished_item_id"),
+		SourceProductionPlanID: query.Get("source_production_plan_id"),
+		ExpectedReceiptFrom:    query.Get("expected_receipt_from"),
+		ExpectedReceiptTo:      query.Get("expected_receipt_to"),
 	}
 }
 
@@ -1637,25 +1653,30 @@ func parseSubcontractOptionalTime(value string) (time.Time, error) {
 
 func newSubcontractOrderListItemResponse(order productiondomain.SubcontractOrder) subcontractOrderListItemResponse {
 	return subcontractOrderListItemResponse{
-		ID:                  order.ID,
-		OrderNo:             order.OrderNo,
-		FactoryID:           order.FactoryID,
-		FactoryCode:         order.FactoryCode,
-		FactoryName:         order.FactoryName,
-		FinishedItemID:      order.FinishedItemID,
-		FinishedSKUCode:     order.FinishedSKUCode,
-		FinishedItemName:    order.FinishedItemName,
-		PlannedQty:          order.PlannedQty.String(),
-		UOMCode:             order.UOMCode.String(),
-		ExpectedReceiptDate: order.ExpectedReceiptDate,
-		Status:              string(order.Status),
-		CurrencyCode:        order.CurrencyCode.String(),
-		EstimatedCostAmount: order.EstimatedCostAmount.String(),
-		MaterialLineCount:   len(order.MaterialLines),
-		SampleRequired:      order.SampleRequired,
-		CreatedAt:           timeString(order.CreatedAt),
-		UpdatedAt:           timeString(order.UpdatedAt),
-		Version:             order.Version,
+		ID:                     order.ID,
+		OrderNo:                order.OrderNo,
+		FactoryID:              order.FactoryID,
+		FactoryCode:            order.FactoryCode,
+		FactoryName:            order.FactoryName,
+		FinishedItemID:         order.FinishedItemID,
+		FinishedSKUCode:        order.FinishedSKUCode,
+		FinishedItemName:       order.FinishedItemName,
+		PlannedQty:             order.PlannedQty.String(),
+		UOMCode:                order.UOMCode.String(),
+		ExpectedReceiptDate:    order.ExpectedReceiptDate,
+		Status:                 string(order.Status),
+		CurrencyCode:           order.CurrencyCode.String(),
+		EstimatedCostAmount:    order.EstimatedCostAmount.String(),
+		ReceivedQty:            order.ReceivedQty.String(),
+		AcceptedQty:            order.AcceptedQty.String(),
+		RejectedQty:            order.RejectedQty.String(),
+		SourceProductionPlanID: order.SourceProductionPlanID,
+		SourceProductionPlanNo: order.SourceProductionPlanNo,
+		MaterialLineCount:      len(order.MaterialLines),
+		SampleRequired:         order.SampleRequired,
+		CreatedAt:              timeString(order.CreatedAt),
+		UpdatedAt:              timeString(order.UpdatedAt),
+		Version:                order.Version,
 	}
 }
 
@@ -1685,6 +1706,8 @@ func newSubcontractOrderResponse(order productiondomain.SubcontractOrder, auditL
 		EstimatedCostAmount:     order.EstimatedCostAmount.String(),
 		DepositAmount:           order.DepositAmount.String(),
 		SpecSummary:             order.SpecSummary,
+		SourceProductionPlanID:  order.SourceProductionPlanID,
+		SourceProductionPlanNo:  order.SourceProductionPlanNo,
 		SampleRequired:          order.SampleRequired,
 		ClaimWindowDays:         order.ClaimWindowDays,
 		TargetStartDate:         order.TargetStartDate,

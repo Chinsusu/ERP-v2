@@ -40,6 +40,9 @@ Start with:
 - `docs/99_ERP_Coding_Task_Board_Sprint24_Production_Material_Issue_Readiness_MyPham_v1.md`
 - `docs/100_ERP_Production_Material_Issue_Subcontract_Readiness_Flow_MyPham_v1.md`
 - `docs/101_ERP_Sprint24_Changelog_Production_Material_Issue_Readiness_MyPham_v1.md`
+- `docs/102_ERP_Coding_Task_Board_Sprint25_Subcontract_Finished_Goods_QC_Closeout_MyPham_v1.md`
+- `docs/103_ERP_Subcontract_Finished_Goods_QC_Closeout_Flow_MyPham_v1.md`
+- `docs/104_ERP_Sprint25_Changelog_Subcontract_Finished_Goods_QC_Closeout_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -47,7 +50,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 24 production material issue readiness runtime merged and deployed to dev.
+Current line: Sprint 25 subcontract finished goods QC closeout traceability implementation in progress.
 
 Latest release tag:
 
@@ -101,6 +104,15 @@ PR #586 merged runtime at 9e28c05e with CI green.
 PR #587 fixed dev web API base at 114105b2 so browser clients can use the dev server URL.
 Dev deploy passed with full smoke, and browser smoke passed for /production and production-plan detail material issue readiness.
 No v0.24 tag has been created.
+```
+
+Sprint 25 implementation status:
+
+```text
+Sprint 25 is documented in file 102, flow design is locked in file 103, and changelog/evidence is tracked in file 104.
+Scope is Production Plan -> source-linked Subcontract Order traceability and Production Plan detail visibility for subcontract receipt/QC/claim/final-payment closeout.
+Existing subcontract finished goods receipt/QC/factory claim/final payment runtime remains the execution surface; Sprint 25 does not add internal MES or factory dispatch.
+CI, merge, dev deploy, browser smoke, and v0.25 tag are pending.
 ```
 
 Phase 1 production scope:
@@ -158,6 +170,9 @@ Production runtime reference:
 - `docs/99_ERP_Coding_Task_Board_Sprint24_Production_Material_Issue_Readiness_MyPham_v1.md`
 - `docs/100_ERP_Production_Material_Issue_Subcontract_Readiness_Flow_MyPham_v1.md`
 - `docs/101_ERP_Sprint24_Changelog_Production_Material_Issue_Readiness_MyPham_v1.md`
+- `docs/102_ERP_Coding_Task_Board_Sprint25_Subcontract_Finished_Goods_QC_Closeout_MyPham_v1.md`
+- `docs/103_ERP_Subcontract_Finished_Goods_QC_Closeout_Flow_MyPham_v1.md`
+- `docs/104_ERP_Sprint25_Changelog_Subcontract_Finished_Goods_QC_Closeout_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`

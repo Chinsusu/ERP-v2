@@ -69,7 +69,11 @@ describe("productionPlanWorklist", () => {
     expect(tasks[7]).toMatchObject({
       statusLabel: "Sẵn sàng tạo lệnh",
       statusTone: "success",
-      action: { label: "Mở gia công", href: "/subcontract", disabled: false }
+      action: {
+        label: "Mở gia công",
+        href: "/subcontract?source_production_plan_id=plan-002&search=PP-260504-0002#subcontract-orders",
+        disabled: false
+      }
     });
   });
 });

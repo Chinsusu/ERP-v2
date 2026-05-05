@@ -53,6 +53,8 @@ export function buildSubcontractOrderFromProductionPlan(
     quantity: Number(plan.plannedQty),
     uomCode: plan.uomCode,
     specVersion: `${plan.formulaCode} ${plan.formulaVersion} / ${plan.planNo}`,
+    sourceProductionPlanId: plan.id,
+    sourceProductionPlanNo: plan.planNo,
     sampleRequired: input.sampleRequired ?? true,
     expectedDeliveryDate: input.expectedDeliveryDate,
     depositStatus: input.depositStatus ?? "pending",

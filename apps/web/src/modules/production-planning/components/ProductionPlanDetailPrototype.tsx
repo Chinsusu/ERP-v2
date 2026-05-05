@@ -28,10 +28,16 @@ import {
   buildPurchaseOrderReceiptRows,
   type PurchaseOrderReceiptRow
 } from "../../purchase/services/purchaseOrderReceivingTraceability";
+import {
+  formatSubcontractOrderStatus,
+  getSubcontractOrders,
+  subcontractOrderStatusTone
+} from "../../subcontract/services/subcontractOrderService";
 import { buildProductionPlanWorkflowContext } from "../services/productionPlanWorkflowContext";
 import { buildProductionPlanWorklist, type ProductionPlanWorkTask } from "../services/productionPlanWorklist";
 import { t } from "@/shared/i18n";
 import type { PurchaseOrder, PurchaseOrderStatus } from "../../purchase/types";
+import type { SubcontractOrder } from "../../subcontract/types";
 import type { ProductionPlan, ProductionPlanLine, PurchaseRequestDraftLine } from "../types";
 
 type MaterialIssueActionState = {
@@ -58,6 +64,9 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
   const [relatedReceiptRows, setRelatedReceiptRows] = useState<ProductionPlanReceiptRow[]>([]);
   const [relatedReceiptsLoading, setRelatedReceiptsLoading] = useState(false);
   const [relatedReceiptsError, setRelatedReceiptsError] = useState<string | undefined>();
+  const [relatedSubcontractOrders, setRelatedSubcontractOrders] = useState<SubcontractOrder[]>([]);
+  const [relatedSubcontractOrdersLoading, setRelatedSubcontractOrdersLoading] = useState(false);
+  const [relatedSubcontractOrdersError, setRelatedSubcontractOrdersError] = useState<string | undefined>();
   const [materialIssueAction, setMaterialIssueAction] = useState<MaterialIssueActionState>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
@@ -166,6 +175,41 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
       active = false;
     };
   }, [relatedPurchaseOrders]);
+
+  useEffect(() => {
+    if (!plan?.id) {
+      setRelatedSubcontractOrders([]);
+      setRelatedSubcontractOrdersLoading(false);
+      setRelatedSubcontractOrdersError(undefined);
+      return;
+    }
+
+    let active = true;
+    setRelatedSubcontractOrdersLoading(true);
+    setRelatedSubcontractOrdersError(undefined);
+
+    getSubcontractOrders({ sourceProductionPlanId: plan.id, search: plan.planNo })
+      .then((orders) => (orders.length === 0 ? getSubcontractOrders({ search: plan.planNo }) : orders))
+      .then((orders) => {
+        if (active) {
+          setRelatedSubcontractOrders(orders);
+        }
+      })
+      .catch((loadError) => {
+        if (active) {
+          setRelatedSubcontractOrdersError(errorText(loadError));
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setRelatedSubcontractOrdersLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [plan?.id, plan?.planNo]);
 
   const handleCreateWarehouseIssue = useCallback(
     async (line: ProductionPlanLine) => {
@@ -289,6 +333,30 @@ export function ProductionPlanDetailPrototype({ planId }: ProductionPlanDetailPr
           pagination
           preserveColumnWidths
           emptyState={<EmptyState title="Chưa có PO liên quan đến kế hoạch này" />}
+        />
+      </section>
+
+      <section className="erp-masterdata-list-card">
+        <header className="erp-section-header">
+          <div>
+            <h2 className="erp-section-title">Gia công / thành phẩm</h2>
+            <p className="erp-page-description">
+              Lệnh gia công liên kết với {plan.planNo}; theo dõi nhận thành phẩm, QC, claim nhà máy và sẵn sàng thanh toán cuối.
+            </p>
+          </div>
+          <Link className="erp-button erp-button--secondary" href={subcontractHref(plan)}>
+            Mở gia công
+          </Link>
+        </header>
+        <DataTable
+          columns={relatedSubcontractOrderColumns}
+          rows={relatedSubcontractOrders}
+          getRowKey={(order) => order.id}
+          loading={relatedSubcontractOrdersLoading}
+          error={relatedSubcontractOrdersError}
+          pagination
+          preserveColumnWidths
+          emptyState={<EmptyState title="Chưa có lệnh gia công liên kết với kế hoạch này" />}
         />
       </section>
 
@@ -625,6 +693,66 @@ const relatedReceiptColumns: DataTableColumn<ProductionPlanReceiptRow>[] = [
   }
 ];
 
+const relatedSubcontractOrderColumns: DataTableColumn<SubcontractOrder>[] = [
+  {
+    key: "order",
+    header: "Lệnh gia công",
+    render: (order) => (
+      <div className="erp-masterdata-product-cell">
+        <strong>{order.orderNo}</strong>
+        <small>{order.factoryName}</small>
+      </div>
+    ),
+    width: "230px"
+  },
+  {
+    key: "status",
+    header: "Trạng thái",
+    render: (order) => <StatusChip tone={subcontractOrderStatusTone(order.status)}>{formatSubcontractOrderStatus(order.status)}</StatusChip>,
+    width: "180px"
+  },
+  {
+    key: "qty",
+    header: "Kế hoạch / đã nhận",
+    render: (order) =>
+      `${formatProductionPlanQuantity(String(order.quantity), order.uomCode ?? "PCS")} / ${formatProductionPlanQuantity(
+        order.receivedQty ?? "0",
+        order.uomCode ?? "PCS"
+      )}`,
+    width: "180px"
+  },
+  {
+    key: "qc",
+    header: "QC thành phẩm",
+    render: (order) => subcontractCloseoutLabel(order),
+    width: "190px"
+  },
+  {
+    key: "expected",
+    header: "Ngày dự kiến",
+    render: (order) => formatPurchaseDate(order.expectedDeliveryDate),
+    width: "130px"
+  },
+  {
+    key: "payment",
+    header: "Thanh toán cuối",
+    render: (order) => subcontractFinalPaymentLabel(order),
+    width: "160px"
+  },
+  {
+    key: "action",
+    header: "Thao tác",
+    align: "right",
+    sticky: true,
+    render: (order) => (
+      <Link className="erp-button erp-button--secondary erp-button--compact" href={subcontractOrderHref(order)}>
+        Mở gia công
+      </Link>
+    ),
+    width: "130px"
+  }
+];
+
 function renderTaskAction(task: ProductionPlanWorkTask) {
   if (!task.action) {
     return <span>-</span>;
@@ -643,6 +771,51 @@ function renderTaskAction(task: ProductionPlanWorkTask) {
       {task.action.label}
     </Link>
   );
+}
+
+function subcontractCloseoutLabel(order: SubcontractOrder) {
+  const uomCode = order.uomCode ?? "PCS";
+  const accepted = formatProductionPlanQuantity(order.acceptedQty ?? "0", uomCode);
+  const rejected = formatProductionPlanQuantity(order.rejectedQty ?? "0", uomCode);
+  if (order.status === "accepted" || order.status === "final_payment_ready" || order.status === "closed") {
+    return `Đạt QC ${accepted}`;
+  }
+  if (order.status === "rejected_with_factory_issue") {
+    return `Claim nhà máy ${rejected}`;
+  }
+  if (order.status === "finished_goods_received" || order.status === "qc_in_progress") {
+    return `Chờ QC; đã nhận ${formatProductionPlanQuantity(order.receivedQty ?? "0", uomCode)}`;
+  }
+
+  return "Chưa nhận thành phẩm";
+}
+
+function subcontractFinalPaymentLabel(order: SubcontractOrder) {
+  if (order.status === "closed") {
+    return "Đã đóng";
+  }
+  if (order.status === "final_payment_ready") {
+    return "Sẵn sàng";
+  }
+  if (order.status === "accepted") {
+    return "Chờ xác nhận";
+  }
+
+  return "Chưa sẵn sàng";
+}
+
+function subcontractHref(plan: ProductionPlan) {
+  return `/subcontract?source_production_plan_id=${encodeURIComponent(plan.id)}&search=${encodeURIComponent(plan.planNo)}#subcontract-orders`;
+}
+
+function subcontractOrderHref(order: SubcontractOrder) {
+  const params = new URLSearchParams();
+  if (order.sourceProductionPlanId) {
+    params.set("source_production_plan_id", order.sourceProductionPlanId);
+  }
+  params.set("search", order.sourceProductionPlanNo || order.orderNo);
+
+  return `/subcontract?${params.toString()}#subcontract-orders`;
 }
 
 function renderMaterialIssueAction(
