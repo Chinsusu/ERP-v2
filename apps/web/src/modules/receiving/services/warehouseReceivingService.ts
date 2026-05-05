@@ -117,7 +117,7 @@ export async function getGoodsReceipts(query: GoodsReceiptQuery = {}): Promise<G
       accessToken: defaultAccessToken
     });
 
-    return receipts.map(fromApiGoodsReceipt);
+    return receipts.map(fromApiGoodsReceipt).filter((receipt) => matchesGoodsReceiptQuery(receipt, query));
   } catch (cause) {
     if (!shouldUsePrototypeFallback(cause)) {
       throw cause;
@@ -363,18 +363,23 @@ function toApiGoodsReceiptQuery(query: GoodsReceiptQuery): GoodsReceiptListApiQu
 
 function filterPrototypeReceipts(query: GoodsReceiptQuery): GoodsReceipt[] {
   return prototypeGoodsReceipts
-    .filter((receipt) => {
-      if (query.warehouseId && receipt.warehouseId !== query.warehouseId) {
-        return false;
-      }
-      if (query.status && receipt.status !== query.status) {
-        return false;
-      }
-
-      return true;
-    })
+    .filter((receipt) => matchesGoodsReceiptQuery(receipt, query))
     .map(cloneReceipt)
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+}
+
+function matchesGoodsReceiptQuery(receipt: GoodsReceipt, query: GoodsReceiptQuery) {
+  if (query.warehouseId && receipt.warehouseId !== query.warehouseId) {
+    return false;
+  }
+  if (query.status && receipt.status !== query.status) {
+    return false;
+  }
+  if (query.referenceDocId && receipt.referenceDocId !== query.referenceDocId) {
+    return false;
+  }
+
+  return true;
 }
 
 function createPrototypeGoodsReceipt(input: CreateGoodsReceiptInput): GoodsReceipt {

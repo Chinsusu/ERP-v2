@@ -193,6 +193,8 @@ export function WarehouseReceivingPrototype() {
   const [purchaseOrdersLoading, setPurchaseOrdersLoading] = useState(false);
   const [purchaseOrderError, setPurchaseOrderError] = useState<string | null>(null);
   const [referenceDocId, setReferenceDocId] = useState("");
+  const [receiptReferenceDocId, setReceiptReferenceDocId] = useState("");
+  const [autoSelectPurchaseOrderId, setAutoSelectPurchaseOrderId] = useState("");
   const [purchaseOrderLineId, setPurchaseOrderLineId] = useState("");
   const [deliveryNoteNo, setDeliveryNoteNo] = useState("DN-260429-UI");
   const [batchId, setBatchId] = useState(defaultBatch.value);
@@ -212,9 +214,10 @@ export function WarehouseReceivingPrototype() {
   const query = useMemo<GoodsReceiptQuery>(
     () => ({
       warehouseId: warehouseId || undefined,
-      status: status || undefined
+      status: status || undefined,
+      referenceDocId: receiptReferenceDocId || undefined
     }),
-    [status, warehouseId]
+    [receiptReferenceDocId, status, warehouseId]
   );
   const { receipts, loading, error } = useGoodsReceipts(query);
   const visibleReceipts = useMemo(() => mergeReceipts(localReceipts, receipts, query), [localReceipts, query, receipts]);
@@ -264,6 +267,27 @@ export function WarehouseReceivingPrototype() {
   }, [attachmentRef, selectedReceipt]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextWarehouseId = receivingWarehouseFromParam(params.get("warehouse_id"));
+    const nextStatus = receivingStatusFromParam(params.get("status"));
+    const nextPurchaseOrderReference = params.get("po_id")?.trim() || params.get("po_no")?.trim() || "";
+
+    if (nextWarehouseId !== null) {
+      setWarehouseId(nextWarehouseId);
+      const nextLocation = receivingLocationOptions.find((location) => location.warehouseId === nextWarehouseId);
+      setLocationId(nextLocation?.value ?? "");
+    }
+    if (nextStatus !== null) {
+      setStatus(nextStatus);
+    }
+    if (nextPurchaseOrderReference) {
+      setReferenceDocId(nextPurchaseOrderReference);
+      setReceiptReferenceDocId(params.has("po_id") ? nextPurchaseOrderReference : "");
+      setAutoSelectPurchaseOrderId(nextPurchaseOrderReference);
+    }
+  }, []);
+
+  useEffect(() => {
     let active = true;
     setPurchaseOrdersLoading(true);
     setPurchaseOrderError(null);
@@ -293,6 +317,39 @@ export function WarehouseReceivingPrototype() {
     };
   }, [warehouseId]);
 
+  useEffect(() => {
+    if (!autoSelectPurchaseOrderId || purchaseOrdersLoading) {
+      return;
+    }
+
+    const normalizedReference = autoSelectPurchaseOrderId.toLowerCase();
+    const order = purchaseOrders.find(
+      (candidate) =>
+        candidate.id.toLowerCase() === normalizedReference || candidate.poNo.toLowerCase() === normalizedReference
+    );
+    if (!order) {
+      setAutoSelectPurchaseOrderId("");
+      setPurchaseOrdersLoading(true);
+      getPurchaseOrder(autoSelectPurchaseOrderId)
+        .then((detail) => {
+          setPurchaseOrders((current) => uniquePurchaseOrders([detail, ...current]));
+          setSelectedPurchaseOrderId(detail.id);
+          setPurchaseOrderDetail(detail);
+          applyPurchaseOrder(detail, detail.lines[0]?.id);
+        })
+        .catch((reason) => {
+          setPurchaseOrderError(reason instanceof Error ? reason.message : receivingCopy("feedback.purchaseOrderLoadFailed"));
+        })
+        .finally(() => {
+          setPurchaseOrdersLoading(false);
+        });
+      return;
+    }
+
+    setAutoSelectPurchaseOrderId("");
+    void handlePurchaseOrderChange(order.id);
+  }, [autoSelectPurchaseOrderId, purchaseOrders, purchaseOrdersLoading]);
+
   function handleWarehouseChange(nextWarehouseId: string) {
     setWarehouseId(nextWarehouseId);
     const nextLocation = receivingLocationOptions.find((location) => location.warehouseId === nextWarehouseId);
@@ -300,6 +357,7 @@ export function WarehouseReceivingPrototype() {
     setSelectedPurchaseOrderId("");
     setPurchaseOrderDetail(null);
     setReferenceDocId("");
+    setReceiptReferenceDocId("");
     setPurchaseOrderLineId("");
   }
 
@@ -326,6 +384,7 @@ export function WarehouseReceivingPrototype() {
 
   function applyPurchaseOrder(order: PurchaseOrder, lineId?: string) {
     setReferenceDocId(order.id);
+    setReceiptReferenceDocId(order.id);
     setSupplierId(order.supplierId);
     setWarehouseId(order.warehouseId);
     const nextLocation = receivingLocationOptions.find((location) => location.warehouseId === order.warehouseId);
@@ -904,8 +963,9 @@ function uniquePurchaseOrders(orders: PurchaseOrder[]) {
 function mergeReceipts(localReceipts: GoodsReceipt[], remoteReceipts: GoodsReceipt[], query: GoodsReceiptQuery) {
   const localMatches = localReceipts.filter((receipt) => matchesReceiptQuery(receipt, query));
   const localIds = new Set(localMatches.map((receipt) => receipt.id));
+  const remoteMatches = remoteReceipts.filter((receipt) => matchesReceiptQuery(receipt, query));
 
-  return [...localMatches, ...remoteReceipts.filter((receipt) => !localIds.has(receipt.id))];
+  return [...localMatches, ...remoteMatches.filter((receipt) => !localIds.has(receipt.id))];
 }
 
 function matchesReceiptQuery(receipt: GoodsReceipt, query: GoodsReceiptQuery) {
@@ -915,8 +975,27 @@ function matchesReceiptQuery(receipt: GoodsReceipt, query: GoodsReceiptQuery) {
   if (query.status && receipt.status !== query.status) {
     return false;
   }
+  if (query.referenceDocId && receipt.referenceDocId !== query.referenceDocId) {
+    return false;
+  }
 
   return true;
+}
+
+function receivingStatusFromParam(value: string | null): StatusFilter | null {
+  if (value === null) {
+    return null;
+  }
+
+  return statusOptions.some((option) => option.value === value) ? (value as StatusFilter) : null;
+}
+
+function receivingWarehouseFromParam(value: string | null) {
+  if (value === null) {
+    return null;
+  }
+
+  return receivingWarehouseOptions.some((option) => option.value === value) ? value : null;
 }
 
 function summarizeReceipts(receipts: GoodsReceipt[]) {

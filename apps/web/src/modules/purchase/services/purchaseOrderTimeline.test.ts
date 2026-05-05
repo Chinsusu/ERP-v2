@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPurchaseOrderTimeline,
+  purchaseOrderReceivingHref,
   purchaseOrderSourcePlanNo,
   remainingPurchaseLineQuantity
 } from "./purchaseOrderTimeline";
@@ -23,6 +24,11 @@ describe("purchaseOrderTimeline", () => {
       ["closed", "pending"]
     ]);
     expect(timeline[2].occurredAt).toBe("2026-05-05T10:00:00Z");
+    expect(timeline.find((item) => item.id === "receiving")?.action).toEqual({
+      label: "Mở nhập hàng",
+      href: "/receiving?po_id=po-260505-249546&warehouse_id=wh-hcm-rm#receiving-draft",
+      disabled: false
+    });
   });
 
   it("shows cancelled and rejected terminal states without marking downstream steps complete", () => {
@@ -87,6 +93,12 @@ describe("purchaseOrderTimeline", () => {
         note: "Tao tu ke hoach san xuat PP-260505-968033 / PR-DRAFT-260505-968033"
       })
     ).toBe("PP-260505-968033");
+  });
+
+  it("builds a receiving deep link for the PO warehouse context", () => {
+    expect(purchaseOrderReceivingHref(basePurchaseOrder)).toBe(
+      "/receiving?po_id=po-260505-249546&warehouse_id=wh-hcm-rm#receiving-draft"
+    );
   });
 });
 

@@ -28,6 +28,12 @@ describe("warehouseReceivingService", () => {
     expect(receipts[0].id).toBe("grn-hcm-260427-inspect");
   });
 
+  it("filters prototype receipts by purchase order reference", async () => {
+    const receipts = await getGoodsReceipts({ referenceDocId: "po-260429-0003" });
+
+    expect(receipts.map((receipt) => receipt.referenceDocId)).toEqual(["po-260429-0003", "po-260429-0003"]);
+  });
+
   it("creates a draft and hydrates line data from the selected batch", async () => {
     const receipt = await createGoodsReceipt({
       id: "grn-ui-test",

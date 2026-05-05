@@ -67,6 +67,7 @@ export type GoodsReceipt = {
 export type GoodsReceiptQuery = {
   warehouseId?: string;
   status?: GoodsReceiptStatus;
+  referenceDocId?: string;
 };
 
 export type CreateGoodsReceiptLineInput = {
