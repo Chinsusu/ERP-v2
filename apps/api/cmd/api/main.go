@@ -1978,7 +1978,10 @@ func main() {
 		log.Fatalf("configure finance stores: %v", err)
 	}
 	customerReceivableService := financeapp.NewCustomerReceivableService(financeStores.customerReceivables, auditLogStore)
-	supplierPayableService := financeapp.NewSupplierPayableService(financeStores.supplierPayables, auditLogStore)
+	supplierPayableService := financeapp.NewSupplierPayableService(
+		financeStores.supplierPayables,
+		auditLogStore,
+	).WithSupplierInvoiceStore(financeStores.supplierInvoices)
 	supplierInvoiceService := financeapp.NewSupplierInvoiceService(
 		financeStores.supplierInvoices,
 		financeStores.supplierPayables,

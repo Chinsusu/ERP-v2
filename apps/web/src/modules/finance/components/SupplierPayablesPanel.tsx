@@ -14,9 +14,9 @@ import {
   canApproveSupplierPayablePayment,
   canRejectSupplierPayablePayment,
   canRecordSupplierPayablePayment,
-  canRequestSupplierPayablePayment,
   canVoidSupplierPayable,
   formatSupplierPayableStatus,
+  getSupplierPayablePaymentReadiness,
   getSupplierPayable,
   recordSupplierPayablePayment,
   rejectSupplierPayablePayment,
@@ -178,6 +178,10 @@ export function SupplierPayablesPanel() {
     [invoiceQuery, invoices, localInvoices]
   );
   const selectedInvoice = visibleInvoices[0] ?? null;
+  const paymentReadiness = useMemo(
+    () => getSupplierPayablePaymentReadiness(selectedPayable, visibleInvoices, invoicesLoading),
+    [invoicesLoading, selectedPayable, visibleInvoices]
+  );
   const totals = useMemo(() => summarizePayables(visiblePayables), [visiblePayables]);
 
   useEffect(() => {
@@ -606,14 +610,15 @@ export function SupplierPayablesPanel() {
           <section className="erp-card erp-card--padded" id="ap-actions">
             <div className="erp-section-header">
               <h2 className="erp-section-title">Payment action</h2>
-              <StatusChip tone={canRecordSupplierPayablePayment(selectedPayable) ? "success" : "normal"}>AP</StatusChip>
+              <StatusChip tone={paymentReadiness.tone}>{paymentReadiness.label}</StatusChip>
             </div>
+            <p className="erp-finance-note">{paymentReadiness.message}</p>
 
             <div className="erp-finance-action-row">
               <button
                 className="erp-button erp-button--secondary"
                 type="button"
-                disabled={!canRequestSupplierPayablePayment(selectedPayable) || busyAction !== ""}
+                disabled={!paymentReadiness.canRequestPayment || busyAction !== ""}
                 onClick={() => void handleRequestPayment()}
               >
                 Request payment

@@ -229,7 +229,7 @@ Technical API/entity names remain English.
 After this increment, the next finance hardening should decide:
 
 ```text
-Payment request hard gate: block AP payment request unless a matched invoice exists.
+AP payment readiness hard gate: implemented and locked in file 97.
 Tolerance policy: allow small rounding/price differences with approval.
 Tax handling: VAT, discounts, freight, landed cost allocation.
 Invoice attachment: scanned invoice files linked to AP/invoice.

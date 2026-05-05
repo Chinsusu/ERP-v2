@@ -16,11 +16,13 @@ import (
 )
 
 var ErrSupplierPayableNotFound = errors.New("supplier payable not found")
+var ErrSupplierPayableInvoiceNotMatched = errors.New("supplier payable invoice is not matched")
 
 const (
-	ErrorCodeSupplierPayableNotFound     response.ErrorCode = "SUPPLIER_PAYABLE_NOT_FOUND"
-	ErrorCodeSupplierPayableValidation   response.ErrorCode = "SUPPLIER_PAYABLE_VALIDATION_ERROR"
-	ErrorCodeSupplierPayableInvalidState response.ErrorCode = "SUPPLIER_PAYABLE_INVALID_STATE"
+	ErrorCodeSupplierPayableNotFound          response.ErrorCode = "SUPPLIER_PAYABLE_NOT_FOUND"
+	ErrorCodeSupplierPayableValidation        response.ErrorCode = "SUPPLIER_PAYABLE_VALIDATION_ERROR"
+	ErrorCodeSupplierPayableInvalidState      response.ErrorCode = "SUPPLIER_PAYABLE_INVALID_STATE"
+	ErrorCodeSupplierPayableInvoiceNotMatched response.ErrorCode = "SUPPLIER_PAYABLE_INVOICE_NOT_MATCHED"
 )
 
 type SupplierPayableStore interface {
@@ -30,9 +32,10 @@ type SupplierPayableStore interface {
 }
 
 type SupplierPayableService struct {
-	store    SupplierPayableStore
-	auditLog audit.LogStore
-	clock    func() time.Time
+	store                SupplierPayableStore
+	supplierInvoiceStore SupplierInvoiceStore
+	auditLog             audit.LogStore
+	clock                func() time.Time
 }
 
 type SupplierPayableFilter struct {
@@ -105,6 +108,12 @@ func (s SupplierPayableService) WithClock(clock func() time.Time) SupplierPayabl
 	if clock != nil {
 		s.clock = clock
 	}
+
+	return s
+}
+
+func (s SupplierPayableService) WithSupplierInvoiceStore(store SupplierInvoiceStore) SupplierPayableService {
+	s.supplierInvoiceStore = store
 
 	return s
 }
@@ -278,10 +287,22 @@ func (s SupplierPayableService) applySupplierPayableAction(
 	)
 	switch action {
 	case "request-payment":
+		if err := s.requireMatchedSupplierInvoice(ctx, current); err != nil {
+			return SupplierPayableActionResult{}, mapSupplierPayableError(
+				err,
+				map[string]any{"supplier_payable_id": current.ID, "payable_no": current.PayableNo},
+			)
+		}
 		updated, err = current.RequestPayment(input.ActorID, now)
 		auditAction = financedomain.FinanceAuditActionPayablePaymentRequested
 		metadata = map[string]any{"requested_amount": current.OutstandingAmount.String()}
 	case "approve-payment":
+		if err := s.requireMatchedSupplierInvoice(ctx, current); err != nil {
+			return SupplierPayableActionResult{}, mapSupplierPayableError(
+				err,
+				map[string]any{"supplier_payable_id": current.ID, "payable_no": current.PayableNo},
+			)
+		}
 		updated, err = approveSupplierPayableFromCurrent(current, input.ActorID, now)
 		auditAction = financedomain.FinanceAuditActionPayablePaymentApproved
 		metadata = map[string]any{"approved_amount": current.OutstandingAmount.String()}
@@ -290,6 +311,12 @@ func (s SupplierPayableService) applySupplierPayableAction(
 		auditAction = financedomain.FinanceAuditActionPayablePaymentRejected
 		metadata = map[string]any{"reason": strings.TrimSpace(input.Reason)}
 	case "record-payment":
+		if err := s.requireMatchedSupplierInvoice(ctx, current); err != nil {
+			return SupplierPayableActionResult{}, mapSupplierPayableError(
+				err,
+				map[string]any{"supplier_payable_id": current.ID, "payable_no": current.PayableNo},
+			)
+		}
 		updated, err = current.RecordPayment(input.Amount, input.ActorID, now)
 		auditAction = financedomain.FinanceAuditActionPayablePaymentRecorded
 		metadata = map[string]any{"payment_amount": input.Amount}
@@ -333,6 +360,39 @@ func (s SupplierPayableService) applySupplierPayableAction(
 		CurrentStatus:   updated.Status,
 		AuditLogID:      auditLogID,
 	}, nil
+}
+
+func (s SupplierPayableService) requireMatchedSupplierInvoice(
+	ctx context.Context,
+	payable financedomain.SupplierPayable,
+) error {
+	if s.supplierInvoiceStore == nil {
+		return nil
+	}
+	invoices, err := s.supplierInvoiceStore.List(ctx, SupplierInvoiceFilter{PayableID: payable.ID})
+	if err != nil {
+		return err
+	}
+	for _, invoice := range invoices {
+		if supplierInvoiceMatchesPayable(invoice, payable) {
+			return nil
+		}
+	}
+
+	return ErrSupplierPayableInvoiceNotMatched
+}
+
+func supplierInvoiceMatchesPayable(
+	invoice financedomain.SupplierInvoice,
+	payable financedomain.SupplierPayable,
+) bool {
+	return invoice.PayableID == payable.ID &&
+		invoice.SupplierID == payable.SupplierID &&
+		invoice.CurrencyCode == payable.CurrencyCode &&
+		invoice.ExpectedAmount.String() == payable.TotalAmount.String() &&
+		invoice.Status == financedomain.SupplierInvoiceStatusMatched &&
+		invoice.MatchStatus == financedomain.SupplierInvoiceMatchStatusMatched &&
+		invoice.VarianceAmount.IsZero()
 }
 
 func (s *PrototypeSupplierPayableStore) List(
@@ -575,6 +635,14 @@ func mapSupplierPayableError(err error, details map[string]any) error {
 		return apperrors.Conflict(
 			ErrorCodeSupplierPayableInvalidState,
 			"Supplier payable state is invalid",
+			err,
+			details,
+		)
+	}
+	if errors.Is(err, ErrSupplierPayableInvoiceNotMatched) {
+		return apperrors.Conflict(
+			ErrorCodeSupplierPayableInvoiceNotMatched,
+			"Supplier payable requires a matched supplier invoice before payment",
 			err,
 			details,
 		)
