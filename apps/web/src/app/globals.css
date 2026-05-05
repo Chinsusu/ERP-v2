@@ -1135,6 +1135,114 @@ textarea {
   min-height: var(--erp-control-height);
 }
 
+.erp-production-workflow-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.erp-production-workflow-step {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--erp-border-soft);
+  border-left: 3px solid var(--erp-red);
+  border-radius: var(--erp-radius);
+  background: var(--erp-surface);
+}
+
+.erp-production-workflow-step span,
+.erp-production-step-label {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  font-weight: var(--erp-font-weight-semibold);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-production-workflow-step strong {
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-table);
+  line-height: var(--erp-line-height-table);
+}
+
+.erp-production-workflow-step small {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-production-selected-plan-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
+  gap: 16px;
+  min-width: 0;
+  padding: var(--erp-card-padding);
+  border: 1px solid var(--erp-border-card);
+  border-left: 4px solid var(--erp-red);
+  border-radius: var(--erp-radius);
+  background: var(--erp-surface);
+}
+
+.erp-production-selected-plan-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.erp-production-selected-plan-main h2,
+.erp-production-selected-plan-main p,
+.erp-production-selected-plan-meta {
+  margin: 0;
+}
+
+.erp-production-selected-plan-main h2 {
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-section-title);
+  line-height: var(--erp-line-height-section-title);
+}
+
+.erp-production-selected-plan-main p {
+  color: var(--erp-text-secondary);
+}
+
+.erp-production-selected-plan-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.erp-production-selected-plan-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.erp-production-selected-plan-meta div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+  background: var(--erp-section-bg);
+}
+
+.erp-production-selected-plan-meta dt {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-production-selected-plan-meta dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--erp-text);
+  font-size: var(--erp-font-size-table);
+  font-weight: var(--erp-font-weight-semibold);
+  line-height: var(--erp-line-height-table);
+}
+
 .erp-production-next-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3918,6 +4026,12 @@ textarea {
   background: var(--erp-surface-hover);
 }
 
+.erp-ds-table tbody tr.erp-ds-table-row--selected td,
+.erp-ds-table tbody tr.erp-ds-table-row--selected:hover td,
+.erp-ds-table tbody tr.erp-ds-table-row--selected .erp-ds-table-cell--sticky {
+  background: var(--erp-surface-selected);
+}
+
 .erp-ds-table tr:last-child td {
   border-bottom: 0;
 }
@@ -4693,6 +4807,15 @@ textarea {
 @media (max-width: 1280px) {
   .erp-production-plan-line {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .erp-production-workflow-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .erp-production-selected-plan-card,
+  .erp-production-selected-plan-meta {
+    grid-template-columns: 1fr;
   }
 
   .erp-production-plan-line-actions {

@@ -104,6 +104,7 @@ export type DataTableProps<T> = {
   initialPageSize?: DataTablePageSize;
   pageSizeOptions?: readonly DataTablePageSize[];
   preserveColumnWidths?: boolean;
+  rowClassName?: (row: T, index: number) => string | undefined;
 };
 
 export function DataTable<T>({
@@ -118,7 +119,8 @@ export function DataTable<T>({
   pagination = false,
   initialPageSize = 10,
   pageSizeOptions = dataTablePageSizeOptions,
-  preserveColumnWidths = false
+  preserveColumnWidths = false,
+  rowClassName
 }: DataTableProps<T>) {
   const resolvedPageSizeOptions = pageSizeOptions.length > 0 ? pageSizeOptions : dataTablePageSizeOptions;
   const [page, setPage] = useState(1);
@@ -182,7 +184,10 @@ export function DataTable<T>({
           </thead>
           <tbody>
             {visibleRows.map((row, rowIndex) => (
-              <tr key={getRowKey(row, pagination ? pageInfo.start - 1 + rowIndex : rowIndex)}>
+              <tr
+                className={rowClassName?.(row, pagination ? pageInfo.start - 1 + rowIndex : rowIndex)}
+                key={getRowKey(row, pagination ? pageInfo.start - 1 + rowIndex : rowIndex)}
+              >
                 {columns.map((column) => (
                   <td
                     className={column.sticky ? "erp-ds-table-cell--sticky" : undefined}
