@@ -6,7 +6,7 @@ Sprint: Sprint 26 - Production IA cleanup and external factory order detail
 Document role: Changelog and verification evidence
 Version: v1
 Date: 2026-05-06
-Status: Implementation branch; merge and dev smoke pending
+Status: Completed on main; dev deploy and Production browser smoke passed
 
 ---
 
@@ -47,34 +47,54 @@ Backend/API/DB:
 
 ## 3. Verification
 
-Implementation branch verification:
+Local implementation verification:
 
 ```text
 - Targeted web tests for menu, Production Plan worklist, and factory-order timeline: pass.
+- Web TypeScript check: pass.
+- Full web vitest suite: pass.
+- Web production build: pass.
+- API go test ./...: pass.
+- API go vet ./...: pass.
+- OpenAPI contract check: pass.
+- git diff --check: pass.
 ```
 
-Pending before PR/merge:
+GitHub PR verification:
 
 ```text
-- Full web vitest suite.
-- Web TypeScript check.
-- Web production build.
-- OpenAPI contract check if no backend contract changed can be recorded as not applicable or pass through CI.
-- GitHub CI.
-- Manual diff review.
-- Dev deploy and browser smoke for Production sidebar and factory-order detail route.
+- PR #591: Consolidate production factory order navigation.
+- Merge commit: 5e8003a9c2bb7263ef70155229c5960af9d60ff6.
+- Required checks passed: e2e, required-api, required-migration, required-openapi, required-web, web.
+- Manual self-review completed before merge.
+```
+
+Dev verification:
+
+```text
+- Initial dev deploy attempt was blocked by /tmp free-space threshold.
+- Safe Docker builder cache cleanup reclaimed 1.987GB; runtime volumes were not pruned.
+- deploy-dev-staging.sh dev: pass.
+- Full ERP dev smoke: pass.
+- Browser smoke: login -> /production -> sidebar Production entry -> /production/factory-orders/:orderId detail.
 ```
 
 ---
 
-## 4. Evidence Pending
+## 4. Evidence
 
 ```text
-PR number: pending
-Merge commit: pending
-Dev deploy: pending
-Browser smoke: pending
-Screenshots: pending
+PR number: #591
+Merge commit: 5e8003a9c2bb7263ef70155229c5960af9d60ff6
+Dev deploy: passed on 2026-05-06
+Full dev smoke: passed
+Browser smoke:
+- Sidebar exposes /production once.
+- Sidebar exposes no /subcontract link.
+- Factory order detail opened at /production/factory-orders/sco-s25-ui-04225182.
+Screenshots:
+- D:\ERP-v2\output\playwright\s26-production-sidebar.png
+- D:\ERP-v2\output\playwright\s26-factory-order-detail.png
 ```
 
 ---
