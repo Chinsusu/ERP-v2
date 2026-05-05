@@ -101,7 +101,7 @@ describe("formulaMasterDataService", () => {
       requirements: [
         {
           componentSku: "ACT_BAICAPIL",
-          requiredStockBaseQty: "0.002000",
+          requiredStockBaseQty: "0.162000",
           stockBaseUomCode: "KG"
         }
       ]

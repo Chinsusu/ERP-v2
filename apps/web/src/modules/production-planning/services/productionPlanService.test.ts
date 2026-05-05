@@ -39,13 +39,13 @@ describe("productionPlanService", () => {
                 component_type: "raw_material",
                 formula_qty: "1.000000",
                 formula_uom_code: "G",
-                required_qty: "2.000000",
+                required_qty: "162.000000",
                 required_uom_code: "G",
-                required_stock_base_qty: "0.002000",
+                required_stock_base_qty: "0.162000",
                 stock_base_uom_code: "KG",
                 available_qty: "0.000500",
-                shortage_qty: "0.001500",
-                purchase_draft_qty: "0.001500",
+                shortage_qty: "0.161500",
+                purchase_draft_qty: "0.161500",
                 purchase_draft_uom_code: "KG",
                 is_stock_managed: true,
                 needs_purchase: true
@@ -65,7 +65,7 @@ describe("productionPlanService", () => {
                   item_id: "item-act-baicapil",
                   sku: "ACT_BAICAPIL",
                   item_name: "BAICAPIL",
-                  requested_qty: "0.001500",
+                  requested_qty: "0.161500",
                   uom_code: "KG"
                 }
               ],
@@ -103,13 +103,13 @@ describe("productionPlanService", () => {
     );
     expect(plan.lines[0]).toMatchObject({
       componentSku: "ACT_BAICAPIL",
-      requiredStockBaseQty: "0.002000",
-      shortageQty: "0.001500",
+      requiredStockBaseQty: "0.162000",
+      shortageQty: "0.161500",
       needsPurchase: true
     });
     expect(plan.purchaseRequestDraft.lines[0]).toMatchObject({
       sku: "ACT_BAICAPIL",
-      requestedQty: "0.001500",
+      requestedQty: "0.161500",
       uomCode: "KG"
     });
     expect(summarizeProductionPlans([plan])).toEqual({

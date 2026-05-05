@@ -38,13 +38,13 @@ func TestNewProductionPlanSnapshotsFormulaDemandAndShortage(t *testing.T) {
 				ComponentType:        "raw_material",
 				FormulaQty:           decimal.MustQuantity("1"),
 				FormulaUOMCode:       "G",
-				RequiredQty:          decimal.MustQuantity("2"),
+				RequiredQty:          decimal.MustQuantity("162"),
 				RequiredUOMCode:      "G",
-				RequiredStockBaseQty: decimal.MustQuantity("0.002"),
+				RequiredStockBaseQty: decimal.MustQuantity("0.162"),
 				StockBaseUOMCode:     "KG",
 				AvailableQty:         decimal.MustQuantity("0.0005"),
-				ShortageQty:          decimal.MustQuantity("0.0015"),
-				PurchaseDraftQty:     decimal.MustQuantity("0.0015"),
+				ShortageQty:          decimal.MustQuantity("0.1615"),
+				PurchaseDraftQty:     decimal.MustQuantity("0.1615"),
 				PurchaseDraftUOMCode: "KG",
 				IsStockManaged:       true,
 				NeedsPurchase:        true,
@@ -67,10 +67,10 @@ func TestNewProductionPlanSnapshotsFormulaDemandAndShortage(t *testing.T) {
 		t.Fatalf("lines = %d, want 1", len(plan.Lines))
 	}
 	line := plan.Lines[0]
-	if line.RequiredStockBaseQty != "0.002000" || line.AvailableQty != "0.000500" || line.ShortageQty != "0.001500" {
-		t.Fatalf("line quantities = %+v, want required 0.002 KG, available 0.0005 KG, shortage 0.0015 KG", line)
+	if line.RequiredStockBaseQty != "0.162000" || line.AvailableQty != "0.000500" || line.ShortageQty != "0.161500" {
+		t.Fatalf("line quantities = %+v, want required 0.162 KG, available 0.0005 KG, shortage 0.1615 KG", line)
 	}
-	if !line.NeedsPurchase || line.PurchaseDraftQty != "0.001500" || line.PurchaseDraftUOMCode != "KG" {
+	if !line.NeedsPurchase || line.PurchaseDraftQty != "0.161500" || line.PurchaseDraftUOMCode != "KG" {
 		t.Fatalf("purchase draft fields = %+v, want shortage drafted in stock-base UOM", line)
 	}
 }

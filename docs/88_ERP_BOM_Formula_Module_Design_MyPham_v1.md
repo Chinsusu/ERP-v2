@@ -42,13 +42,13 @@ User-facing number display/input: Vietnamese number format
 
 ## 2. Business Context
 
-The real formula pattern used by operations is batch-based.
+The real formula pattern used by operations is per finished product. Each formula line stores the quantity needed to make one output unit of the finished or semi-finished item.
 
 Example shape:
 
 ```text
 Finished product: Tinh chat buoi Fast & Furious 150ml
-Standard batch: 81 PCS
+Formula basis: 1 PCS finished product
 Formula lines: 11 materials
 
 Line:
@@ -87,7 +87,7 @@ The module must support:
 9. Block activation when required lines have invalid quantity, UOM, or item references.
 10. Ensure only one active formula version exists for a finished item at a time in Phase 1.
 11. Snapshot the active formula into production/subcontract documents when used.
-12. Calculate material requirements from formula batch size and planned production quantity.
+12. Calculate material requirements from per-finished-product formula quantity and planned production quantity.
 ```
 
 The module must not:
@@ -485,21 +485,21 @@ Duplicate components should be warnings, not automatic blockers, because the sam
 
 ### 10.1. Formula Scaling
 
-The required component quantity is calculated from standard batch quantity:
+The required component quantity is calculated from the per-finished-product formula quantity:
 
 ```text
-required_calc_qty = formula_line_calc_qty * planned_output_qty / formula_batch_qty
+required_calc_qty = formula_line_calc_qty * planned_output_qty
 ```
 
 Example:
 
 ```text
-Formula batch: 81 PCS
+Formula basis: 1 PCS
 MOI_PG dosage: 3 g = 3000 mg
 Planned output: 162 PCS
 
-Required MOI_PG = 3000 mg * 162 / 81
-Required MOI_PG = 6000 mg = 6 g
+Required MOI_PG = 3000 mg * 162
+Required MOI_PG = 486000 mg = 486 g
 ```
 
 If waste percentage exists:
@@ -915,7 +915,7 @@ The module design is implemented correctly when:
 6. 0,000001 kg can be represented and displayed as 1 mg.
 7. Active formula validation blocks required zero-quantity lines.
 8. Only one active formula exists per finished item in Phase 1.
-9. Requirement calculation scales correctly from batch size to planned quantity.
+9. Requirement calculation scales per-finished-product quantity to planned quantity.
 10. Calculation does not use floating point.
 11. Formula used by production/subcontract documents is snapshotted.
 12. Purchase order is not auto-created directly from formula calculation.
@@ -928,15 +928,15 @@ Input: 0,000001 kg
 API normalized: "0.000001"
 Display: 1 mg
 
-Formula batch: 81 PCS
+Formula basis: 1 PCS
 Component: 3 g
 Planned output: 162 PCS
-Required: 6 g
+Required: 486 g
 
-Formula batch: 81 PCS
+Formula basis: 1 PCS
 Component: 1 mg
 Planned output: 162 PCS
-Required: 2 mg
+Required: 162 mg
 ```
 
 ---
@@ -946,7 +946,7 @@ Required: 2 mg
 These decisions should be confirmed before implementation:
 
 ```text
-1. Whether Phase 1 formula supports only batch-based quantities or also percentage-based formulas.
+1. Whether Phase 1 formula supports only per-finished-product quantities or also percentage-based formulas.
 2. Whether services are included in formula lines now or deferred to costing.
 3. Whether formula activation needs one approver or two approvers.
 4. Whether component duplicate lines need a process phase field in the first cut.
@@ -956,7 +956,7 @@ These decisions should be confirmed before implementation:
 Recommended defaults:
 
 ```text
-1. Batch-based formulas only for first implementation.
+1. Per-finished-product formulas only for first implementation.
 2. Allow service lines, but mark them non-stock-managed.
 3. One approval role plus audit log for first implementation.
 4. Warn on duplicates; defer process phase.
@@ -969,7 +969,7 @@ Recommended defaults:
 
 ```text
 Build a versioned BOM / formula master.
-Use batch-based formulas as the first production-ready scope.
+Use per-finished-product formulas as the first production-ready scope.
 Preserve entered quantity/UOM and store canonical calculation quantity.
 Use MG as formula calculation UOM for mass to avoid tiny KG precision/display problems.
 Display numbers and units in Vietnamese format.

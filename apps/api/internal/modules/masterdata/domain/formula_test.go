@@ -8,7 +8,7 @@ import (
 	"github.com/Chinsusu/ERP-v2/apps/api/internal/shared/decimal"
 )
 
-func TestNewFormulaAcceptsBatchFormulaWithMilligramLine(t *testing.T) {
+func TestNewFormulaAcceptsFormulaWithMilligramLine(t *testing.T) {
 	formula, err := NewFormula(NewFormulaInput{
 		ID:               "formula-xff150-v1",
 		FormulaCode:      "FORMULA-XFF150-V1",
@@ -70,7 +70,7 @@ func TestFormulaActivationValidationRejectsRequiredZeroQuantity(t *testing.T) {
 	}
 }
 
-func TestFormulaRequirementScalesFromBatchQuantity(t *testing.T) {
+func TestFormulaRequirementScalesLineQuantityPerFinishedUnit(t *testing.T) {
 	formula := validFormulaForTest(t)
 	formula.Lines[0].EnteredQty = decimal.MustQuantity("3")
 	formula.Lines[0].EnteredUOMCode = decimal.MustUOMCode("G")
@@ -86,11 +86,37 @@ func TestFormulaRequirementScalesFromBatchQuantity(t *testing.T) {
 	if len(requirements) != 1 {
 		t.Fatalf("requirements = %d, want 1", len(requirements))
 	}
-	if got := requirements[0].RequiredCalcQty.String(); got != "6000.000000" {
-		t.Fatalf("required calc qty = %s, want 6000.000000", got)
+	if got := requirements[0].RequiredCalcQty.String(); got != "486000.000000" {
+		t.Fatalf("required calc qty = %s, want 486000.000000", got)
 	}
-	if got := requirements[0].RequiredStockBaseQty.String(); got != "0.006000" {
-		t.Fatalf("required stock base qty = %s, want 0.006000", got)
+	if got := requirements[0].RequiredStockBaseQty.String(); got != "0.486000" {
+		t.Fatalf("required stock base qty = %s, want 0.486000", got)
+	}
+}
+
+func TestFormulaRequirementUsesLineQuantityPerFinishedUnit(t *testing.T) {
+	formula := validFormulaForTest(t)
+	formula.BatchQty = decimal.MustQuantity("10")
+	formula.BaseBatchQty = decimal.MustQuantity("10")
+	formula.Lines[0].EnteredQty = decimal.MustQuantity("0.001")
+	formula.Lines[0].EnteredUOMCode = decimal.MustUOMCode("KG")
+	formula.Lines[0].CalcQty = decimal.MustQuantity("1")
+	formula.Lines[0].CalcUOMCode = decimal.MustUOMCode("G")
+	formula.Lines[0].StockBaseQty = decimal.MustQuantity("0.001000")
+	formula.Lines[0].StockBaseUOMCode = decimal.MustUOMCode("KG")
+
+	requirements, err := formula.CalculateRequirement(decimal.MustQuantity("999"), "PCS")
+	if err != nil {
+		t.Fatalf("calculate requirement: %v", err)
+	}
+	if len(requirements) != 1 {
+		t.Fatalf("requirements = %d, want 1", len(requirements))
+	}
+	if got := requirements[0].RequiredCalcQty.String(); got != "999.000000" {
+		t.Fatalf("required calc qty = %s, want 999.000000", got)
+	}
+	if got := requirements[0].RequiredStockBaseQty.String(); got != "0.999000" {
+		t.Fatalf("required stock base qty = %s, want 0.999000", got)
 	}
 }
 
