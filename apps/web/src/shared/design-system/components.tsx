@@ -369,9 +369,10 @@ export type ToastMessage = {
 
 export type ToastStackProps = {
   messages: ToastMessage[];
+  onDismiss?: (id: string) => void;
 };
 
-export function ToastStack({ messages }: ToastStackProps) {
+export function ToastStack({ messages, onDismiss }: ToastStackProps) {
   if (messages.length === 0) {
     return null;
   }
@@ -380,8 +381,15 @@ export function ToastStack({ messages }: ToastStackProps) {
     <ol className="erp-ds-toast-stack" aria-live="polite" aria-label={t("common.notifications")}>
       {messages.map((message) => (
         <li className={`erp-ds-toast erp-ds-toast--${message.tone ?? "normal"}`} key={message.id}>
-          <strong>{message.title}</strong>
-          {message.description ? <span>{message.description}</span> : null}
+          <div className="erp-ds-toast-content">
+            <strong>{message.title}</strong>
+            {message.description ? <span>{message.description}</span> : null}
+          </div>
+          {onDismiss ? (
+            <button className="erp-ds-toast-close" type="button" aria-label="Tắt thông báo" onClick={() => onDismiss(message.id)}>
+              x
+            </button>
+          ) : null}
         </li>
       ))}
     </ol>

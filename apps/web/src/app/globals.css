@@ -4215,18 +4215,40 @@ textarea {
 }
 
 .erp-ds-toast {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
   padding: 12px;
   border: 1px solid currentColor;
   border-radius: var(--erp-radius);
   box-shadow: var(--erp-shadow-raised);
 }
 
+.erp-ds-toast-content {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
 .erp-ds-toast strong,
 .erp-ds-toast span {
   font-size: var(--erp-font-size-table);
   line-height: var(--erp-line-height-table);
+}
+
+.erp-ds-toast-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: currentColor;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--erp-radius);
+  cursor: pointer;
 }
 
 .erp-ds-state {
