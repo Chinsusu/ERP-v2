@@ -124,48 +124,53 @@ type SubcontractOrderService struct {
 }
 
 type SubcontractOrderFilter struct {
-	Search              string
-	Statuses            []productiondomain.SubcontractOrderStatus
-	FactoryID           string
-	FinishedItemID      string
-	ExpectedReceiptFrom string
-	ExpectedReceiptTo   string
+	Search                 string
+	Statuses               []productiondomain.SubcontractOrderStatus
+	FactoryID              string
+	FinishedItemID         string
+	SourceProductionPlanID string
+	ExpectedReceiptFrom    string
+	ExpectedReceiptTo      string
 }
 
 type CreateSubcontractOrderInput struct {
-	ID                  string
-	OrgID               string
-	OrderNo             string
-	FactoryID           string
-	FinishedItemID      string
-	PlannedQty          string
-	UOMCode             string
-	CurrencyCode        string
-	SpecSummary         string
-	SampleRequired      bool
-	ClaimWindowDays     int
-	TargetStartDate     string
-	ExpectedReceiptDate string
-	MaterialLines       []SubcontractOrderMaterialLineInput
-	ActorID             string
-	RequestID           string
+	ID                     string
+	OrgID                  string
+	OrderNo                string
+	FactoryID              string
+	FinishedItemID         string
+	PlannedQty             string
+	UOMCode                string
+	CurrencyCode           string
+	SpecSummary            string
+	SourceProductionPlanID string
+	SourceProductionPlanNo string
+	SampleRequired         bool
+	ClaimWindowDays        int
+	TargetStartDate        string
+	ExpectedReceiptDate    string
+	MaterialLines          []SubcontractOrderMaterialLineInput
+	ActorID                string
+	RequestID              string
 }
 
 type UpdateSubcontractOrderInput struct {
-	ID                  string
-	FactoryID           string
-	FinishedItemID      string
-	PlannedQty          string
-	UOMCode             string
-	SpecSummary         string
-	SampleRequired      *bool
-	ClaimWindowDays     int
-	TargetStartDate     string
-	ExpectedReceiptDate string
-	MaterialLines       []SubcontractOrderMaterialLineInput
-	ExpectedVersion     int
-	ActorID             string
-	RequestID           string
+	ID                     string
+	FactoryID              string
+	FinishedItemID         string
+	PlannedQty             string
+	UOMCode                string
+	SpecSummary            string
+	SourceProductionPlanID string
+	SourceProductionPlanNo string
+	SampleRequired         *bool
+	ClaimWindowDays        int
+	TargetStartDate        string
+	ExpectedReceiptDate    string
+	MaterialLines          []SubcontractOrderMaterialLineInput
+	ExpectedVersion        int
+	ActorID                string
+	RequestID              string
 }
 
 type SubcontractOrderMaterialLineInput struct {
@@ -644,24 +649,26 @@ func (s SubcontractOrderService) CreateSubcontractOrder(
 	currencyCode := firstNonBlankSubcontractOrder(input.CurrencyCode, decimal.CurrencyVND.String())
 
 	order, err := s.newSubcontractOrderDocument(ctx, newSubcontractOrderDocumentServiceInput{
-		ID:                  id,
-		OrgID:               orgID,
-		OrderNo:             orderNo,
-		FactoryID:           input.FactoryID,
-		FinishedItemID:      input.FinishedItemID,
-		PlannedQty:          input.PlannedQty,
-		UOMCode:             input.UOMCode,
-		CurrencyCode:        currencyCode,
-		SpecSummary:         input.SpecSummary,
-		SampleRequired:      input.SampleRequired,
-		ClaimWindowDays:     input.ClaimWindowDays,
-		TargetStartDate:     input.TargetStartDate,
-		ExpectedReceiptDate: input.ExpectedReceiptDate,
-		MaterialLines:       input.MaterialLines,
-		CreatedAt:           now,
-		CreatedBy:           input.ActorID,
-		UpdatedAt:           now,
-		UpdatedBy:           input.ActorID,
+		ID:                     id,
+		OrgID:                  orgID,
+		OrderNo:                orderNo,
+		FactoryID:              input.FactoryID,
+		FinishedItemID:         input.FinishedItemID,
+		PlannedQty:             input.PlannedQty,
+		UOMCode:                input.UOMCode,
+		CurrencyCode:           currencyCode,
+		SpecSummary:            input.SpecSummary,
+		SourceProductionPlanID: input.SourceProductionPlanID,
+		SourceProductionPlanNo: input.SourceProductionPlanNo,
+		SampleRequired:         input.SampleRequired,
+		ClaimWindowDays:        input.ClaimWindowDays,
+		TargetStartDate:        input.TargetStartDate,
+		ExpectedReceiptDate:    input.ExpectedReceiptDate,
+		MaterialLines:          input.MaterialLines,
+		CreatedAt:              now,
+		CreatedBy:              input.ActorID,
+		UpdatedAt:              now,
+		UpdatedBy:              input.ActorID,
 	})
 	if err != nil {
 		return SubcontractOrderResult{}, err
@@ -736,24 +743,26 @@ func (s SubcontractOrderService) UpdateSubcontractOrder(
 
 		now := s.now()
 		updated, err := s.newSubcontractOrderDocument(txCtx, newSubcontractOrderDocumentServiceInput{
-			ID:                  current.ID,
-			OrgID:               current.OrgID,
-			OrderNo:             current.OrderNo,
-			FactoryID:           firstNonBlankSubcontractOrder(input.FactoryID, current.FactoryID),
-			FinishedItemID:      firstNonBlankSubcontractOrder(input.FinishedItemID, current.FinishedItemID),
-			PlannedQty:          firstNonBlankSubcontractOrder(input.PlannedQty, current.PlannedQty.String()),
-			UOMCode:             firstNonBlankSubcontractOrder(input.UOMCode, current.UOMCode.String()),
-			CurrencyCode:        current.CurrencyCode.String(),
-			SpecSummary:         firstNonBlankSubcontractOrder(input.SpecSummary, current.SpecSummary),
-			SampleRequired:      sampleRequired,
-			ClaimWindowDays:     firstNonZeroSubcontractOrder(input.ClaimWindowDays, current.ClaimWindowDays),
-			TargetStartDate:     firstNonBlankSubcontractOrder(input.TargetStartDate, current.TargetStartDate),
-			ExpectedReceiptDate: firstNonBlankSubcontractOrder(input.ExpectedReceiptDate, current.ExpectedReceiptDate),
-			MaterialLines:       materialLines,
-			CreatedAt:           current.CreatedAt,
-			CreatedBy:           current.CreatedBy,
-			UpdatedAt:           now,
-			UpdatedBy:           input.ActorID,
+			ID:                     current.ID,
+			OrgID:                  current.OrgID,
+			OrderNo:                current.OrderNo,
+			FactoryID:              firstNonBlankSubcontractOrder(input.FactoryID, current.FactoryID),
+			FinishedItemID:         firstNonBlankSubcontractOrder(input.FinishedItemID, current.FinishedItemID),
+			PlannedQty:             firstNonBlankSubcontractOrder(input.PlannedQty, current.PlannedQty.String()),
+			UOMCode:                firstNonBlankSubcontractOrder(input.UOMCode, current.UOMCode.String()),
+			CurrencyCode:           current.CurrencyCode.String(),
+			SpecSummary:            firstNonBlankSubcontractOrder(input.SpecSummary, current.SpecSummary),
+			SourceProductionPlanID: firstNonBlankSubcontractOrder(input.SourceProductionPlanID, current.SourceProductionPlanID),
+			SourceProductionPlanNo: firstNonBlankSubcontractOrder(input.SourceProductionPlanNo, current.SourceProductionPlanNo),
+			SampleRequired:         sampleRequired,
+			ClaimWindowDays:        firstNonZeroSubcontractOrder(input.ClaimWindowDays, current.ClaimWindowDays),
+			TargetStartDate:        firstNonBlankSubcontractOrder(input.TargetStartDate, current.TargetStartDate),
+			ExpectedReceiptDate:    firstNonBlankSubcontractOrder(input.ExpectedReceiptDate, current.ExpectedReceiptDate),
+			MaterialLines:          materialLines,
+			CreatedAt:              current.CreatedAt,
+			CreatedBy:              current.CreatedBy,
+			UpdatedAt:              now,
+			UpdatedBy:              input.ActorID,
 		})
 		if err != nil {
 			return err
@@ -1890,24 +1899,26 @@ func (s SubcontractOrderService) transition(
 }
 
 type newSubcontractOrderDocumentServiceInput struct {
-	ID                  string
-	OrgID               string
-	OrderNo             string
-	FactoryID           string
-	FinishedItemID      string
-	PlannedQty          string
-	UOMCode             string
-	CurrencyCode        string
-	SpecSummary         string
-	SampleRequired      bool
-	ClaimWindowDays     int
-	TargetStartDate     string
-	ExpectedReceiptDate string
-	MaterialLines       []SubcontractOrderMaterialLineInput
-	CreatedAt           time.Time
-	CreatedBy           string
-	UpdatedAt           time.Time
-	UpdatedBy           string
+	ID                     string
+	OrgID                  string
+	OrderNo                string
+	FactoryID              string
+	FinishedItemID         string
+	PlannedQty             string
+	UOMCode                string
+	CurrencyCode           string
+	SpecSummary            string
+	SourceProductionPlanID string
+	SourceProductionPlanNo string
+	SampleRequired         bool
+	ClaimWindowDays        int
+	TargetStartDate        string
+	ExpectedReceiptDate    string
+	MaterialLines          []SubcontractOrderMaterialLineInput
+	CreatedAt              time.Time
+	CreatedBy              string
+	UpdatedAt              time.Time
+	UpdatedBy              string
 }
 
 func (s SubcontractOrderService) newSubcontractOrderDocument(
@@ -1940,31 +1951,33 @@ func (s SubcontractOrderService) newSubcontractOrderDocument(
 	}
 
 	order, err := productiondomain.NewSubcontractOrderDocument(productiondomain.NewSubcontractOrderDocumentInput{
-		ID:                  input.ID,
-		OrgID:               input.OrgID,
-		OrderNo:             input.OrderNo,
-		FactoryID:           factory.ID,
-		FactoryCode:         factory.Code,
-		FactoryName:         factory.Name,
-		FinishedItemID:      finishedItem.ID,
-		FinishedSKUCode:     finishedItem.SKUCode,
-		FinishedItemName:    finishedItem.Name,
-		PlannedQty:          plannedQty,
-		UOMCode:             conversion.SourceUOMCode.String(),
-		BasePlannedQty:      conversion.BaseQuantity,
-		BaseUOMCode:         conversion.BaseUOMCode.String(),
-		ConversionFactor:    conversion.ConversionFactor,
-		CurrencyCode:        input.CurrencyCode,
-		SpecSummary:         input.SpecSummary,
-		SampleRequired:      input.SampleRequired,
-		ClaimWindowDays:     input.ClaimWindowDays,
-		TargetStartDate:     input.TargetStartDate,
-		ExpectedReceiptDate: input.ExpectedReceiptDate,
-		MaterialLines:       lines,
-		CreatedAt:           input.CreatedAt,
-		CreatedBy:           input.CreatedBy,
-		UpdatedAt:           input.UpdatedAt,
-		UpdatedBy:           input.UpdatedBy,
+		ID:                     input.ID,
+		OrgID:                  input.OrgID,
+		OrderNo:                input.OrderNo,
+		FactoryID:              factory.ID,
+		FactoryCode:            factory.Code,
+		FactoryName:            factory.Name,
+		FinishedItemID:         finishedItem.ID,
+		FinishedSKUCode:        finishedItem.SKUCode,
+		FinishedItemName:       finishedItem.Name,
+		PlannedQty:             plannedQty,
+		UOMCode:                conversion.SourceUOMCode.String(),
+		BasePlannedQty:         conversion.BaseQuantity,
+		BaseUOMCode:            conversion.BaseUOMCode.String(),
+		ConversionFactor:       conversion.ConversionFactor,
+		CurrencyCode:           input.CurrencyCode,
+		SpecSummary:            input.SpecSummary,
+		SourceProductionPlanID: input.SourceProductionPlanID,
+		SourceProductionPlanNo: input.SourceProductionPlanNo,
+		SampleRequired:         input.SampleRequired,
+		ClaimWindowDays:        input.ClaimWindowDays,
+		TargetStartDate:        input.TargetStartDate,
+		ExpectedReceiptDate:    input.ExpectedReceiptDate,
+		MaterialLines:          lines,
+		CreatedAt:              input.CreatedAt,
+		CreatedBy:              input.CreatedBy,
+		UpdatedAt:              input.UpdatedAt,
+		UpdatedBy:              input.UpdatedBy,
 	})
 	if err != nil {
 		return productiondomain.SubcontractOrder{}, MapSubcontractOrderError(err, nil)
@@ -2690,30 +2703,32 @@ func newSubcontractOrderAuditLog(
 
 func subcontractOrderAuditData(order productiondomain.SubcontractOrder) map[string]any {
 	data := map[string]any{
-		"order_no":              order.OrderNo,
-		"factory_id":            order.FactoryID,
-		"factory_code":          order.FactoryCode,
-		"finished_item_id":      order.FinishedItemID,
-		"finished_sku_code":     order.FinishedSKUCode,
-		"planned_qty":           order.PlannedQty.String(),
-		"received_qty":          order.ReceivedQty.String(),
-		"accepted_qty":          order.AcceptedQty.String(),
-		"rejected_qty":          order.RejectedQty.String(),
-		"base_planned_qty":      order.BasePlannedQty.String(),
-		"base_received_qty":     order.BaseReceivedQty.String(),
-		"base_accepted_qty":     order.BaseAcceptedQty.String(),
-		"base_rejected_qty":     order.BaseRejectedQty.String(),
-		"uom_code":              order.UOMCode.String(),
-		"base_uom_code":         order.BaseUOMCode.String(),
-		"expected_receipt_date": order.ExpectedReceiptDate,
-		"status":                string(order.Status),
-		"currency_code":         order.CurrencyCode.String(),
-		"estimated_cost_amount": order.EstimatedCostAmount.String(),
-		"deposit_amount":        order.DepositAmount.String(),
-		"sample_required":       order.SampleRequired,
-		"claim_window_days":     order.ClaimWindowDays,
-		"material_line_count":   len(order.MaterialLines),
-		"version":               order.Version,
+		"order_no":                  order.OrderNo,
+		"factory_id":                order.FactoryID,
+		"factory_code":              order.FactoryCode,
+		"finished_item_id":          order.FinishedItemID,
+		"finished_sku_code":         order.FinishedSKUCode,
+		"planned_qty":               order.PlannedQty.String(),
+		"received_qty":              order.ReceivedQty.String(),
+		"accepted_qty":              order.AcceptedQty.String(),
+		"rejected_qty":              order.RejectedQty.String(),
+		"base_planned_qty":          order.BasePlannedQty.String(),
+		"base_received_qty":         order.BaseReceivedQty.String(),
+		"base_accepted_qty":         order.BaseAcceptedQty.String(),
+		"base_rejected_qty":         order.BaseRejectedQty.String(),
+		"uom_code":                  order.UOMCode.String(),
+		"base_uom_code":             order.BaseUOMCode.String(),
+		"expected_receipt_date":     order.ExpectedReceiptDate,
+		"source_production_plan_id": order.SourceProductionPlanID,
+		"source_production_plan_no": order.SourceProductionPlanNo,
+		"status":                    string(order.Status),
+		"currency_code":             order.CurrencyCode.String(),
+		"estimated_cost_amount":     order.EstimatedCostAmount.String(),
+		"deposit_amount":            order.DepositAmount.String(),
+		"sample_required":           order.SampleRequired,
+		"claim_window_days":         order.ClaimWindowDays,
+		"material_line_count":       len(order.MaterialLines),
+		"version":                   order.Version,
 	}
 	if strings.TrimSpace(order.CancelReason) != "" {
 		data["cancel_reason"] = order.CancelReason
@@ -2823,6 +2838,8 @@ func subcontractOrderMatchesFilter(order productiondomain.SubcontractOrder, filt
 			order.FactoryName,
 			order.FinishedSKUCode,
 			order.FinishedItemName,
+			order.SourceProductionPlanNo,
+			order.SpecSummary,
 		}, " "))
 		if !strings.Contains(haystack, search) {
 			return false
@@ -2844,6 +2861,10 @@ func subcontractOrderMatchesFilter(order productiondomain.SubcontractOrder, filt
 		return false
 	}
 	if strings.TrimSpace(filter.FinishedItemID) != "" && order.FinishedItemID != strings.TrimSpace(filter.FinishedItemID) {
+		return false
+	}
+	if strings.TrimSpace(filter.SourceProductionPlanID) != "" &&
+		!strings.EqualFold(order.SourceProductionPlanID, strings.TrimSpace(filter.SourceProductionPlanID)) {
 		return false
 	}
 	if strings.TrimSpace(filter.ExpectedReceiptFrom) != "" && order.ExpectedReceiptDate < strings.TrimSpace(filter.ExpectedReceiptFrom) {

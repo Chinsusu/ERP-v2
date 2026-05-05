@@ -196,6 +196,32 @@ describe("subcontractOrderService", () => {
     });
   });
 
+  it("keeps source production plan traceability on subcontract orders", async () => {
+    const order = await createSubcontractOrder({
+      factoryId: "sup-out-lotus",
+      productId: "item-serum-30ml",
+      quantity: 1200,
+      specVersion: "SPEC-SERUM-2026.04 / PP-S25-001",
+      sourceProductionPlanId: "plan-s25-001",
+      sourceProductionPlanNo: "PP-S25-001",
+      sampleRequired: true,
+      expectedDeliveryDate: "2026-05-20",
+      depositStatus: "pending",
+      materialItemId: "item-cream-50g",
+      materialQty: "20",
+      materialUnitCost: "58000"
+    });
+
+    expect(order).toMatchObject({
+      sourceProductionPlanId: "plan-s25-001",
+      sourceProductionPlanNo: "PP-S25-001"
+    });
+    await expect(getSubcontractOrders({ sourceProductionPlanId: "plan-s25-001" })).resolves.toEqual([
+      expect.objectContaining({ id: order.id, sourceProductionPlanNo: "PP-S25-001" })
+    ]);
+    await expect(getSubcontractOrders({ sourceProductionPlanId: "plan-s25-missing" })).resolves.toEqual([]);
+  });
+
   it("runs submit and approve actions against the prototype fallback", async () => {
     const draft = await createSubcontractOrder({
       factoryId: "sup-out-lotus",

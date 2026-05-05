@@ -65,9 +65,12 @@ export type SubcontractOrder = {
   sku: string;
   productName: string;
   quantity: number;
+  uomCode?: string;
   receivedQty?: string;
   acceptedQty?: string;
   rejectedQty?: string;
+  sourceProductionPlanId?: string;
+  sourceProductionPlanNo?: string;
   specVersion: string;
   sampleRequired: boolean;
   expectedDeliveryDate: string;
@@ -122,6 +125,8 @@ export type CreateSubcontractOrderInput = {
   quantity: number;
   uomCode?: string;
   specVersion: string;
+  sourceProductionPlanId?: string;
+  sourceProductionPlanNo?: string;
   sampleRequired: boolean;
   expectedDeliveryDate: string;
   depositStatus: SubcontractDepositStatus;
@@ -142,6 +147,7 @@ export type SubcontractOrderQuery = {
   search?: string;
   factoryId?: string;
   productId?: string;
+  sourceProductionPlanId?: string;
   status?: SubcontractOrderStatus;
   expectedReceiptFrom?: string;
   expectedReceiptTo?: string;

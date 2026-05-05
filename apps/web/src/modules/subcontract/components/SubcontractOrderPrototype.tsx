@@ -177,6 +177,8 @@ export function SubcontractOrderPrototype() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [search, setSearch] = useState("");
+  const [initialSearchFilter, setInitialSearchFilter] = useState("");
+  const [sourceProductionPlanFilter, setSourceProductionPlanFilter] = useState("");
   const [factoryFilter, setFactoryFilter] = useState("all");
   const [productFilter, setProductFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<SubcontractOrderStatus | "all">("all");
@@ -243,7 +245,7 @@ export function SubcontractOrderPrototype() {
         const searchValue = search.trim().toLowerCase();
         if (
           searchValue &&
-          ![order.orderNo, order.factoryName, order.productName, order.sku].some((value) =>
+          ![order.orderNo, order.factoryName, order.productName, order.sku, order.sourceProductionPlanNo ?? ""].some((value) =>
             value.toLowerCase().includes(searchValue)
           )
         ) {
@@ -393,11 +395,30 @@ export function SubcontractOrderPrototype() {
   }, [latestFinishedGoodsReceipt?.id]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const sourceProductionPlanId = params.get("source_production_plan_id")?.trim() ?? "";
+    const searchValue = params.get("search")?.trim() ?? "";
+    setSourceProductionPlanFilter(sourceProductionPlanId);
+    setInitialSearchFilter(searchValue);
+    setSearch(searchValue);
+  }, []);
+
+  useEffect(() => {
     let active = true;
+    setIsLoadingOrders(true);
 
     async function loadOrders() {
       try {
-        const loadedOrders = await getSubcontractOrders();
+        let loadedOrders = await getSubcontractOrders({
+          sourceProductionPlanId: sourceProductionPlanFilter || undefined,
+          search: initialSearchFilter || undefined
+        });
+        if (loadedOrders.length === 0 && sourceProductionPlanFilter && initialSearchFilter) {
+          loadedOrders = await getSubcontractOrders({ search: initialSearchFilter });
+        }
         if (!active) {
           return;
         }
@@ -426,7 +447,7 @@ export function SubcontractOrderPrototype() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialSearchFilter, sourceProductionPlanFilter]);
 
   async function handleOpenOrder(order: SubcontractOrder) {
     try {

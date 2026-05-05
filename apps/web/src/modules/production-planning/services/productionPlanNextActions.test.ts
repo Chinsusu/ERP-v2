@@ -17,7 +17,9 @@ describe("productionPlanNextActions", () => {
       uomCode: "PCS",
       sampleRequired: true,
       expectedDeliveryDate: "2026-05-20",
-      depositStatus: "pending"
+      depositStatus: "pending",
+      sourceProductionPlanId: "plan-002",
+      sourceProductionPlanNo: "PP-260504-0002"
     });
     expect(input.specVersion).toContain("XFF-150ML");
     expect(input.specVersion).toContain("PP-260504-0002");

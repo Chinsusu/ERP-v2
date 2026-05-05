@@ -110,7 +110,7 @@ export function buildProductionPlanWorklist(plan: ProductionPlan): ProductionPla
         : "Tạo lệnh gia công sau khi vật tư đã được xuất kho hoặc có waiver.",
       action: {
         label: materialIssue.readyForSubcontract ? "Mở gia công" : "Chờ bước 7",
-        href: materialIssue.readyForSubcontract ? "/subcontract" : undefined,
+        href: materialIssue.readyForSubcontract ? subcontractHref(plan) : undefined,
         disabled: !materialIssue.readyForSubcontract
       }
     }
@@ -331,4 +331,8 @@ function purchaseRequestStatusTone(status = "draft"): WorkTaskTone {
 function purchaseRequestHref(plan: ProductionPlan) {
   const requestID = plan.purchaseRequestDraft.id;
   return requestID ? `/purchase/requests/${encodeURIComponent(requestID)}` : `/purchase?search=${encodeURIComponent(plan.planNo)}#purchase-list`;
+}
+
+function subcontractHref(plan: ProductionPlan) {
+  return `/subcontract?source_production_plan_id=${encodeURIComponent(plan.id)}&search=${encodeURIComponent(plan.planNo)}#subcontract-orders`;
 }

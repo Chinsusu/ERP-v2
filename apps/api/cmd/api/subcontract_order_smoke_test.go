@@ -195,6 +195,79 @@ func TestSubcontractOrderAPISmoke(t *testing.T) {
 		}
 	})
 
+	t.Run("tracks source production plan fields and list filter", func(t *testing.T) {
+		service, _ := newTestSubcontractOrderAPIService()
+
+		createReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodPost, "/api/v1/subcontract-orders", bytes.NewBufferString(`{
+				"id": "sco-smoke-s25-plan-001",
+				"order_no": "SCO-SMOKE-S25-PLAN-001",
+				"factory_id": "sup-out-lotus",
+				"finished_item_id": "item-serum-30ml",
+				"planned_qty": "100",
+				"uom_code": "EA",
+				"currency_code": "VND",
+				"spec_summary": "Hydrating serum from PP-S25-001",
+				"source_production_plan_id": "plan-s25-001",
+				"source_production_plan_no": "PP-S25-001",
+				"sample_required": true,
+				"claim_window_days": 7,
+				"expected_receipt_date": "2026-05-20",
+				"material_lines": [
+					{
+						"item_id": "item-cream-50g",
+						"planned_qty": "20",
+						"uom_code": "EA",
+						"unit_cost": "58000",
+						"lot_trace_required": true
+					}
+				]
+			}`)),
+			authConfig,
+			auth.RoleProductionOps,
+		)
+		createRec := httptest.NewRecorder()
+
+		subcontractOrdersHandler(service).ServeHTTP(createRec, createReq)
+
+		if createRec.Code != http.StatusCreated {
+			t.Fatalf("create status = %d, want %d: %s", createRec.Code, http.StatusCreated, createRec.Body.String())
+		}
+		created := decodeSmokeSuccess[subcontractOrderResponse](t, createRec).Data
+		if created.SourceProductionPlanID != "plan-s25-001" || created.SourceProductionPlanNo != "PP-S25-001" {
+			t.Fatalf("created source = %q/%q, want production plan source fields", created.SourceProductionPlanID, created.SourceProductionPlanNo)
+		}
+
+		mismatchReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodGet, "/api/v1/subcontract-orders?source_production_plan_id=plan-s25-missing", nil),
+			authConfig,
+			auth.RoleProductionOps,
+		)
+		mismatchRec := httptest.NewRecorder()
+		subcontractOrdersHandler(service).ServeHTTP(mismatchRec, mismatchReq)
+		if mismatchRec.Code != http.StatusOK {
+			t.Fatalf("list mismatch status = %d, want %d: %s", mismatchRec.Code, http.StatusOK, mismatchRec.Body.String())
+		}
+		if rows := decodeSmokeSuccess[[]subcontractOrderListItemResponse](t, mismatchRec).Data; len(rows) != 0 {
+			t.Fatalf("mismatch source rows = %+v, want empty list", rows)
+		}
+
+		matchReq := smokeRequestAsRole(
+			httptest.NewRequest(http.MethodGet, "/api/v1/subcontract-orders?source_production_plan_id=plan-s25-001", nil),
+			authConfig,
+			auth.RoleProductionOps,
+		)
+		matchRec := httptest.NewRecorder()
+		subcontractOrdersHandler(service).ServeHTTP(matchRec, matchReq)
+		if matchRec.Code != http.StatusOK {
+			t.Fatalf("list match status = %d, want %d: %s", matchRec.Code, http.StatusOK, matchRec.Body.String())
+		}
+		rows := decodeSmokeSuccess[[]subcontractOrderListItemResponse](t, matchRec).Data
+		if len(rows) != 1 || rows[0].ID != "sco-smoke-s25-plan-001" || rows[0].SourceProductionPlanNo != "PP-S25-001" {
+			t.Fatalf("matched source rows = %+v, want one source-linked subcontract order", rows)
+		}
+	})
+
 	t.Run("issues materials with transfer stock movement and audit", func(t *testing.T) {
 		service, movementStore, transferStore, auditStore := newTestSubcontractMaterialIssueAPIService()
 		orderID := "sco-smoke-260429-issue"

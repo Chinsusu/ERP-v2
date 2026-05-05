@@ -60,6 +60,8 @@ type postgresSubcontractOrderHeader struct {
 	EstimatedCostAmount     string
 	DepositAmount           string
 	SpecSummary             string
+	SourceProductionPlanID  string
+	SourceProductionPlanNo  string
 	SampleRequired          bool
 	ClaimWindowDays         int
 	TargetStartDate         string
@@ -150,6 +152,8 @@ SELECT
   subcontract_order.estimated_cost_amount::text,
   subcontract_order.deposit_amount::text,
   COALESCE(subcontract_order.spec_summary, ''),
+  COALESCE(subcontract_order.source_production_plan_ref, ''),
+  COALESCE(subcontract_order.source_production_plan_no, ''),
   subcontract_order.sample_required,
   subcontract_order.claim_window_days,
   COALESCE(subcontract_order.target_start_date::text, ''),
@@ -327,7 +331,9 @@ INSERT INTO subcontract.subcontract_orders (
   closed_by_ref,
   cancelled_at,
   cancelled_by,
-  cancelled_by_ref
+  cancelled_by_ref,
+  source_production_plan_ref,
+  source_production_plan_no
 ) VALUES (
   COALESCE(CASE WHEN NULLIF($2::text, '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN $2::uuid END, gen_random_uuid()),
   $1::uuid,
@@ -419,7 +425,9 @@ INSERT INTO subcontract.subcontract_orders (
   $68,
   $69,
   CASE WHEN NULLIF($70::text, '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN $70::uuid END,
-  $70
+  $70,
+  $71,
+  $72
 )
 ON CONFLICT (org_id, order_ref)
 DO UPDATE SET
@@ -510,7 +518,9 @@ DO UPDATE SET
   closed_by_ref = EXCLUDED.closed_by_ref,
   cancelled_at = EXCLUDED.cancelled_at,
   cancelled_by = EXCLUDED.cancelled_by,
-  cancelled_by_ref = EXCLUDED.cancelled_by_ref
+  cancelled_by_ref = EXCLUDED.cancelled_by_ref,
+  source_production_plan_ref = EXCLUDED.source_production_plan_ref,
+  source_production_plan_no = EXCLUDED.source_production_plan_no
 RETURNING id::text`
 
 const deleteSubcontractOrderLinesSQL = `
@@ -869,6 +879,8 @@ func scanPostgresSubcontractOrderHeader(row interface{ Scan(dest ...any) error }
 		&header.EstimatedCostAmount,
 		&header.DepositAmount,
 		&header.SpecSummary,
+		&header.SourceProductionPlanID,
+		&header.SourceProductionPlanNo,
 		&header.SampleRequired,
 		&header.ClaimWindowDays,
 		&header.TargetStartDate,
@@ -1112,38 +1124,40 @@ func buildPostgresSubcontractOrder(
 		return productiondomain.SubcontractOrder{}, err
 	}
 	order, err := productiondomain.NewSubcontractOrderDocument(productiondomain.NewSubcontractOrderDocumentInput{
-		ID:                  header.ID,
-		OrgID:               header.OrgID,
-		OrderNo:             header.OrderNo,
-		FactoryID:           header.FactoryID,
-		FactoryCode:         header.FactoryCode,
-		FactoryName:         header.FactoryName,
-		FinishedItemID:      header.FinishedItemID,
-		FinishedSKUCode:     header.FinishedSKUCode,
-		FinishedItemName:    header.FinishedItemName,
-		PlannedQty:          plannedQty,
-		ReceivedQty:         receivedQty,
-		AcceptedQty:         acceptedQty,
-		RejectedQty:         rejectedQty,
-		UOMCode:             header.UOMCode,
-		BasePlannedQty:      basePlannedQty,
-		BaseReceivedQty:     baseReceivedQty,
-		BaseAcceptedQty:     baseAcceptedQty,
-		BaseRejectedQty:     baseRejectedQty,
-		BaseUOMCode:         header.BaseUOMCode,
-		ConversionFactor:    conversion,
-		CurrencyCode:        header.CurrencyCode,
-		DepositAmount:       depositAmount,
-		SpecSummary:         header.SpecSummary,
-		SampleRequired:      header.SampleRequired,
-		ClaimWindowDays:     header.ClaimWindowDays,
-		TargetStartDate:     header.TargetStartDate,
-		ExpectedReceiptDate: header.ExpectedReceiptDate,
-		MaterialLines:       lineInputs,
-		CreatedAt:           header.CreatedAt,
-		CreatedBy:           firstNonBlankSubcontractOrder(header.CreatedBy, "system"),
-		UpdatedAt:           header.UpdatedAt,
-		UpdatedBy:           firstNonBlankSubcontractOrder(header.UpdatedBy, header.CreatedBy, "system"),
+		ID:                     header.ID,
+		OrgID:                  header.OrgID,
+		OrderNo:                header.OrderNo,
+		FactoryID:              header.FactoryID,
+		FactoryCode:            header.FactoryCode,
+		FactoryName:            header.FactoryName,
+		FinishedItemID:         header.FinishedItemID,
+		FinishedSKUCode:        header.FinishedSKUCode,
+		FinishedItemName:       header.FinishedItemName,
+		PlannedQty:             plannedQty,
+		ReceivedQty:            receivedQty,
+		AcceptedQty:            acceptedQty,
+		RejectedQty:            rejectedQty,
+		UOMCode:                header.UOMCode,
+		BasePlannedQty:         basePlannedQty,
+		BaseReceivedQty:        baseReceivedQty,
+		BaseAcceptedQty:        baseAcceptedQty,
+		BaseRejectedQty:        baseRejectedQty,
+		BaseUOMCode:            header.BaseUOMCode,
+		ConversionFactor:       conversion,
+		CurrencyCode:           header.CurrencyCode,
+		DepositAmount:          depositAmount,
+		SpecSummary:            header.SpecSummary,
+		SourceProductionPlanID: header.SourceProductionPlanID,
+		SourceProductionPlanNo: header.SourceProductionPlanNo,
+		SampleRequired:         header.SampleRequired,
+		ClaimWindowDays:        header.ClaimWindowDays,
+		TargetStartDate:        header.TargetStartDate,
+		ExpectedReceiptDate:    header.ExpectedReceiptDate,
+		MaterialLines:          lineInputs,
+		CreatedAt:              header.CreatedAt,
+		CreatedBy:              firstNonBlankSubcontractOrder(header.CreatedBy, "system"),
+		UpdatedAt:              header.UpdatedAt,
+		UpdatedBy:              firstNonBlankSubcontractOrder(header.UpdatedBy, header.CreatedBy, "system"),
 	})
 	if err != nil {
 		return productiondomain.SubcontractOrder{}, err
@@ -1278,6 +1292,8 @@ func upsertPostgresSubcontractOrder(
 		nullablePostgresSubcontractOrderText(order.ClosedBy),
 		nullablePostgresSubcontractOrderTime(order.CancelledAt),
 		nullablePostgresSubcontractOrderText(order.CancelledBy),
+		nullablePostgresSubcontractOrderText(order.SourceProductionPlanID),
+		nullablePostgresSubcontractOrderText(order.SourceProductionPlanNo),
 	).Scan(&persistedID)
 	if err != nil {
 		return "", fmt.Errorf("upsert subcontract order %q: %w", order.ID, err)

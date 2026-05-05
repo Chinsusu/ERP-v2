@@ -1732,6 +1732,11 @@ paths:
           required: false
           schema:
             type: string
+        - name: source_production_plan_id
+          in: query
+          required: false
+          schema:
+            type: string
         - name: expected_receipt_from
           in: query
           required: false
@@ -8593,6 +8598,10 @@ components:
           $ref: "#/components/schemas/CurrencyCode"
         spec_summary:
           type: string
+        source_production_plan_id:
+          type: string
+        source_production_plan_no:
+          type: string
         sample_required:
           type: boolean
           default: false
@@ -8632,6 +8641,10 @@ components:
         uom_code:
           $ref: "#/components/schemas/UOMCode"
         spec_summary:
+          type: string
+        source_production_plan_id:
+          type: string
+        source_production_plan_no:
           type: string
         sample_required:
           type: boolean
@@ -9090,6 +9103,9 @@ components:
         - finished_sku_code
         - finished_item_name
         - planned_qty
+        - received_qty
+        - accepted_qty
+        - rejected_qty
         - uom_code
         - expected_receipt_date
         - status
@@ -9119,6 +9135,12 @@ components:
           type: string
         planned_qty:
           $ref: "#/components/schemas/Quantity"
+        received_qty:
+          $ref: "#/components/schemas/Quantity"
+        accepted_qty:
+          $ref: "#/components/schemas/Quantity"
+        rejected_qty:
+          $ref: "#/components/schemas/Quantity"
         uom_code:
           $ref: "#/components/schemas/UOMCode"
         expected_receipt_date:
@@ -9130,6 +9152,10 @@ components:
           $ref: "#/components/schemas/CurrencyCode"
         estimated_cost_amount:
           $ref: "#/components/schemas/MoneyAmount"
+        source_production_plan_id:
+          type: string
+        source_production_plan_no:
+          type: string
         material_line_count:
           type: integer
           minimum: 0
@@ -9225,6 +9251,10 @@ components:
         deposit_amount:
           $ref: "#/components/schemas/MoneyAmount"
         spec_summary:
+          type: string
+        source_production_plan_id:
+          type: string
+        source_production_plan_no:
           type: string
         sample_required:
           type: boolean

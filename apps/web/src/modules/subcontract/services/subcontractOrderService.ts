@@ -75,6 +75,8 @@ type SubcontractOrderApi = {
   received_qty?: string;
   accepted_qty?: string;
   rejected_qty?: string;
+  source_production_plan_id?: string;
+  source_production_plan_no?: string;
   uom_code: string;
   currency_code: string;
   estimated_cost_amount: string;
@@ -122,6 +124,8 @@ type CreateSubcontractOrderApiRequest = {
   uom_code: string;
   currency_code: string;
   spec_summary: string;
+  source_production_plan_id?: string;
+  source_production_plan_no?: string;
   sample_required: boolean;
   claim_window_days: number;
   target_start_date?: string;
@@ -556,9 +560,12 @@ export const prototypeSubcontractOrders: SubcontractOrder[] = [
     sku: "SERUM-30ML",
     productName: "Hydrating Serum 30ml",
     quantity: 5000,
+    uomCode: "PCS",
     receivedQty: "0.000000",
     acceptedQty: "0.000000",
     rejectedQty: "0.000000",
+    sourceProductionPlanId: "plan-prototype-subcontract-001",
+    sourceProductionPlanNo: "PP-PROTOTYPE-SUB-001",
     specVersion: "SPEC-SERUM-2026.04",
     sampleRequired: true,
     expectedDeliveryDate: "2026-05-20",
@@ -1058,9 +1065,12 @@ function fromApiSubcontractOrderListItem(order: SubcontractOrderApiListItem): Su
     sku: order.finished_sku_code,
     productName: order.finished_item_name,
     quantity: Number(order.planned_qty),
+    uomCode: order.uom_code,
     receivedQty: order.received_qty,
     acceptedQty: order.accepted_qty,
     rejectedQty: order.rejected_qty,
+    sourceProductionPlanId: order.source_production_plan_id,
+    sourceProductionPlanNo: order.source_production_plan_no,
     specVersion: order.spec_summary ?? "",
     sampleRequired: order.sample_required,
     expectedDeliveryDate: order.expected_receipt_date,
@@ -1372,6 +1382,8 @@ function toApiCreateInput(input: CreateSubcontractOrderInput): CreateSubcontract
     uom_code: input.uomCode ?? "EA",
     currency_code: "VND",
     spec_summary: input.specVersion,
+    source_production_plan_id: input.sourceProductionPlanId,
+    source_production_plan_no: input.sourceProductionPlanNo,
     sample_required: input.sampleRequired,
     claim_window_days: 7,
     expected_receipt_date: input.expectedDeliveryDate,
@@ -1583,6 +1595,9 @@ function subcontractOrderQueryString(query: SubcontractOrderQuery) {
   if (query.productId) {
     params.set("finished_item_id", query.productId);
   }
+  if (query.sourceProductionPlanId) {
+    params.set("source_production_plan_id", query.sourceProductionPlanId);
+  }
   if (query.expectedReceiptFrom) {
     params.set("expected_receipt_from", query.expectedReceiptFrom);
   }
@@ -1643,9 +1658,12 @@ function createPrototypeSubcontractOrder(input: CreateSubcontractOrderInput): Su
     sku: product.sku,
     productName: product.name,
     quantity,
+    uomCode: input.uomCode ?? "PCS",
     receivedQty: "0.000000",
     acceptedQty: "0.000000",
     rejectedQty: "0.000000",
+    sourceProductionPlanId: input.sourceProductionPlanId,
+    sourceProductionPlanNo: input.sourceProductionPlanNo,
     specVersion: normalizeRequiredText(input.specVersion, "Spec summary is required"),
     sampleRequired: input.sampleRequired,
     expectedDeliveryDate: normalizeRequiredText(input.expectedDeliveryDate, "Expected receipt date is required"),
@@ -2750,7 +2768,17 @@ function isActiveOrderStatus(status: SubcontractOrderStatus) {
 function matchesSubcontractOrderQuery(order: SubcontractOrder, query: SubcontractOrderQuery) {
   const search = query.search?.trim().toLowerCase();
   if (search) {
-    const haystack = [order.orderNo, order.factoryCode, order.factoryName, order.sku, order.productName].join(" ").toLowerCase();
+    const haystack = [
+      order.orderNo,
+      order.factoryCode,
+      order.factoryName,
+      order.sku,
+      order.productName,
+      order.sourceProductionPlanNo,
+      order.specVersion
+    ]
+      .join(" ")
+      .toLowerCase();
     if (!haystack.includes(search)) {
       return false;
     }
@@ -2759,6 +2787,9 @@ function matchesSubcontractOrderQuery(order: SubcontractOrder, query: Subcontrac
     return false;
   }
   if (query.productId && order.productId !== query.productId) {
+    return false;
+  }
+  if (query.sourceProductionPlanId && order.sourceProductionPlanId !== query.sourceProductionPlanId) {
     return false;
   }
   if (query.status && order.status !== query.status) {
