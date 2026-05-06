@@ -134,14 +134,24 @@ const timelineSteps: TimelineStep[] = [
     completeAt: 7,
     currentAt: [6],
     description: (order) =>
-      order.sampleRequired ? "G\u1eedi m\u1eabu, duy\u1ec7t m\u1eabu ho\u1eb7c ghi l\u00fd do t\u1eeb ch\u1ed1i tr\u01b0\u1edbc khi s\u1ea3n xu\u1ea5t h\u00e0ng lo\u1ea1t." : "Kh\u00f4ng y\u00eau c\u1ea7u duy\u1ec7t m\u1eabu cho l\u1ec7nh n\u00e0y."
+      order.sampleRequired ? "G\u1eedi m\u1eabu, duy\u1ec7t m\u1eabu ho\u1eb7c ghi l\u00fd do t\u1eeb ch\u1ed1i tr\u01b0\u1edbc khi s\u1ea3n xu\u1ea5t h\u00e0ng lo\u1ea1t." : "Kh\u00f4ng y\u00eau c\u1ea7u duy\u1ec7t m\u1eabu cho l\u1ec7nh n\u00e0y.",
+    action: (order, status) => ({
+      label: "M\u1edf duy\u1ec7t m\u1eabu",
+      href: `${productionFactoryOrderHref(order)}#factory-sample-approval`,
+      disabled: status === "pending" || status === "blocked"
+    })
   },
   {
     id: "mass-production",
     label: "S\u1ea3n xu\u1ea5t h\u00e0ng lo\u1ea1t",
     completeAt: 8,
     currentAt: [7],
-    description: () => "Nh\u00e0 m\u00e1y ch\u1ea1y s\u1ea3n xu\u1ea5t h\u00e0ng lo\u1ea1t sau khi \u0111\u1ee7 v\u1eadt t\u01b0 v\u00e0 m\u1eabu \u0111\u1ea1t."
+    description: () => "Nh\u00e0 m\u00e1y ch\u1ea1y s\u1ea3n xu\u1ea5t h\u00e0ng lo\u1ea1t sau khi \u0111\u1ee7 v\u1eadt t\u01b0 v\u00e0 m\u1eabu \u0111\u1ea1t.",
+    action: (order, status) => ({
+      label: "M\u1edf s\u1ea3n xu\u1ea5t h\u00e0ng lo\u1ea1t",
+      href: `${productionFactoryOrderHref(order)}#factory-mass-production`,
+      disabled: status === "pending" || status === "blocked"
+    })
   },
   {
     id: "finished-goods-received",

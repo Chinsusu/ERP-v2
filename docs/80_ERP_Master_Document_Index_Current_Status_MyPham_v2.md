@@ -3,9 +3,9 @@
 Project: Web ERP for cosmetics operations
 Phase: Phase 1
 Document role: Current master document index and traceability map
-Version: v2.15
+Version: v2.16
 Date: 2026-05-06
-Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, Sprint 25 subcontract closeout traceability evidence, Sprint 26 production IA cleanup evidence, Sprint 27 factory dispatch MVP, Sprint 28 factory execution tracking closeout evidence, and Sprint 29 factory material handover closeout evidence
+Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, Sprint 25 subcontract closeout traceability evidence, Sprint 26 production IA cleanup evidence, Sprint 27 factory dispatch MVP, Sprint 28 factory execution tracking closeout evidence, Sprint 29 factory material handover closeout evidence, and Sprint 30 factory sample/mass-production branch scope
 
 ---
 
@@ -29,7 +29,7 @@ Which document locks Vietnamese operational terminology?
 ## 2. Current Status Snapshot
 
 ```text
-Current line: Sprint 29 factory material handover for external-factory production.
+Current line: Sprint 30 factory sample approval and mass-production start for external-factory production.
 Latest release tag: v0.19.0-vietnamese-ui-localization.
 Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
 Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
@@ -41,6 +41,7 @@ Sprint 26 implementation status: file 105 tracks the task board, file 106 locks 
 Sprint 27 implementation status: file 108 tracks the task board, file 109 locks the factory dispatch flow, and file 110 records changelog/evidence. PR #593 merged at 3cc5852d with GitHub CI green. Dev deploy passed on 2026-05-06 with migration 44 applied and full dev smoke passed. Browser smoke passed for /production/factory-orders/:orderId factory dispatch create -> ready -> sent -> confirmed. Scope is manual factory dispatch pack creation, ready/sent evidence, and factory response on /production/factory-orders/:orderId. Email, Zalo, factory portal/API delivery, digital signatures, and internal MES production remain out of scope. No v0.27 tag exists.
 Sprint 28 implementation status: file 111 tracks the task board, file 112 locks the factory execution tracking flow, and file 113 records changelog/evidence. Scope is a production-facing current gate/worklist on /production/factory-orders/:orderId after factory dispatch confirmation. It links to deposit, material handover, sample, mass production, finished goods receipt, QC/claim, and final payment readiness through existing execution surfaces. Email, Zalo, factory portal/API delivery, and internal MES production remain out of scope. PR #595 merged at cd3a5b18 with GitHub CI green. Dev deploy passed on 2026-05-06 with no new migration; full dev smoke passed. Browser smoke passed for /production/factory-orders/sco-s16-07-01-1777715855439203730. No v0.28 tag exists.
 Sprint 29 implementation status: file 114 tracks the task board, file 115 locks the factory material handover flow, and file 116 records changelog/evidence. Scope is a production-facing material handover section on /production/factory-orders/:orderId using the existing issue-materials runtime. It records source warehouse, receiver, contact, vehicle, handover evidence, issue quantity, batch/lot, bin, transfer result, stock movement evidence, and in-page order state update. Tracker and timeline material actions point to #factory-material-handover instead of hidden /subcontract transfer. Email, Zalo, factory portal/API delivery, warehouse issue redesign, and internal MES production remain out of scope. PR #597 merged at 7fd3b2d5 with GitHub CI green. Dev deploy passed on 2026-05-06; full dev smoke passed. Browser smoke passed for /production/factory-orders/sco-s16-02-01-1777715855392710950#factory-material-handover with screenshot output/playwright/s29-factory-material-handover.png. No v0.29 tag exists.
+Sprint 30 implementation status: file 117 tracks the task board, file 118 locks the factory sample approval / mass-production start flow, and file 119 records draft changelog/evidence. Scope is a production-facing sample approval section and mass-production start section on /production/factory-orders/:orderId using existing submit-sample, approve-sample, reject-sample, and start-mass-production runtime APIs. Tracker and timeline sample/mass actions point to #factory-sample-approval and #factory-mass-production. Email, Zalo, factory portal/API delivery, finished-goods receipt, inbound QC, and internal MES production remain out of scope. PR, CI, merge, dev deploy, full dev smoke, and browser smoke are pending. No v0.30 tag exists.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -49,7 +50,7 @@ Routes: English.
 Locale: vi-VN.
 Currency: VND.
 Timezone: Asia/Ho_Chi_Minh.
-Phase 1 production entrypoints: /production is planning/material-demand/PR-draft review, external-factory production navigation, factory order detail, manual factory dispatch, factory execution tracking, and material handover; /subcontract remains hidden route-addressable external factory execution.
+Phase 1 production entrypoints: /production is planning/material-demand/PR-draft review, external-factory production navigation, factory order detail, manual factory dispatch, factory execution tracking, material handover, sample approval, and mass-production start; /subcontract remains hidden route-addressable external factory execution.
 Purchase flow boundary: /production opens generated Purchase Request; PO creation belongs to approved Purchase Request conversion, not direct production-page shortcut.
 Post-PO finance boundary: posted PO-linked goods receipts create supplier payable value only for QC PASS lines; supplier invoice and three-way match are locked in file 96 as separate vendor-bill evidence; AP payment readiness hard gate is locked in file 97.
 Warehouse document boundary: Stock Transfer is internal stock movement; Warehouse Issue Note is operational stock issue to factory/lab/manual destination; both are inventory documents, not costing documents.
@@ -109,11 +110,14 @@ For a new engineer or reviewer:
 35. 114_ERP_Coding_Task_Board_Sprint29_Factory_Material_Handover_MyPham_v1.md
 36. 115_ERP_Factory_Material_Handover_Flow_Sprint29_MyPham_v1.md
 37. 116_ERP_Sprint29_Changelog_Factory_Material_Handover_MyPham_v1.md
-38. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
-39. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
-40. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
-41. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
-42. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
+38. 117_ERP_Coding_Task_Board_Sprint30_Factory_Sample_Mass_Production_MyPham_v1.md
+39. 118_ERP_Factory_Sample_Mass_Production_Flow_Sprint30_MyPham_v1.md
+40. 119_ERP_Sprint30_Changelog_Factory_Sample_Mass_Production_MyPham_v1.md
+41. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
+42. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
+43. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
+44. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
+45. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
 ```
 
 For product or operations review:
@@ -155,8 +159,11 @@ For product or operations review:
 34. 114 Sprint 29 factory material handover task board
 35. 115 Factory material handover flow
 36. 116 Sprint 29 changelog and evidence register
-37. 88 BOM / formula module design
-38. 78 Production runtime checklist
+37. 117 Sprint 30 factory sample and mass-production task board
+38. 118 Factory sample and mass-production flow
+39. 119 Sprint 30 changelog and evidence register
+40. 88 BOM / formula module design
+41. 78 Production runtime checklist
 ```
 
 ---
@@ -228,6 +235,7 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | Sprint 27 | `108_ERP_Coding_Task_Board_Sprint27_Factory_Dispatch_MyPham_v1.md` | `110_ERP_Sprint27_Changelog_Factory_Dispatch_MyPham_v1.md` | Manual factory dispatch pack, send evidence, and factory response |
 | Sprint 28 | `111_ERP_Coding_Task_Board_Sprint28_Factory_Execution_Tracking_MyPham_v1.md` | `113_ERP_Sprint28_Changelog_Factory_Execution_Tracking_MyPham_v1.md` | Factory execution tracker, current gate, next action, and post-dispatch worklist |
 | Sprint 29 | `114_ERP_Coding_Task_Board_Sprint29_Factory_Material_Handover_MyPham_v1.md` | `116_ERP_Sprint29_Changelog_Factory_Material_Handover_MyPham_v1.md` | Production-facing factory material handover using existing issue-materials runtime |
+| Sprint 30 | `117_ERP_Coding_Task_Board_Sprint30_Factory_Sample_Mass_Production_MyPham_v1.md` | `119_ERP_Sprint30_Changelog_Factory_Sample_Mass_Production_MyPham_v1.md` | Production-facing factory sample approval and mass-production start using existing subcontract runtime |
 
 ---
 
@@ -271,6 +279,9 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | `114_ERP_Coding_Task_Board_Sprint29_Factory_Material_Handover_MyPham_v1.md` | Sprint 29 task board | Before changing factory material handover scope or acceptance rules |
 | `115_ERP_Factory_Material_Handover_Flow_Sprint29_MyPham_v1.md` | Sprint 29 flow design | Before changing material handover gate, source warehouse, lot/bin, transfer, or movement evidence behavior |
 | `116_ERP_Sprint29_Changelog_Factory_Material_Handover_MyPham_v1.md` | Sprint 29 changelog and evidence | Before closing Sprint 29 or claiming factory material handover evidence |
+| `117_ERP_Coding_Task_Board_Sprint30_Factory_Sample_Mass_Production_MyPham_v1.md` | Sprint 30 task board | Before changing factory sample approval or mass-production start scope |
+| `118_ERP_Factory_Sample_Mass_Production_Flow_Sprint30_MyPham_v1.md` | Sprint 30 flow design | Before changing sample submit/decision gates, sample-required bypass, or mass-production start readiness |
+| `119_ERP_Sprint30_Changelog_Factory_Sample_Mass_Production_MyPham_v1.md` | Sprint 30 changelog and evidence | Before closing Sprint 30 or claiming factory sample/mass-production evidence |
 ---
 
 ## 8. Release Tags
