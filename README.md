@@ -74,7 +74,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 33 factory claim resolution and final payment closeout for external-factory production.
+Current line: Sprint 34 factory final-payment AP handoff for external-factory production.
 
 Latest release tag:
 
@@ -258,6 +258,19 @@ Browser smoke passed for /production/factory-orders/sco-s16-08-03-smoke-0068#fac
 No v0.33 tag is planned.
 ```
 
+Sprint 34 implementation status:
+
+```text
+Sprint 34 is documented in file 129, and the factory final-payment AP handoff flow is locked in file 130.
+Scope is connecting final payment readiness on /production/factory-orders/:orderId#factory-claim-final-payment-closeout to Finance supplier payables.
+The final-payment-ready API response exposes supplier_payable handoff identifiers when AP is created.
+The production factory order detail shows AP handoff evidence and links to /finance?ap_q=:payableNo#supplier-payables.
+If a user reloads an already-ready factory order and AP identifiers are not present in local UI state, the page links to Finance using the factory order no as fallback AP search evidence.
+Finance remains the payment execution surface; matched supplier invoice is still required before AP payment request, approval, or recording.
+PR, CI, merge, dev deploy, and browser smoke are pending.
+No v0.34 tag is planned.
+```
+
 Phase 1 production scope:
 
 ```text
@@ -284,7 +297,7 @@ main baseline 020d6a13: Sprint 20 traceability cleanup merged after required-ci 
 required-migration after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed
 ```
 
-Implementation focus through Sprint 33:
+Implementation focus through Sprint 34:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
@@ -301,6 +314,7 @@ Implementation focus through Sprint 33:
 - External factory finished-goods receipt: production-facing receipt into QC hold with delivery note, batch/lot, expiry, packaging status, evidence, stock movement, and order-status update flow before QC closeout
 - External factory finished-goods QC closeout: production-facing full pass, partial pass, full fail, available-stock release, and factory-claim creation after QC hold receipt
 - External factory claim and final payment closeout: production-facing claim acknowledgement/resolution gate before final payment readiness
+- External factory final-payment AP handoff: production-facing AP evidence and Finance deep link after final payment readiness, while Finance retains invoice match and payment controls
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 

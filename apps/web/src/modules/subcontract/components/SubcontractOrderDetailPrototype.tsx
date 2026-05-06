@@ -52,6 +52,11 @@ import {
 } from "../services/subcontractFactoryExecutionTracker";
 import { buildSubcontractFactoryClaimFinalPaymentCloseout } from "../services/subcontractFactoryClaimFinalPaymentCloseout";
 import {
+  buildFactoryFinalPaymentApHandoff,
+  buildFactoryFinalPaymentApHandoffFromSource,
+  type FactoryFinalPaymentApHandoff
+} from "../services/subcontractFactoryFinalPaymentApHandoff";
+import {
   buildFactorySampleDecisionInput,
   buildFactorySampleSubmissionInput,
   buildSubcontractFactorySampleMassProduction,
@@ -168,6 +173,7 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
   const [claimCloseoutMessage, setClaimCloseoutMessage] = useState<string | undefined>();
   const [finalPaymentReadyBy, setFinalPaymentReadyBy] = useState("finance-user");
   const [finalPaymentNote, setFinalPaymentNote] = useState("QC/claim đã đủ điều kiện mở thanh toán cuối");
+  const [finalPaymentApHandoff, setFinalPaymentApHandoff] = useState<FactoryFinalPaymentApHandoff>();
 
   useEffect(() => {
     let active = true;
@@ -745,7 +751,13 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
         note: finalPaymentNote
       });
       setOrder(result.order);
-      setClaimCloseoutMessage(`${result.milestone.milestoneNo} đã sẵn sàng thanh toán cuối.`);
+      const apHandoff = buildFactoryFinalPaymentApHandoff(result);
+      setFinalPaymentApHandoff(apHandoff);
+      setClaimCloseoutMessage(
+        apHandoff.status === "ready"
+          ? `${result.milestone.milestoneNo} đã sẵn sàng thanh toán cuối; ${apHandoff.payableNo} đã chuyển qua Finance.`
+          : `${result.milestone.milestoneNo} đã sẵn sàng thanh toán cuối.`
+      );
     } catch (cause) {
       setClaimCloseoutError(errorText(cause));
     } finally {
@@ -1013,6 +1025,8 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
         busy={claimCloseoutBusy}
         error={claimCloseoutError}
         finalPaymentNote={finalPaymentNote}
+        finalPaymentApHandoff={finalPaymentApHandoff}
+        finalPaymentApSourceNo={order.orderNo}
         finalPaymentReadyBy={finalPaymentReadyBy}
         gate={claimCloseoutGate}
         message={claimCloseoutMessage}
@@ -2087,6 +2101,8 @@ function FactoryClaimFinalPaymentCloseoutSection({
   busy,
   error,
   finalPaymentNote,
+  finalPaymentApHandoff,
+  finalPaymentApSourceNo,
   finalPaymentReadyBy,
   gate,
   message,
@@ -2103,6 +2119,8 @@ function FactoryClaimFinalPaymentCloseoutSection({
   busy: boolean;
   error?: string;
   finalPaymentNote: string;
+  finalPaymentApHandoff?: FactoryFinalPaymentApHandoff;
+  finalPaymentApSourceNo?: string;
   finalPaymentReadyBy: string;
   gate?: ReturnType<typeof buildSubcontractFactoryClaimFinalPaymentCloseout>;
   message?: string;
@@ -2116,6 +2134,11 @@ function FactoryClaimFinalPaymentCloseoutSection({
   onResolve: () => void;
 }) {
   const claim = gate?.latestClaim;
+  const visibleApHandoff =
+    finalPaymentApHandoff ??
+    (gate?.finalPaymentStatus === "complete"
+      ? buildFactoryFinalPaymentApHandoffFromSource(finalPaymentApSourceNo ?? "")
+      : undefined);
 
   return (
     <section className="erp-masterdata-list-card" id="factory-claim-final-payment-closeout">
@@ -2198,6 +2221,23 @@ function FactoryClaimFinalPaymentCloseoutSection({
           <input className="erp-input" disabled={busy} value={finalPaymentNote} onChange={(event) => setFinalPaymentNote(event.target.value)} />
         </label>
       </div>
+
+      {visibleApHandoff ? (
+        <div className="erp-subcontract-line-item">
+          <span className="erp-masterdata-product-cell">
+            <strong>{visibleApHandoff.payableNo ?? "AP Finance"}</strong>
+            <small>{visibleApHandoff.message}</small>
+          </span>
+          <StatusChip tone={visibleApHandoff.status === "ready" ? "success" : "warning"}>
+            {visibleApHandoff.status === "ready" ? "Đã chuyển AP" : "Chờ AP"}
+          </StatusChip>
+          {visibleApHandoff.financeHref ? (
+            <Link className="erp-button erp-button--secondary" href={visibleApHandoff.financeHref}>
+              Mở AP tại Finance
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="erp-subcontract-actions">
         <button className="erp-button erp-button--secondary" type="button" disabled={!gate?.canAcknowledgeClaim || busy || actor.trim() === ""} onClick={onAcknowledge}>

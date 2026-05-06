@@ -940,11 +940,16 @@ describe("subcontractOrderService", () => {
       status: "recorded",
       amount: "250000.00"
     });
+    expect(deposit.supplierPayable).toBeUndefined();
     expect(finalPayment.order.status).toBe("final_payment_ready");
     expect(finalPayment.milestone).toMatchObject({
       kind: "final_payment",
       status: "ready",
       amount: "1160000.00"
+    });
+    expect(finalPayment.supplierPayable).toMatchObject({
+      payableId: `ap-${finalPayment.milestone.id}`,
+      payableNo: `AP-${finalPayment.milestone.milestoneNo}`
     });
     expect(finalPayment.auditLog.action).toBe("subcontract.final_payment_ready");
   });
