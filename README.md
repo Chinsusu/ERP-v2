@@ -58,6 +58,9 @@ Start with:
 - `docs/117_ERP_Coding_Task_Board_Sprint30_Factory_Sample_Mass_Production_MyPham_v1.md`
 - `docs/118_ERP_Factory_Sample_Mass_Production_Flow_Sprint30_MyPham_v1.md`
 - `docs/119_ERP_Sprint30_Changelog_Factory_Sample_Mass_Production_MyPham_v1.md`
+- `docs/120_ERP_Coding_Task_Board_Sprint31_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md`
+- `docs/121_ERP_Factory_Finished_Goods_Receipt_QC_Hold_Flow_Sprint31_MyPham_v1.md`
+- `docs/122_ERP_Sprint31_Changelog_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -65,7 +68,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 30 factory sample approval and mass-production start for external-factory production.
+Current line: Sprint 31 factory finished goods receipt to QC hold for external-factory production.
 
 Latest release tag:
 
@@ -203,10 +206,22 @@ Screenshot evidence: output/playwright/s30-factory-sample-mass-production.png.
 No v0.30 tag has been created.
 ```
 
+Sprint 31 implementation status:
+
+```text
+Sprint 31 is documented in file 120, and the factory finished-goods receipt to QC hold flow is locked in file 121.
+Scope is a production-facing finished-goods receipt section on /production/factory-orders/:orderId.
+The section uses existing receiveSubcontractFinishedGoods runtime to receive factory finished goods into QC hold with delivery note, receiver, warehouse/location, quantity, batch/lot, expiry, packaging status, evidence, stock movement, and in-page order state update.
+Tracker and timeline finished-goods actions point to #factory-finished-goods-receipt instead of hidden /subcontract inbound.
+QC pass/fail, available-stock posting, factory claim closeout, final payment release, email/Zalo, factory portal/API delivery, and internal MES behavior remain out of scope.
+PR, CI, merge, dev deploy, full dev smoke, and browser smoke are pending for this branch.
+No v0.31 tag has been created.
+```
+
 Phase 1 production scope:
 
 ```text
-The user-facing Production entrypoint at /production is for planning, active-formula snapshot, material demand, generated Purchase Request review, external-factory production navigation, factory order detail, dispatch tracking, execution tracking, material handover, sample approval, and mass-production start.
+The user-facing Production entrypoint at /production is for planning, active-formula snapshot, material demand, generated Purchase Request review, external-factory production navigation, factory order detail, dispatch tracking, execution tracking, material handover, sample approval, mass-production start, and finished-goods receipt to QC hold.
 PO creation belongs to the approved Purchase Request conversion flow, not a direct /production shortcut.
 External factory / subcontract is the current production execution method.
 /subcontract remains route-addressable for existing operational execution but is not the primary sidebar entrypoint.
@@ -229,7 +244,7 @@ main baseline 020d6a13: Sprint 20 traceability cleanup merged after required-ci 
 required-migration after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed
 ```
 
-Completed focus through Sprint 30:
+Completed focus through Sprint 30 and active Sprint 31 scope:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
@@ -243,6 +258,7 @@ Completed focus through Sprint 30:
 - External factory execution tracking: production-facing current gate and worklist after dispatch confirmation, linking to deposit, material handover, sample, receiving/QC, claim, and payment execution
 - External factory material handover: production-facing warehouse/source, receiver, lot/bin, evidence, transfer, stock movement, and order-status update flow before sample/mass-production gates
 - External factory sample and mass-production gate: production-facing sample submit/approve/reject and mass-production start controls backed by existing subcontract runtime APIs
+- Active Sprint 31 branch scope: production-facing finished-goods receipt into QC hold backed by existing subcontract receipt runtime APIs
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 
@@ -281,6 +297,9 @@ Production runtime reference:
 - `docs/117_ERP_Coding_Task_Board_Sprint30_Factory_Sample_Mass_Production_MyPham_v1.md`
 - `docs/118_ERP_Factory_Sample_Mass_Production_Flow_Sprint30_MyPham_v1.md`
 - `docs/119_ERP_Sprint30_Changelog_Factory_Sample_Mass_Production_MyPham_v1.md`
+- `docs/120_ERP_Coding_Task_Board_Sprint31_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md`
+- `docs/121_ERP_Factory_Finished_Goods_Receipt_QC_Hold_Flow_Sprint31_MyPham_v1.md`
+- `docs/122_ERP_Sprint31_Changelog_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`

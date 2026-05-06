@@ -71,7 +71,7 @@ describe("subcontractOrderTimeline", () => {
       status: "current",
       action: {
         label: "Mở nhận thành phẩm",
-        href: "/subcontract?source_production_plan_id=plan-001&search=PP-260505-0001#subcontract-inbound",
+        href: "/production/factory-orders/sco-001#factory-finished-goods-receipt",
         disabled: false
       }
     });
