@@ -6,7 +6,7 @@ Sprint: 34
 Change type: Runtime API/UI bridge and traceability helper
 Version: v1
 Date: 2026-05-07
-Status: Implementation in progress; PR, CI, merge, deploy, and dev smoke pending
+Status: Completed; runtime PR merged, CI green, dev deploy passed, and browser smoke passed
 
 ---
 
@@ -59,8 +59,8 @@ No v0.34 release tag is planned.
 Runtime PR:
 
 ```text
-PR: pending
-Merge commit: pending
+PR: #608 Wire factory final payment AP handoff
+Merge commit: 602a7354
 ```
 
 Local verification:
@@ -80,13 +80,26 @@ OpenAPI Redocly lint: pending GitHub CI because local pnpm/redocly CLI is unavai
 GitHub CI:
 
 ```text
-pending
+api: passed
+web: passed
+openapi: passed
+e2e: passed
+required-api: passed
+required-web: passed
+required-openapi: passed
+required-migration: passed
 ```
 
 Dev deploy and smoke:
 
 ```text
-pending
+deploy-dev-staging.sh dev: passed on 2026-05-07
+Full dev smoke: passed
+Browser smoke: passed with Chrome headless CDP
+Smoke order: SCO-S34-AP-SMOKE-0507060226
+Smoke AP: AP-SPM-S34-AP-SMOKE-0507060226-FINAL
+Production screenshot: output/playwright/s34-factory-final-payment-ap-handoff.png
+Finance screenshot: output/playwright/s34-finance-ap-handoff.png
 ```
 
 ---

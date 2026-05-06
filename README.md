@@ -267,7 +267,10 @@ The final-payment-ready API response exposes supplier_payable handoff identifier
 The production factory order detail shows AP handoff evidence and links to /finance?ap_q=:payableNo#supplier-payables.
 If a user reloads an already-ready factory order and AP identifiers are not present in local UI state, the page links to Finance using the factory order no as fallback AP search evidence.
 Finance remains the payment execution surface; matched supplier invoice is still required before AP payment request, approval, or recording.
-PR, CI, merge, dev deploy, and browser smoke are pending.
+Runtime PR #608 merged at 602a7354 with GitHub CI green.
+Dev deploy passed on 2026-05-07; full dev smoke passed.
+Browser smoke passed for /production/factory-orders/sco-s34-ap-smoke-0507060226#factory-claim-final-payment-closeout -> /finance?ap_q=SCO-S34-AP-SMOKE-0507060226#supplier-payables, showing AP-SPM-S34-AP-SMOKE-0507060226-FINAL.
+Screenshots: output/playwright/s34-factory-final-payment-ap-handoff.png and output/playwright/s34-finance-ap-handoff.png.
 No v0.34 tag is planned.
 ```
 
