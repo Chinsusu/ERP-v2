@@ -6,7 +6,7 @@ Sprint: Sprint 28 - Factory Execution Tracking
 Document role: Changelog and verification evidence
 Version: v1
 Date: 2026-05-06
-Status: Implemented on branch; PR, CI, merge, dev deploy, and browser smoke pending
+Status: Completed and merged; CI, dev deploy, full dev smoke, and browser smoke passed
 
 ---
 
@@ -66,12 +66,19 @@ Local branch verification:
 - git diff --check passed
 ```
 
-Pending before closeout:
+GitHub and dev verification:
 
 ```text
-- GitHub CI
-- Dev deploy
-- Browser smoke for /production/factory-orders/:orderId execution tracker
+- PR #595 required-api passed
+- PR #595 required-web passed
+- PR #595 required-openapi passed
+- PR #595 required-migration passed
+- PR #595 web passed
+- PR #595 e2e passed
+- Dev deploy passed with ./infra/scripts/deploy-dev-staging.sh dev
+- Dev deploy reported no new migration for Sprint 28
+- Full dev smoke passed
+- Browser smoke passed for /production/factory-orders/sco-s16-07-01-1777715855439203730 execution tracker
 ```
 
 ---
@@ -79,13 +86,15 @@ Pending before closeout:
 ## 4. Evidence
 
 ```text
-PR number: pending
-Merge commit: pending
-GitHub CI: pending
-Dev deploy: pending
-Full dev smoke: pending
-Browser smoke: pending
-Screenshot: pending
+PR number: #595
+Branch: codex/s28-factory-execution-tracking
+Runtime commit: 023a54b9
+Merge commit: cd3a5b18
+GitHub CI: required-api, required-web, required-openapi, required-migration, web, and e2e passed
+Dev deploy: ./infra/scripts/deploy-dev-staging.sh dev passed on 2026-05-06
+Full dev smoke: passed
+Browser smoke: passed for /production/factory-orders/sco-s16-07-01-1777715855439203730
+Screenshot: output/playwright/s28-factory-execution-tracker.png
 ```
 
 ---

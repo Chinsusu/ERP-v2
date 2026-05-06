@@ -160,7 +160,10 @@ Sprint 28 is documented in file 111, and the factory execution tracking flow is 
 Scope is a production-facing execution tracker on /production/factory-orders/:orderId after dispatch/factory confirmation.
 The tracker shows current gate, next action, status metrics, and links for deposit, material handover, sample gate, mass production, finished goods receipt, QC/claim, and final payment readiness.
 No new backend API, email, Zalo, supplier portal/API, or internal MES behavior is included.
-Implementation PR, CI, dev deploy, and browser smoke evidence are pending until Sprint 28 closeout.
+PR #595 merged at cd3a5b18 with GitHub CI green.
+Dev deploy passed on 2026-05-06 with no new migration; full dev smoke passed.
+Browser smoke passed for /production/factory-orders/sco-s16-07-01-1777715855439203730 execution tracker.
+Screenshot evidence: output/playwright/s28-factory-execution-tracker.png.
 No v0.28 tag has been created.
 ```
 
@@ -190,7 +193,7 @@ main baseline 020d6a13: Sprint 20 traceability cleanup merged after required-ci 
 required-migration after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed
 ```
 
-Completed focus through Sprint 27:
+Completed focus through Sprint 28:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
