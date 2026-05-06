@@ -197,7 +197,7 @@ describe("subcontractFactoryExecutionTracker", () => {
       id: "qc-closeout",
       status: "current",
       action: {
-        label: "Má»Ÿ QC",
+        label: "Mở QC",
         href: "/production/factory-orders/sco-001#factory-finished-goods-qc-closeout",
         disabled: false
       }
