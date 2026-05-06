@@ -19,7 +19,7 @@ describe("subcontractFactoryExecutionTracker", () => {
       status: "current",
       action: {
         label: "Mở xuất vật tư",
-        href: "/subcontract?source_production_plan_id=plan-001&search=PP-260505-0001#subcontract-transfer",
+        href: "/production/factory-orders/sco-001#factory-material-handover",
         disabled: false
       }
     });

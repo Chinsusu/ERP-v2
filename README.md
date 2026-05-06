@@ -52,6 +52,9 @@ Start with:
 - `docs/111_ERP_Coding_Task_Board_Sprint28_Factory_Execution_Tracking_MyPham_v1.md`
 - `docs/112_ERP_Factory_Execution_Tracking_Flow_Sprint28_MyPham_v1.md`
 - `docs/113_ERP_Sprint28_Changelog_Factory_Execution_Tracking_MyPham_v1.md`
+- `docs/114_ERP_Coding_Task_Board_Sprint29_Factory_Material_Handover_MyPham_v1.md`
+- `docs/115_ERP_Factory_Material_Handover_Flow_Sprint29_MyPham_v1.md`
+- `docs/116_ERP_Sprint29_Changelog_Factory_Material_Handover_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -59,7 +62,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 28 factory execution tracking for external-factory production.
+Current line: Sprint 29 factory material handover for external-factory production.
 
 Latest release tag:
 
@@ -167,10 +170,22 @@ Screenshot evidence: output/playwright/s28-factory-execution-tracker.png.
 No v0.28 tag has been created.
 ```
 
+Sprint 29 implementation status:
+
+```text
+Sprint 29 is documented in file 114, and the factory material handover flow is locked in file 115.
+Scope is a production-facing material handover section on /production/factory-orders/:orderId.
+The section uses existing subcontract issue-materials runtime to record warehouse/source, receiver, batch/lot, bin, transfer evidence, stock movements, and order status advancement.
+Tracker and timeline material actions now point to #factory-material-handover instead of hidden /subcontract transfer.
+No new backend API, email, Zalo, supplier portal/API, warehouse issue redesign, or internal MES behavior is included.
+Implementation PR, CI, dev deploy, and browser smoke evidence are pending until Sprint 29 closeout.
+No v0.29 tag has been created.
+```
+
 Phase 1 production scope:
 
 ```text
-The user-facing Production entrypoint at /production is for planning, active-formula snapshot, material demand, generated Purchase Request review, and external-factory production navigation.
+The user-facing Production entrypoint at /production is for planning, active-formula snapshot, material demand, generated Purchase Request review, external-factory production navigation, factory order detail, dispatch tracking, execution tracking, and material handover.
 PO creation belongs to the approved Purchase Request conversion flow, not a direct /production shortcut.
 External factory / subcontract is the current production execution method.
 /subcontract remains route-addressable for existing operational execution but is not the primary sidebar entrypoint.
@@ -193,7 +208,7 @@ main baseline 020d6a13: Sprint 20 traceability cleanup merged after required-ci 
 required-migration after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed
 ```
 
-Completed focus through Sprint 28:
+Completed focus through Sprint 29:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
@@ -205,6 +220,7 @@ Completed focus through Sprint 28:
 - Inventory warehouse document runtime: Stock Transfer and Warehouse Issue Note lifecycle with PostgreSQL document persistence and posted ledger movement effects
 - External factory dispatch MVP: manual dispatch pack, ready/sent evidence, factory response, and production-facing timeline step before factory confirmation
 - External factory execution tracking: production-facing current gate and worklist after dispatch confirmation, linking to deposit, material handover, sample, receiving/QC, claim, and payment execution
+- External factory material handover: production-facing warehouse/source, receiver, lot/bin, evidence, transfer, stock movement, and order-status update flow before sample/mass-production gates
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 
@@ -237,6 +253,9 @@ Production runtime reference:
 - `docs/111_ERP_Coding_Task_Board_Sprint28_Factory_Execution_Tracking_MyPham_v1.md`
 - `docs/112_ERP_Factory_Execution_Tracking_Flow_Sprint28_MyPham_v1.md`
 - `docs/113_ERP_Sprint28_Changelog_Factory_Execution_Tracking_MyPham_v1.md`
+- `docs/114_ERP_Coding_Task_Board_Sprint29_Factory_Material_Handover_MyPham_v1.md`
+- `docs/115_ERP_Factory_Material_Handover_Flow_Sprint29_MyPham_v1.md`
+- `docs/116_ERP_Sprint29_Changelog_Factory_Material_Handover_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`

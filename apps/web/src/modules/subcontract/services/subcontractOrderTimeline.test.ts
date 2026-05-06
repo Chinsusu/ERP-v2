@@ -87,6 +87,21 @@ describe("subcontractOrderTimeline", () => {
     expect(timeline.find((item) => item.id === "mass-production")).toMatchObject({ status: "pending" });
   });
 
+  it("links the current material issue step to the production factory order detail", () => {
+    const timeline = buildSubcontractOrderTimeline({
+      ...baseOrder,
+      status: "deposit_recorded"
+    });
+
+    expect(timeline.find((item) => item.id === "materials-issued")).toMatchObject({
+      status: "current",
+      action: {
+        href: "/production/factory-orders/sco-001#factory-material-handover",
+        disabled: false
+      }
+    });
+  });
+
   it("builds production-facing links for factory orders and their source plans", () => {
     expect(productionFactoryOrderHref(baseOrder)).toBe("/production/factory-orders/sco-001");
     expect(productionFactoryOrderSourcePlanHref(baseOrder)).toBe("/production/plans/plan-001");

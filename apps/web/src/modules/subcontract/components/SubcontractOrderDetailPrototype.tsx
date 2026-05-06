@@ -18,12 +18,14 @@ import {
   formatSubcontractOrderStatus,
   getSubcontractFactoryDispatches,
   getSubcontractOrder,
+  issueSubcontractMaterials,
   markSubcontractFactoryDispatchReady,
   markSubcontractFactoryDispatchSent,
   recordSubcontractFactoryDispatchResponse,
   subcontractFactoryDispatchStatusTone,
   subcontractOrderStatusTone
 } from "../services/subcontractOrderService";
+import { subcontractTransferWarehouseOptions } from "../services/subcontractMaterialTransferService";
 import {
   buildSubcontractOrderTimeline,
   productionFactoryOrderSourcePlanHref,
@@ -34,11 +36,18 @@ import {
   buildSubcontractFactoryExecutionTracker,
   type FactoryExecutionWorkItem
 } from "../services/subcontractFactoryExecutionTracker";
+import {
+  buildFactoryMaterialHandoverIssueInput,
+  buildSubcontractFactoryMaterialHandover,
+  type FactoryMaterialHandover,
+  type FactoryMaterialHandoverLineDraft
+} from "../services/subcontractFactoryMaterialHandover";
 import type {
   SubcontractFactoryDispatch,
   SubcontractFinalPaymentStatus,
+  SubcontractOrderMaterialLine,
   SubcontractOrder,
-  SubcontractOrderMaterialLine
+  SubcontractMaterialTransfer
 } from "../types";
 
 type SubcontractOrderDetailPrototypeProps = {
@@ -54,6 +63,18 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
   const [dispatchMessage, setDispatchMessage] = useState<string | undefined>();
   const [dispatchBusy, setDispatchBusy] = useState(false);
   const [responseNote, setResponseNote] = useState("");
+  const [sourceWarehouseId, setSourceWarehouseId] = useState<string>(subcontractTransferWarehouseOptions[0].value);
+  const [handoverReceiver, setHandoverReceiver] = useState("factory-receiver");
+  const [handoverContact, setHandoverContact] = useState("");
+  const [handoverVehicleNo, setHandoverVehicleNo] = useState("");
+  const [handoverEvidenceName, setHandoverEvidenceName] = useState("");
+  const [handoverNote, setHandoverNote] = useState("");
+  const [signedHandover, setSignedHandover] = useState(true);
+  const [materialDrafts, setMaterialDrafts] = useState<Record<string, FactoryMaterialHandoverLineDraft>>({});
+  const [materialBusy, setMaterialBusy] = useState(false);
+  const [materialError, setMaterialError] = useState<string | undefined>();
+  const [materialMessage, setMaterialMessage] = useState<string | undefined>();
+  const [latestMaterialTransfer, setLatestMaterialTransfer] = useState<SubcontractMaterialTransfer>();
 
   useEffect(() => {
     let active = true;
@@ -92,7 +113,42 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
     () => (order ? buildSubcontractFactoryExecutionTracker(order, { dispatchStatus: latestDispatch?.status }) : undefined),
     [latestDispatch?.status, order]
   );
+  const materialHandover = useMemo(() => (order ? buildSubcontractFactoryMaterialHandover(order) : undefined), [order]);
   const sourcePlanHref = useMemo(() => (order ? productionFactoryOrderSourcePlanHref(order) : undefined), [order]);
+  const missingLotCount = useMemo(
+    () =>
+      materialHandover?.lines.filter((line) => {
+        const draft = materialDrafts[line.id];
+        return line.status === "ready" && line.lotTraceRequired && !draft?.batchNo?.trim();
+      }).length ?? 0,
+    [materialDrafts, materialHandover]
+  );
+  const canSubmitMaterialHandover =
+    Boolean(materialHandover?.canIssue) &&
+    signedHandover &&
+    handoverReceiver.trim() !== "" &&
+    missingLotCount === 0 &&
+    !materialBusy;
+
+  useEffect(() => {
+    if (!order) {
+      return;
+    }
+    const handover = buildSubcontractFactoryMaterialHandover(order);
+    setMaterialDrafts(
+      Object.fromEntries(
+        handover.lines.map((line) => [
+          line.id,
+          {
+            issueQty: line.remainingQty,
+            batchNo: "",
+            sourceBinId: "",
+            note: ""
+          }
+        ])
+      )
+    );
+  }, [order?.id, order?.version]);
 
   const reloadFactoryDispatches = async (nextOrder?: SubcontractOrder) => {
     const targetOrder = nextOrder ?? order;
@@ -122,6 +178,56 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
       setDispatchError(errorText(cause));
     } finally {
       setDispatchBusy(false);
+    }
+  };
+
+  const updateMaterialDraft = (lineId: string, field: keyof FactoryMaterialHandoverLineDraft, value: string) => {
+    setMaterialDrafts((current) => ({
+      ...current,
+      [lineId]: {
+        issueQty: current[lineId]?.issueQty ?? "",
+        batchNo: current[lineId]?.batchNo ?? "",
+        sourceBinId: current[lineId]?.sourceBinId ?? "",
+        note: current[lineId]?.note ?? "",
+        [field]: value
+      }
+    }));
+  };
+
+  const handleFactoryMaterialHandover = async () => {
+    if (!order) {
+      return;
+    }
+
+    setMaterialBusy(true);
+    setMaterialError(undefined);
+    setMaterialMessage(undefined);
+    try {
+      const warehouse =
+        subcontractTransferWarehouseOptions.find((option) => option.value === sourceWarehouseId) ??
+        subcontractTransferWarehouseOptions[0];
+      const result = await issueSubcontractMaterials(
+        buildFactoryMaterialHandoverIssueInput({
+          order,
+          sourceWarehouseId: warehouse.value,
+          sourceWarehouseCode: warehouse.code,
+          handoverBy: "warehouse-user",
+          receivedBy: handoverReceiver,
+          receiverContact: handoverContact,
+          vehicleNo: handoverVehicleNo,
+          note: handoverNote,
+          evidenceFileName: handoverEvidenceName,
+          lineDrafts: materialDrafts
+        })
+      );
+
+      setOrder(result.order);
+      setLatestMaterialTransfer(result.transfer);
+      setMaterialMessage(`${result.transfer.transferNo} đã ghi nhận ${result.stockMovements.length} dòng xuất vật tư.`);
+    } catch (cause) {
+      setMaterialError(errorText(cause));
+    } finally {
+      setMaterialBusy(false);
     }
   };
 
@@ -255,6 +361,33 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
         </section>
       ) : null}
 
+      <FactoryMaterialHandoverSection
+        canSubmit={canSubmitMaterialHandover}
+        handover={materialHandover}
+        handoverContact={handoverContact}
+        handoverEvidenceName={handoverEvidenceName}
+        handoverNote={handoverNote}
+        handoverReceiver={handoverReceiver}
+        handoverVehicleNo={handoverVehicleNo}
+        latestTransfer={latestMaterialTransfer}
+        materialBusy={materialBusy}
+        materialDrafts={materialDrafts}
+        materialError={materialError}
+        materialMessage={materialMessage}
+        missingLotCount={missingLotCount}
+        setHandoverContact={setHandoverContact}
+        setHandoverEvidenceName={setHandoverEvidenceName}
+        setHandoverNote={setHandoverNote}
+        setHandoverReceiver={setHandoverReceiver}
+        setHandoverVehicleNo={setHandoverVehicleNo}
+        setSignedHandover={setSignedHandover}
+        setSourceWarehouseId={setSourceWarehouseId}
+        signedHandover={signedHandover}
+        sourceWarehouseId={sourceWarehouseId}
+        updateMaterialDraft={updateMaterialDraft}
+        onSubmit={handleFactoryMaterialHandover}
+      />
+
       <section className="erp-masterdata-list-card" id="factory-dispatch">
         <header className="erp-section-header">
           <div>
@@ -354,7 +487,7 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
             <h2 className="erp-section-title">Vật tư xuất cho nhà máy</h2>
             <p className="erp-page-description">Các dòng nguyên liệu/bao bì cần bàn giao cho nhà máy theo lệnh này.</p>
           </div>
-          <Link className="erp-button erp-button--secondary" href={subcontractOperationsHref(order, "subcontract-transfer")}>
+          <Link className="erp-button erp-button--secondary" href="#factory-material-handover">
             Mở xuất vật tư
           </Link>
         </header>
@@ -368,6 +501,230 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
         />
       </section>
     </main>
+  );
+}
+
+function FactoryMaterialHandoverSection({
+  canSubmit,
+  handover,
+  handoverContact,
+  handoverEvidenceName,
+  handoverNote,
+  handoverReceiver,
+  handoverVehicleNo,
+  latestTransfer,
+  materialBusy,
+  materialDrafts,
+  materialError,
+  materialMessage,
+  missingLotCount,
+  setHandoverContact,
+  setHandoverEvidenceName,
+  setHandoverNote,
+  setHandoverReceiver,
+  setHandoverVehicleNo,
+  setSignedHandover,
+  setSourceWarehouseId,
+  signedHandover,
+  sourceWarehouseId,
+  updateMaterialDraft,
+  onSubmit
+}: {
+  canSubmit: boolean;
+  handover?: FactoryMaterialHandover;
+  handoverContact: string;
+  handoverEvidenceName: string;
+  handoverNote: string;
+  handoverReceiver: string;
+  handoverVehicleNo: string;
+  latestTransfer?: SubcontractMaterialTransfer;
+  materialBusy: boolean;
+  materialDrafts: Record<string, FactoryMaterialHandoverLineDraft>;
+  materialError?: string;
+  materialMessage?: string;
+  missingLotCount: number;
+  setHandoverContact: (value: string) => void;
+  setHandoverEvidenceName: (value: string) => void;
+  setHandoverNote: (value: string) => void;
+  setHandoverReceiver: (value: string) => void;
+  setHandoverVehicleNo: (value: string) => void;
+  setSignedHandover: (value: boolean) => void;
+  setSourceWarehouseId: (value: string) => void;
+  signedHandover: boolean;
+  sourceWarehouseId: string;
+  updateMaterialDraft: (lineId: string, field: keyof FactoryMaterialHandoverLineDraft, value: string) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <section className="erp-masterdata-list-card" id="factory-material-handover">
+      <header className="erp-section-header">
+        <div>
+          <h2 className="erp-section-title">Bàn giao vật tư cho nhà máy</h2>
+          <p className="erp-page-description">
+            Chọn kho xuất, lô/bin và số lượng bàn giao cho nhà máy. Hệ thống ghi nhận transfer, stock movement và cập nhật trạng thái lệnh khi đủ vật tư.
+          </p>
+        </div>
+        {handover ? (
+          <StatusChip tone={materialHandoverStatusTone(handover.status)}>
+            {materialHandoverStatusLabel(handover.status)}
+          </StatusChip>
+        ) : null}
+      </header>
+      {materialError ? (
+        <p className="erp-form-error" role="alert">
+          {materialError}
+        </p>
+      ) : null}
+      {handover?.blockedReason ? (
+        <p className="erp-form-error" role="status">
+          {handover.blockedReason}
+        </p>
+      ) : null}
+      {materialMessage ? (
+        <p className="erp-form-success" role="status">
+          {materialMessage}
+        </p>
+      ) : null}
+
+      <div className="erp-subcontract-transfer-controls">
+        <label className="erp-field">
+          <span>Kho xuất</span>
+          <select className="erp-input" value={sourceWarehouseId} onChange={(event) => setSourceWarehouseId(event.target.value)}>
+            {subcontractTransferWarehouseOptions.map((warehouse) => (
+              <option key={warehouse.value} value={warehouse.value}>
+                {warehouse.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="erp-field">
+          <span>Người nhận nhà máy</span>
+          <input className="erp-input" type="text" value={handoverReceiver} onChange={(event) => setHandoverReceiver(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Liên hệ</span>
+          <input className="erp-input" type="text" value={handoverContact} onChange={(event) => setHandoverContact(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Xe / vận chuyển</span>
+          <input className="erp-input" type="text" value={handoverVehicleNo} onChange={(event) => setHandoverVehicleNo(event.target.value)} />
+        </label>
+        <label className="erp-subcontract-sample-toggle">
+          <input checked={signedHandover} type="checkbox" onChange={(event) => setSignedHandover(event.target.checked)} />
+          <span>Đã có biên bản</span>
+        </label>
+      </div>
+      <label className="erp-field erp-subcontract-note-field">
+        <span>File / mã biên bản bàn giao</span>
+        <input className="erp-input" type="text" value={handoverEvidenceName} onChange={(event) => setHandoverEvidenceName(event.target.value)} />
+      </label>
+      <label className="erp-field erp-subcontract-note-field">
+        <span>Ghi chú bàn giao</span>
+        <input className="erp-input" type="text" value={handoverNote} onChange={(event) => setHandoverNote(event.target.value)} />
+      </label>
+
+      <div className="erp-subcontract-line-list" aria-label="Dòng vật tư bàn giao cho nhà máy">
+        {(handover?.lines ?? []).map((line) => {
+          const draft = materialDrafts[line.id] ?? { issueQty: line.remainingQty, batchNo: "", sourceBinId: "", note: "" };
+          const disabled = line.status === "complete" || !handover?.canIssue || materialBusy;
+
+          return (
+            <div className="erp-subcontract-line-item erp-subcontract-line-item--editable" key={line.id}>
+              <span className="erp-masterdata-product-cell">
+                <strong>{line.skuCode}</strong>
+                <small>{line.itemName}</small>
+              </span>
+              <span>
+                Cần {formatProductionPlanQuantity(line.plannedQty, line.uomCode)} / đã giao{" "}
+                {formatProductionPlanQuantity(line.issuedQty, line.uomCode)} / còn{" "}
+                {formatProductionPlanQuantity(line.remainingQty, line.uomCode)}
+              </span>
+              <label className="erp-field">
+                <span>Số lượng giao</span>
+                <input
+                  className="erp-input"
+                  disabled={disabled}
+                  inputMode="decimal"
+                  type="text"
+                  value={draft.issueQty}
+                  onChange={(event) => updateMaterialDraft(line.id, "issueQty", event.target.value)}
+                />
+              </label>
+              <label className="erp-field">
+                <span>Lô / batch</span>
+                <input
+                  className="erp-input"
+                  disabled={disabled}
+                  type="text"
+                  value={draft.batchNo}
+                  onChange={(event) => updateMaterialDraft(line.id, "batchNo", event.target.value)}
+                />
+              </label>
+              <label className="erp-field">
+                <span>Bin</span>
+                <input
+                  className="erp-input"
+                  disabled={disabled}
+                  type="text"
+                  value={draft.sourceBinId}
+                  onChange={(event) => updateMaterialDraft(line.id, "sourceBinId", event.target.value)}
+                />
+              </label>
+              <StatusChip tone={line.status === "complete" ? "success" : line.lotTraceRequired ? "warning" : "normal"}>
+                {materialLineStatusLabel(line.status, line.lotTraceRequired)}
+              </StatusChip>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="erp-subcontract-actions">
+        <button className="erp-button erp-button--primary" type="button" disabled={!canSubmit} onClick={onSubmit}>
+          Ghi nhận bàn giao vật tư
+        </button>
+        <StatusChip tone="normal">
+          {handover?.completeLines ?? 0}/{handover?.totalLines ?? 0} dòng đủ
+        </StatusChip>
+        {missingLotCount > 0 ? <StatusChip tone="warning">Thiếu lô cho {missingLotCount} dòng</StatusChip> : null}
+      </div>
+
+      {latestTransfer ? (
+        <div className="erp-production-selected-plan-main">
+          <div className="erp-production-selected-plan-badges">
+            <StatusChip tone={factoryMaterialTransferTone(latestTransfer.status)}>
+              {factoryMaterialTransferStatusLabel(latestTransfer.status)}
+            </StatusChip>
+            <StatusChip tone="normal">{latestTransfer.transferNo}</StatusChip>
+          </div>
+          <dl className="erp-production-selected-plan-meta">
+            <div>
+              <dt>Kho xuất</dt>
+              <dd>{latestTransfer.sourceWarehouseCode}</dd>
+            </div>
+            <div>
+              <dt>Nhà máy</dt>
+              <dd>{latestTransfer.factoryName}</dd>
+            </div>
+            <div>
+              <dt>Dòng vật tư</dt>
+              <dd>{latestTransfer.lines.length}</dd>
+            </div>
+            <div>
+              <dt>Stock movement</dt>
+              <dd>{latestTransfer.stockMovements.length}</dd>
+            </div>
+            <div>
+              <dt>Bằng chứng cần kèm</dt>
+              <dd>{latestTransfer.attachmentPlaceholders.length}</dd>
+            </div>
+            <div>
+              <dt>Người tạo</dt>
+              <dd>{latestTransfer.createdBy}</dd>
+            </div>
+          </dl>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -681,6 +1038,62 @@ function factoryExecutionStatusLabel(status: FactoryExecutionWorkItem["status"])
     case "pending":
     default:
       return "Chờ";
+  }
+}
+
+function materialHandoverStatusTone(status: FactoryMaterialHandover["status"]) {
+  switch (status) {
+    case "complete":
+      return "success" as const;
+    case "ready":
+      return "info" as const;
+    case "blocked":
+    default:
+      return "warning" as const;
+  }
+}
+
+function materialHandoverStatusLabel(status: FactoryMaterialHandover["status"]) {
+  switch (status) {
+    case "complete":
+      return "Đã bàn giao đủ";
+    case "ready":
+      return "Sẵn sàng bàn giao";
+    case "blocked":
+    default:
+      return "Chưa thể bàn giao";
+  }
+}
+
+function materialLineStatusLabel(status: FactoryMaterialHandover["lines"][number]["status"], lotTraceRequired: boolean) {
+  if (status === "complete") {
+    return "Đã đủ";
+  }
+
+  return lotTraceRequired ? "Cần lô" : "Sẵn sàng";
+}
+
+function factoryMaterialTransferTone(status: SubcontractMaterialTransfer["status"]) {
+  switch (status) {
+    case "SENT":
+      return "success" as const;
+    case "READY_TO_SEND":
+      return "info" as const;
+    case "DRAFT":
+    default:
+      return "warning" as const;
+  }
+}
+
+function factoryMaterialTransferStatusLabel(status: SubcontractMaterialTransfer["status"]) {
+  switch (status) {
+    case "SENT":
+      return "Đã bàn giao";
+    case "READY_TO_SEND":
+      return "Sẵn sàng gửi";
+    case "DRAFT":
+    default:
+      return "Nháp";
   }
 }
 

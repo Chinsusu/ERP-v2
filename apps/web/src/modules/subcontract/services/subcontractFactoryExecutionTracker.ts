@@ -151,7 +151,7 @@ function buildMaterialHandoverItem(order: SubcontractOrder): FactoryExecutionWor
     metric: `${summary.completeLines}/${summary.totalLines} dòng đủ`,
     action: {
       label: "Mở xuất vật tư",
-      href: subcontractOperationsHref(order, "subcontract-transfer"),
+      href: productionFactoryOrderSectionHref(order, "factory-material-handover"),
       disabled: status === "pending"
     }
   });
