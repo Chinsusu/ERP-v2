@@ -184,7 +184,13 @@ describe("subcontractFactoryExecutionTracker", () => {
     const tracker = buildSubcontractFactoryExecutionTracker({
       ...baseOrder,
       status: "finished_goods_received",
-      receivedQty: "80.000000"
+      receivedQty: "80.000000",
+      materialLines: [
+        {
+          ...baseOrder.materialLines[0],
+          issuedQty: "0.099900"
+        }
+      ]
     });
 
     expect(tracker.currentGate).toMatchObject({
