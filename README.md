@@ -196,7 +196,10 @@ Scope is a production-facing sample approval section and mass-production start s
 The sections use existing submit-sample, approve-sample, reject-sample, and start-mass-production runtime APIs.
 Tracker and timeline sample/mass actions now point to #factory-sample-approval and #factory-mass-production.
 No new backend API, email, Zalo, supplier portal/API, finished-goods receipt, inbound QC, or internal MES behavior is included.
-PR, CI, merge, dev deploy, full dev smoke, and browser smoke are pending.
+PR #599 merged at bd645404 with GitHub CI green.
+Dev deploy passed on 2026-05-06; full dev smoke passed.
+Browser smoke passed for /production/factory-orders/sco-s16-08-03-smoke-0063#factory-sample-approval.
+Screenshot evidence: output/playwright/s30-factory-sample-mass-production.png.
 No v0.30 tag has been created.
 ```
 
@@ -226,7 +229,7 @@ main baseline 020d6a13: Sprint 20 traceability cleanup merged after required-ci 
 required-migration after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed
 ```
 
-Completed focus through Sprint 29 and current Sprint 30 branch scope:
+Completed focus through Sprint 30:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
