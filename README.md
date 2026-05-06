@@ -214,7 +214,10 @@ Scope is a production-facing finished-goods receipt section on /production/facto
 The section uses existing receiveSubcontractFinishedGoods runtime to receive factory finished goods into QC hold with delivery note, receiver, warehouse/location, quantity, batch/lot, expiry, packaging status, evidence, stock movement, and in-page order state update.
 Tracker and timeline finished-goods actions point to #factory-finished-goods-receipt instead of hidden /subcontract inbound.
 QC pass/fail, available-stock posting, factory claim closeout, final payment release, email/Zalo, factory portal/API delivery, and internal MES behavior remain out of scope.
-PR, CI, merge, dev deploy, full dev smoke, and browser smoke are pending for this branch.
+PR #601 merged at 7b7952fb with GitHub CI green.
+Dev deploy passed on 2026-05-06; full dev smoke passed.
+Browser smoke passed for /production/factory-orders/sco-s16-08-03-smoke-0064#factory-finished-goods-receipt.
+Screenshot evidence: output/playwright/s31-factory-finished-goods-receipt.png.
 No v0.31 tag has been created.
 ```
 
@@ -244,7 +247,7 @@ main baseline 020d6a13: Sprint 20 traceability cleanup merged after required-ci 
 required-migration after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed
 ```
 
-Completed focus through Sprint 30 and active Sprint 31 scope:
+Completed focus through Sprint 31:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
@@ -258,7 +261,7 @@ Completed focus through Sprint 30 and active Sprint 31 scope:
 - External factory execution tracking: production-facing current gate and worklist after dispatch confirmation, linking to deposit, material handover, sample, receiving/QC, claim, and payment execution
 - External factory material handover: production-facing warehouse/source, receiver, lot/bin, evidence, transfer, stock movement, and order-status update flow before sample/mass-production gates
 - External factory sample and mass-production gate: production-facing sample submit/approve/reject and mass-production start controls backed by existing subcontract runtime APIs
-- Active Sprint 31 branch scope: production-facing finished-goods receipt into QC hold backed by existing subcontract receipt runtime APIs
+- External factory finished-goods receipt: production-facing receipt into QC hold with delivery note, batch/lot, expiry, packaging status, evidence, stock movement, and order-status update flow before QC closeout
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 
