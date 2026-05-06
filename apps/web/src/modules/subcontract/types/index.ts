@@ -395,6 +395,22 @@ export type ReceiveSubcontractFinishedGoodsResult = {
   auditLogId?: string;
 };
 
+export type AcceptSubcontractFinishedGoodsInput = {
+  order: SubcontractOrder;
+  acceptedBy: string;
+  acceptedAt?: string;
+  note?: string;
+};
+
+export type AcceptSubcontractFinishedGoodsResult = {
+  order: SubcontractOrder;
+  stockMovements: SubcontractStockMovement[];
+  previousStatus: SubcontractOrderStatus;
+  currentStatus: SubcontractOrderStatus;
+  auditLog?: AuditLogItem;
+  auditLogId?: string;
+};
+
 export type SubcontractFactoryClaimEvidenceInput = {
   id?: string;
   evidenceType: "qc_photo" | "inspection_note" | "delivery_note" | "coa";
@@ -469,6 +485,40 @@ export type SubcontractFactoryClaimResult = {
   claim: SubcontractFactoryClaim;
   auditLog: AuditLogItem;
   auditLogId?: string;
+};
+
+export type PartialAcceptSubcontractFinishedGoodsInput = {
+  order: SubcontractOrder;
+  acceptedQty: string;
+  uomCode: string;
+  baseAcceptedQty?: string;
+  baseUOMCode?: string;
+  rejectedQty: string;
+  baseRejectedQty?: string;
+  claimId?: string;
+  claimNo?: string;
+  receiptId?: string;
+  receiptNo?: string;
+  reasonCode: string;
+  reason: string;
+  severity: SubcontractFactoryClaimSeverity;
+  evidence: SubcontractFactoryClaimEvidenceInput[];
+  ownerId: string;
+  acceptedBy: string;
+  acceptedAt?: string;
+  openedBy: string;
+  openedAt?: string;
+  note?: string;
+};
+
+export type PartialAcceptSubcontractFinishedGoodsResult = {
+  order: SubcontractOrder;
+  claim: SubcontractFactoryClaim;
+  stockMovements: SubcontractStockMovement[];
+  previousStatus: SubcontractOrderStatus;
+  currentStatus: SubcontractOrderStatus;
+  acceptAuditLogId?: string;
+  claimAuditLogId?: string;
 };
 
 export type SubcontractPaymentMilestone = {
@@ -646,12 +696,13 @@ export type SubcontractTransferAttachmentPlaceholder = {
 
 export type SubcontractStockMovement = {
   id: string;
-  movementType: "SUBCONTRACT_ISSUE" | "SUBCONTRACT_RECEIPT";
+  movementType: "SUBCONTRACT_ISSUE" | "SUBCONTRACT_RECEIPT" | "QC_RELEASE";
   itemCode: string;
   quantity: number;
   unit: string;
   sourceWarehouseId: string;
   targetLocation: string;
+  stockStatus?: string;
   batchNo?: string;
   sourceDocId: string;
 };

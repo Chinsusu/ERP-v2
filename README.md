@@ -61,6 +61,9 @@ Start with:
 - `docs/120_ERP_Coding_Task_Board_Sprint31_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md`
 - `docs/121_ERP_Factory_Finished_Goods_Receipt_QC_Hold_Flow_Sprint31_MyPham_v1.md`
 - `docs/122_ERP_Sprint31_Changelog_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md`
+- `docs/123_ERP_Coding_Task_Board_Sprint32_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md`
+- `docs/124_ERP_Factory_Finished_Goods_QC_Closeout_Flow_Sprint32_MyPham_v1.md`
+- `docs/125_ERP_Sprint32_Changelog_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -68,7 +71,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 31 factory finished goods receipt to QC hold for external-factory production.
+Current line: Sprint 32 factory finished goods QC closeout for external-factory production.
 
 Latest release tag:
 
@@ -221,10 +224,23 @@ Screenshot evidence: output/playwright/s31-factory-finished-goods-receipt.png.
 No v0.31 tag has been created.
 ```
 
+Sprint 32 implementation status:
+
+```text
+Sprint 32 is documented in file 123, and the factory finished-goods QC closeout flow is locked in file 124.
+Scope is a production-facing QC closeout section on /production/factory-orders/:orderId#factory-finished-goods-qc-closeout.
+The section uses existing accept, partial-accept, and report-factory-defect subcontract runtime APIs for full QC pass, partial pass with factory claim, and full fail with factory claim.
+Tracker and timeline QC actions point to #factory-finished-goods-qc-closeout instead of hidden /subcontract inbound/claim anchors.
+Receipt to QC hold remains separate from QC pass; only accepted quantity can become available stock.
+Final payment readiness, claim resolution, email/Zalo, factory portal/API delivery, and internal MES behavior remain out of scope.
+Runtime PR, CI, dev deploy, and browser smoke are pending for this branch.
+No v0.32 tag is planned.
+```
+
 Phase 1 production scope:
 
 ```text
-The user-facing Production entrypoint at /production is for planning, active-formula snapshot, material demand, generated Purchase Request review, external-factory production navigation, factory order detail, dispatch tracking, execution tracking, material handover, sample approval, mass-production start, and finished-goods receipt to QC hold.
+The user-facing Production entrypoint at /production is for planning, active-formula snapshot, material demand, generated Purchase Request review, external-factory production navigation, factory order detail, dispatch tracking, execution tracking, material handover, sample approval, mass-production start, finished-goods receipt to QC hold, and finished-goods QC closeout.
 PO creation belongs to the approved Purchase Request conversion flow, not a direct /production shortcut.
 External factory / subcontract is the current production execution method.
 /subcontract remains route-addressable for existing operational execution but is not the primary sidebar entrypoint.

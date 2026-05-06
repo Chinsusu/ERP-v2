@@ -113,6 +113,23 @@ describe("subcontractOrderTimeline", () => {
     });
   });
 
+  it("links the current finished goods QC step to the production factory order detail", () => {
+    const timeline = buildSubcontractOrderTimeline({
+      ...baseOrder,
+      status: "finished_goods_received",
+      receivedQty: "80.000000"
+    });
+
+    expect(timeline.find((item) => item.id === "qc")).toMatchObject({
+      status: "current",
+      action: {
+        label: "Mở QC thành phẩm",
+        href: "/production/factory-orders/sco-001#factory-finished-goods-qc-closeout",
+        disabled: false
+      }
+    });
+  });
+
   it("builds production-facing links for factory orders and their source plans", () => {
     expect(productionFactoryOrderHref(baseOrder)).toBe("/production/factory-orders/sco-001");
     expect(productionFactoryOrderSourcePlanHref(baseOrder)).toBe("/production/plans/plan-001");

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  acceptSubcontractFinishedGoods,
   approveSubcontractOrder,
   approveSubcontractSample,
   addSubcontractFactoryClaimEvidence,
@@ -16,11 +17,13 @@ import {
   markSubcontractFinalPaymentReady,
   markSubcontractFactoryDispatchReady,
   markSubcontractFactoryDispatchSent,
+  partialAcceptSubcontractFinishedGoods,
   prototypeSubcontractOrders,
   receiveSubcontractFinishedGoods,
   recordSubcontractDeposit,
   recordSubcontractFactoryDispatchResponse,
   rejectSubcontractSample,
+  reportSubcontractFactoryDefect,
   resetPrototypeSubcontractOrdersForTest,
   startMassProductionSubcontractOrder,
   subcontractDepositStatusTone,
@@ -650,6 +653,122 @@ describe("subcontractOrderService", () => {
     expect(received.auditLog.action).toBe("subcontract.finished_goods_received");
   });
 
+  it("accepts finished goods after QC and releases accepted stock", async () => {
+    const received = await createReceivedFinishedGoodsForQcTest("pass");
+
+    const accepted = await acceptSubcontractFinishedGoods({
+      order: received.order,
+      acceptedBy: "qc-lead",
+      acceptedAt: "2026-05-06T08:00:00Z",
+      note: "QC pass"
+    });
+
+    expect(accepted.previousStatus).toBe("finished_goods_received");
+    expect(accepted.currentStatus).toBe("accepted");
+    expect(accepted.order).toMatchObject({
+      status: "accepted",
+      acceptedQty: "80.000000",
+      rejectedQty: "0.000000"
+    });
+    expect(accepted.stockMovements[0]).toMatchObject({
+      movementType: "QC_RELEASE",
+      quantity: 80,
+      stockStatus: "available",
+      sourceDocId: received.receipt.id
+    });
+  });
+
+  it("partially accepts finished goods and opens a factory claim for the rejected quantity", async () => {
+    const received = await createReceivedFinishedGoodsForQcTest("partial");
+
+    const partial = await partialAcceptSubcontractFinishedGoods({
+      order: received.order,
+      acceptedQty: "60",
+      uomCode: "EA",
+      baseAcceptedQty: "60",
+      baseUOMCode: "EA",
+      rejectedQty: "20",
+      baseRejectedQty: "20",
+      claimId: "sfc-ui-partial",
+      receiptId: received.receipt.id,
+      receiptNo: received.receipt.receiptNo,
+      reasonCode: "QUALITY_FAIL",
+      reason: "20 pcs failed odor check",
+      severity: "P2",
+      ownerId: "factory-owner",
+      acceptedBy: "qc-lead",
+      openedBy: "qa-lead",
+      evidence: [
+        {
+          evidenceType: "qc_photo",
+          fileName: "qc-fail.jpg",
+          objectKey: "subcontract/qc-fail.jpg"
+        }
+      ]
+    });
+
+    expect(partial.previousStatus).toBe("finished_goods_received");
+    expect(partial.currentStatus).toBe("accepted");
+    expect(partial.order).toMatchObject({
+      status: "accepted",
+      acceptedQty: "60.000000",
+      rejectedQty: "20.000000"
+    });
+    expect(partial.claim).toMatchObject({
+      id: "sfc-ui-partial",
+      receiptId: received.receipt.id,
+      affectedQty: "20.000000",
+      blocksFinalPayment: true,
+      status: "open"
+    });
+    expect(partial.stockMovements[0]).toMatchObject({
+      movementType: "QC_RELEASE",
+      quantity: 60,
+      stockStatus: "available"
+    });
+  });
+
+  it("reports a full factory defect without releasing available stock", async () => {
+    const received = await createReceivedFinishedGoodsForQcTest("fail");
+
+    const claim = await reportSubcontractFactoryDefect({
+      order: received.order,
+      claimId: "sfc-ui-fail",
+      receiptId: received.receipt.id,
+      receiptNo: received.receipt.receiptNo,
+      reasonCode: "PACKAGING_DAMAGED",
+      reason: "All cartons crushed",
+      severity: "P1",
+      affectedQty: "80",
+      uomCode: "EA",
+      baseAffectedQty: "80",
+      baseUOMCode: "EA",
+      ownerId: "factory-owner",
+      openedBy: "qa-lead",
+      evidence: [
+        {
+          evidenceType: "qc_photo",
+          fileName: "all-fail.jpg",
+          objectKey: "subcontract/all-fail.jpg"
+        }
+      ]
+    });
+
+    expect(claim.order).toMatchObject({
+      status: "rejected_with_factory_issue",
+      acceptedQty: "0.000000",
+      rejectedQty: "80.000000",
+      finalPaymentStatus: "hold"
+    });
+    expect(claim.claim).toMatchObject({
+      id: "sfc-ui-fail",
+      receiptId: received.receipt.id,
+      affectedQty: "80.000000",
+      blocksFinalPayment: true
+    });
+    expect(claim.auditLog.action).toBe("subcontract.factory_claim_opened");
+  });
+
   it("creates a factory claim with SLA and appends evidence", async () => {
     const draft = await createSubcontractOrder({
       factoryId: "sup-out-lotus",
@@ -838,3 +957,57 @@ describe("subcontractOrderService", () => {
     expect(subcontractDepositStatusTone("pending")).toBe("warning");
   });
 });
+
+async function createReceivedFinishedGoodsForQcTest(suffix: string) {
+  const draft = await createSubcontractOrder({
+    factoryId: "sup-out-lotus",
+    productId: "item-serum-30ml",
+    quantity: 1200,
+    specVersion: "SPEC-SERUM-2026.04",
+    sampleRequired: false,
+    expectedDeliveryDate: "2026-05-20",
+    depositStatus: "pending",
+    materialItemId: "item-cream-50g",
+    materialQty: "20",
+    materialUnitCost: "58000"
+  });
+  const submitted = await submitSubcontractOrder(draft.id, draft.version);
+  const approved = await approveSubcontractOrder(submitted.order.id, submitted.order.version);
+  const confirmed = await confirmFactorySubcontractOrder(approved.order.id, approved.order.version);
+  const issued = await issueSubcontractMaterials({
+    order: confirmed.order,
+    sourceWarehouseId: "wh-hcm",
+    sourceWarehouseCode: "HCM",
+    handoverBy: "warehouse-user",
+    receivedBy: "factory-receiver",
+    lines: [
+      {
+        orderMaterialLineId: confirmed.order.materialLines[0].id,
+        issueQty: "20",
+        uomCode: "EA",
+        batchNo: `CREAM-LOT-${suffix}`
+      }
+    ]
+  });
+  const massStarted = await startMassProductionSubcontractOrder(issued.order.id, issued.order.version);
+
+  return receiveSubcontractFinishedGoods({
+    order: massStarted.order,
+    warehouseId: "wh-hcm",
+    warehouseCode: "HCM",
+    locationId: "loc-hcm-fg-qc",
+    locationCode: "FG-QC-01",
+    deliveryNoteNo: `DN-FACTORY-QC-${suffix}`,
+    receivedBy: "warehouse-user",
+    lines: [
+      {
+        receiveQty: "80",
+        uomCode: "EA",
+        batchNo: `FG-LOT-QC-${suffix}`,
+        lotNo: `FG-LOT-QC-${suffix}`,
+        expiryDate: "2028-04-29",
+        packagingStatus: suffix === "fail" ? "damaged" : "intact"
+      }
+    ]
+  });
+}

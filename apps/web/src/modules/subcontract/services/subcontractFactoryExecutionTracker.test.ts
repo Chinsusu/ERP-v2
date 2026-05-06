@@ -179,6 +179,35 @@ describe("subcontractFactoryExecutionTracker", () => {
       }
     });
   });
+
+  it("links finished goods QC closeout to the production factory order detail", () => {
+    const tracker = buildSubcontractFactoryExecutionTracker({
+      ...baseOrder,
+      status: "finished_goods_received",
+      receivedQty: "80.000000",
+      materialLines: [
+        {
+          ...baseOrder.materialLines[0],
+          issuedQty: "0.099900"
+        }
+      ]
+    });
+
+    expect(tracker.currentGate).toMatchObject({
+      id: "qc-closeout",
+      status: "current",
+      action: {
+        label: "Mở QC",
+        href: "/production/factory-orders/sco-001#factory-finished-goods-qc-closeout",
+        disabled: false
+      }
+    });
+    expect(tracker.items.find((item) => item.id === "qc-closeout")).toMatchObject({
+      action: {
+        href: "/production/factory-orders/sco-001#factory-finished-goods-qc-closeout"
+      }
+    });
+  });
 });
 
 const baseOrder: SubcontractOrder = {

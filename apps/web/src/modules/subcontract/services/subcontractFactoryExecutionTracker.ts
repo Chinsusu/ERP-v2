@@ -251,7 +251,7 @@ function buildQcCloseoutItem(order: SubcontractOrder): FactoryExecutionWorkItem 
     metric: `Đạt ${formatQty(order.acceptedQty)} / lỗi ${formatQty(order.rejectedQty)} ${order.uomCode ?? "PCS"}`,
     action: {
       label: status === "blocked" ? "Mở claim" : "Mở QC",
-      href: subcontractOperationsHref(order, status === "blocked" ? "subcontract-claim" : "subcontract-inbound"),
+      href: productionFactoryOrderSectionHref(order, "factory-finished-goods-qc-closeout"),
       disabled: status === "pending"
     }
   });
