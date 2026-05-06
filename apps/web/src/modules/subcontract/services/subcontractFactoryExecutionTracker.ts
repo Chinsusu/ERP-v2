@@ -1,11 +1,17 @@
 import type { StatusTone } from "@/shared/design-system/components";
-import type { SubcontractFactoryDispatchStatus, SubcontractOrder, SubcontractOrderStatus } from "../types";
-import { subcontractOperationsHref } from "./subcontractOrderTimeline";
+import type {
+  SubcontractFactoryClaimStatus,
+  SubcontractFactoryDispatchStatus,
+  SubcontractOrder,
+  SubcontractOrderStatus
+} from "../types";
 
 export type FactoryExecutionWorkStatus = "complete" | "current" | "pending" | "blocked";
 
 export type FactoryExecutionTrackerContext = {
   dispatchStatus?: SubcontractFactoryDispatchStatus;
+  blockingFactoryClaimCount?: number;
+  latestFactoryClaimStatus?: SubcontractFactoryClaimStatus;
 };
 
 export type FactoryExecutionWorkItem = {
@@ -55,7 +61,8 @@ export function buildSubcontractFactoryExecutionTracker(
     buildMassProductionItem(order),
     buildFinishedGoodsReceiptItem(order),
     buildQcCloseoutItem(order),
-    buildFinalPaymentItem(order)
+    buildFactoryClaimResolutionItem(order, context),
+    buildFinalPaymentItem(order, context)
   ];
 
   return {
@@ -128,7 +135,7 @@ function buildDepositItem(order: SubcontractOrder): FactoryExecutionWorkItem {
     metric: order.depositStatus === "not_required" ? "Không yêu cầu cọc" : order.depositStatus === "paid" ? "Đã ghi nhận cọc" : "Chờ ghi nhận",
     action: {
       label: "Mở thanh toán",
-      href: subcontractOperationsHref(order, "subcontract-payment"),
+      href: productionFactoryOrderSectionHref(order, "factory-claim-final-payment-closeout"),
       disabled: status === "pending"
     }
   });
@@ -257,11 +264,48 @@ function buildQcCloseoutItem(order: SubcontractOrder): FactoryExecutionWorkItem 
   });
 }
 
-function buildFinalPaymentItem(order: SubcontractOrder): FactoryExecutionWorkItem {
+function buildFactoryClaimResolutionItem(
+  order: SubcontractOrder,
+  context: FactoryExecutionTrackerContext
+): FactoryExecutionWorkItem {
+  const blockingCount = context.blockingFactoryClaimCount ?? 0;
+  const status =
+    blockingCount > 0
+      ? "current"
+      : context.latestFactoryClaimStatus
+        ? "complete"
+        : ["accepted", "final_payment_ready", "closed"].includes(order.status)
+          ? "complete"
+          : "pending";
+
+  return workItem({
+    id: "factory-claim-resolution",
+    title: "Chốt claim nhà máy",
+    description: "Nhà máy xác nhận lỗi và chốt đổi/bù hàng, giảm trừ hoặc từ chối claim trước khi mở thanh toán cuối.",
+    status,
+    metric:
+      blockingCount > 0
+        ? `${blockingCount} claim còn mở`
+        : context.latestFactoryClaimStatus
+          ? formatFactoryClaimStatus(context.latestFactoryClaimStatus)
+          : "Không có claim",
+    action: {
+      label: "Mở xử lý claim",
+      href: productionFactoryOrderSectionHref(order, "factory-claim-final-payment-closeout"),
+      disabled: status === "pending"
+    }
+  });
+}
+
+function buildFinalPaymentItem(
+  order: SubcontractOrder,
+  context: FactoryExecutionTrackerContext
+): FactoryExecutionWorkItem {
+  const blockingCount = context.blockingFactoryClaimCount ?? 0;
   const status =
     ["final_payment_ready", "closed"].includes(order.status)
       ? "complete"
-      : order.status === "rejected_with_factory_issue"
+      : order.status === "rejected_with_factory_issue" || blockingCount > 0
         ? "blocked"
         : order.status === "accepted"
           ? "current"
@@ -275,7 +319,7 @@ function buildFinalPaymentItem(order: SubcontractOrder): FactoryExecutionWorkIte
     metric: formatFinalPaymentMetric(order),
     action: {
       label: "Mở thanh toán",
-      href: subcontractOperationsHref(order, "subcontract-payment"),
+      href: productionFactoryOrderSectionHref(order, "factory-claim-final-payment-closeout"),
       disabled: status === "pending" || status === "blocked"
     }
   });
@@ -401,6 +445,23 @@ function formatSampleMetric(status: SubcontractOrderStatus) {
   }
 
   return "Cần duyệt mẫu";
+}
+
+function formatFactoryClaimStatus(status: SubcontractFactoryClaimStatus) {
+  switch (status) {
+    case "open":
+      return "Claim còn mở";
+    case "acknowledged":
+      return "Nhà máy đã xác nhận";
+    case "resolved":
+      return "Đã chốt xử lý";
+    case "closed":
+      return "Đã đóng";
+    case "cancelled":
+      return "Đã hủy";
+    default:
+      return status;
+  }
 }
 
 function formatFinalPaymentMetric(order: SubcontractOrder) {

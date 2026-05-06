@@ -3,28 +3,31 @@ package main
 import "github.com/Chinsusu/ERP-v2/apps/api/internal/shared/auth"
 
 type subcontractRouteHandlers struct {
-	subcontractOrders                 routeHandler
-	subcontractOrderDetail            routeHandler
-	subcontractOrderSubmit            routeHandler
-	subcontractOrderApprove           routeHandler
-	subcontractOrderConfirmFactory    routeHandler
-	subcontractOrderRecordDeposit     routeHandler
-	subcontractOrderIssueMaterials    routeHandler
-	subcontractOrderStartProduction   routeHandler
-	subcontractOrderReceiveGoods      routeHandler
-	subcontractOrderReportDefect      routeHandler
-	subcontractOrderAccept            routeHandler
-	subcontractOrderPartialAccept     routeHandler
-	subcontractOrderFinalPaymentReady routeHandler
-	subcontractOrderSubmitSample      routeHandler
-	subcontractOrderApproveSample     routeHandler
-	subcontractOrderRejectSample      routeHandler
-	subcontractOrderCancel            routeHandler
-	subcontractOrderClose             routeHandler
-	subcontractFactoryDispatches      routeHandler
-	subcontractFactoryDispatchReady   routeHandler
-	subcontractFactoryDispatchSent    routeHandler
-	subcontractFactoryDispatchRespond routeHandler
+	subcontractOrders                  routeHandler
+	subcontractOrderDetail             routeHandler
+	subcontractOrderSubmit             routeHandler
+	subcontractOrderApprove            routeHandler
+	subcontractOrderConfirmFactory     routeHandler
+	subcontractOrderRecordDeposit      routeHandler
+	subcontractOrderIssueMaterials     routeHandler
+	subcontractOrderStartProduction    routeHandler
+	subcontractOrderReceiveGoods       routeHandler
+	subcontractOrderReportDefect       routeHandler
+	subcontractOrderAccept             routeHandler
+	subcontractOrderPartialAccept      routeHandler
+	subcontractOrderFinalPaymentReady  routeHandler
+	subcontractOrderSubmitSample       routeHandler
+	subcontractOrderApproveSample      routeHandler
+	subcontractOrderRejectSample       routeHandler
+	subcontractOrderCancel             routeHandler
+	subcontractOrderClose              routeHandler
+	subcontractFactoryClaims           routeHandler
+	subcontractFactoryClaimAcknowledge routeHandler
+	subcontractFactoryClaimResolve     routeHandler
+	subcontractFactoryDispatches       routeHandler
+	subcontractFactoryDispatchReady    routeHandler
+	subcontractFactoryDispatchSent     routeHandler
+	subcontractFactoryDispatchRespond  routeHandler
 }
 
 func registerSubcontractRoutes(routes routeGroup, handlers subcontractRouteHandlers) {
@@ -46,6 +49,9 @@ func registerSubcontractRoutes(routes routeGroup, handlers subcontractRouteHandl
 	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/reject-sample", auth.PermissionRecordCreate, handlers.subcontractOrderRejectSample)
 	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/cancel", auth.PermissionRecordCreate, handlers.subcontractOrderCancel)
 	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/close", auth.PermissionRecordCreate, handlers.subcontractOrderClose)
+	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/factory-claims", auth.PermissionSubcontractView, handlers.subcontractFactoryClaims)
+	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/factory-claims/{factory_claim_id}/acknowledge", auth.PermissionRecordCreate, handlers.subcontractFactoryClaimAcknowledge)
+	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/factory-claims/{factory_claim_id}/resolve", auth.PermissionRecordCreate, handlers.subcontractFactoryClaimResolve)
 	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/factory-dispatches", auth.PermissionSubcontractView, handlers.subcontractFactoryDispatches)
 	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/mark-ready", auth.PermissionRecordCreate, handlers.subcontractFactoryDispatchReady)
 	routes.permission("/api/v1/subcontract-orders/{subcontract_order_id}/factory-dispatches/{factory_dispatch_id}/mark-sent", auth.PermissionRecordCreate, handlers.subcontractFactoryDispatchSent)

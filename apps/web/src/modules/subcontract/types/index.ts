@@ -473,6 +473,10 @@ export type SubcontractFactoryClaim = {
   openedBy: string;
   openedAt: string;
   dueAt: string;
+  acknowledgedBy?: string;
+  acknowledgedAt?: string;
+  resolvedBy?: string;
+  resolvedAt?: string;
   resolutionNote?: string;
   blocksFinalPayment: boolean;
   createdAt: string;
@@ -484,6 +488,27 @@ export type SubcontractFactoryClaimResult = {
   order: SubcontractOrder;
   claim: SubcontractFactoryClaim;
   auditLog: AuditLogItem;
+  auditLogId?: string;
+};
+
+export type AcknowledgeSubcontractFactoryClaimInput = {
+  order: SubcontractOrder;
+  claim: SubcontractFactoryClaim;
+  acknowledgedBy: string;
+  acknowledgedAt?: string;
+};
+
+export type ResolveSubcontractFactoryClaimInput = {
+  order: SubcontractOrder;
+  claim: SubcontractFactoryClaim;
+  resolvedBy: string;
+  resolvedAt?: string;
+  resolutionNote: string;
+};
+
+export type SubcontractFactoryClaimDecisionResult = {
+  claim: SubcontractFactoryClaim;
+  auditLog?: AuditLogItem;
   auditLogId?: string;
 };
 

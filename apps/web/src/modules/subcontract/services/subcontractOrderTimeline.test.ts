@@ -28,6 +28,7 @@ describe("subcontractOrderTimeline", () => {
       ["mass-production", "pending"],
       ["finished-goods-received", "pending"],
       ["qc", "pending"],
+      ["factory-claim-resolution", "pending"],
       ["final-payment", "pending"],
       ["closed", "pending"]
     ]);
@@ -126,6 +127,36 @@ describe("subcontractOrderTimeline", () => {
         label: "Mở QC thành phẩm",
         href: "/production/factory-orders/sco-001#factory-finished-goods-qc-closeout",
         disabled: false
+      }
+    });
+  });
+
+  it("blocks final payment while a factory claim remains open", () => {
+    const timeline = buildSubcontractOrderTimeline(
+      {
+        ...baseOrder,
+        status: "accepted",
+        acceptedQty: "994.000000",
+        rejectedQty: "5.000000"
+      },
+      {
+        blockingFactoryClaimCount: 1,
+        latestFactoryClaimStatus: "open"
+      }
+    );
+
+    expect(timeline.find((item) => item.id === "factory-claim-resolution")).toMatchObject({
+      status: "current",
+      action: {
+        href: "/production/factory-orders/sco-001#factory-claim-final-payment-closeout",
+        disabled: false
+      }
+    });
+    expect(timeline.find((item) => item.id === "final-payment")).toMatchObject({
+      status: "blocked",
+      action: {
+        href: "/production/factory-orders/sco-001#factory-claim-final-payment-closeout",
+        disabled: true
       }
     });
   });
