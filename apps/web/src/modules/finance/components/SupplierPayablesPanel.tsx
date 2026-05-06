@@ -25,6 +25,7 @@ import {
   supplierPayableStatusTone,
   voidSupplierPayable
 } from "../services/supplierPayableService";
+import { buildSupplierPayableFactoryCloseout } from "../services/supplierPayableFactoryCloseout";
 import { formatFinanceDate, formatFinanceMoney } from "../services/customerReceivableService";
 import type {
   SupplierInvoice,
@@ -180,6 +181,10 @@ export function SupplierPayablesPanel() {
   const selectedInvoice = visibleInvoices[0] ?? null;
   const paymentReadiness = useMemo(
     () => getSupplierPayablePaymentReadiness(selectedPayable, visibleInvoices, invoicesLoading),
+    [invoicesLoading, selectedPayable, visibleInvoices]
+  );
+  const factoryCloseout = useMemo(
+    () => buildSupplierPayableFactoryCloseout(selectedPayable, visibleInvoices, invoicesLoading),
     [invoicesLoading, selectedPayable, visibleInvoices]
   );
   const totals = useMemo(() => summarizePayables(visiblePayables), [visiblePayables]);
@@ -500,6 +505,61 @@ export function SupplierPayablesPanel() {
             )}
           </section>
 
+          {factoryCloseout ? (
+            <section className="erp-card erp-card--padded" id="factory-final-payment-closeout">
+              <div className="erp-section-header">
+                <div>
+                  <h2 className="erp-section-title">Đóng thanh toán nhà máy</h2>
+                  <p className="erp-section-description">Theo dõi AP thanh toán cuối từ lệnh sản xuất/gia công ngoài.</p>
+                </div>
+                <StatusChip tone={factoryCloseout.summaryTone}>{factoryCloseout.summaryLabel}</StatusChip>
+              </div>
+
+              <div className="erp-finance-detail">
+                <p className={`erp-finance-feedback erp-finance-feedback--${factoryCloseout.summaryTone}`}>
+                  {factoryCloseout.summaryMessage}
+                </p>
+                <dl className="erp-finance-detail-list">
+                  <div>
+                    <dt>Lệnh sản xuất</dt>
+                    <dd>{factoryCloseout.factoryOrderNo ?? "-"}</dd>
+                  </div>
+                  <div>
+                    <dt>Mốc thanh toán</dt>
+                    <dd>{factoryCloseout.factoryMilestoneNo ?? "-"}</dd>
+                  </div>
+                  <div>
+                    <dt>AP</dt>
+                    <dd>{factoryCloseout.payableNo}</dd>
+                  </div>
+                  <div>
+                    <dt>Hóa đơn NCC</dt>
+                    <dd>{factoryCloseout.invoiceNo ?? "Chưa có hóa đơn khớp"}</dd>
+                  </div>
+                </dl>
+                {factoryCloseout.productionHref ? (
+                  <div className="erp-finance-action-links">
+                    <a className="erp-button erp-button--secondary" href={factoryCloseout.productionHref}>
+                      Mở lệnh sản xuất
+                    </a>
+                  </div>
+                ) : null}
+              </div>
+
+              <ol className="erp-finance-closeout-steps">
+                {factoryCloseout.steps.map((step) => (
+                  <li key={step.key} className={`erp-finance-closeout-step erp-finance-closeout-step--${step.status}`}>
+                    <div>
+                      <strong>{step.label}</strong>
+                      <small>{step.description}</small>
+                    </div>
+                    <StatusChip tone={step.tone}>{formatFactoryCloseoutStepStatus(step.status)}</StatusChip>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ) : null}
+
           <section className="erp-card erp-card--padded">
             <div className="erp-section-header">
               <h2 className="erp-section-title">Lines</h2>
@@ -789,6 +849,20 @@ function summarizePayables(payables: SupplierPayable[]) {
 
 function sourceDocumentLabel(source: { type: string; no?: string; id?: string }) {
   return `${source.type.replaceAll("_", " ")} / ${source.no ?? source.id ?? "-"}`;
+}
+
+function formatFactoryCloseoutStepStatus(status: "complete" | "current" | "pending" | "blocked") {
+  switch (status) {
+    case "complete":
+      return "Xong";
+    case "current":
+      return "Đang làm";
+    case "blocked":
+      return "Đang chặn";
+    case "pending":
+    default:
+      return "Chờ";
+  }
 }
 
 function defaultFinanceDate() {

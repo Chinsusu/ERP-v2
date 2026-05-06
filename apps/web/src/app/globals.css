@@ -4902,6 +4902,47 @@ textarea {
   min-width: 0;
 }
 
+.erp-finance-closeout-steps {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.erp-finance-closeout-step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--erp-border-soft);
+  border-radius: var(--erp-radius);
+  background: var(--erp-section-bg);
+}
+
+.erp-finance-closeout-step strong,
+.erp-finance-closeout-step small {
+  display: block;
+}
+
+.erp-finance-closeout-step small {
+  margin-top: 3px;
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-helper);
+  line-height: var(--erp-line-height-helper);
+}
+
+.erp-finance-closeout-step--current {
+  border-color: var(--erp-info);
+  background: var(--erp-info-bg);
+}
+
+.erp-finance-closeout-step--blocked {
+  border-color: var(--erp-warning);
+  background: var(--erp-warning-bg);
+}
+
 .erp-finance-feedback {
   padding: 10px 12px;
   border: 1px solid var(--erp-border);
