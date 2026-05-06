@@ -49,6 +49,9 @@ Start with:
 - `docs/108_ERP_Coding_Task_Board_Sprint27_Factory_Dispatch_MyPham_v1.md`
 - `docs/109_ERP_Factory_Dispatch_Flow_Sprint27_MyPham_v1.md`
 - `docs/110_ERP_Sprint27_Changelog_Factory_Dispatch_MyPham_v1.md`
+- `docs/111_ERP_Coding_Task_Board_Sprint28_Factory_Execution_Tracking_MyPham_v1.md`
+- `docs/112_ERP_Factory_Execution_Tracking_Flow_Sprint28_MyPham_v1.md`
+- `docs/113_ERP_Sprint28_Changelog_Factory_Execution_Tracking_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -56,7 +59,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 27 factory dispatch MVP for external-factory production.
+Current line: Sprint 28 factory execution tracking for external-factory production.
 
 Latest release tag:
 
@@ -150,6 +153,17 @@ Browser smoke passed for /production/factory-orders/:orderId factory dispatch cr
 No v0.27 tag has been created.
 ```
 
+Sprint 28 implementation status:
+
+```text
+Sprint 28 is documented in file 111, and the factory execution tracking flow is locked in file 112.
+Scope is a production-facing execution tracker on /production/factory-orders/:orderId after dispatch/factory confirmation.
+The tracker shows current gate, next action, status metrics, and links for deposit, material handover, sample gate, mass production, finished goods receipt, QC/claim, and final payment readiness.
+No new backend API, email, Zalo, supplier portal/API, or internal MES behavior is included.
+Implementation PR, CI, dev deploy, and browser smoke evidence are pending until Sprint 28 closeout.
+No v0.28 tag has been created.
+```
+
 Phase 1 production scope:
 
 ```text
@@ -187,6 +201,7 @@ Completed focus through Sprint 27:
 - Post-PO payable traceability: PO-linked posted receipts create supplier payables only for QC PASS accepted lines, with AP search traceable back to PO and receipt
 - Inventory warehouse document runtime: Stock Transfer and Warehouse Issue Note lifecycle with PostgreSQL document persistence and posted ledger movement effects
 - External factory dispatch MVP: manual dispatch pack, ready/sent evidence, factory response, and production-facing timeline step before factory confirmation
+- External factory execution tracking: production-facing current gate and worklist after dispatch confirmation, linking to deposit, material handover, sample, receiving/QC, claim, and payment execution
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 
@@ -216,6 +231,9 @@ Production runtime reference:
 - `docs/108_ERP_Coding_Task_Board_Sprint27_Factory_Dispatch_MyPham_v1.md`
 - `docs/109_ERP_Factory_Dispatch_Flow_Sprint27_MyPham_v1.md`
 - `docs/110_ERP_Sprint27_Changelog_Factory_Dispatch_MyPham_v1.md`
+- `docs/111_ERP_Coding_Task_Board_Sprint28_Factory_Execution_Tracking_MyPham_v1.md`
+- `docs/112_ERP_Factory_Execution_Tracking_Flow_Sprint28_MyPham_v1.md`
+- `docs/113_ERP_Sprint28_Changelog_Factory_Execution_Tracking_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
