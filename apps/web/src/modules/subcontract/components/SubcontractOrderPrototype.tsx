@@ -1656,7 +1656,7 @@ export function SubcontractOrderPrototype() {
         </div>
       </section>
 
-      <section className="erp-subcontract-quality-grid">
+      <section className="erp-subcontract-quality-grid" id="subcontract-sample">
         <div className="erp-card erp-card--padded erp-subcontract-card">
           <div className="erp-section-header">
             <h2 className="erp-section-title">Sample approval</h2>
@@ -1761,7 +1761,7 @@ export function SubcontractOrderPrototype() {
           </div>
         </div>
 
-        <div className="erp-card erp-card--padded erp-subcontract-card">
+        <div className="erp-card erp-card--padded erp-subcontract-card" id="subcontract-claim">
           <div className="erp-section-header">
             <h2 className="erp-section-title">Factory claim</h2>
             <StatusChip tone={latestFactoryClaim ? subcontractFactoryClaimStatusTone(latestFactoryClaim.status) : "normal"}>

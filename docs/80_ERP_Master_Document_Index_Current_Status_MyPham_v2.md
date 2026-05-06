@@ -3,9 +3,9 @@
 Project: Web ERP for cosmetics operations
 Phase: Phase 1
 Document role: Current master document index and traceability map
-Version: v2.11
+Version: v2.12
 Date: 2026-05-06
-Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, Sprint 25 subcontract closeout traceability evidence, Sprint 26 production IA cleanup evidence, and Sprint 27 factory dispatch MVP
+Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, Sprint 25 subcontract closeout traceability evidence, Sprint 26 production IA cleanup evidence, Sprint 27 factory dispatch MVP, and Sprint 28 factory execution tracking
 
 ---
 
@@ -29,7 +29,7 @@ Which document locks Vietnamese operational terminology?
 ## 2. Current Status Snapshot
 
 ```text
-Current line: Sprint 27 factory dispatch MVP for external-factory production.
+Current line: Sprint 28 factory execution tracking for external-factory production.
 Latest release tag: v0.19.0-vietnamese-ui-localization.
 Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
 Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
@@ -39,6 +39,7 @@ Sprint 24 implementation status: file 99 tracks the task board, file 100 locks t
 Sprint 25 implementation status: file 102 tracks the task board, file 103 locks the flow, and file 104 records changelog/evidence. PR #589 merged at a4b96c84 with GitHub CI green. Dev deploy passed on 2026-05-06 with migration 43 applied and full dev smoke passed. Browser smoke passed for Production Plan detail -> source-linked Subcontract Order visibility -> /subcontract source filter. No v0.25 tag exists.
 Sprint 26 implementation status: file 105 tracks the task board, file 106 locks the Production IA/external factory order detail flow, and file 107 records implementation evidence. PR #591 merged at 5e8003a9 with GitHub CI green; dev deploy, full dev smoke, and Production browser smoke passed on 2026-05-06. Production is the user-facing module; external factory/subcontract is the current production execution method. /subcontract remains a hidden technical/legacy execution route rather than a primary sidebar sibling. No v0.26 tag exists.
 Sprint 27 implementation status: file 108 tracks the task board, file 109 locks the factory dispatch flow, and file 110 records changelog/evidence. PR #593 merged at 3cc5852d with GitHub CI green. Dev deploy passed on 2026-05-06 with migration 44 applied and full dev smoke passed. Browser smoke passed for /production/factory-orders/:orderId factory dispatch create -> ready -> sent -> confirmed. Scope is manual factory dispatch pack creation, ready/sent evidence, and factory response on /production/factory-orders/:orderId. Email, Zalo, factory portal/API delivery, digital signatures, and internal MES production remain out of scope. No v0.27 tag exists.
+Sprint 28 implementation status: file 111 tracks the task board, file 112 locks the factory execution tracking flow, and file 113 tracks changelog/evidence. Scope is a production-facing current gate/worklist on /production/factory-orders/:orderId after factory dispatch confirmation. It links to deposit, material handover, sample, mass production, finished goods receipt, QC/claim, and final payment readiness through existing execution surfaces. Email, Zalo, factory portal/API delivery, and internal MES production remain out of scope. PR/CI/dev deploy/browser smoke evidence are pending until closeout. No v0.28 tag exists.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -47,7 +48,7 @@ Routes: English.
 Locale: vi-VN.
 Currency: VND.
 Timezone: Asia/Ho_Chi_Minh.
-Phase 1 production entrypoints: /production is planning/material-demand/PR-draft review, external-factory production navigation, factory order detail, and manual factory dispatch; /subcontract remains hidden route-addressable external factory execution.
+Phase 1 production entrypoints: /production is planning/material-demand/PR-draft review, external-factory production navigation, factory order detail, manual factory dispatch, and factory execution tracking; /subcontract remains hidden route-addressable external factory execution.
 Purchase flow boundary: /production opens generated Purchase Request; PO creation belongs to approved Purchase Request conversion, not direct production-page shortcut.
 Post-PO finance boundary: posted PO-linked goods receipts create supplier payable value only for QC PASS lines; supplier invoice and three-way match are locked in file 96 as separate vendor-bill evidence; AP payment readiness hard gate is locked in file 97.
 Warehouse document boundary: Stock Transfer is internal stock movement; Warehouse Issue Note is operational stock issue to factory/lab/manual destination; both are inventory documents, not costing documents.
@@ -101,11 +102,14 @@ For a new engineer or reviewer:
 29. 108_ERP_Coding_Task_Board_Sprint27_Factory_Dispatch_MyPham_v1.md
 30. 109_ERP_Factory_Dispatch_Flow_Sprint27_MyPham_v1.md
 31. 110_ERP_Sprint27_Changelog_Factory_Dispatch_MyPham_v1.md
-32. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
-33. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
-34. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
-35. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
-36. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
+32. 111_ERP_Coding_Task_Board_Sprint28_Factory_Execution_Tracking_MyPham_v1.md
+33. 112_ERP_Factory_Execution_Tracking_Flow_Sprint28_MyPham_v1.md
+34. 113_ERP_Sprint28_Changelog_Factory_Execution_Tracking_MyPham_v1.md
+35. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
+36. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
+37. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
+38. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
+39. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
 ```
 
 For product or operations review:
@@ -141,8 +145,11 @@ For product or operations review:
 28. 108 Sprint 27 factory dispatch task board
 29. 109 Factory dispatch flow
 30. 110 Sprint 27 changelog and evidence register
-31. 88 BOM / formula module design
-32. 78 Production runtime checklist
+31. 111 Sprint 28 factory execution tracking task board
+32. 112 Factory execution tracking flow
+33. 113 Sprint 28 changelog and evidence register
+34. 88 BOM / formula module design
+35. 78 Production runtime checklist
 ```
 
 ---
@@ -212,6 +219,7 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | Sprint 25 | `102_ERP_Coding_Task_Board_Sprint25_Subcontract_Finished_Goods_QC_Closeout_MyPham_v1.md` | `104_ERP_Sprint25_Changelog_Subcontract_Finished_Goods_QC_Closeout_MyPham_v1.md` | Production Plan to source-linked Subcontract Order closeout traceability |
 | Sprint 26 | `105_ERP_Coding_Task_Board_Sprint26_Production_IA_External_Factory_Order_Detail_MyPham_v1.md` | `107_ERP_Sprint26_Changelog_Production_IA_External_Factory_Order_Detail_MyPham_v1.md` | Production IA cleanup and external factory order detail |
 | Sprint 27 | `108_ERP_Coding_Task_Board_Sprint27_Factory_Dispatch_MyPham_v1.md` | `110_ERP_Sprint27_Changelog_Factory_Dispatch_MyPham_v1.md` | Manual factory dispatch pack, send evidence, and factory response |
+| Sprint 28 | `111_ERP_Coding_Task_Board_Sprint28_Factory_Execution_Tracking_MyPham_v1.md` | `113_ERP_Sprint28_Changelog_Factory_Execution_Tracking_MyPham_v1.md` | Factory execution tracker, current gate, next action, and post-dispatch worklist |
 
 ---
 
@@ -249,6 +257,9 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | `108_ERP_Coding_Task_Board_Sprint27_Factory_Dispatch_MyPham_v1.md` | Sprint 27 task board | Before changing manual factory dispatch pack scope, send evidence, or factory response behavior |
 | `109_ERP_Factory_Dispatch_Flow_Sprint27_MyPham_v1.md` | Factory dispatch flow design | Before changing the dispatch lifecycle between approved factory order and factory confirmation |
 | `110_ERP_Sprint27_Changelog_Factory_Dispatch_MyPham_v1.md` | Sprint 27 changelog and evidence | Before closing Sprint 27 or claiming factory dispatch implementation evidence |
+| `111_ERP_Coding_Task_Board_Sprint28_Factory_Execution_Tracking_MyPham_v1.md` | Sprint 28 task board | Before changing the post-dispatch factory execution tracker or current-gate rules |
+| `112_ERP_Factory_Execution_Tracking_Flow_Sprint28_MyPham_v1.md` | Factory execution tracking flow | Before changing deposit/material/sample/receipt/QC/payment tracking rules on factory order detail |
+| `113_ERP_Sprint28_Changelog_Factory_Execution_Tracking_MyPham_v1.md` | Sprint 28 changelog and evidence | Before closing Sprint 28 or claiming factory execution tracking implementation evidence |
 
 ---
 

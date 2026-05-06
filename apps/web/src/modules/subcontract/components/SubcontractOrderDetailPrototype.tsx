@@ -30,6 +30,10 @@ import {
   subcontractOperationsHref,
   type SubcontractOrderTimelineItem
 } from "../services/subcontractOrderTimeline";
+import {
+  buildSubcontractFactoryExecutionTracker,
+  type FactoryExecutionWorkItem
+} from "../services/subcontractFactoryExecutionTracker";
 import type {
   SubcontractFactoryDispatch,
   SubcontractFinalPaymentStatus,
@@ -82,6 +86,10 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
   const latestDispatch = dispatches[0];
   const timeline = useMemo(
     () => (order ? buildSubcontractOrderTimeline(order, { dispatchStatus: latestDispatch?.status }) : []),
+    [latestDispatch?.status, order]
+  );
+  const executionTracker = useMemo(
+    () => (order ? buildSubcontractFactoryExecutionTracker(order, { dispatchStatus: latestDispatch?.status }) : undefined),
     [latestDispatch?.status, order]
   );
   const sourcePlanHref = useMemo(() => (order ? productionFactoryOrderSourcePlanHref(order) : undefined), [order]);
@@ -206,7 +214,48 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
         </dl>
       </section>
 
-      <section className="erp-masterdata-list-card">
+      {executionTracker ? (
+        <section className="erp-masterdata-list-card" id="factory-execution-tracker">
+          <header className="erp-section-header">
+            <div>
+              <h2 className="erp-section-title">Theo dõi thực thi nhà máy</h2>
+              <p className="erp-page-description">
+                Một danh sách công việc cho lệnh này, từ gửi nhà máy, đặt cọc, bàn giao vật tư, duyệt mẫu, sản xuất, nhận hàng đến QC và thanh toán.
+              </p>
+            </div>
+            <StatusChip tone={executionTracker.currentGate.tone}>{factoryExecutionStatusLabel(executionTracker.currentGate.status)}</StatusChip>
+          </header>
+          <div className="erp-production-selected-plan-main">
+            <span className="erp-production-step-label">Việc cần xử lý</span>
+            <h3>{executionTracker.currentGate.title}</h3>
+            <p>{executionTracker.currentGate.description}</p>
+            <div className="erp-production-selected-plan-badges">
+              <StatusChip tone={executionTracker.currentGate.tone}>{factoryExecutionStatusLabel(executionTracker.currentGate.status)}</StatusChip>
+              <StatusChip tone="normal">{executionTracker.currentGate.metric}</StatusChip>
+            </div>
+            {executionTracker.currentGate.action ? (
+              executionTracker.currentGate.action.disabled ? (
+                <button className="erp-button erp-button--secondary erp-button--compact" type="button" disabled>
+                  {executionTracker.currentGate.action.label}
+                </button>
+              ) : (
+                <Link className="erp-button erp-button--secondary erp-button--compact" href={executionTracker.currentGate.action.href}>
+                  {executionTracker.currentGate.action.label}
+                </Link>
+              )
+            ) : null}
+          </div>
+          <DataTable
+            columns={factoryExecutionColumns}
+            rows={executionTracker.items}
+            getRowKey={(item) => item.id}
+            preserveColumnWidths
+            emptyState={<EmptyState title="Chưa có công việc thực thi" />}
+          />
+        </section>
+      ) : null}
+
+      <section className="erp-masterdata-list-card" id="factory-dispatch">
         <header className="erp-section-header">
           <div>
             <h2 className="erp-section-title">Gửi nhà máy</h2>
@@ -359,6 +408,51 @@ const materialLineColumns: DataTableColumn<SubcontractOrderMaterialLine>[] = [
     header: "Ghi chú",
     render: (line) => line.note ?? "-",
     width: "220px"
+  }
+];
+
+const factoryExecutionColumns: DataTableColumn<FactoryExecutionWorkItem>[] = [
+  {
+    key: "task",
+    header: "Công việc",
+    render: (item) => (
+      <span className="erp-masterdata-product-cell">
+        <strong>{item.title}</strong>
+        <small>{item.description}</small>
+      </span>
+    ),
+    width: "380px"
+  },
+  {
+    key: "status",
+    header: "Trạng thái",
+    render: (item) => <StatusChip tone={item.tone}>{factoryExecutionStatusLabel(item.status)}</StatusChip>,
+    width: "140px"
+  },
+  {
+    key: "metric",
+    header: "Số liệu",
+    render: (item) => item.metric,
+    width: "180px"
+  },
+  {
+    key: "action",
+    header: "Thao tác",
+    render: (item) =>
+      item.action ? (
+        item.action.disabled ? (
+          <button className="erp-button erp-button--secondary erp-button--compact" type="button" disabled>
+            {item.action.label}
+          </button>
+        ) : (
+          <Link className="erp-button erp-button--secondary erp-button--compact" href={item.action.href}>
+            {item.action.label}
+          </Link>
+        )
+      ) : (
+        "-"
+      ),
+    width: "160px"
   }
 ];
 
@@ -570,6 +664,20 @@ function timelineStatusLabel(status: SubcontractOrderTimelineItem["status"]) {
       return "Đang xử lý";
     case "blocked":
       return "Dừng";
+    case "pending":
+    default:
+      return "Chờ";
+  }
+}
+
+function factoryExecutionStatusLabel(status: FactoryExecutionWorkItem["status"]) {
+  switch (status) {
+    case "complete":
+      return "Đã xong";
+    case "current":
+      return "Đang xử lý";
+    case "blocked":
+      return "Đang chặn";
     case "pending":
     default:
       return "Chờ";
