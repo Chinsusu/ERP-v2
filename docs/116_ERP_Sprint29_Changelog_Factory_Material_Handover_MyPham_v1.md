@@ -6,7 +6,7 @@ Sprint: Sprint 29 - Factory Material Handover
 Document role: Changelog and verification evidence
 Version: v1
 Date: 2026-05-06
-Status: Implemented on branch; PR, CI, merge, dev deploy, and browser smoke pending
+Status: Completed and merged; CI, dev deploy, full dev smoke, and browser smoke passed
 
 ---
 
@@ -33,7 +33,7 @@ Frontend:
 ```text
 - Added a factory material handover readiness/payload service.
 - Added unit tests for handover readiness, deposit blocking, complete handover, and payload generation.
-- Added "Bàn giao vật tư cho nhà máy" to /production/factory-orders/:orderId.
+- Added the production-facing material handover section to /production/factory-orders/:orderId.
 - Added source warehouse, receiver, contact, vehicle, evidence, note, issue quantity, batch/lot, and bin inputs.
 - Added lot-required gating for pending lot-controlled material lines.
 - Updated tracker and timeline material actions to link to #factory-material-handover instead of hidden /subcontract transfer.
@@ -57,18 +57,25 @@ Local branch verification:
 - apps/web: subcontractFactoryMaterialHandover.test.ts passed
 - apps/web: subcontractFactoryExecutionTracker.test.ts passed
 - apps/web: subcontractOrderTimeline.test.ts passed
+- apps/web: vitest run --passWithNoTests passed, 56 files / 321 tests
 - apps/web: tsc --noEmit passed
+- apps/web: next build passed
+- apps/api: go test ./... passed
+- apps/api: go vet ./... passed
+- packages/openapi: contract-check passed, 90 routes / 48 envelopes
+- git diff --check passed
+- git diff --cached --check passed before runtime commit
 ```
 
-Pending before closeout:
+Remote/dev verification:
 
 ```text
-- Full web test/build
-- API regression checks
-- OpenAPI contract check
-- GitHub CI
-- Dev deploy
-- Browser smoke for /production/factory-orders/:orderId#factory-material-handover
+- GitHub PR #597 required-api, required-web, required-openapi, required-migration, web, and e2e checks passed.
+- PR #597 was manually merged into main at 7fd3b2d5.
+- Dev deploy passed with ./infra/scripts/deploy-dev-staging.sh dev on 2026-05-06.
+- Full dev smoke passed during deploy.
+- Browser smoke passed on /production/factory-orders/sco-s16-02-01-1777715855392710950#factory-material-handover.
+- Browser smoke verified the handover section DOM, tracker/timeline hash link, order visibility, and expected input/select/button controls.
 ```
 
 ---
@@ -76,13 +83,15 @@ Pending before closeout:
 ## 4. Evidence
 
 ```text
-PR number: pending
-Merge commit: pending
-GitHub CI: pending
-Dev deploy: pending
-Full dev smoke: pending
-Browser smoke: pending
-Screenshot: pending
+Runtime branch: codex/s29-factory-material-handover
+Runtime commit: c05813da
+PR number: #597
+Merge commit: 7fd3b2d5
+GitHub CI: passed
+Dev deploy: passed
+Full dev smoke: passed
+Browser smoke: passed
+Screenshot: output/playwright/s29-factory-material-handover.png
 ```
 
 ---
