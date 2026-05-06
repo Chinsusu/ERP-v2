@@ -6,7 +6,7 @@ Sprint: 32
 Change type: Runtime UI bridge and QC closeout helper
 Version: v1
 Date: 2026-05-06
-Status: Implemented on branch; verification and PR pending
+Status: PR CI passed; manual merge and post-merge dev smoke pending
 
 ---
 
@@ -55,7 +55,7 @@ No internal MES/work-center production is included.
 Runtime PR:
 
 ```text
-PR: pending
+PR: #604 Add factory finished goods QC closeout
 Merge commit: pending
 ```
 
@@ -66,13 +66,19 @@ git diff --check: pass
 Targeted Vitest: blocked locally; pnpm is not installed and direct node/vitest execution returns Windows "Access is denied"
 make web-test / web-lint / api-test: blocked locally because make is not installed
 go test ./...: blocked locally because go is not installed
-Full web/API/OpenAPI verification: pending GitHub CI
+Full web/API/OpenAPI verification: completed through GitHub CI for PR #604
 ```
 
 GitHub CI:
 
 ```text
-pending
+PR #604 required checks passed:
+- required-api
+- required-web
+- required-openapi
+- required-migration
+- web
+- e2e
 ```
 
 Dev deploy and smoke:
