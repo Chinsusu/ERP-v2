@@ -452,6 +452,13 @@ type subcontractPaymentMilestoneResultResponse struct {
 	PreviousStatus   string                              `json:"previous_status"`
 	CurrentStatus    string                              `json:"current_status"`
 	AuditLogID       string                              `json:"audit_log_id,omitempty"`
+	SupplierPayable  *subcontractSupplierPayableResponse `json:"supplier_payable,omitempty"`
+}
+
+type subcontractSupplierPayableResponse struct {
+	PayableID  string `json:"payable_id"`
+	PayableNo  string `json:"payable_no"`
+	AuditLogID string `json:"audit_log_id,omitempty"`
 }
 
 type subcontractMaterialTransferLineResponse struct {
@@ -2238,6 +2245,21 @@ func newSubcontractPaymentMilestoneResultResponse(
 		PreviousStatus:   string(result.PreviousStatus),
 		CurrentStatus:    string(result.CurrentStatus),
 		AuditLogID:       result.AuditLogID,
+		SupplierPayable:  newSubcontractSupplierPayableResponse(result.SupplierPayable),
+	}
+}
+
+func newSubcontractSupplierPayableResponse(
+	payable productionapp.SubcontractPayableCreationResult,
+) *subcontractSupplierPayableResponse {
+	if payable.PayableID == "" && payable.PayableNo == "" {
+		return nil
+	}
+
+	return &subcontractSupplierPayableResponse{
+		PayableID:  payable.PayableID,
+		PayableNo:  payable.PayableNo,
+		AuditLogID: payable.AuditLogID,
 	}
 }
 

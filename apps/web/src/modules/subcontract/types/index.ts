@@ -572,6 +572,12 @@ export type SubcontractPaymentMilestone = {
   version: number;
 };
 
+export type SubcontractSupplierPayableHandoff = {
+  payableId: string;
+  payableNo: string;
+  auditLogId?: string;
+};
+
 export type RecordSubcontractDepositInput = {
   order: SubcontractOrder;
   milestoneId?: string;
@@ -596,6 +602,7 @@ export type MarkSubcontractFinalPaymentReadyInput = {
 export type SubcontractPaymentMilestoneResult = {
   order: SubcontractOrder;
   milestone: SubcontractPaymentMilestone;
+  supplierPayable?: SubcontractSupplierPayableHandoff;
   auditLog: AuditLogItem;
   auditLogId?: string;
 };

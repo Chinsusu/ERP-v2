@@ -216,6 +216,13 @@ type SubcontractPaymentMilestoneApiResult = {
   previous_status: SubcontractOrderStatus;
   current_status: SubcontractOrderStatus;
   audit_log_id?: string;
+  supplier_payable?: SubcontractSupplierPayableHandoffApi;
+};
+
+type SubcontractSupplierPayableHandoffApi = {
+  payable_id: string;
+  payable_no: string;
+  audit_log_id?: string;
 };
 
 type IssueSubcontractMaterialsApiLineRequest = {
@@ -1690,6 +1697,13 @@ function fromApiPaymentMilestoneResult(
   return {
     order,
     milestone,
+    supplierPayable: result.supplier_payable
+      ? {
+          payableId: result.supplier_payable.payable_id,
+          payableNo: result.supplier_payable.payable_no,
+          auditLogId: result.supplier_payable.audit_log_id
+        }
+      : undefined,
     auditLog,
     auditLogId: result.audit_log_id
   };
@@ -3442,6 +3456,11 @@ function markPrototypeSubcontractFinalPaymentReady(
   return {
     order,
     milestone,
+    supplierPayable: {
+      payableId: `ap-${milestone.id}`,
+      payableNo: `AP-${milestone.milestoneNo}`,
+      auditLogId: `audit-ap-${milestone.id}`
+    },
     auditLog,
     auditLogId: auditLog.id
   };

@@ -4030,6 +4030,12 @@ export interface components {
             previous_status: components["schemas"]["SubcontractOrderStatus"];
             current_status: components["schemas"]["SubcontractOrderStatus"];
             audit_log_id?: string;
+            supplier_payable?: components["schemas"]["SubcontractSupplierPayableHandoff"];
+        };
+        SubcontractSupplierPayableHandoff: {
+            payable_id: string;
+            payable_no: string;
+            audit_log_id?: string;
         };
         SubcontractPaymentMilestone: {
             id: string;

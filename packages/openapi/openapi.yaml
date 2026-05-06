@@ -9799,6 +9799,20 @@ components:
           $ref: "#/components/schemas/SubcontractOrderStatus"
         audit_log_id:
           type: string
+        supplier_payable:
+          $ref: "#/components/schemas/SubcontractSupplierPayableHandoff"
+    SubcontractSupplierPayableHandoff:
+      type: object
+      required:
+        - payable_id
+        - payable_no
+      properties:
+        payable_id:
+          type: string
+        payable_no:
+          type: string
+        audit_log_id:
+          type: string
     SubcontractPaymentMilestone:
       type: object
       required:
