@@ -6,7 +6,7 @@ Sprint: 32
 Scope: Factory finished goods QC closeout
 Version: v1
 Date: 2026-05-06
-Status: PR CI passed; manual merge and post-merge dev smoke pending
+Status: Completed and merged; dev deploy and browser smoke passed
 
 ---
 

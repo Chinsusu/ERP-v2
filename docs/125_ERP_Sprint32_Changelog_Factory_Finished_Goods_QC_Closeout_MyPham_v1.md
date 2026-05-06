@@ -6,7 +6,7 @@ Sprint: 32
 Change type: Runtime UI bridge and QC closeout helper
 Version: v1
 Date: 2026-05-06
-Status: PR CI passed; manual merge and post-merge dev smoke pending
+Status: Completed and merged; dev deploy and browser smoke passed
 
 ---
 
@@ -56,7 +56,7 @@ Runtime PR:
 
 ```text
 PR: #604 Add factory finished goods QC closeout
-Merge commit: pending
+Merge commit: 90cae3fb
 ```
 
 Local verification:
@@ -84,13 +84,17 @@ PR #604 required checks passed:
 Dev deploy and smoke:
 
 ```text
-pending
+deploy-dev-staging.sh dev: pass
+Full ERP dev smoke: pass
+Browser smoke: pass
+Browser smoke target: /production/factory-orders/sco-s16-08-03-smoke-0066#factory-finished-goods-qc-closeout
+Screenshot evidence: output/playwright/s32-factory-finished-goods-qc-closeout.png
 ```
 
 ---
 
 ## 5. Release Tag
 
-No `v0.32` tag is planned by this sprint branch.
+No `v0.32` tag is planned by this sprint.
 
 Sprint 32 is a Phase 1 runtime milestone, but release tagging remains held until target staging/pilot readiness evidence is explicitly approved.
