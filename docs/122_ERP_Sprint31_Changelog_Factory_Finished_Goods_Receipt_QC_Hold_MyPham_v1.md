@@ -6,7 +6,7 @@ Sprint: 31
 Change type: Runtime UI bridge, tracker/timeline link cleanup, receipt helper tests
 Version: v1
 Date: 2026-05-06
-Status: Draft; PR, CI, merge, dev deploy, and browser smoke pending
+Status: Completed and merged
 
 ---
 
@@ -48,7 +48,15 @@ The section receives finished goods from the factory into QC hold using the exis
 
 ## 4. Verification Evidence
 
-Current branch evidence:
+Runtime PR:
+
+```text
+PR: #601 Add factory finished goods receipt gate
+Merge commit: 7b7952fb
+Commit: ea70a461 Add factory finished goods receipt gate
+```
+
+Local verification:
 
 ```text
 Targeted Vitest:
@@ -57,24 +65,52 @@ Targeted Vitest:
 - subcontractOrderTimeline
 Status: pass locally on 2026-05-06
 
+Full web test:
+- vitest run --passWithNoTests
+Status: pass locally on 2026-05-06
+
 Web typecheck:
 - tsc --noEmit
 Status: pass locally on 2026-05-06
+
+Web build:
+- next build
+Status: pass locally on 2026-05-06
+
+API:
+- go test ./...
+- go vet ./...
+Status: pass locally on 2026-05-06
+
+OpenAPI:
+- node packages/openapi/contract-check.mjs
+Status: pass locally on 2026-05-06
 ```
 
-Pending before completion:
+GitHub CI:
 
 ```text
-Full web test/build
-API test/vet if code-change gate requires it
-OpenAPI contract validation
-GitHub CI
-Manual diff review
-Manual merge
-Dev deploy
-Full dev smoke
-Browser smoke for #factory-finished-goods-receipt
-Screenshot evidence
+e2e: pass
+required-api: pass
+required-web: pass
+required-openapi: pass
+required-migration: pass
+web: pass
+```
+
+Dev deploy and smoke:
+
+```text
+Dev deploy: ./infra/scripts/deploy-dev-staging.sh dev passed on 2026-05-06
+Full dev smoke: passed
+Browser smoke: /production/factory-orders/sco-s16-08-03-smoke-0064#factory-finished-goods-receipt passed
+Browser smoke asserted:
+- receipt section exists
+- hash route resolves
+- receipt controls render
+- QC hold action button exists
+- tracker/timeline link to #factory-finished-goods-receipt exists
+Screenshot evidence: output/playwright/s31-factory-finished-goods-receipt.png
 ```
 
 ---

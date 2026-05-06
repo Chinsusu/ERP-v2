@@ -6,7 +6,7 @@ Sprint: 31
 Scope: Factory finished goods receipt to QC hold
 Version: v1
 Date: 2026-05-06
-Status: In progress on PR branch
+Status: Completed and merged to main
 
 ---
 
@@ -119,3 +119,18 @@ Post-merge dev verification:
 - Email/Zalo/factory portal/API dispatch.
 - Internal MES, routing, work centers, labor costing, and internal production shop-floor tracking.
 - Schema or OpenAPI redesign beyond existing receipt contract reuse.
+
+---
+
+## 7. Completion Evidence
+
+```text
+Runtime PR: #601 Add factory finished goods receipt gate
+Merge commit: 7b7952fb
+GitHub CI: e2e, required-api, required-web, required-openapi, required-migration, web passed
+Dev deploy: ./infra/scripts/deploy-dev-staging.sh dev passed on 2026-05-06
+Full dev smoke: passed
+Browser smoke: /production/factory-orders/sco-s16-08-03-smoke-0064#factory-finished-goods-receipt passed
+Screenshot evidence: output/playwright/s31-factory-finished-goods-receipt.png
+Release tag: no v0.31 tag created
+```
