@@ -156,7 +156,7 @@ describe("inventorySnapshotReportService", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/reports/inventory-snapshot?business_date=2026-04-30&warehouse_id=wh-hcm&status=quarantine&item_id=item-serum-30ml&low_stock_threshold=10&expiry_warning_days=45",
+      "/api/v1/reports/inventory-snapshot?business_date=2026-04-30&warehouse_id=wh-hcm&status=quarantine&item_id=item-serum-30ml&low_stock_threshold=10&expiry_warning_days=45",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"
@@ -207,7 +207,7 @@ describe("inventorySnapshotReportService", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/reports/inventory-snapshot/export.csv?business_date=2026-04-30&warehouse_id=wh-hcm&status=quarantine&item_id=item-serum-30ml&low_stock_threshold=10&expiry_warning_days=45",
+      "/api/v1/reports/inventory-snapshot/export.csv?business_date=2026-04-30&warehouse_id=wh-hcm&status=quarantine&item_id=item-serum-30ml&low_stock_threshold=10&expiry_warning_days=45",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"

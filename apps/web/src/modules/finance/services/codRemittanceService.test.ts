@@ -67,7 +67,7 @@ describe("codRemittanceService", () => {
 
     const remittances = await getCODRemittances({ search: "COD-API", status: "draft" });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/cod-remittances?q=COD-API&status=draft", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/cod-remittances?q=COD-API&status=draft", {
       headers: {
         Authorization: "Bearer local-dev-access-token"
       }

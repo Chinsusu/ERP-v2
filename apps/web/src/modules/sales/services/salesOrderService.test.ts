@@ -69,7 +69,7 @@ describe("salesOrderService", () => {
     const orders = await getSalesOrders({ search: "SO-API", warehouseId: "wh-hcm-fg" });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/sales-orders?q=SO-API&warehouse_id=wh-hcm-fg",
+      "/api/v1/sales-orders?q=SO-API&warehouse_id=wh-hcm-fg",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"

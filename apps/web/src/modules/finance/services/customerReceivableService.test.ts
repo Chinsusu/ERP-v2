@@ -64,7 +64,7 @@ describe("customerReceivableService", () => {
 
     const receivables = await getCustomerReceivables({ search: "AR-API", status: "open" });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/customer-receivables?q=AR-API&status=open", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/customer-receivables?q=AR-API&status=open", {
       headers: {
         Authorization: "Bearer local-dev-access-token"
       }

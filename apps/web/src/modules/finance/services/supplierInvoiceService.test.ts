@@ -67,7 +67,7 @@ describe("supplierInvoiceService", () => {
     const invoices = await getSupplierInvoices({ payableId: "ap-api-1", search: "INV-API", status: "matched" });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/supplier-invoices?q=INV-API&status=matched&payable_id=ap-api-1",
+      "/api/v1/supplier-invoices?q=INV-API&status=matched&payable_id=ap-api-1",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"

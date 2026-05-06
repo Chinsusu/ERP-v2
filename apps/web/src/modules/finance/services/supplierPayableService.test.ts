@@ -66,7 +66,7 @@ describe("supplierPayableService", () => {
 
     const payables = await getSupplierPayables({ search: "AP-API", status: "open" });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/supplier-payables?q=AP-API&status=open", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/supplier-payables?q=AP-API&status=open", {
       headers: {
         Authorization: "Bearer local-dev-access-token"
       }

@@ -325,7 +325,7 @@ describe("carrierManifestService", () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      "http://localhost:8080/api/v1/shipping/manifests?warehouse_id=wh-hcm&date=2026-04-26",
+      "/api/v1/shipping/manifests?warehouse_id=wh-hcm&date=2026-04-26",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"
@@ -334,7 +334,7 @@ describe("carrierManifestService", () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      "http://localhost:8080/api/v1/shipping/manifests/manifest-api-1/ready",
+      "/api/v1/shipping/manifests/manifest-api-1/ready",
       {
         method: "POST",
         headers: {
@@ -346,7 +346,7 @@ describe("carrierManifestService", () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
-      "http://localhost:8080/api/v1/shipping/manifests/manifest-api-1/shipments/ship-api-1",
+      "/api/v1/shipping/manifests/manifest-api-1/shipments/ship-api-1",
       {
         method: "DELETE",
         headers: {
@@ -356,7 +356,7 @@ describe("carrierManifestService", () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       4,
-      "http://localhost:8080/api/v1/shipping/manifests/manifest-api-1/scan",
+      "/api/v1/shipping/manifests/manifest-api-1/scan",
       {
         method: "POST",
         headers: {
@@ -373,7 +373,7 @@ describe("carrierManifestService", () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       5,
-      "http://localhost:8080/api/v1/shipping/manifests/manifest-api-1/confirm-handover",
+      "/api/v1/shipping/manifests/manifest-api-1/confirm-handover",
       {
         method: "POST",
         headers: {

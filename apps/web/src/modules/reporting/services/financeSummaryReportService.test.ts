@@ -164,7 +164,7 @@ describe("financeSummaryReportService", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/reports/finance-summary?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08",
+      "/api/v1/reports/finance-summary?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"
@@ -198,7 +198,7 @@ describe("financeSummaryReportService", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/reports/finance-summary/export.csv?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08",
+      "/api/v1/reports/finance-summary/export.csv?from_date=2026-04-30&to_date=2026-05-08&business_date=2026-05-08",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"

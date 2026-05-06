@@ -115,7 +115,7 @@ describe("operationsDailyReportService", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/reports/operations-daily?business_date=2026-04-30&warehouse_id=wh-hcm&status=blocked",
+      "/api/v1/reports/operations-daily?business_date=2026-04-30&warehouse_id=wh-hcm&status=blocked",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"
@@ -157,7 +157,7 @@ describe("operationsDailyReportService", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/reports/operations-daily/export.csv?from_date=2026-04-30&to_date=2026-04-30&business_date=2026-04-30&warehouse_id=wh-hcm&status=pending",
+      "/api/v1/reports/operations-daily/export.csv?from_date=2026-04-30&to_date=2026-04-30&business_date=2026-04-30&warehouse_id=wh-hcm&status=pending",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"
