@@ -142,7 +142,7 @@ describe("supplierRejectionService", () => {
     const rows = await getSupplierRejections({ warehouseId: "wh-hcm-fg", status: "draft" });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/supplier-rejections?warehouse_id=wh-hcm-fg&status=draft",
+      "/api/v1/supplier-rejections?warehouse_id=wh-hcm-fg&status=draft",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"

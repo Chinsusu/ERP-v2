@@ -116,7 +116,7 @@ describe("inboundQCService", () => {
 
     const rows = await getInboundQCInspections({ warehouseId: "wh-hcm-fg" });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/inbound-qc-inspections?warehouse_id=wh-hcm-fg", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/inbound-qc-inspections?warehouse_id=wh-hcm-fg", {
       headers: {
         Authorization: "Bearer local-dev-access-token"
       }

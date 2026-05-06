@@ -85,7 +85,7 @@ describe("purchaseOrderService", () => {
     const orders = await getPurchaseOrders({ search: "PO-API", warehouseId: "wh-hcm-rm" });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/purchase-orders?search=PO-API&warehouse_id=wh-hcm-rm",
+      "/api/v1/purchase-orders?search=PO-API&warehouse_id=wh-hcm-rm",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"

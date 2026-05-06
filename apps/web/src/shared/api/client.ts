@@ -1,7 +1,7 @@
 import type { components, paths } from "./generated/schema";
 import { resolveApiAccessToken } from "../auth/clientSessionToken";
 
-const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+const defaultApiBaseUrl = "/api/v1";
 
 export type ApiErrorCode = components["schemas"]["ErrorCode"];
 
@@ -64,7 +64,7 @@ export async function apiGet<Path extends ApiGetPath>(
   path: Path,
   options: ApiRequestOptions<Path> = {}
 ): Promise<ApiGetResponse<Path>> {
-  const response = await fetch(`${baseUrl}${path}${queryString(options.query)}`, {
+  const response = await fetch(apiUrl(path, options.query), {
     headers: authHeaders(options)
   });
   if (!response.ok) {
@@ -76,7 +76,7 @@ export async function apiGet<Path extends ApiGetPath>(
 }
 
 export async function apiGetRaw<TData>(path: string, options: ApiWriteOptions = {}): Promise<TData> {
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(apiUrl(path), {
     headers: authHeaders(options)
   });
   if (!response.ok) {
@@ -91,7 +91,7 @@ export async function apiGetBlob(
   path: string,
   options: ApiWriteOptions = {}
 ): Promise<{ blob: Blob; filename?: string }> {
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(apiUrl(path), {
     headers: authHeaders(options)
   });
   if (!response.ok) {
@@ -117,7 +117,7 @@ export async function apiPostForm<TData>(
   body: FormData,
   options: ApiWriteOptions = {}
 ): Promise<TData> {
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(apiUrl(path), {
     method: "POST",
     headers: authHeaders(options),
     body
@@ -139,7 +139,7 @@ export async function apiPatch<TData, TBody>(
 }
 
 export async function apiDelete<TData>(path: string, options: ApiWriteOptions = {}): Promise<TData> {
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(apiUrl(path), {
     method: "DELETE",
     headers: authHeaders(options)
   });
@@ -168,7 +168,7 @@ async function apiWrite<TData, TBody>(
   body: TBody,
   options: ApiWriteOptions
 ): Promise<TData> {
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(apiUrl(path), {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -182,6 +182,45 @@ async function apiWrite<TData, TBody>(
 
   const payload = (await response.json()) as ApiSuccessResponse<TData>;
   return payload.data;
+}
+
+function apiUrl(path: string, query?: unknown) {
+  return `${resolveApiBaseUrl()}${path}${queryString(query)}`;
+}
+
+function resolveApiBaseUrl() {
+  const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || defaultApiBaseUrl;
+  const baseUrl = trimTrailingSlash(configuredBaseUrl);
+
+  if (currentLocationProtocol() === "https:" && baseUrl.toLowerCase().startsWith("http://")) {
+    try {
+      return normalizeApiBasePath(new URL(baseUrl).pathname);
+    } catch {
+      return defaultApiBaseUrl;
+    }
+  }
+
+  return baseUrl;
+}
+
+function normalizeApiBasePath(pathname: string) {
+  const path = trimTrailingSlash(pathname.trim() || defaultApiBaseUrl);
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
+function trimTrailingSlash(value: string) {
+  return value.length > 1 && value.endsWith("/") ? value.slice(0, -1) : value;
+}
+
+function currentLocationProtocol() {
+  if (typeof window !== "undefined") {
+    return window.location.protocol;
+  }
+  if (typeof globalThis.location !== "undefined") {
+    return globalThis.location.protocol;
+  }
+
+  return "";
 }
 
 function queryString(query: unknown) {

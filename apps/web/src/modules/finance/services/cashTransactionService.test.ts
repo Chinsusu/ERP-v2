@@ -64,7 +64,7 @@ describe("cashTransactionService", () => {
 
     const transactions = await getCashTransactions({ search: "API", direction: "cash_in", status: "posted" });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/cash-transactions?q=API&status=posted&direction=cash_in", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/cash-transactions?q=API&status=posted&direction=cash_in", {
       headers: {
         Authorization: "Bearer local-dev-access-token"
       }

@@ -80,7 +80,7 @@ describe("financeDashboardService", () => {
 
     const dashboard = await getFinanceDashboard({ businessDate: "2026-05-08" });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/finance/dashboard?business_date=2026-05-08", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/finance/dashboard?business_date=2026-05-08", {
       headers: {
         Authorization: "Bearer local-dev-access-token"
       }

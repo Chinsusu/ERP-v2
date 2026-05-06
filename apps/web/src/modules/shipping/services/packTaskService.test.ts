@@ -115,7 +115,7 @@ describe("packTaskService", () => {
     const tasks = await getPackTasks({ warehouseId: "wh-hcm-fg", status: "in_progress" });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/pack-tasks?warehouse_id=wh-hcm-fg&status=in_progress",
+      "/api/v1/pack-tasks?warehouse_id=wh-hcm-fg&status=in_progress",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"

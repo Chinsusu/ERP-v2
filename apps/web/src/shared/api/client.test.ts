@@ -1,9 +1,14 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, apiDelete, apiGet, apiGetBlob } from "./client";
 
 describe("apiGet", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("unwraps successful API envelopes", async () => {
@@ -39,7 +44,37 @@ describe("apiGet", () => {
 
     await apiGet("/me", { accessToken: "local-dev-access-token" });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/me", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/me", {
+      headers: {
+        Authorization: "Bearer local-dev-access-token"
+      }
+    });
+  });
+
+  it("keeps API requests same-origin on HTTPS pages when the configured API base is insecure", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: [],
+          request_id: "req-test"
+        }),
+        { status: 200 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("location", { protocol: "https:" });
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://10.1.1.120:8088/api/v1");
+
+    await apiGet("/products", {
+      accessToken: "local-dev-access-token",
+      query: {
+        page: 1,
+        page_size: 100
+      }
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/products?page=1&page_size=100", {
       headers: {
         Authorization: "Bearer local-dev-access-token"
       }
@@ -96,7 +131,7 @@ describe("apiGet", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/inventory/available-stock?warehouse_id=wh-hcm&sku=SERUM-30ML",
+      "/api/v1/inventory/available-stock?warehouse_id=wh-hcm&sku=SERUM-30ML",
       {
         headers: {
           Authorization: "Bearer local-dev-access-token"
@@ -123,7 +158,7 @@ describe("apiGet", () => {
     })).resolves.toEqual({ id: "manifest-api-1" });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/shipping/manifests/manifest-api-1/shipments/ship-api-1",
+      "/api/v1/shipping/manifests/manifest-api-1/shipments/ship-api-1",
       {
         method: "DELETE",
         headers: {
@@ -149,7 +184,7 @@ describe("apiGet", () => {
       accessToken: "local-dev-access-token"
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/reports/inventory-snapshot/export.csv", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/reports/inventory-snapshot/export.csv", {
       headers: {
         Authorization: "Bearer local-dev-access-token"
       }
