@@ -178,7 +178,10 @@ Scope is a production-facing material handover section on /production/factory-or
 The section uses existing subcontract issue-materials runtime to record warehouse/source, receiver, batch/lot, bin, transfer evidence, stock movements, and order status advancement.
 Tracker and timeline material actions now point to #factory-material-handover instead of hidden /subcontract transfer.
 No new backend API, email, Zalo, supplier portal/API, warehouse issue redesign, or internal MES behavior is included.
-Implementation PR, CI, dev deploy, and browser smoke evidence are pending until Sprint 29 closeout.
+PR #597 merged at 7fd3b2d5 with GitHub CI green.
+Dev deploy passed on 2026-05-06; full dev smoke passed.
+Browser smoke passed for /production/factory-orders/sco-s16-02-01-1777715855392710950#factory-material-handover.
+Screenshot evidence: output/playwright/s29-factory-material-handover.png.
 No v0.29 tag has been created.
 ```
 
