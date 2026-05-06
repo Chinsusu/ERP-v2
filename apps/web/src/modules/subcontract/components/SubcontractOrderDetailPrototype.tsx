@@ -12,6 +12,7 @@ import {
 } from "@/shared/design-system/components";
 import { formatProductionPlanQuantity } from "@/modules/production-planning/services/productionPlanService";
 import {
+  acceptSubcontractFinishedGoods,
   createSubcontractFactoryDispatch,
   formatSubcontractFactoryDispatchStatus,
   formatSubcontractDepositStatus,
@@ -21,9 +22,11 @@ import {
   issueSubcontractMaterials,
   markSubcontractFactoryDispatchReady,
   markSubcontractFactoryDispatchSent,
+  partialAcceptSubcontractFinishedGoods,
   approveSubcontractSample,
   recordSubcontractFactoryDispatchResponse,
   rejectSubcontractSample,
+  reportSubcontractFactoryDefect,
   receiveSubcontractFinishedGoods,
   startMassProductionSubcontractOrder,
   submitSubcontractSample,
@@ -59,8 +62,15 @@ import {
   buildSubcontractFactoryFinishedGoodsReceipt,
   type FactoryFinishedGoodsReceiptDraft
 } from "../services/subcontractFactoryFinishedGoodsReceipt";
+import {
+  buildFactoryFinishedGoodsQcAcceptInput,
+  buildFactoryFinishedGoodsQcPartialAcceptInput,
+  buildFactoryFinishedGoodsQcRejectInput,
+  buildSubcontractFactoryFinishedGoodsQcCloseout
+} from "../services/subcontractFactoryFinishedGoodsQcCloseout";
 import type {
   SubcontractFactoryDispatch,
+  SubcontractFactoryClaimSeverity,
   SubcontractFinalPaymentStatus,
   SubcontractFinishedGoodsPackagingStatus,
   SubcontractFinishedGoodsReceipt,
@@ -128,6 +138,20 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
   const [receiptError, setReceiptError] = useState<string | undefined>();
   const [receiptMessage, setReceiptMessage] = useState<string | undefined>();
   const [latestFinishedGoodsReceipt, setLatestFinishedGoodsReceipt] = useState<SubcontractFinishedGoodsReceipt>();
+  const [qcAcceptedQty, setQcAcceptedQty] = useState("0");
+  const [qcRejectedQty, setQcRejectedQty] = useState("0");
+  const [qcAcceptedBy, setQcAcceptedBy] = useState("qc-lead");
+  const [qcOpenedBy, setQcOpenedBy] = useState("qa-lead");
+  const [qcOwnerId, setQcOwnerId] = useState("factory-owner");
+  const [qcReasonCode, setQcReasonCode] = useState("QUALITY_FAIL");
+  const [qcReason, setQcReason] = useState("Thành phẩm không đạt QC sau khi nhận từ nhà máy");
+  const [qcSeverity, setQcSeverity] = useState<SubcontractFactoryClaimSeverity>("P2");
+  const [qcEvidenceName, setQcEvidenceName] = useState("");
+  const [qcEvidenceNote, setQcEvidenceNote] = useState("");
+  const [qcNote, setQcNote] = useState("");
+  const [qcBusy, setQcBusy] = useState(false);
+  const [qcError, setQcError] = useState<string | undefined>();
+  const [qcMessage, setQcMessage] = useState<string | undefined>();
 
   useEffect(() => {
     let active = true;
@@ -175,6 +199,10 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
     () => (order ? buildSubcontractFactoryFinishedGoodsReceipt(order) : undefined),
     [order]
   );
+  const finishedGoodsQcGate = useMemo(
+    () => (order ? buildSubcontractFactoryFinishedGoodsQcCloseout(order, latestFinishedGoodsReceipt) : undefined),
+    [latestFinishedGoodsReceipt, order]
+  );
   const sourcePlanHref = useMemo(() => (order ? productionFactoryOrderSourcePlanHref(order) : undefined), [order]);
   const missingLotCount = useMemo(
     () =>
@@ -205,6 +233,34 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
     isPositiveQuantity(receiptDraft.receiveQty) &&
     isWithinQuantity(receiptDraft.receiveQty, finishedGoodsReceiptGate?.remainingQty) &&
     !receiptBusy;
+  const qcSplitQty = useMemo(() => quantitySum(qcAcceptedQty, qcRejectedQty), [qcAcceptedQty, qcRejectedQty]);
+  const qcSplitMatchesRemaining = Boolean(
+    finishedGoodsQcGate?.remainingQcQty && isQuantityEqual(qcSplitQty, finishedGoodsQcGate.remainingQcQty)
+  );
+  const canAcceptFinishedGoodsQc =
+    Boolean(finishedGoodsQcGate?.canCloseout) && qcAcceptedBy.trim() !== "" && !qcBusy;
+  const canPartialAcceptFinishedGoodsQc =
+    Boolean(finishedGoodsQcGate?.canCloseout) &&
+    Boolean(latestFinishedGoodsReceipt) &&
+    isPositiveQuantity(qcAcceptedQty) &&
+    isPositiveQuantity(qcRejectedQty) &&
+    qcSplitMatchesRemaining &&
+    qcAcceptedBy.trim() !== "" &&
+    qcOpenedBy.trim() !== "" &&
+    qcOwnerId.trim() !== "" &&
+    qcReasonCode.trim() !== "" &&
+    qcReason.trim() !== "" &&
+    qcEvidenceName.trim() !== "" &&
+    !qcBusy;
+  const canRejectFinishedGoodsQc =
+    Boolean(finishedGoodsQcGate?.canCloseout) &&
+    Boolean(latestFinishedGoodsReceipt) &&
+    qcOpenedBy.trim() !== "" &&
+    qcOwnerId.trim() !== "" &&
+    qcReasonCode.trim() !== "" &&
+    qcReason.trim() !== "" &&
+    qcEvidenceName.trim() !== "" &&
+    !qcBusy;
 
   useEffect(() => {
     if (!order) {
@@ -256,6 +312,16 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
       note: ""
     });
   }, [order?.id, order?.version]);
+
+  useEffect(() => {
+    if (!finishedGoodsQcGate) {
+      return;
+    }
+    setQcAcceptedQty(compactQuantity(finishedGoodsQcGate.remainingQcQty));
+    setQcRejectedQty("0");
+    setQcError(undefined);
+    setQcMessage(undefined);
+  }, [finishedGoodsQcGate?.receiptNo, finishedGoodsQcGate?.remainingQcQty, order?.id]);
 
   const reloadFactoryDispatches = async (nextOrder?: SubcontractOrder) => {
     const targetOrder = nextOrder ?? order;
@@ -465,6 +531,105 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
       setReceiptError(errorText(cause));
     } finally {
       setReceiptBusy(false);
+    }
+  };
+
+  const handleFactoryFinishedGoodsQcAccept = async () => {
+    if (!order) {
+      return;
+    }
+
+    setQcBusy(true);
+    setQcError(undefined);
+    setQcMessage(undefined);
+    try {
+      const result = await acceptSubcontractFinishedGoods(
+        buildFactoryFinishedGoodsQcAcceptInput({
+          order,
+          latestReceipt: latestFinishedGoodsReceipt,
+          acceptedBy: qcAcceptedBy,
+          acceptedAt: new Date().toISOString(),
+          note: qcNote
+        })
+      );
+
+      setOrder(result.order);
+      setQcMessage(`Đã QC đạt ${result.stockMovements.length} dòng và chuyển thành tồn khả dụng.`);
+    } catch (cause) {
+      setQcError(errorText(cause));
+    } finally {
+      setQcBusy(false);
+    }
+  };
+
+  const handleFactoryFinishedGoodsQcPartialAccept = async () => {
+    if (!order || !latestFinishedGoodsReceipt) {
+      return;
+    }
+
+    setQcBusy(true);
+    setQcError(undefined);
+    setQcMessage(undefined);
+    try {
+      const result = await partialAcceptSubcontractFinishedGoods(
+        buildFactoryFinishedGoodsQcPartialAcceptInput({
+          order,
+          latestReceipt: latestFinishedGoodsReceipt,
+          acceptedQty: qcAcceptedQty,
+          rejectedQty: qcRejectedQty,
+          acceptedBy: qcAcceptedBy,
+          acceptedAt: new Date().toISOString(),
+          openedBy: qcOpenedBy,
+          openedAt: new Date().toISOString(),
+          ownerId: qcOwnerId,
+          reasonCode: qcReasonCode,
+          reason: qcReason,
+          severity: qcSeverity,
+          evidenceFileName: qcEvidenceName,
+          evidenceNote: qcEvidenceNote,
+          note: qcNote
+        })
+      );
+
+      setOrder(result.order);
+      setQcMessage(`${result.claim.claimNo} đã mở cho ${formatProductionPlanQuantity(result.claim.affectedQty, result.claim.uomCode)} không đạt; phần đạt đã vào tồn khả dụng.`);
+    } catch (cause) {
+      setQcError(errorText(cause));
+    } finally {
+      setQcBusy(false);
+    }
+  };
+
+  const handleFactoryFinishedGoodsQcReject = async () => {
+    if (!order || !latestFinishedGoodsReceipt) {
+      return;
+    }
+
+    setQcBusy(true);
+    setQcError(undefined);
+    setQcMessage(undefined);
+    try {
+      const result = await reportSubcontractFactoryDefect(
+        buildFactoryFinishedGoodsQcRejectInput({
+          order,
+          latestReceipt: latestFinishedGoodsReceipt,
+          openedBy: qcOpenedBy,
+          openedAt: new Date().toISOString(),
+          ownerId: qcOwnerId,
+          reasonCode: qcReasonCode,
+          reason: qcReason,
+          severity: qcSeverity,
+          evidenceFileName: qcEvidenceName,
+          evidenceNote: qcEvidenceNote
+        })
+      );
+
+      setOrder(result.order);
+      setQcMessage(`${result.claim.claimNo} đã mở; không chuyển thành phẩm lỗi vào tồn khả dụng.`);
+    } catch (cause) {
+      setQcError(errorText(cause));
+    } finally {
+      setQcBusy(false);
     }
   };
 
@@ -683,6 +848,44 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
         updateDraft={updateFinishedGoodsReceiptDraft}
         warehouseId={receiptWarehouseId}
         onReceive={handleFactoryFinishedGoodsReceipt}
+      />
+
+      <FactoryFinishedGoodsQcCloseoutSection
+        acceptedBy={qcAcceptedBy}
+        acceptedQty={qcAcceptedQty}
+        canAccept={canAcceptFinishedGoodsQc}
+        canPartialAccept={canPartialAcceptFinishedGoodsQc}
+        canReject={canRejectFinishedGoodsQc}
+        evidenceName={qcEvidenceName}
+        evidenceNote={qcEvidenceNote}
+        gate={finishedGoodsQcGate}
+        latestReceipt={latestFinishedGoodsReceipt}
+        note={qcNote}
+        openedBy={qcOpenedBy}
+        ownerId={qcOwnerId}
+        qcBusy={qcBusy}
+        qcError={qcError}
+        qcMessage={qcMessage}
+        reason={qcReason}
+        reasonCode={qcReasonCode}
+        rejectedQty={qcRejectedQty}
+        setAcceptedBy={setQcAcceptedBy}
+        setAcceptedQty={setQcAcceptedQty}
+        setEvidenceName={setQcEvidenceName}
+        setEvidenceNote={setQcEvidenceNote}
+        setNote={setQcNote}
+        setOpenedBy={setQcOpenedBy}
+        setOwnerId={setQcOwnerId}
+        setReason={setQcReason}
+        setReasonCode={setQcReasonCode}
+        setRejectedQty={setQcRejectedQty}
+        setSeverity={setQcSeverity}
+        severity={qcSeverity}
+        splitMatchesRemaining={qcSplitMatchesRemaining}
+        splitQty={qcSplitQty}
+        onAccept={handleFactoryFinishedGoodsQcAccept}
+        onPartialAccept={handleFactoryFinishedGoodsQcPartialAccept}
+        onReject={handleFactoryFinishedGoodsQcReject}
       />
 
       <section className="erp-masterdata-list-card" id="factory-dispatch">
@@ -1514,6 +1717,233 @@ function FactoryFinishedGoodsReceiptSection({
   );
 }
 
+function FactoryFinishedGoodsQcCloseoutSection({
+  acceptedBy,
+  acceptedQty,
+  canAccept,
+  canPartialAccept,
+  canReject,
+  evidenceName,
+  evidenceNote,
+  gate,
+  latestReceipt,
+  note,
+  openedBy,
+  ownerId,
+  qcBusy,
+  qcError,
+  qcMessage,
+  reason,
+  reasonCode,
+  rejectedQty,
+  setAcceptedBy,
+  setAcceptedQty,
+  setEvidenceName,
+  setEvidenceNote,
+  setNote,
+  setOpenedBy,
+  setOwnerId,
+  setReason,
+  setReasonCode,
+  setRejectedQty,
+  setSeverity,
+  severity,
+  splitMatchesRemaining,
+  splitQty,
+  onAccept,
+  onPartialAccept,
+  onReject
+}: {
+  acceptedBy: string;
+  acceptedQty: string;
+  canAccept: boolean;
+  canPartialAccept: boolean;
+  canReject: boolean;
+  evidenceName: string;
+  evidenceNote: string;
+  gate?: ReturnType<typeof buildSubcontractFactoryFinishedGoodsQcCloseout>;
+  latestReceipt?: SubcontractFinishedGoodsReceipt;
+  note: string;
+  openedBy: string;
+  ownerId: string;
+  qcBusy: boolean;
+  qcError?: string;
+  qcMessage?: string;
+  reason: string;
+  reasonCode: string;
+  rejectedQty: string;
+  setAcceptedBy: (value: string) => void;
+  setAcceptedQty: (value: string) => void;
+  setEvidenceName: (value: string) => void;
+  setEvidenceNote: (value: string) => void;
+  setNote: (value: string) => void;
+  setOpenedBy: (value: string) => void;
+  setOwnerId: (value: string) => void;
+  setReason: (value: string) => void;
+  setReasonCode: (value: string) => void;
+  setRejectedQty: (value: string) => void;
+  setSeverity: (value: SubcontractFactoryClaimSeverity) => void;
+  severity: SubcontractFactoryClaimSeverity;
+  splitMatchesRemaining: boolean;
+  splitQty: string;
+  onAccept: () => void;
+  onPartialAccept: () => void;
+  onReject: () => void;
+}) {
+  return (
+    <section className="erp-masterdata-list-card" id="factory-finished-goods-qc-closeout">
+      <header className="erp-section-header">
+        <div>
+          <h2 className="erp-section-title">QC thành phẩm sau khi nhận từ nhà máy</h2>
+          <p className="erp-page-description">
+            Chốt QC cho thành phẩm đang ở QC hold. Phần đạt QC mới được chuyển vào tồn khả dụng; phần lỗi phải mở claim nhà máy.
+          </p>
+        </div>
+        {gate ? <StatusChip tone={finishedGoodsQcGateTone(gate.status)}>{finishedGoodsQcGateLabel(gate.status)}</StatusChip> : null}
+      </header>
+
+      {qcError ? (
+        <p className="erp-form-error" role="alert">
+          {qcError}
+        </p>
+      ) : null}
+      {gate?.blockedReason ? (
+        <p className="erp-form-error" role="status">
+          {gate.blockedReason}
+        </p>
+      ) : null}
+      {!latestReceipt && gate?.canCloseout ? (
+        <p className="erp-page-description" role="status">
+          Phiếu nhận gần nhất chưa tải trong phiên này. QC đạt toàn bộ vẫn chốt theo lệnh; QC một phần/lỗi toàn bộ cần phiếu nhận để gắn claim.
+        </p>
+      ) : null}
+      {!splitMatchesRemaining && isPositiveQuantity(rejectedQty) ? (
+        <p className="erp-form-error" role="status">
+          Tổng đạt + lỗi phải bằng số lượng còn trong QC hold.
+        </p>
+      ) : null}
+      {qcMessage ? (
+        <p className="erp-form-success" role="status">
+          {qcMessage}
+        </p>
+      ) : null}
+
+      <dl className="erp-production-selected-plan-meta">
+        <div>
+          <dt>Phiếu nhận</dt>
+          <dd>{gate?.receiptNo ?? latestReceipt?.receiptNo ?? "-"}</dd>
+        </div>
+        <div>
+          <dt>Đã nhận</dt>
+          <dd>{gate ? formatProductionPlanQuantity(gate.receivedQty, gate.uomCode) : "-"}</dd>
+        </div>
+        <div>
+          <dt>Đã đạt QC</dt>
+          <dd>{gate ? formatProductionPlanQuantity(gate.acceptedQty, gate.uomCode) : "-"}</dd>
+        </div>
+        <div>
+          <dt>Đã lỗi</dt>
+          <dd>{gate ? formatProductionPlanQuantity(gate.rejectedQty, gate.uomCode) : "-"}</dd>
+        </div>
+        <div>
+          <dt>Còn trong QC hold</dt>
+          <dd>{gate ? formatProductionPlanQuantity(gate.remainingQcQty, gate.uomCode) : "-"}</dd>
+        </div>
+        <div>
+          <dt>Split đang nhập</dt>
+          <dd>{gate ? formatProductionPlanQuantity(splitQty, gate.uomCode) : "-"}</dd>
+        </div>
+      </dl>
+
+      <div className="erp-subcontract-line-item erp-subcontract-line-item--editable">
+        <label className="erp-field">
+          <span>Số đạt QC</span>
+          <input
+            className="erp-input"
+            disabled={!gate?.canCloseout || qcBusy}
+            inputMode="decimal"
+            type="text"
+            value={acceptedQty}
+            onChange={(event) => setAcceptedQty(event.target.value)}
+          />
+        </label>
+        <label className="erp-field">
+          <span>Số lỗi / claim</span>
+          <input
+            className="erp-input"
+            disabled={!gate?.canCloseout || qcBusy}
+            inputMode="decimal"
+            type="text"
+            value={rejectedQty}
+            onChange={(event) => setRejectedQty(event.target.value)}
+          />
+        </label>
+        <label className="erp-field">
+          <span>Người QC</span>
+          <input className="erp-input" disabled={!gate?.canCloseout || qcBusy} value={acceptedBy} onChange={(event) => setAcceptedBy(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Ghi chú QC</span>
+          <input className="erp-input" disabled={!gate?.canCloseout || qcBusy} value={note} onChange={(event) => setNote(event.target.value)} />
+        </label>
+      </div>
+
+      <div className="erp-subcontract-line-item erp-subcontract-line-item--editable">
+        <label className="erp-field">
+          <span>Mã lỗi</span>
+          <input className="erp-input" disabled={!gate?.canCloseout || qcBusy} value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Mức độ</span>
+          <select className="erp-input" disabled={!gate?.canCloseout || qcBusy} value={severity} onChange={(event) => setSeverity(event.target.value as SubcontractFactoryClaimSeverity)}>
+            <option value="P1">P1</option>
+            <option value="P2">P2</option>
+            <option value="P3">P3</option>
+          </select>
+        </label>
+        <label className="erp-field">
+          <span>Người mở claim</span>
+          <input className="erp-input" disabled={!gate?.canCloseout || qcBusy} value={openedBy} onChange={(event) => setOpenedBy(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Owner claim</span>
+          <input className="erp-input" disabled={!gate?.canCloseout || qcBusy} value={ownerId} onChange={(event) => setOwnerId(event.target.value)} />
+        </label>
+      </div>
+
+      <div className="erp-subcontract-line-item erp-subcontract-line-item--editable">
+        <label className="erp-field">
+          <span>Lý do lỗi</span>
+          <input className="erp-input" disabled={!gate?.canCloseout || qcBusy} value={reason} onChange={(event) => setReason(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Bằng chứng lỗi</span>
+          <input className="erp-input" disabled={!gate?.canCloseout || qcBusy} value={evidenceName} onChange={(event) => setEvidenceName(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Ghi chú bằng chứng</span>
+          <input className="erp-input" disabled={!gate?.canCloseout || qcBusy} value={evidenceNote} onChange={(event) => setEvidenceNote(event.target.value)} />
+        </label>
+      </div>
+
+      <div className="erp-subcontract-actions">
+        <button className="erp-button erp-button--primary" type="button" disabled={!canAccept} onClick={onAccept}>
+          QC đạt toàn bộ
+        </button>
+        <button className="erp-button erp-button--secondary" type="button" disabled={!canPartialAccept} onClick={onPartialAccept}>
+          QC đạt một phần
+        </button>
+        <button className="erp-button erp-button--danger" type="button" disabled={!canReject} onClick={onReject}>
+          QC lỗi toàn bộ
+        </button>
+        <StatusChip tone={gate ? finishedGoodsQcGateTone(gate.status) : "normal"}>
+          {gate ? finishedGoodsQcGateLabel(gate.status) : "Chưa có dữ liệu"}
+        </StatusChip>
+      </div>
+    </section>
+  );
+}
+
 const materialLineColumns: DataTableColumn<SubcontractOrderMaterialLine>[] = [
   {
     key: "sku",
@@ -2007,6 +2437,37 @@ function finishedGoodsReceiptStatusLabel(status: SubcontractFinishedGoodsReceipt
   }
 }
 
+function finishedGoodsQcGateTone(status: ReturnType<typeof buildSubcontractFactoryFinishedGoodsQcCloseout>["status"]) {
+  switch (status) {
+    case "passed":
+      return "success" as const;
+    case "ready_for_qc":
+    case "partially_closed":
+      return "info" as const;
+    case "failed":
+      return "danger" as const;
+    case "blocked":
+    default:
+      return "warning" as const;
+  }
+}
+
+function finishedGoodsQcGateLabel(status: ReturnType<typeof buildSubcontractFactoryFinishedGoodsQcCloseout>["status"]) {
+  switch (status) {
+    case "passed":
+      return "QC đạt";
+    case "failed":
+      return "Claim nhà máy";
+    case "partially_closed":
+      return "Đã QC một phần";
+    case "ready_for_qc":
+      return "Sẵn sàng QC";
+    case "blocked":
+    default:
+      return "Chưa thể QC";
+  }
+}
+
 function finishedGoodsPackagingStatusLabel(status?: string) {
   switch (status) {
     case "intact":
@@ -2085,6 +2546,23 @@ function isWithinQuantity(value: string, maxValue?: string) {
   const numericMax = Number.parseFloat(maxValue.replace(",", "."));
 
   return Number.isFinite(numericValue) && Number.isFinite(numericMax) && numericValue <= numericMax + 0.000001;
+}
+
+function quantitySum(left: string, right: string) {
+  return (quantityNumber(left) + quantityNumber(right)).toFixed(6);
+}
+
+function isQuantityEqual(left: string, right: string) {
+  return Math.abs(quantityNumber(left) - quantityNumber(right)) <= 0.000001;
+}
+
+function quantityNumber(value?: string) {
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = Number.parseFloat(value.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function formatDate(value?: string) {

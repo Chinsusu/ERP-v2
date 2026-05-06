@@ -170,7 +170,12 @@ const timelineSteps: TimelineStep[] = [
     label: "QC th\u00e0nh ph\u1ea9m",
     completeAt: 10,
     currentAt: [9],
-    description: () => "Ch\u1ec9 th\u00e0nh ph\u1ea9m \u0111\u1ea1t QC m\u1edbi \u0111\u01b0\u1ee3c nh\u1eadp v\u00e0o t\u1ed3n kh\u1ea3 d\u1ee5ng; l\u1ed7i m\u1edf claim nh\u00e0 m\u00e1y."
+    description: () => "Ch\u1ec9 th\u00e0nh ph\u1ea9m \u0111\u1ea1t QC m\u1edbi \u0111\u01b0\u1ee3c nh\u1eadp v\u00e0o t\u1ed3n kh\u1ea3 d\u1ee5ng; l\u1ed7i m\u1edf claim nh\u00e0 m\u00e1y.",
+    action: (order, status) => ({
+      label: "M\u1edf QC th\u00e0nh ph\u1ea9m",
+      href: `${productionFactoryOrderHref(order)}#factory-finished-goods-qc-closeout`,
+      disabled: status === "pending"
+    })
   },
   {
     id: "final-payment",

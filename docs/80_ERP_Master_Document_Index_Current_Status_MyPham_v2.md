@@ -3,9 +3,9 @@
 Project: Web ERP for cosmetics operations
 Phase: Phase 1
 Document role: Current master document index and traceability map
-Version: v2.18
+Version: v2.19
 Date: 2026-05-06
-Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, Sprint 25 subcontract closeout traceability evidence, Sprint 26 production IA cleanup evidence, Sprint 27 factory dispatch MVP, Sprint 28 factory execution tracking closeout evidence, Sprint 29 factory material handover closeout evidence, Sprint 30 factory sample/mass-production closeout evidence, and Sprint 31 factory finished-goods receipt to QC hold closeout evidence
+Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, Sprint 25 subcontract closeout traceability evidence, Sprint 26 production IA cleanup evidence, Sprint 27 factory dispatch MVP, Sprint 28 factory execution tracking closeout evidence, Sprint 29 factory material handover closeout evidence, Sprint 30 factory sample/mass-production closeout evidence, Sprint 31 factory finished-goods receipt to QC hold closeout evidence, and Sprint 32 factory finished-goods QC closeout scope
 
 ---
 
@@ -29,7 +29,7 @@ Which document locks Vietnamese operational terminology?
 ## 2. Current Status Snapshot
 
 ```text
-Current line: Sprint 31 factory finished goods receipt to QC hold for external-factory production.
+Current line: Sprint 32 factory finished goods QC closeout for external-factory production.
 Latest release tag: v0.19.0-vietnamese-ui-localization.
 Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
 Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
@@ -43,6 +43,7 @@ Sprint 28 implementation status: file 111 tracks the task board, file 112 locks 
 Sprint 29 implementation status: file 114 tracks the task board, file 115 locks the factory material handover flow, and file 116 records changelog/evidence. Scope is a production-facing material handover section on /production/factory-orders/:orderId using the existing issue-materials runtime. It records source warehouse, receiver, contact, vehicle, handover evidence, issue quantity, batch/lot, bin, transfer result, stock movement evidence, and in-page order state update. Tracker and timeline material actions point to #factory-material-handover instead of hidden /subcontract transfer. Email, Zalo, factory portal/API delivery, warehouse issue redesign, and internal MES production remain out of scope. PR #597 merged at 7fd3b2d5 with GitHub CI green. Dev deploy passed on 2026-05-06; full dev smoke passed. Browser smoke passed for /production/factory-orders/sco-s16-02-01-1777715855392710950#factory-material-handover with screenshot output/playwright/s29-factory-material-handover.png. No v0.29 tag exists.
 Sprint 30 implementation status: file 117 tracks the task board, file 118 locks the factory sample approval / mass-production start flow, and file 119 records changelog/evidence. Scope is a production-facing sample approval section and mass-production start section on /production/factory-orders/:orderId using existing submit-sample, approve-sample, reject-sample, and start-mass-production runtime APIs. Tracker and timeline sample/mass actions point to #factory-sample-approval and #factory-mass-production. Email, Zalo, factory portal/API delivery, finished-goods receipt, inbound QC, and internal MES production remain out of scope. PR #599 merged at bd645404 with GitHub CI green. Dev deploy passed on 2026-05-06; full dev smoke passed. Browser smoke passed for /production/factory-orders/sco-s16-08-03-smoke-0063#factory-sample-approval with screenshot output/playwright/s30-factory-sample-mass-production.png. No v0.30 tag exists.
 Sprint 31 implementation status: file 120 tracks the task board, file 121 locks the factory finished-goods receipt to QC hold flow, and file 122 records changelog/evidence. Scope is a production-facing finished-goods receipt section on /production/factory-orders/:orderId using existing receiveSubcontractFinishedGoods runtime APIs. Tracker and timeline finished-goods actions point to #factory-finished-goods-receipt instead of hidden /subcontract inbound. QC pass/fail, available-stock posting, factory claim closeout, final payment release, email, Zalo, factory portal/API delivery, and internal MES production remain out of scope. PR #601 merged at 7b7952fb with GitHub CI green. Dev deploy passed on 2026-05-06; full dev smoke passed. Browser smoke passed for /production/factory-orders/sco-s16-08-03-smoke-0064#factory-finished-goods-receipt with screenshot output/playwright/s31-factory-finished-goods-receipt.png. No v0.31 tag exists.
+Sprint 32 implementation status: file 123 tracks the task board, file 124 locks the factory finished-goods QC closeout flow, and file 125 records changelog/evidence. Scope is a production-facing QC closeout section on /production/factory-orders/:orderId#factory-finished-goods-qc-closeout using existing accept, partial-accept, and report-factory-defect runtime APIs. Tracker and timeline QC actions point to #factory-finished-goods-qc-closeout. Receipt to QC hold remains separate from QC pass; only accepted quantity can become available stock. Final payment readiness, claim resolution, email, Zalo, factory portal/API delivery, and internal MES production remain out of scope. Runtime PR, CI, dev deploy, and browser smoke are pending for this branch. No v0.32 tag is planned.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -51,7 +52,7 @@ Routes: English.
 Locale: vi-VN.
 Currency: VND.
 Timezone: Asia/Ho_Chi_Minh.
-Phase 1 production entrypoints: /production is planning/material-demand/PR-draft review, external-factory production navigation, factory order detail, manual factory dispatch, factory execution tracking, material handover, sample approval, mass-production start, and finished-goods receipt to QC hold; /subcontract remains hidden route-addressable external factory execution.
+Phase 1 production entrypoints: /production is planning/material-demand/PR-draft review, external-factory production navigation, factory order detail, manual factory dispatch, factory execution tracking, material handover, sample approval, mass-production start, finished-goods receipt to QC hold, and finished-goods QC closeout; /subcontract remains hidden route-addressable external factory execution.
 Purchase flow boundary: /production opens generated Purchase Request; PO creation belongs to approved Purchase Request conversion, not direct production-page shortcut.
 Post-PO finance boundary: posted PO-linked goods receipts create supplier payable value only for QC PASS lines; supplier invoice and three-way match are locked in file 96 as separate vendor-bill evidence; AP payment readiness hard gate is locked in file 97.
 Warehouse document boundary: Stock Transfer is internal stock movement; Warehouse Issue Note is operational stock issue to factory/lab/manual destination; both are inventory documents, not costing documents.
@@ -117,11 +118,14 @@ For a new engineer or reviewer:
 41. 120_ERP_Coding_Task_Board_Sprint31_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md
 42. 121_ERP_Factory_Finished_Goods_Receipt_QC_Hold_Flow_Sprint31_MyPham_v1.md
 43. 122_ERP_Sprint31_Changelog_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md
-44. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
-45. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
-46. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
-47. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
-48. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
+44. 123_ERP_Coding_Task_Board_Sprint32_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md
+45. 124_ERP_Factory_Finished_Goods_QC_Closeout_Flow_Sprint32_MyPham_v1.md
+46. 125_ERP_Sprint32_Changelog_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md
+47. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
+48. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
+49. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
+50. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
+51. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
 ```
 
 For product or operations review:
@@ -169,8 +173,11 @@ For product or operations review:
 40. 120 Sprint 31 factory finished goods receipt task board
 41. 121 Factory finished goods receipt to QC hold flow
 42. 122 Sprint 31 changelog and evidence register
-43. 88 BOM / formula module design
-44. 78 Production runtime checklist
+43. 123 Sprint 32 factory finished goods QC closeout task board
+44. 124 Factory finished goods QC closeout flow
+45. 125 Sprint 32 changelog and evidence register
+46. 88 BOM / formula module design
+47. 78 Production runtime checklist
 ```
 
 ---
@@ -244,6 +251,7 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | Sprint 29 | `114_ERP_Coding_Task_Board_Sprint29_Factory_Material_Handover_MyPham_v1.md` | `116_ERP_Sprint29_Changelog_Factory_Material_Handover_MyPham_v1.md` | Production-facing factory material handover using existing issue-materials runtime |
 | Sprint 30 | `117_ERP_Coding_Task_Board_Sprint30_Factory_Sample_Mass_Production_MyPham_v1.md` | `119_ERP_Sprint30_Changelog_Factory_Sample_Mass_Production_MyPham_v1.md` | Production-facing factory sample approval and mass-production start using existing subcontract runtime |
 | Sprint 31 | `120_ERP_Coding_Task_Board_Sprint31_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md` | `122_ERP_Sprint31_Changelog_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md` | Production-facing factory finished goods receipt into QC hold using existing subcontract runtime |
+| Sprint 32 | `123_ERP_Coding_Task_Board_Sprint32_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md` | `125_ERP_Sprint32_Changelog_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md` | Production-facing factory finished goods QC closeout using existing accept, partial-accept, and factory-defect runtime |
 
 ---
 
@@ -293,6 +301,9 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | `120_ERP_Coding_Task_Board_Sprint31_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md` | Sprint 31 task board | Before changing factory finished-goods receipt to QC hold scope |
 | `121_ERP_Factory_Finished_Goods_Receipt_QC_Hold_Flow_Sprint31_MyPham_v1.md` | Sprint 31 flow design | Before changing receipt gate, batch/lot, QC hold, or traceability behavior |
 | `122_ERP_Sprint31_Changelog_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md` | Sprint 31 changelog and evidence | Before closing Sprint 31 or claiming factory receipt evidence |
+| `123_ERP_Coding_Task_Board_Sprint32_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md` | Sprint 32 task board | Before changing factory finished-goods QC closeout scope |
+| `124_ERP_Factory_Finished_Goods_QC_Closeout_Flow_Sprint32_MyPham_v1.md` | Sprint 32 flow design | Before changing QC pass, partial pass, full fail, available-stock release, or factory claim behavior |
+| `125_ERP_Sprint32_Changelog_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md` | Sprint 32 changelog and evidence | Before closing Sprint 32 or claiming factory QC closeout evidence |
 ---
 
 ## 8. Release Tags

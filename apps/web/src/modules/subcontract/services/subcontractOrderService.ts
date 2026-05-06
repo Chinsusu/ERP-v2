@@ -3,6 +3,8 @@ import { shouldUsePrototypeFallback } from "../../../shared/api/prototypeFallbac
 import { decimalScales, normalizeDecimalInput } from "../../../shared/format/numberFormat";
 import type { AuditLogItem } from "@/modules/audit/types";
 import type {
+  AcceptSubcontractFinishedGoodsInput,
+  AcceptSubcontractFinishedGoodsResult,
   ChangeSubcontractOrderStatusInput,
   CreateSubcontractFactoryDispatchInput,
   CreateSubcontractOrderMaterialLineInput,
@@ -13,6 +15,8 @@ import type {
   IssueSubcontractMaterialsResult,
   MarkSubcontractFinalPaymentReadyInput,
   MarkSubcontractFactoryDispatchSentInput,
+  PartialAcceptSubcontractFinishedGoodsInput,
+  PartialAcceptSubcontractFinishedGoodsResult,
   RecordSubcontractDepositInput,
   RecordSubcontractFactoryDispatchResponseInput,
   ReceiveSubcontractFinishedGoodsInput,
@@ -413,6 +417,130 @@ type ReceiveSubcontractFinishedGoodsApiResult = {
   audit_log_id?: string;
 };
 
+type AcceptSubcontractFinishedGoodsApiRequest = {
+  expected_version: number;
+  accepted_by: string;
+  accepted_at?: string;
+  note?: string;
+};
+
+type AcceptSubcontractFinishedGoodsApiResult = {
+  subcontract_order: SubcontractOrderApi;
+  stock_movements: SubcontractMaterialIssueMovementApi[];
+  previous_status: SubcontractOrderStatus;
+  current_status: SubcontractOrderStatus;
+  audit_log_id?: string;
+};
+
+type SubcontractFactoryClaimApiEvidenceRequest = {
+  id?: string;
+  evidence_type: string;
+  file_name?: string;
+  object_key?: string;
+  external_url?: string;
+  note?: string;
+};
+
+type ReportSubcontractFactoryDefectApiRequest = {
+  expected_version: number;
+  claim_id?: string;
+  claim_no?: string;
+  receipt_id?: string;
+  receipt_no?: string;
+  reason_code: string;
+  reason: string;
+  severity: string;
+  affected_qty: string;
+  uom_code: string;
+  base_affected_qty?: string;
+  base_uom_code?: string;
+  evidence: SubcontractFactoryClaimApiEvidenceRequest[];
+  owner_id: string;
+  opened_by: string;
+  opened_at?: string;
+};
+
+type PartialAcceptSubcontractFinishedGoodsApiRequest = {
+  expected_version: number;
+  accepted_qty: string;
+  uom_code: string;
+  base_accepted_qty?: string;
+  base_uom_code?: string;
+  rejected_qty: string;
+  base_rejected_qty?: string;
+  claim_id?: string;
+  claim_no?: string;
+  receipt_id?: string;
+  receipt_no?: string;
+  reason_code: string;
+  reason: string;
+  severity: string;
+  evidence: SubcontractFactoryClaimApiEvidenceRequest[];
+  owner_id: string;
+  accepted_by: string;
+  accepted_at?: string;
+  opened_by: string;
+  opened_at?: string;
+  note?: string;
+};
+
+type SubcontractFactoryClaimApiEvidence = {
+  id: string;
+  evidence_type: string;
+  file_name?: string;
+  object_key?: string;
+  external_url?: string;
+  note?: string;
+};
+
+type SubcontractFactoryClaimApi = {
+  id: string;
+  claim_no: string;
+  subcontract_order_id: string;
+  subcontract_order_no: string;
+  factory_id: string;
+  factory_code?: string;
+  factory_name: string;
+  receipt_id?: string;
+  receipt_no?: string;
+  reason_code: string;
+  reason: string;
+  severity: SubcontractFactoryClaim["severity"];
+  status: SubcontractFactoryClaimStatus;
+  affected_qty: string;
+  uom_code: string;
+  base_affected_qty: string;
+  base_uom_code: string;
+  evidence?: SubcontractFactoryClaimApiEvidence[];
+  owner_id?: string;
+  opened_by: string;
+  opened_at: string;
+  due_at: string;
+  resolution_note?: string;
+  blocks_final_payment: boolean;
+  created_at: string;
+  updated_at: string;
+  version: number;
+};
+
+type ReportSubcontractFactoryDefectApiResult = {
+  subcontract_order: SubcontractOrderApi;
+  claim: SubcontractFactoryClaimApi;
+  previous_status: SubcontractOrderStatus;
+  current_status: SubcontractOrderStatus;
+  audit_log_id?: string;
+};
+
+type PartialAcceptSubcontractFinishedGoodsApiResult = {
+  subcontract_order: SubcontractOrderApi;
+  claim: SubcontractFactoryClaimApi;
+  stock_movements: SubcontractMaterialIssueMovementApi[];
+  previous_status: SubcontractOrderStatus;
+  current_status: SubcontractOrderStatus;
+  accept_audit_log_id?: string;
+  claim_audit_log_id?: string;
+};
+
 type IssueSubcontractMaterialsApiResult = {
   subcontract_order: SubcontractOrderApi;
   transfer: SubcontractMaterialTransferApi;
@@ -593,6 +721,7 @@ let subcontractAuditSequence = 1;
 let prototypeSampleApprovalSequence = 1;
 let prototypeSampleApprovalStore: SubcontractSampleApproval[] = [];
 let prototypeFinishedGoodsReceiptSequence = 1;
+let prototypeFinishedGoodsReceiptStore: SubcontractFinishedGoodsReceipt[] = [];
 let prototypeFactoryClaimSequence = 1;
 let prototypeFactoryClaimStore: SubcontractFactoryClaim[] = [];
 let prototypePaymentMilestoneSequence = 1;
@@ -1066,10 +1195,73 @@ export async function receiveSubcontractFinishedGoods(
   }
 }
 
+export async function acceptSubcontractFinishedGoods(
+  input: AcceptSubcontractFinishedGoodsInput
+): Promise<AcceptSubcontractFinishedGoodsResult> {
+  try {
+    const result = await apiPost<AcceptSubcontractFinishedGoodsApiResult, AcceptSubcontractFinishedGoodsApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/accept`,
+      toApiAcceptFinishedGoodsInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiAcceptFinishedGoodsResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return acceptPrototypeSubcontractFinishedGoods(input);
+  }
+}
+
+export async function partialAcceptSubcontractFinishedGoods(
+  input: PartialAcceptSubcontractFinishedGoodsInput
+): Promise<PartialAcceptSubcontractFinishedGoodsResult> {
+  try {
+    const result = await apiPost<
+      PartialAcceptSubcontractFinishedGoodsApiResult,
+      PartialAcceptSubcontractFinishedGoodsApiRequest
+    >(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/partial-accept`,
+      toApiPartialAcceptFinishedGoodsInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiPartialAcceptFinishedGoodsResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return partialAcceptPrototypeSubcontractFinishedGoods(input);
+  }
+}
+
+export async function reportSubcontractFactoryDefect(
+  input: CreateSubcontractFactoryClaimInput
+): Promise<SubcontractFactoryClaimResult> {
+  try {
+    const result = await apiPost<ReportSubcontractFactoryDefectApiResult, ReportSubcontractFactoryDefectApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/report-factory-defect`,
+      toApiReportFactoryDefectInput(input),
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiReportFactoryDefectResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return createPrototypeSubcontractFactoryClaim(input);
+  }
+}
+
 export async function createSubcontractFactoryClaim(
   input: CreateSubcontractFactoryClaimInput
 ): Promise<SubcontractFactoryClaimResult> {
-  return createPrototypeSubcontractFactoryClaim(input);
+  return reportSubcontractFactoryDefect(input);
 }
 
 export async function addSubcontractFactoryClaimEvidence(
@@ -1286,6 +1478,7 @@ export function resetPrototypeSubcontractOrdersForTest() {
   prototypeSampleApprovalSequence = 1;
   prototypeSampleApprovalStore = [];
   prototypeFinishedGoodsReceiptSequence = 1;
+  prototypeFinishedGoodsReceiptStore = [];
   prototypeFactoryClaimSequence = 1;
   prototypeFactoryClaimStore = [];
   prototypePaymentMilestoneSequence = 1;
@@ -1491,6 +1684,54 @@ function fromApiReceiveFinishedGoodsResult(
   };
 }
 
+function fromApiAcceptFinishedGoodsResult(
+  result: AcceptSubcontractFinishedGoodsApiResult
+): AcceptSubcontractFinishedGoodsResult {
+  const order = fromApiSubcontractOrder(result.subcontract_order);
+  const stockMovements = result.stock_movements.map((movement) => fromApiSubcontractStockMovement(movement));
+
+  return {
+    order,
+    stockMovements,
+    previousStatus: result.previous_status,
+    currentStatus: result.current_status,
+    auditLogId: result.audit_log_id
+  };
+}
+
+function fromApiPartialAcceptFinishedGoodsResult(
+  result: PartialAcceptSubcontractFinishedGoodsApiResult
+): PartialAcceptSubcontractFinishedGoodsResult {
+  const order = fromApiSubcontractOrder(result.subcontract_order);
+  const claim = fromApiSubcontractFactoryClaim(result.claim);
+  const stockMovements = result.stock_movements.map((movement) => fromApiSubcontractStockMovement(movement));
+
+  return {
+    order,
+    claim,
+    stockMovements,
+    previousStatus: result.previous_status,
+    currentStatus: result.current_status,
+    acceptAuditLogId: result.accept_audit_log_id,
+    claimAuditLogId: result.claim_audit_log_id
+  };
+}
+
+function fromApiReportFactoryDefectResult(
+  result: ReportSubcontractFactoryDefectApiResult
+): SubcontractFactoryClaimResult {
+  const order = fromApiSubcontractOrder(result.subcontract_order);
+  const claim = fromApiSubcontractFactoryClaim(result.claim);
+  const auditLog = createFactoryClaimAuditLog(order, claim, result.previous_status, result.audit_log_id);
+
+  return {
+    order,
+    claim,
+    auditLog,
+    auditLogId: result.audit_log_id
+  };
+}
+
 function fromApiFactoryDispatchResult(result: SubcontractFactoryDispatchApiResult): SubcontractFactoryDispatchResult {
   const order = fromApiSubcontractOrder(result.subcontract_order);
   const dispatch = fromApiSubcontractFactoryDispatch(result.factory_dispatch);
@@ -1501,6 +1742,47 @@ function fromApiFactoryDispatchResult(result: SubcontractFactoryDispatchApiResul
     dispatch,
     auditLog,
     auditLogId: result.audit_log_id
+  };
+}
+
+function fromApiSubcontractFactoryClaim(claim: SubcontractFactoryClaimApi): SubcontractFactoryClaim {
+  return {
+    id: claim.id,
+    claimNo: claim.claim_no,
+    orderId: claim.subcontract_order_id,
+    orderNo: claim.subcontract_order_no,
+    factoryId: claim.factory_id,
+    factoryCode: claim.factory_code ?? "",
+    factoryName: claim.factory_name,
+    receiptId: claim.receipt_id,
+    receiptNo: claim.receipt_no,
+    reasonCode: claim.reason_code,
+    reason: claim.reason,
+    severity: claim.severity,
+    status: claim.status,
+    affectedQty: claim.affected_qty,
+    uomCode: claim.uom_code,
+    baseAffectedQty: claim.base_affected_qty,
+    baseUOMCode: claim.base_uom_code,
+    evidence: (claim.evidence ?? []).map((evidence) => ({
+      id: evidence.id,
+      evidenceType: evidence.evidence_type,
+      fileName: evidence.file_name,
+      objectKey: evidence.object_key,
+      externalURL: evidence.external_url,
+      note: evidence.note,
+      createdAt: claim.created_at,
+      createdBy: claim.opened_by
+    })),
+    ownerId: claim.owner_id ?? "",
+    openedBy: claim.opened_by,
+    openedAt: claim.opened_at,
+    dueAt: claim.due_at,
+    resolutionNote: claim.resolution_note,
+    blocksFinalPayment: claim.blocks_final_payment,
+    createdAt: claim.created_at,
+    updatedAt: claim.updated_at,
+    version: claim.version
   };
 }
 
@@ -1689,17 +1971,23 @@ function fromApiSubcontractStockMovement(
   movement: SubcontractMaterialIssueMovementApi,
   fallbackMovementType?: SubcontractStockMovement["movementType"]
 ): SubcontractStockMovement {
+  const movementType =
+    movement.movement_type === "subcontract_receipt"
+      ? "SUBCONTRACT_RECEIPT"
+      : movement.movement_type === "qc_release"
+        ? "QC_RELEASE"
+        : fallbackMovementType ?? "SUBCONTRACT_ISSUE";
+  const targetBin = movement.bin_id || (movement.stock_status === "available" ? "available" : "qc_hold");
+
   return {
     id: movement.movement_no,
-    movementType:
-      movement.movement_type === "subcontract_receipt"
-        ? "SUBCONTRACT_RECEIPT"
-        : fallbackMovementType ?? "SUBCONTRACT_ISSUE",
+    movementType,
     itemCode: movement.item_id,
     quantity: Number(movement.source_quantity || movement.quantity),
     unit: movement.source_uom_code || movement.base_uom_code,
     sourceWarehouseId: movement.warehouse_id,
-    targetLocation: `${movement.warehouse_id}/${movement.bin_id || "qc_hold"}:${movement.stock_status}`,
+    targetLocation: `${movement.warehouse_id}/${targetBin}:${movement.stock_status}`,
+    stockStatus: movement.stock_status,
     batchNo: movement.batch_id,
     sourceDocId: movement.source_doc_id
   };
@@ -1877,6 +2165,87 @@ function toApiReceiveFinishedGoodsInput(
       external_url: evidence.externalURL,
       note: evidence.note
     }))
+  };
+}
+
+function toApiAcceptFinishedGoodsInput(
+  input: AcceptSubcontractFinishedGoodsInput
+): AcceptSubcontractFinishedGoodsApiRequest {
+  return {
+    expected_version: input.order.version,
+    accepted_by: input.acceptedBy,
+    accepted_at: input.acceptedAt,
+    note: input.note
+  };
+}
+
+function toApiFactoryClaimEvidenceInput(
+  evidence: SubcontractFactoryClaimEvidenceInput
+): SubcontractFactoryClaimApiEvidenceRequest {
+  return {
+    id: evidence.id,
+    evidence_type: evidence.evidenceType,
+    file_name: evidence.fileName,
+    object_key: evidence.objectKey,
+    external_url: evidence.externalURL,
+    note: evidence.note
+  };
+}
+
+function toApiPartialAcceptFinishedGoodsInput(
+  input: PartialAcceptSubcontractFinishedGoodsInput
+): PartialAcceptSubcontractFinishedGoodsApiRequest {
+  return {
+    expected_version: input.order.version,
+    accepted_qty: normalizeDecimalInput(input.acceptedQty, decimalScales.quantity),
+    uom_code: input.uomCode,
+    base_accepted_qty: input.baseAcceptedQty
+      ? normalizeDecimalInput(input.baseAcceptedQty, decimalScales.quantity)
+      : undefined,
+    base_uom_code: input.baseUOMCode,
+    rejected_qty: normalizeDecimalInput(input.rejectedQty, decimalScales.quantity),
+    base_rejected_qty: input.baseRejectedQty
+      ? normalizeDecimalInput(input.baseRejectedQty, decimalScales.quantity)
+      : undefined,
+    claim_id: input.claimId,
+    claim_no: input.claimNo,
+    receipt_id: input.receiptId,
+    receipt_no: input.receiptNo,
+    reason_code: input.reasonCode,
+    reason: input.reason,
+    severity: input.severity,
+    evidence: input.evidence.map(toApiFactoryClaimEvidenceInput),
+    owner_id: input.ownerId,
+    accepted_by: input.acceptedBy,
+    accepted_at: input.acceptedAt,
+    opened_by: input.openedBy,
+    opened_at: input.openedAt,
+    note: input.note
+  };
+}
+
+function toApiReportFactoryDefectInput(
+  input: CreateSubcontractFactoryClaimInput
+): ReportSubcontractFactoryDefectApiRequest {
+  return {
+    expected_version: input.order.version,
+    claim_id: input.claimId,
+    claim_no: input.claimNo,
+    receipt_id: input.receiptId,
+    receipt_no: input.receiptNo,
+    reason_code: input.reasonCode,
+    reason: input.reason,
+    severity: input.severity,
+    affected_qty: normalizeDecimalInput(input.affectedQty, decimalScales.quantity),
+    uom_code: input.uomCode,
+    base_affected_qty: input.baseAffectedQty
+      ? normalizeDecimalInput(input.baseAffectedQty, decimalScales.quantity)
+      : undefined,
+    base_uom_code: input.baseUOMCode,
+    evidence: input.evidence.map(toApiFactoryClaimEvidenceInput),
+    owner_id: input.ownerId,
+    opened_by: input.openedBy,
+    opened_at: input.openedAt
   };
 }
 
@@ -2549,12 +2918,17 @@ function receivePrototypeSubcontractFinishedGoods(
     unit: line.uomCode,
     sourceWarehouseId: warehouseId,
     targetLocation: `${warehouseCode}/${locationCode}:qc_hold`,
+    stockStatus: "qc_hold",
     batchNo: line.batchNo,
     sourceDocId: receipt.id
   }));
   const auditLog = createFinishedGoodsReceiptAuditLog(order, receipt, stockMovements, undefined, current.status);
   order.auditLogIds = [...order.auditLogIds, auditLog.id];
   prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== current.id)];
+  prototypeFinishedGoodsReceiptStore = [
+    receipt,
+    ...prototypeFinishedGoodsReceiptStore.filter((candidate) => candidate.id !== receipt.id)
+  ];
 
   return {
     order,
@@ -2565,8 +2939,151 @@ function receivePrototypeSubcontractFinishedGoods(
   };
 }
 
+function acceptPrototypeSubcontractFinishedGoods(
+  input: AcceptSubcontractFinishedGoodsInput
+): AcceptSubcontractFinishedGoodsResult {
+  const current = getPrototypeCurrentSubcontractOrder(input.order);
+  if (!["finished_goods_received", "qc_in_progress"].includes(current.status)) {
+    throw new Error(`Cannot accept finished goods from ${formatSubcontractOrderStatus(current.status)}`);
+  }
+
+  const remainingQty = remainingQcQuantityForOrder(current);
+  if (toScaledBigInt(remainingQty, decimalScales.quantity) <= BigInt(0)) {
+    throw new Error("No received finished goods remain in QC hold");
+  }
+
+  const acceptedAt = input.acceptedAt || new Date().toISOString();
+  const receipt = getLatestPrototypeFinishedGoodsReceipt(current.id);
+  const order = createSubcontractOrderRecord({
+    ...current,
+    status: "accepted",
+    acceptedQty: addQuantityStrings(current.acceptedQty ?? "0.000000", remainingQty),
+    rejectedQty: current.rejectedQty ?? "0.000000",
+    finalPaymentStatus: "hold",
+    updatedAt: acceptedAt,
+    version: current.version + 1
+  });
+  const stockMovements = [createFinishedGoodsQcReleaseMovement(order, receipt, remainingQty)];
+  const auditLog = createFinishedGoodsAcceptAuditLog(
+    order,
+    stockMovements,
+    current.status,
+    input.acceptedBy,
+    acceptedAt,
+    input.note
+  );
+  order.auditLogIds = [...order.auditLogIds, auditLog.id];
+  prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== order.id)];
+
+  return {
+    order,
+    stockMovements,
+    previousStatus: current.status,
+    currentStatus: order.status,
+    auditLog,
+    auditLogId: auditLog.id
+  };
+}
+
+function partialAcceptPrototypeSubcontractFinishedGoods(
+  input: PartialAcceptSubcontractFinishedGoodsInput
+): PartialAcceptSubcontractFinishedGoodsResult {
+  const current = getPrototypeCurrentSubcontractOrder(input.order);
+  if (!["finished_goods_received", "qc_in_progress"].includes(current.status)) {
+    throw new Error(`Cannot partial accept finished goods from ${formatSubcontractOrderStatus(current.status)}`);
+  }
+  if (input.evidence.length === 0) {
+    throw new Error("Factory claim evidence is required");
+  }
+
+  const acceptedQty = normalizeDecimalInput(input.acceptedQty, decimalScales.quantity);
+  const rejectedQty = normalizeDecimalInput(input.rejectedQty, decimalScales.quantity);
+  if (toScaledBigInt(acceptedQty, decimalScales.quantity) <= BigInt(0)) {
+    throw new Error("Accepted quantity must be greater than zero");
+  }
+  if (toScaledBigInt(rejectedQty, decimalScales.quantity) <= BigInt(0)) {
+    throw new Error("Rejected quantity must be greater than zero");
+  }
+  const splitQty = addQuantityStrings(acceptedQty, rejectedQty);
+  const remainingQty = remainingQcQuantityForOrder(current);
+  if (toScaledBigInt(splitQty, decimalScales.quantity) !== toScaledBigInt(remainingQty, decimalScales.quantity)) {
+    throw new Error("Accepted plus rejected quantity must equal remaining QC hold quantity");
+  }
+
+  const acceptedAt = input.acceptedAt || new Date().toISOString();
+  const openedAt = input.openedAt || acceptedAt;
+  const receipt = getLatestPrototypeFinishedGoodsReceipt(current.id, input.receiptId);
+  const sequence = prototypeFactoryClaimSequence++;
+  const claimId = input.claimId || `sfc-${current.id}-${String(sequence).padStart(4, "0")}`;
+  const claimNo = input.claimNo || `SFC-260429-${String(sequence).padStart(4, "0")}`;
+  const reason = normalizeRequiredText(input.reason, "Factory claim reason is required");
+  const reasonCode = normalizeRequiredText(input.reasonCode, "Factory claim reason code is required").toUpperCase();
+  const claim: SubcontractFactoryClaim = {
+    id: claimId,
+    claimNo,
+    orderId: current.id,
+    orderNo: current.orderNo,
+    factoryId: current.factoryId,
+    factoryCode: current.factoryCode,
+    factoryName: current.factoryName,
+    receiptId: input.receiptId ?? receipt.id,
+    receiptNo: input.receiptNo ?? receipt.receiptNo,
+    reasonCode,
+    reason,
+    severity: input.severity,
+    status: "open",
+    affectedQty: rejectedQty,
+    uomCode: input.uomCode,
+    baseAffectedQty: normalizeDecimalInput(input.baseRejectedQty || input.rejectedQty, decimalScales.quantity),
+    baseUOMCode: input.baseUOMCode || input.uomCode,
+    evidence: input.evidence.map((evidence, index) =>
+      createSubcontractFactoryClaimEvidence(claimId, evidence, index, openedAt, input.openedBy)
+    ),
+    ownerId: normalizeRequiredText(input.ownerId, "Factory claim owner is required"),
+    openedBy: normalizeRequiredText(input.openedBy, "Factory claim opener is required"),
+    openedAt,
+    dueAt: addDaysISO(openedAt, 7),
+    blocksFinalPayment: true,
+    createdAt: openedAt,
+    updatedAt: openedAt,
+    version: 1
+  };
+  const order = createSubcontractOrderRecord({
+    ...current,
+    status: "accepted",
+    acceptedQty: addQuantityStrings(current.acceptedQty ?? "0.000000", acceptedQty),
+    rejectedQty: addQuantityStrings(current.rejectedQty ?? "0.000000", rejectedQty),
+    finalPaymentStatus: "hold",
+    updatedAt: acceptedAt,
+    version: current.version + 1
+  });
+  const stockMovements = [createFinishedGoodsQcReleaseMovement(order, receipt, acceptedQty)];
+  const acceptAuditLog = createFinishedGoodsAcceptAuditLog(
+    order,
+    stockMovements,
+    current.status,
+    input.acceptedBy,
+    acceptedAt,
+    input.note
+  );
+  const claimAuditLog = createFactoryClaimAuditLog(order, claim, current.status);
+  order.auditLogIds = [...order.auditLogIds, acceptAuditLog.id, claimAuditLog.id];
+  prototypeStore = [order, ...prototypeStore.filter((candidate) => candidate.id !== order.id)];
+  prototypeFactoryClaimStore = [claim, ...prototypeFactoryClaimStore.filter((candidate) => candidate.id !== claim.id)];
+
+  return {
+    order,
+    claim,
+    stockMovements,
+    previousStatus: current.status,
+    currentStatus: order.status,
+    acceptAuditLogId: acceptAuditLog.id,
+    claimAuditLogId: claimAuditLog.id
+  };
+}
+
 function createPrototypeSubcontractFactoryClaim(input: CreateSubcontractFactoryClaimInput): SubcontractFactoryClaimResult {
-  const current = input.order;
+  const current = getPrototypeCurrentSubcontractOrder(input.order);
   if (!["finished_goods_received", "qc_in_progress"].includes(current.status)) {
     throw new Error(`Cannot create factory claim from ${formatSubcontractOrderStatus(current.status)}`);
   }
@@ -2578,6 +3095,9 @@ function createPrototypeSubcontractFactoryClaim(input: CreateSubcontractFactoryC
   const affectedQty = normalizeDecimalInput(input.affectedQty, decimalScales.quantity);
   if (toScaledBigInt(affectedQty, decimalScales.quantity) <= BigInt(0)) {
     throw new Error("Factory claim affected quantity must be greater than zero");
+  }
+  if (!isQuantityGreaterOrEqual(remainingQcQuantityForOrder(current), affectedQty)) {
+    throw new Error("Factory claim affected quantity exceeds remaining QC hold quantity");
   }
   const sequence = prototypeFactoryClaimSequence++;
   const openedAt = input.openedAt || new Date().toISOString();
@@ -3041,9 +3561,10 @@ function createFactoryDispatchAuditLog(
 function createFactoryClaimAuditLog(
   order: SubcontractOrder,
   claim: SubcontractFactoryClaim,
-  beforeStatus: SubcontractOrderStatus
+  beforeStatus: SubcontractOrderStatus,
+  auditLogId?: string
 ): AuditLogItem {
-  const id = `audit-subcontract-factory-claim-${String(subcontractAuditSequence++).padStart(4, "0")}`;
+  const id = auditLogId ?? `audit-subcontract-factory-claim-${String(subcontractAuditSequence++).padStart(4, "0")}`;
 
   return {
     id,
@@ -3072,6 +3593,42 @@ function createFactoryClaimAuditLog(
       evidence_count: claim.evidence.length
     },
     createdAt: claim.openedAt || prototypeNow
+  };
+}
+
+function createFinishedGoodsAcceptAuditLog(
+  order: SubcontractOrder,
+  stockMovements: SubcontractStockMovement[],
+  beforeStatus: SubcontractOrderStatus,
+  acceptedBy: string,
+  acceptedAt: string,
+  note?: string,
+  auditLogId?: string
+): AuditLogItem {
+  const id = auditLogId ?? `audit-subcontract-fg-qc-accept-${String(subcontractAuditSequence++).padStart(4, "0")}`;
+
+  return {
+    id,
+    actorId: acceptedBy || "user-subcontract-qa",
+    action: "subcontract.finished_goods_accepted",
+    entityType: "subcontract_order",
+    entityId: order.id,
+    requestId: `req_${id}`,
+    beforeData: {
+      status: beforeStatus
+    },
+    afterData: {
+      status: order.status,
+      accepted_qty: order.acceptedQty,
+      rejected_qty: order.rejectedQty,
+      stock_movement_count: stockMovements.length
+    },
+    metadata: {
+      order_no: order.orderNo,
+      factory: order.factoryName,
+      note: note ?? ""
+    },
+    createdAt: acceptedAt || prototypeNow
   };
 }
 
@@ -3131,6 +3688,55 @@ function createSubcontractFactoryClaimEvidence(
   };
 }
 
+function getPrototypeCurrentSubcontractOrder(inputOrder: SubcontractOrder) {
+  const stored = getPrototypeSubcontractOrder(inputOrder.id);
+  const current = inputOrder.version >= stored.version ? inputOrder : stored;
+  if (inputOrder.version && inputOrder.version !== current.version) {
+    throw new Error("Subcontract order version changed");
+  }
+
+  return current;
+}
+
+function getLatestPrototypeFinishedGoodsReceipt(orderId: string, receiptId?: string) {
+  const receipt = prototypeFinishedGoodsReceiptStore.find((candidate) =>
+    receiptId ? candidate.id === receiptId : candidate.orderId === orderId
+  );
+  if (!receipt) {
+    throw new Error("Finished goods receipt is required before QC closeout");
+  }
+
+  return receipt;
+}
+
+function remainingQcQuantityForOrder(order: SubcontractOrder) {
+  return subtractQuantityStrings(
+    subtractQuantityStrings(order.receivedQty ?? "0.000000", order.acceptedQty ?? "0.000000"),
+    order.rejectedQty ?? "0.000000"
+  );
+}
+
+function createFinishedGoodsQcReleaseMovement(
+  order: SubcontractOrder,
+  receipt: SubcontractFinishedGoodsReceipt,
+  acceptedQty: string
+): SubcontractStockMovement {
+  const receiptLine = receipt.lines[0];
+
+  return {
+    id: `mov-qc-release-${receipt.id}-${String(subcontractAuditSequence++).padStart(4, "0")}`,
+    movementType: "QC_RELEASE",
+    itemCode: receiptLine?.skuCode || order.sku,
+    quantity: Number(acceptedQty),
+    unit: receiptLine?.uomCode || order.uomCode || "PCS",
+    sourceWarehouseId: receipt.warehouseId,
+    targetLocation: `${receipt.warehouseCode}/available:available`,
+    stockStatus: "available",
+    batchNo: receiptLine?.batchNo,
+    sourceDocId: receipt.id
+  };
+}
+
 function addDaysISO(value: string, days: number) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -3144,6 +3750,13 @@ function addDaysISO(value: string, days: number) {
 function addQuantityStrings(left: string, right: string) {
   return fromScaledBigInt(
     toScaledBigInt(left, decimalScales.quantity) + toScaledBigInt(right, decimalScales.quantity),
+    decimalScales.quantity
+  );
+}
+
+function subtractQuantityStrings(left: string, right: string) {
+  return fromScaledBigInt(
+    toScaledBigInt(left, decimalScales.quantity) - toScaledBigInt(right, decimalScales.quantity),
     decimalScales.quantity
   );
 }
