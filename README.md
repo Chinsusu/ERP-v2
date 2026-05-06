@@ -233,7 +233,10 @@ The section uses existing accept, partial-accept, and report-factory-defect subc
 Tracker and timeline QC actions point to #factory-finished-goods-qc-closeout instead of hidden /subcontract inbound/claim anchors.
 Receipt to QC hold remains separate from QC pass; only accepted quantity can become available stock.
 Final payment readiness, claim resolution, email/Zalo, factory portal/API delivery, and internal MES behavior remain out of scope.
-Runtime PR, CI, dev deploy, and browser smoke are pending for this branch.
+PR #604 merged at 90cae3fb with GitHub CI green.
+Dev deploy passed on 2026-05-06; full dev smoke passed.
+Browser smoke passed for /production/factory-orders/sco-s16-08-03-smoke-0066#factory-finished-goods-qc-closeout.
+Screenshot evidence: output/playwright/s32-factory-finished-goods-qc-closeout.png.
 No v0.32 tag is planned.
 ```
 
