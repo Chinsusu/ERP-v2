@@ -252,7 +252,9 @@ The section uses factory claim list/acknowledge/resolve runtime APIs plus existi
 Tracker and timeline claim/payment actions point to #factory-claim-final-payment-closeout.
 Open or acknowledged factory claims block final payment; resolved claims can allow final payment only when accepted finished goods exist.
 Full QC fail remains blocked from final payment readiness until a later replacement/settlement flow exists.
-PR, CI, merge, dev deploy, and browser smoke are pending while Sprint 33 is in progress.
+PR #606 merged at 5ac8a1e with GitHub CI green.
+Dev deploy passed on 2026-05-07; full dev smoke passed.
+Browser smoke passed for /production/factory-orders/sco-s16-08-03-smoke-0068#factory-claim-final-payment-closeout with screenshot output/playwright/s33-factory-claim-final-payment-closeout.png.
 No v0.33 tag is planned.
 ```
 

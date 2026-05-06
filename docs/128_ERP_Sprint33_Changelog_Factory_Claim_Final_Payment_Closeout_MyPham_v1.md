@@ -6,7 +6,7 @@ Sprint: 33
 Change type: Runtime API/UI bridge and closeout helper
 Version: v1
 Date: 2026-05-07
-Status: Implementation in progress; PR, CI, merge, deploy, and dev smoke pending
+Status: Completed and merged; dev deploy and browser smoke passed
 
 ---
 
@@ -56,29 +56,42 @@ No v0.33 release tag is planned.
 Runtime PR:
 
 ```text
-PR: pending
-Merge commit: pending
+PR: #606 Add factory claim final payment closeout
+Runtime branch commit: 75b36bd8
+Manual merge commit: 5ac8a1e
 ```
 
 Local verification:
 
 ```text
-git diff --check: pending
-Targeted web tests: pending
-Targeted Go tests: pending
-OpenAPI validation: pending
+git diff --check: passed
+apps/api gofmt -l .: clean
+apps/api go test ./...: passed
+Local web/OpenAPI commands: not run on workstation because local Node/pnpm/npx tooling is unavailable; verified by GitHub CI.
 ```
 
 GitHub CI:
 
 ```text
-pending
+PR #606 checks passed:
+- api
+- web
+- openapi
+- e2e
+- required-api
+- required-web
+- required-openapi
+- required-migration
 ```
 
 Dev deploy and smoke:
 
 ```text
-pending
+deploy-dev-staging.sh dev: passed on dev server
+Full ERP dev smoke: passed
+Subcontract claim smoke endpoint: 200
+Browser smoke: passed for /production/factory-orders/sco-s16-08-03-smoke-0068#factory-claim-final-payment-closeout
+Screenshot evidence: output/playwright/s33-factory-claim-final-payment-closeout.png
 ```
 
 ---
