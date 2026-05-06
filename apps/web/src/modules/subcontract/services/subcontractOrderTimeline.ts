@@ -1,11 +1,13 @@
 import type { StatusTone } from "../../../shared/design-system/components";
-import type { SubcontractOrder, SubcontractOrderStatus } from "../types";
+import type { SubcontractFactoryClaimStatus, SubcontractOrder, SubcontractOrderStatus } from "../types";
 
 export type SubcontractOrderTimelineStatus = "complete" | "current" | "pending" | "blocked";
 export type FactoryDispatchTimelineStatus = "draft" | "ready" | "sent" | "confirmed" | "revision_requested" | "rejected" | "cancelled";
 
 export type SubcontractOrderTimelineContext = {
   dispatchStatus?: FactoryDispatchTimelineStatus;
+  blockingFactoryClaimCount?: number;
+  latestFactoryClaimStatus?: SubcontractFactoryClaimStatus;
 };
 
 export type SubcontractOrderTimelineItem = {
@@ -28,7 +30,11 @@ type TimelineStep = {
   description: (order: SubcontractOrder) => string;
   completeAt: number;
   currentAt: number[];
-  action?: (order: SubcontractOrder, status: SubcontractOrderTimelineStatus) => SubcontractOrderTimelineItem["action"];
+  action?: (
+    order: SubcontractOrder,
+    status: SubcontractOrderTimelineStatus,
+    context: SubcontractOrderTimelineContext
+  ) => SubcontractOrderTimelineItem["action"];
 };
 
 export function buildSubcontractOrderTimeline(order: SubcontractOrder, context: SubcontractOrderTimelineContext = {}): SubcontractOrderTimelineItem[] {
@@ -36,7 +42,7 @@ export function buildSubcontractOrderTimeline(order: SubcontractOrder, context: 
   const terminal = terminalStatus(order.status);
 
   return timelineSteps.map((step) => {
-    const status = timelineStepStatus(step, index, terminal);
+    const status = timelineStepStatus(step, index, terminal, order, context);
 
     return {
       id: step.id,
@@ -44,7 +50,7 @@ export function buildSubcontractOrderTimeline(order: SubcontractOrder, context: 
       description: step.description(order),
       status,
       tone: toneForTimelineStatus(status),
-      action: step.action?.(order, status)
+      action: step.action?.(order, status, context)
     };
   });
 }
@@ -178,33 +184,58 @@ const timelineSteps: TimelineStep[] = [
     })
   },
   {
-    id: "final-payment",
-    label: "Thanh to\u00e1n cu\u1ed1i",
+    id: "factory-claim-resolution",
+    label: "Ch\u1ed1t claim",
     completeAt: 11,
     currentAt: [10],
+    description: () => "N\u1ebfu QC l\u1ed7i, nh\u00e0 m\u00e1y ph\u1ea3i x\u00e1c nh\u1eadn v\u00e0 ch\u1ed1t h\u01b0\u1edbng x\u1eed l\u00fd claim tr\u01b0\u1edbc khi thanh to\u00e1n cu\u1ed1i.",
+    action: (order, status) => ({
+      label: "M\u1edf x\u1eed l\u00fd claim",
+      href: `${productionFactoryOrderHref(order)}#factory-claim-final-payment-closeout`,
+      disabled: status === "pending"
+    })
+  },
+  {
+    id: "final-payment",
+    label: "Thanh to\u00e1n cu\u1ed1i",
+    completeAt: 12,
+    currentAt: [11],
     description: () => "Ch\u1ec9 m\u1edf thanh to\u00e1n cu\u1ed1i khi QC \u0111\u1ea1t ho\u1eb7c claim \u0111\u00e3 c\u00f3 ngo\u1ea1i l\u1ec7 \u0111\u01b0\u1ee3c duy\u1ec7t.",
     action: (order, status) => ({
       label: "M\u1edf thanh to\u00e1n",
-      href: subcontractOperationsHref(order, "subcontract-payment"),
+      href: `${productionFactoryOrderHref(order)}#factory-claim-final-payment-closeout`,
       disabled: status === "pending" || status === "blocked"
     })
   },
   {
     id: "closed",
     label: "\u0110\u00f3ng l\u1ec7nh",
-    completeAt: 12,
-    currentAt: [11],
+    completeAt: 13,
+    currentAt: [12],
     description: () => "\u0110\u00f3ng l\u1ec7nh khi nh\u1eadn h\u00e0ng, QC, claim v\u00e0 thanh to\u00e1n cu\u1ed1i \u0111\u00e3 xong."
   }
 ];
 
 function timelineStepStatus(
-  step: Pick<TimelineStep, "completeAt" | "currentAt">,
+  step: Pick<TimelineStep, "id" | "completeAt" | "currentAt">,
   currentIndex: number,
-  terminal?: SubcontractOrderStatus
+  terminal: SubcontractOrderStatus | undefined,
+  order: SubcontractOrder,
+  context: SubcontractOrderTimelineContext
 ): SubcontractOrderTimelineStatus {
   if (terminal) {
     return currentIndex >= step.completeAt ? "complete" : "blocked";
+  }
+  if (step.id === "factory-claim-resolution") {
+    if ((context.blockingFactoryClaimCount ?? 0) > 0) {
+      return "current";
+    }
+    if (context.latestFactoryClaimStatus || ["accepted", "final_payment_ready", "closed"].includes(order.status)) {
+      return "complete";
+    }
+  }
+  if (step.id === "final-payment" && (order.status === "rejected_with_factory_issue" || (context.blockingFactoryClaimCount ?? 0) > 0)) {
+    return "blocked";
   }
   if (currentIndex >= step.completeAt) {
     return "complete";
@@ -242,12 +273,13 @@ function statusProgressIndex(status: SubcontractOrderStatus, dispatchStatus?: Fa
     case "qc_in_progress":
       return 9;
     case "accepted":
-      return 10;
-    case "final_payment_ready":
       return 11;
-    case "closed":
+    case "final_payment_ready":
       return 12;
+    case "closed":
+      return 13;
     case "rejected_with_factory_issue":
+      return 10;
     case "cancelled":
     default:
       return 0;
@@ -263,7 +295,7 @@ function approvedProgressIndex(dispatchStatus?: FactoryDispatchTimelineStatus) {
 }
 
 function terminalStatus(status: SubcontractOrderStatus) {
-  return ["cancelled", "rejected_with_factory_issue"].includes(status) ? status : undefined;
+  return status === "cancelled" ? status : undefined;
 }
 
 function toneForTimelineStatus(status: SubcontractOrderTimelineStatus): StatusTone {

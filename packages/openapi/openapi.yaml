@@ -2089,6 +2089,93 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/factory-claims:
+    get:
+      summary: List factory claims for a subcontract order
+      operationId: listSubcontractFactoryClaims
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+      responses:
+        "200":
+          description: Subcontract factory claims
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractFactoryClaimListSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/factory-claims/{factory_claim_id}/acknowledge:
+    post:
+      summary: Acknowledge a subcontract factory claim
+      operationId: acknowledgeSubcontractFactoryClaim
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+        - $ref: "#/components/parameters/SubcontractFactoryClaimIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubcontractFactoryClaimDecisionRequest"
+      responses:
+        "200":
+          description: Subcontract factory claim acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractFactoryClaimDecisionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /subcontract-orders/{subcontract_order_id}/factory-claims/{factory_claim_id}/resolve:
+    post:
+      summary: Resolve a subcontract factory claim
+      operationId: resolveSubcontractFactoryClaim
+      tags:
+        - production
+      parameters:
+        - $ref: "#/components/parameters/SubcontractOrderIDParam"
+        - $ref: "#/components/parameters/SubcontractFactoryClaimIDParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubcontractFactoryClaimDecisionRequest"
+      responses:
+        "200":
+          description: Subcontract factory claim resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcontractFactoryClaimDecisionSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /subcontract-orders/{subcontract_order_id}/accept:
     post:
       summary: Accept subcontract finished goods into available stock
@@ -5586,6 +5673,12 @@ components:
       required: true
       schema:
         type: string
+    SubcontractFactoryClaimIDParam:
+      name: factory_claim_id
+      in: path
+      required: true
+      schema:
+        type: string
   securitySchemes:
     bearerAuth:
       type: http
@@ -8711,6 +8804,26 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/ReportSubcontractFactoryDefectResult"
+    SubcontractFactoryClaimListSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/SubcontractFactoryClaim"
+    SubcontractFactoryClaimDecisionSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SubcontractFactoryClaimDecisionResult"
     AcceptSubcontractFinishedGoodsSuccessResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
@@ -9216,6 +9329,26 @@ components:
         opened_at:
           type: string
           format: date-time
+    SubcontractFactoryClaimDecisionRequest:
+      type: object
+      required:
+        - expected_version
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        acknowledged_by:
+          type: string
+        acknowledged_at:
+          type: string
+          format: date-time
+        resolved_by:
+          type: string
+        resolved_at:
+          type: string
+          format: date-time
+        resolution_note:
+          type: string
     SubmitSubcontractSampleRequest:
       type: object
       required:
@@ -10101,6 +10234,15 @@ components:
           $ref: "#/components/schemas/SubcontractOrderStatus"
         audit_log_id:
           type: string
+    SubcontractFactoryClaimDecisionResult:
+      type: object
+      required:
+        - claim
+      properties:
+        claim:
+          $ref: "#/components/schemas/SubcontractFactoryClaim"
+        audit_log_id:
+          type: string
     SubcontractFactoryClaim:
       type: object
       required:
@@ -10176,6 +10318,18 @@ components:
         due_at:
           type: string
           format: date-time
+        acknowledged_by:
+          type: string
+        acknowledged_at:
+          type: string
+          format: date-time
+        resolved_by:
+          type: string
+        resolved_at:
+          type: string
+          format: date-time
+        resolution_note:
+          type: string
         blocks_final_payment:
           type: boolean
         created_at:

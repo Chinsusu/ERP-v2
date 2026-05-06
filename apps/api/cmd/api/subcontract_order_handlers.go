@@ -299,6 +299,15 @@ type reportSubcontractFactoryDefectRequest struct {
 	OpenedAt        string                                          `json:"opened_at"`
 }
 
+type subcontractFactoryClaimDecisionRequest struct {
+	ExpectedVersion int    `json:"expected_version"`
+	AcknowledgedBy  string `json:"acknowledged_by"`
+	AcknowledgedAt  string `json:"acknowledged_at"`
+	ResolvedBy      string `json:"resolved_by"`
+	ResolvedAt      string `json:"resolved_at"`
+	ResolutionNote  string `json:"resolution_note"`
+}
+
 type subcontractOrderMaterialLineResponse struct {
 	ID               string `json:"id"`
 	LineNo           int    `json:"line_no"`
@@ -636,6 +645,11 @@ type subcontractFactoryClaimResponse struct {
 	OpenedBy           string                                    `json:"opened_by"`
 	OpenedAt           string                                    `json:"opened_at"`
 	DueAt              string                                    `json:"due_at"`
+	AcknowledgedBy     string                                    `json:"acknowledged_by,omitempty"`
+	AcknowledgedAt     string                                    `json:"acknowledged_at,omitempty"`
+	ResolvedBy         string                                    `json:"resolved_by,omitempty"`
+	ResolvedAt         string                                    `json:"resolved_at,omitempty"`
+	ResolutionNote     string                                    `json:"resolution_note,omitempty"`
 	BlocksFinalPayment bool                                      `json:"blocks_final_payment"`
 	CreatedAt          string                                    `json:"created_at"`
 	UpdatedAt          string                                    `json:"updated_at"`
@@ -648,6 +662,11 @@ type reportSubcontractFactoryDefectResponse struct {
 	PreviousStatus   string                          `json:"previous_status"`
 	CurrentStatus    string                          `json:"current_status"`
 	AuditLogID       string                          `json:"audit_log_id,omitempty"`
+}
+
+type subcontractFactoryClaimDecisionResponse struct {
+	Claim      subcontractFactoryClaimResponse `json:"claim"`
+	AuditLogID string                          `json:"audit_log_id,omitempty"`
 }
 
 type subcontractSampleEvidenceResponse struct {
@@ -1367,6 +1386,141 @@ func subcontractOrderReportFactoryDefectHandler(service productionapp.Subcontrac
 			PreviousStatus:   string(result.PreviousStatus),
 			CurrentStatus:    string(result.CurrentStatus),
 			AuditLogID:       result.AuditLogID,
+		})
+	}
+}
+
+func subcontractFactoryClaimsHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			claims, err := service.ListSubcontractFactoryClaims(r.Context(), r.PathValue("subcontract_order_id"))
+			if err != nil {
+				writeSubcontractOrderError(w, r, err)
+				return
+			}
+			payload := make([]subcontractFactoryClaimResponse, 0, len(claims))
+			for _, claim := range claims {
+				payload = append(payload, newSubcontractFactoryClaimResponse(claim))
+			}
+			response.WriteSuccess(w, r, http.StatusOK, payload)
+		default:
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+		}
+	}
+}
+
+func subcontractFactoryClaimAcknowledgeHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload subcontractFactoryClaimDecisionRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory claim payload", nil)
+			return
+		}
+		acknowledgedAt, err := parseSubcontractOptionalTime(payload.AcknowledgedAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory claim payload", map[string]any{"field": "acknowledged_at"})
+			return
+		}
+
+		result, err := service.AcknowledgeSubcontractFactoryClaim(r.Context(), productionapp.AcknowledgeSubcontractFactoryClaimInput{
+			ID:                 r.PathValue("factory_claim_id"),
+			SubcontractOrderID: r.PathValue("subcontract_order_id"),
+			ExpectedVersion:    payload.ExpectedVersion,
+			AcknowledgedBy:     payload.AcknowledgedBy,
+			AcknowledgedAt:     acknowledgedAt,
+			ActorID:            principal.UserID,
+			RequestID:          response.RequestID(r),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+		response.WriteSuccess(w, r, http.StatusOK, subcontractFactoryClaimDecisionResponse{
+			Claim:      newSubcontractFactoryClaimResponse(result.Claim),
+			AuditLogID: result.AuditLogID,
+		})
+	}
+}
+
+func subcontractFactoryClaimResolveHandler(service productionapp.SubcontractOrderService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, r, http.StatusMethodNotAllowed, response.ErrorCodeNotFound, "Route not found", nil)
+			return
+		}
+		principal, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			response.WriteError(w, r, http.StatusUnauthorized, response.ErrorCodeUnauthorized, "Authentication required", nil)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionSubcontractView) {
+			writePermissionDenied(w, r, auth.PermissionSubcontractView)
+			return
+		}
+		if !auth.HasPermission(principal, auth.PermissionRecordCreate) {
+			writePermissionDenied(w, r, auth.PermissionRecordCreate)
+			return
+		}
+
+		r = requestWithStableID(r)
+		var payload subcontractFactoryClaimDecisionRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory claim payload", nil)
+			return
+		}
+		resolvedAt, err := parseSubcontractOptionalTime(payload.ResolvedAt)
+		if err != nil {
+			response.WriteError(w, r, http.StatusBadRequest, response.ErrorCodeValidation, "Invalid subcontract factory claim payload", map[string]any{"field": "resolved_at"})
+			return
+		}
+
+		result, err := service.ResolveSubcontractFactoryClaim(r.Context(), productionapp.ResolveSubcontractFactoryClaimInput{
+			ID:                 r.PathValue("factory_claim_id"),
+			SubcontractOrderID: r.PathValue("subcontract_order_id"),
+			ExpectedVersion:    payload.ExpectedVersion,
+			ResolvedBy:         payload.ResolvedBy,
+			ResolvedAt:         resolvedAt,
+			ResolutionNote:     payload.ResolutionNote,
+			ActorID:            principal.UserID,
+			RequestID:          response.RequestID(r),
+		})
+		if err != nil {
+			writeSubcontractOrderError(w, r, err)
+			return
+		}
+		response.WriteSuccess(w, r, http.StatusOK, subcontractFactoryClaimDecisionResponse{
+			Claim:      newSubcontractFactoryClaimResponse(result.Claim),
+			AuditLogID: result.AuditLogID,
 		})
 	}
 }
@@ -2267,6 +2421,11 @@ func newSubcontractFactoryClaimResponse(
 		OpenedBy:           claim.OpenedBy,
 		OpenedAt:           timeString(claim.OpenedAt),
 		DueAt:              timeString(claim.DueAt),
+		AcknowledgedBy:     claim.AcknowledgedBy,
+		AcknowledgedAt:     timeString(claim.AcknowledgedAt),
+		ResolvedBy:         claim.ResolvedBy,
+		ResolvedAt:         timeString(claim.ResolvedAt),
+		ResolutionNote:     claim.ResolutionNote,
 		BlocksFinalPayment: claim.BlocksFinalPayment(),
 		CreatedAt:          timeString(claim.CreatedAt),
 		UpdatedAt:          timeString(claim.UpdatedAt),

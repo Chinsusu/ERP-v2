@@ -5,6 +5,7 @@ import type { AuditLogItem } from "@/modules/audit/types";
 import type {
   AcceptSubcontractFinishedGoodsInput,
   AcceptSubcontractFinishedGoodsResult,
+  AcknowledgeSubcontractFactoryClaimInput,
   ChangeSubcontractOrderStatusInput,
   CreateSubcontractFactoryDispatchInput,
   CreateSubcontractOrderMaterialLineInput,
@@ -21,9 +22,11 @@ import type {
   RecordSubcontractFactoryDispatchResponseInput,
   ReceiveSubcontractFinishedGoodsInput,
   ReceiveSubcontractFinishedGoodsResult,
+  ResolveSubcontractFactoryClaimInput,
   SubcontractDepositStatus,
   SubcontractFactory,
   SubcontractFactoryClaim,
+  SubcontractFactoryClaimDecisionResult,
   SubcontractFactoryClaimEvidenceInput,
   SubcontractFactoryClaimResult,
   SubcontractFactoryClaimStatus,
@@ -516,11 +519,29 @@ type SubcontractFactoryClaimApi = {
   opened_by: string;
   opened_at: string;
   due_at: string;
+  acknowledged_by?: string;
+  acknowledged_at?: string;
+  resolved_by?: string;
+  resolved_at?: string;
   resolution_note?: string;
   blocks_final_payment: boolean;
   created_at: string;
   updated_at: string;
   version: number;
+};
+
+type SubcontractFactoryClaimDecisionApiRequest = {
+  expected_version: number;
+  acknowledged_by?: string;
+  acknowledged_at?: string;
+  resolved_by?: string;
+  resolved_at?: string;
+  resolution_note?: string;
+};
+
+type SubcontractFactoryClaimDecisionApiResult = {
+  claim: SubcontractFactoryClaimApi;
+  audit_log_id?: string;
 };
 
 type ReportSubcontractFactoryDefectApiResult = {
@@ -1074,6 +1095,75 @@ export async function getSubcontractFactoryDispatches(orderId: string): Promise<
       .filter((dispatch) => dispatch.orderId === orderId)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       .map(cloneSubcontractFactoryDispatch);
+  }
+}
+
+export async function getSubcontractFactoryClaims(orderId: string): Promise<SubcontractFactoryClaim[]> {
+  try {
+    const claims = await apiGetRaw<SubcontractFactoryClaimApi[]>(
+      `/subcontract-orders/${encodeURIComponent(orderId)}/factory-claims`,
+      { accessToken: defaultAccessToken }
+    );
+
+    return claims.map(fromApiSubcontractFactoryClaim);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return prototypeFactoryClaimStore
+      .filter((claim) => claim.orderId === orderId)
+      .sort((left, right) => right.openedAt.localeCompare(left.openedAt))
+      .map(cloneSubcontractFactoryClaim);
+  }
+}
+
+export async function acknowledgeSubcontractFactoryClaim(
+  input: AcknowledgeSubcontractFactoryClaimInput
+): Promise<SubcontractFactoryClaimDecisionResult> {
+  try {
+    const result = await apiPost<SubcontractFactoryClaimDecisionApiResult, SubcontractFactoryClaimDecisionApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/factory-claims/${encodeURIComponent(input.claim.id)}/acknowledge`,
+      {
+        expected_version: input.claim.version,
+        acknowledged_by: input.acknowledgedBy,
+        acknowledged_at: input.acknowledgedAt
+      },
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiSubcontractFactoryClaimDecisionResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return acknowledgePrototypeSubcontractFactoryClaim(input);
+  }
+}
+
+export async function resolveSubcontractFactoryClaim(
+  input: ResolveSubcontractFactoryClaimInput
+): Promise<SubcontractFactoryClaimDecisionResult> {
+  try {
+    const result = await apiPost<SubcontractFactoryClaimDecisionApiResult, SubcontractFactoryClaimDecisionApiRequest>(
+      `/subcontract-orders/${encodeURIComponent(input.order.id)}/factory-claims/${encodeURIComponent(input.claim.id)}/resolve`,
+      {
+        expected_version: input.claim.version,
+        resolved_by: input.resolvedBy,
+        resolved_at: input.resolvedAt,
+        resolution_note: input.resolutionNote
+      },
+      { accessToken: defaultAccessToken }
+    );
+
+    return fromApiSubcontractFactoryClaimDecisionResult(result);
+  } catch (cause) {
+    if (!shouldUsePrototypeFallback(cause)) {
+      throw cause;
+    }
+
+    return resolvePrototypeSubcontractFactoryClaim(input);
   }
 }
 
@@ -1732,6 +1822,15 @@ function fromApiReportFactoryDefectResult(
   };
 }
 
+function fromApiSubcontractFactoryClaimDecisionResult(
+  result: SubcontractFactoryClaimDecisionApiResult
+): SubcontractFactoryClaimDecisionResult {
+  return {
+    claim: fromApiSubcontractFactoryClaim(result.claim),
+    auditLogId: result.audit_log_id
+  };
+}
+
 function fromApiFactoryDispatchResult(result: SubcontractFactoryDispatchApiResult): SubcontractFactoryDispatchResult {
   const order = fromApiSubcontractOrder(result.subcontract_order);
   const dispatch = fromApiSubcontractFactoryDispatch(result.factory_dispatch);
@@ -1778,6 +1877,10 @@ function fromApiSubcontractFactoryClaim(claim: SubcontractFactoryClaimApi): Subc
     openedBy: claim.opened_by,
     openedAt: claim.opened_at,
     dueAt: claim.due_at,
+    acknowledgedBy: claim.acknowledged_by,
+    acknowledgedAt: claim.acknowledged_at,
+    resolvedBy: claim.resolved_by,
+    resolvedAt: claim.resolved_at,
     resolutionNote: claim.resolution_note,
     blocksFinalPayment: claim.blocks_final_payment,
     createdAt: claim.created_at,
@@ -3158,10 +3261,7 @@ function addPrototypeSubcontractFactoryClaimEvidence(
   claimId: string,
   evidence: SubcontractFactoryClaimEvidenceInput
 ): SubcontractFactoryClaim {
-  const current = prototypeFactoryClaimStore.find((claim) => claim.id === claimId);
-  if (!current) {
-    throw new Error("Factory claim not found");
-  }
+  const current = getPrototypeSubcontractFactoryClaim(claimId);
   const updatedAt = new Date().toISOString();
   const updated: SubcontractFactoryClaim = {
     ...current,
@@ -3175,6 +3275,65 @@ function addPrototypeSubcontractFactoryClaimEvidence(
   prototypeFactoryClaimStore = [updated, ...prototypeFactoryClaimStore.filter((claim) => claim.id !== current.id)];
 
   return updated;
+}
+
+function getPrototypeSubcontractFactoryClaim(claimId: string) {
+  const current = prototypeFactoryClaimStore.find((claim) => claim.id === claimId);
+  if (!current) {
+    throw new Error("Factory claim not found");
+  }
+
+  return current;
+}
+
+function acknowledgePrototypeSubcontractFactoryClaim(
+  input: AcknowledgeSubcontractFactoryClaimInput
+): SubcontractFactoryClaimDecisionResult {
+  const current = getPrototypeSubcontractFactoryClaim(input.claim.id);
+  if (input.claim.version && input.claim.version !== current.version) {
+    throw new Error("Factory claim version changed");
+  }
+  if (current.status !== "open") {
+    throw new Error(`Cannot acknowledge factory claim from ${formatSubcontractFactoryClaimStatus(current.status)}`);
+  }
+  const acknowledgedAt = input.acknowledgedAt || new Date().toISOString();
+  const updated: SubcontractFactoryClaim = {
+    ...current,
+    status: "acknowledged",
+    acknowledgedBy: normalizeRequiredText(input.acknowledgedBy, "Factory claim acknowledged by is required"),
+    acknowledgedAt,
+    updatedAt: acknowledgedAt,
+    version: current.version + 1
+  };
+  prototypeFactoryClaimStore = [updated, ...prototypeFactoryClaimStore.filter((claim) => claim.id !== current.id)];
+
+  return { claim: cloneSubcontractFactoryClaim(updated) };
+}
+
+function resolvePrototypeSubcontractFactoryClaim(
+  input: ResolveSubcontractFactoryClaimInput
+): SubcontractFactoryClaimDecisionResult {
+  const current = getPrototypeSubcontractFactoryClaim(input.claim.id);
+  if (input.claim.version && input.claim.version !== current.version) {
+    throw new Error("Factory claim version changed");
+  }
+  if (!["open", "acknowledged"].includes(current.status)) {
+    throw new Error(`Cannot resolve factory claim from ${formatSubcontractFactoryClaimStatus(current.status)}`);
+  }
+  const resolvedAt = input.resolvedAt || new Date().toISOString();
+  const updated: SubcontractFactoryClaim = {
+    ...current,
+    status: "resolved",
+    resolvedBy: normalizeRequiredText(input.resolvedBy, "Factory claim resolved by is required"),
+    resolvedAt,
+    resolutionNote: normalizeRequiredText(input.resolutionNote, "Factory claim resolution note is required"),
+    blocksFinalPayment: false,
+    updatedAt: resolvedAt,
+    version: current.version + 1
+  };
+  prototypeFactoryClaimStore = [updated, ...prototypeFactoryClaimStore.filter((claim) => claim.id !== current.id)];
+
+  return { claim: cloneSubcontractFactoryClaim(updated) };
 }
 
 function recordPrototypeSubcontractDeposit(
@@ -3939,6 +4098,13 @@ function cloneSubcontractFactoryDispatch(dispatch: SubcontractFactoryDispatch): 
     ...dispatch,
     lines: dispatch.lines.map((line) => ({ ...line })),
     evidence: dispatch.evidence.map((evidence) => ({ ...evidence }))
+  };
+}
+
+function cloneSubcontractFactoryClaim(claim: SubcontractFactoryClaim): SubcontractFactoryClaim {
+  return {
+    ...claim,
+    evidence: claim.evidence.map((evidence) => ({ ...evidence }))
   };
 }
 

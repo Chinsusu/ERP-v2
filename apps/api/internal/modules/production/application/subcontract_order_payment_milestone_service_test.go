@@ -232,6 +232,76 @@ func TestSubcontractOrderServiceBlocksFinalPaymentWithOpenClaim(t *testing.T) {
 	}
 }
 
+func TestSubcontractOrderServiceResolvesFactoryClaimBeforeFinalPayment(t *testing.T) {
+	ctx := context.Background()
+	auditStore := audit.NewInMemoryLogStore()
+	orderStore := NewPrototypeSubcontractOrderStore(auditStore)
+	milestoneStore := NewPrototypeSubcontractPaymentMilestoneStore()
+	claimStore := NewPrototypeSubcontractFactoryClaimStore()
+	service := SubcontractOrderService{
+		store:                 orderStore,
+		factoryClaimStore:     claimStore,
+		paymentMilestoneStore: milestoneStore,
+		paymentMilestoneBuild: NewSubcontractPaymentMilestoneService(),
+	}
+	order := subcontractPaymentAcceptedOrder(t)
+	if err := orderStore.WithinTx(ctx, func(txCtx context.Context, tx SubcontractOrderTx) error {
+		return tx.Save(txCtx, order)
+	}); err != nil {
+		t.Fatalf("seed order: %v", err)
+	}
+	claim := subcontractPaymentBlockingClaim(t, order)
+	if err := claimStore.Save(ctx, claim); err != nil {
+		t.Fatalf("seed claim: %v", err)
+	}
+	resolvedAt := time.Date(2026, 4, 30, 9, 0, 0, 0, time.UTC)
+
+	claimResult, err := service.ResolveSubcontractFactoryClaim(ctx, ResolveSubcontractFactoryClaimInput{
+		ID:              claim.ID,
+		ExpectedVersion: claim.Version,
+		ResolvedBy:      "factory-owner",
+		ResolvedAt:      resolvedAt,
+		ResolutionNote:  "Factory accepted a credit memo for rejected goods",
+		ActorID:         "qa-user",
+		RequestID:       "req-factory-claim-resolved",
+	})
+	if err != nil {
+		t.Fatalf("resolve factory claim: %v", err)
+	}
+	if claimResult.Claim.Status != productiondomain.SubcontractFactoryClaimStatusResolved ||
+		claimResult.Claim.BlocksFinalPayment() ||
+		claimResult.AuditLogID == "" {
+		t.Fatalf("claim result = %+v, want resolved non-blocking claim and audit", claimResult)
+	}
+
+	result, err := service.MarkSubcontractFinalPaymentReady(ctx, MarkSubcontractFinalPaymentReadyInput{
+		ID:              order.ID,
+		ExpectedVersion: order.Version,
+		MilestoneID:     "spm_service_final_after_claim_001",
+		MilestoneNo:     "SPM-SERVICE-FINAL-AFTER-CLAIM-001",
+		ReadyBy:         "finance-user",
+		ActorID:         "finance-user",
+		RequestID:       "req-final-payment-after-claim",
+	})
+	if err != nil {
+		t.Fatalf("mark final payment after resolved claim: %v", err)
+	}
+	if result.CurrentStatus != productiondomain.SubcontractOrderStatusFinalPaymentReady ||
+		result.Milestone.Status != productiondomain.SubcontractPaymentMilestoneStatusReady {
+		t.Fatalf("result = %+v, want final payment ready after resolved claim", result)
+	}
+	logs, err := auditStore.List(ctx, audit.Query{Action: subcontractFactoryClaimResolvedAction})
+	if err != nil {
+		t.Fatalf("list claim audit logs: %v", err)
+	}
+	if len(logs) != 1 ||
+		logs[0].AfterData["factory_claim_status"] != "resolved" ||
+		logs[0].AfterData["resolution_note"] != "Factory accepted a credit memo for rejected goods" ||
+		logs[0].AfterData["blocks_final_payment"] != false {
+		t.Fatalf("claim audit logs = %+v, want resolved claim audit", logs)
+	}
+}
+
 type recordingSubcontractPayableCreator struct {
 	input  CreateSubcontractPayableInput
 	result SubcontractPayableCreationResult

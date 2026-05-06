@@ -13,13 +13,17 @@ import {
 import { formatProductionPlanQuantity } from "@/modules/production-planning/services/productionPlanService";
 import {
   acceptSubcontractFinishedGoods,
+  acknowledgeSubcontractFactoryClaim,
   createSubcontractFactoryDispatch,
   formatSubcontractFactoryDispatchStatus,
+  formatSubcontractFactoryClaimStatus,
   formatSubcontractDepositStatus,
   formatSubcontractOrderStatus,
+  getSubcontractFactoryClaims,
   getSubcontractFactoryDispatches,
   getSubcontractOrder,
   issueSubcontractMaterials,
+  markSubcontractFinalPaymentReady,
   markSubcontractFactoryDispatchReady,
   markSubcontractFactoryDispatchSent,
   partialAcceptSubcontractFinishedGoods,
@@ -27,9 +31,11 @@ import {
   recordSubcontractFactoryDispatchResponse,
   rejectSubcontractSample,
   reportSubcontractFactoryDefect,
+  resolveSubcontractFactoryClaim,
   receiveSubcontractFinishedGoods,
   startMassProductionSubcontractOrder,
   submitSubcontractSample,
+  subcontractFactoryClaimStatusTone,
   subcontractFactoryDispatchStatusTone,
   subcontractOrderStatusTone
 } from "../services/subcontractOrderService";
@@ -44,6 +50,7 @@ import {
   buildSubcontractFactoryExecutionTracker,
   type FactoryExecutionWorkItem
 } from "../services/subcontractFactoryExecutionTracker";
+import { buildSubcontractFactoryClaimFinalPaymentCloseout } from "../services/subcontractFactoryClaimFinalPaymentCloseout";
 import {
   buildFactorySampleDecisionInput,
   buildFactorySampleSubmissionInput,
@@ -70,6 +77,7 @@ import {
 } from "../services/subcontractFactoryFinishedGoodsQcCloseout";
 import type {
   SubcontractFactoryDispatch,
+  SubcontractFactoryClaim,
   SubcontractFactoryClaimSeverity,
   SubcontractFinalPaymentStatus,
   SubcontractFinishedGoodsPackagingStatus,
@@ -89,6 +97,7 @@ const factoryFinishedGoodsLocationOptions = [{ label: "QC hold", value: "qc_hold
 export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDetailPrototypeProps) {
   const [order, setOrder] = useState<SubcontractOrder>();
   const [dispatches, setDispatches] = useState<SubcontractFactoryDispatch[]>([]);
+  const [factoryClaims, setFactoryClaims] = useState<SubcontractFactoryClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [dispatchError, setDispatchError] = useState<string | undefined>();
@@ -152,17 +161,25 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
   const [qcBusy, setQcBusy] = useState(false);
   const [qcError, setQcError] = useState<string | undefined>();
   const [qcMessage, setQcMessage] = useState<string | undefined>();
+  const [claimActor, setClaimActor] = useState("factory-owner");
+  const [claimResolutionNote, setClaimResolutionNote] = useState("Nhà máy xác nhận xử lý claim trước khi thanh toán cuối");
+  const [claimCloseoutBusy, setClaimCloseoutBusy] = useState(false);
+  const [claimCloseoutError, setClaimCloseoutError] = useState<string | undefined>();
+  const [claimCloseoutMessage, setClaimCloseoutMessage] = useState<string | undefined>();
+  const [finalPaymentReadyBy, setFinalPaymentReadyBy] = useState("finance-user");
+  const [finalPaymentNote, setFinalPaymentNote] = useState("QC/claim đã đủ điều kiện mở thanh toán cuối");
 
   useEffect(() => {
     let active = true;
 
     setLoading(true);
     setError(undefined);
-    Promise.all([getSubcontractOrder(orderId), getSubcontractFactoryDispatches(orderId)])
-      .then(([nextOrder, nextDispatches]) => {
+    Promise.all([getSubcontractOrder(orderId), getSubcontractFactoryDispatches(orderId), getSubcontractFactoryClaims(orderId)])
+      .then(([nextOrder, nextDispatches, nextClaims]) => {
         if (active) {
           setOrder(nextOrder);
           setDispatches(nextDispatches);
+          setFactoryClaims(nextClaims);
         }
       })
       .catch((loadError) => {
@@ -182,13 +199,31 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
   }, [orderId]);
 
   const latestDispatch = dispatches[0];
+  const claimCloseoutGate = useMemo(
+    () => (order ? buildSubcontractFactoryClaimFinalPaymentCloseout(order, factoryClaims) : undefined),
+    [factoryClaims, order]
+  );
   const timeline = useMemo(
-    () => (order ? buildSubcontractOrderTimeline(order, { dispatchStatus: latestDispatch?.status }) : []),
-    [latestDispatch?.status, order]
+    () =>
+      order
+        ? buildSubcontractOrderTimeline(order, {
+            blockingFactoryClaimCount: claimCloseoutGate?.blockingClaimCount,
+            dispatchStatus: latestDispatch?.status,
+            latestFactoryClaimStatus: claimCloseoutGate?.latestClaim?.status
+          })
+        : [],
+    [claimCloseoutGate?.blockingClaimCount, claimCloseoutGate?.latestClaim?.status, latestDispatch?.status, order]
   );
   const executionTracker = useMemo(
-    () => (order ? buildSubcontractFactoryExecutionTracker(order, { dispatchStatus: latestDispatch?.status }) : undefined),
-    [latestDispatch?.status, order]
+    () =>
+      order
+        ? buildSubcontractFactoryExecutionTracker(order, {
+            blockingFactoryClaimCount: claimCloseoutGate?.blockingClaimCount,
+            dispatchStatus: latestDispatch?.status,
+            latestFactoryClaimStatus: claimCloseoutGate?.latestClaim?.status
+          })
+        : undefined,
+    [claimCloseoutGate?.blockingClaimCount, claimCloseoutGate?.latestClaim?.status, latestDispatch?.status, order]
   );
   const materialHandover = useMemo(() => (order ? buildSubcontractFactoryMaterialHandover(order) : undefined), [order]);
   const sampleMassGate = useMemo(
@@ -330,6 +365,15 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
     }
     const nextDispatches = await getSubcontractFactoryDispatches(targetOrder.id);
     setDispatches(nextDispatches);
+  };
+
+  const reloadFactoryClaims = async (nextOrder?: SubcontractOrder) => {
+    const targetOrder = nextOrder ?? order;
+    if (!targetOrder) {
+      return;
+    }
+    const nextClaims = await getSubcontractFactoryClaims(targetOrder.id);
+    setFactoryClaims(nextClaims);
   };
 
   const runDispatchAction = async (
@@ -554,6 +598,7 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
       );
 
       setOrder(result.order);
+      await reloadFactoryClaims(result.order);
       setQcMessage(`Đã QC đạt ${result.stockMovements.length} dòng và chuyển thành tồn khả dụng.`);
     } catch (cause) {
       setQcError(errorText(cause));
@@ -592,6 +637,7 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
       );
 
       setOrder(result.order);
+      setFactoryClaims((current) => [result.claim, ...current.filter((claim) => claim.id !== result.claim.id)]);
       setQcMessage(`${result.claim.claimNo} đã mở cho ${formatProductionPlanQuantity(result.claim.affectedQty, result.claim.uomCode)} không đạt; phần đạt đã vào tồn khả dụng.`);
     } catch (cause) {
       setQcError(errorText(cause));
@@ -625,11 +671,85 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
       );
 
       setOrder(result.order);
+      setFactoryClaims((current) => [result.claim, ...current.filter((claim) => claim.id !== result.claim.id)]);
       setQcMessage(`${result.claim.claimNo} đã mở; không chuyển thành phẩm lỗi vào tồn khả dụng.`);
     } catch (cause) {
       setQcError(errorText(cause));
     } finally {
       setQcBusy(false);
+    }
+  };
+
+  const handleAcknowledgeFactoryClaim = async () => {
+    if (!order || !claimCloseoutGate?.latestClaim) {
+      return;
+    }
+
+    setClaimCloseoutBusy(true);
+    setClaimCloseoutError(undefined);
+    setClaimCloseoutMessage(undefined);
+    try {
+      const result = await acknowledgeSubcontractFactoryClaim({
+        order,
+        claim: claimCloseoutGate.latestClaim,
+        acknowledgedBy: claimActor,
+        acknowledgedAt: new Date().toISOString()
+      });
+      setFactoryClaims((current) => [result.claim, ...current.filter((claim) => claim.id !== result.claim.id)]);
+      setClaimCloseoutMessage(`${result.claim.claimNo} đã được nhà máy xác nhận.`);
+    } catch (cause) {
+      setClaimCloseoutError(errorText(cause));
+    } finally {
+      setClaimCloseoutBusy(false);
+    }
+  };
+
+  const handleResolveFactoryClaim = async () => {
+    if (!order || !claimCloseoutGate?.latestClaim) {
+      return;
+    }
+
+    setClaimCloseoutBusy(true);
+    setClaimCloseoutError(undefined);
+    setClaimCloseoutMessage(undefined);
+    try {
+      const result = await resolveSubcontractFactoryClaim({
+        order,
+        claim: claimCloseoutGate.latestClaim,
+        resolvedBy: claimActor,
+        resolvedAt: new Date().toISOString(),
+        resolutionNote: claimResolutionNote
+      });
+      setFactoryClaims((current) => [result.claim, ...current.filter((claim) => claim.id !== result.claim.id)]);
+      setClaimCloseoutMessage(`${result.claim.claimNo} đã chốt xử lý; claim không còn khóa thanh toán cuối.`);
+    } catch (cause) {
+      setClaimCloseoutError(errorText(cause));
+    } finally {
+      setClaimCloseoutBusy(false);
+    }
+  };
+
+  const handleMarkFinalPaymentReady = async () => {
+    if (!order) {
+      return;
+    }
+
+    setClaimCloseoutBusy(true);
+    setClaimCloseoutError(undefined);
+    setClaimCloseoutMessage(undefined);
+    try {
+      const result = await markSubcontractFinalPaymentReady({
+        order,
+        readyBy: finalPaymentReadyBy,
+        readyAt: new Date().toISOString(),
+        note: finalPaymentNote
+      });
+      setOrder(result.order);
+      setClaimCloseoutMessage(`${result.milestone.milestoneNo} đã sẵn sàng thanh toán cuối.`);
+    } catch (cause) {
+      setClaimCloseoutError(errorText(cause));
+    } finally {
+      setClaimCloseoutBusy(false);
     }
   };
 
@@ -886,6 +1006,24 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
         onAccept={handleFactoryFinishedGoodsQcAccept}
         onPartialAccept={handleFactoryFinishedGoodsQcPartialAccept}
         onReject={handleFactoryFinishedGoodsQcReject}
+      />
+
+      <FactoryClaimFinalPaymentCloseoutSection
+        actor={claimActor}
+        busy={claimCloseoutBusy}
+        error={claimCloseoutError}
+        finalPaymentNote={finalPaymentNote}
+        finalPaymentReadyBy={finalPaymentReadyBy}
+        gate={claimCloseoutGate}
+        message={claimCloseoutMessage}
+        resolutionNote={claimResolutionNote}
+        setActor={setClaimActor}
+        setFinalPaymentNote={setFinalPaymentNote}
+        setFinalPaymentReadyBy={setFinalPaymentReadyBy}
+        setResolutionNote={setClaimResolutionNote}
+        onAcknowledge={handleAcknowledgeFactoryClaim}
+        onMarkFinalPaymentReady={handleMarkFinalPaymentReady}
+        onResolve={handleResolveFactoryClaim}
       />
 
       <section className="erp-masterdata-list-card" id="factory-dispatch">
@@ -1944,6 +2082,138 @@ function FactoryFinishedGoodsQcCloseoutSection({
   );
 }
 
+function FactoryClaimFinalPaymentCloseoutSection({
+  actor,
+  busy,
+  error,
+  finalPaymentNote,
+  finalPaymentReadyBy,
+  gate,
+  message,
+  resolutionNote,
+  setActor,
+  setFinalPaymentNote,
+  setFinalPaymentReadyBy,
+  setResolutionNote,
+  onAcknowledge,
+  onMarkFinalPaymentReady,
+  onResolve
+}: {
+  actor: string;
+  busy: boolean;
+  error?: string;
+  finalPaymentNote: string;
+  finalPaymentReadyBy: string;
+  gate?: ReturnType<typeof buildSubcontractFactoryClaimFinalPaymentCloseout>;
+  message?: string;
+  resolutionNote: string;
+  setActor: (value: string) => void;
+  setFinalPaymentNote: (value: string) => void;
+  setFinalPaymentReadyBy: (value: string) => void;
+  setResolutionNote: (value: string) => void;
+  onAcknowledge: () => void;
+  onMarkFinalPaymentReady: () => void;
+  onResolve: () => void;
+}) {
+  const claim = gate?.latestClaim;
+
+  return (
+    <section className="erp-masterdata-list-card" id="factory-claim-final-payment-closeout">
+      <header className="erp-section-header">
+        <div>
+          <h2 className="erp-section-title">Claim nhà máy & thanh toán cuối</h2>
+          <p className="erp-page-description">
+            Claim còn mở sẽ khóa thanh toán cuối. Sau khi nhà máy xác nhận/chốt xử lý, lệnh QC đạt một phần mới được mở thanh toán cuối.
+          </p>
+        </div>
+        {gate ? <StatusChip tone={factoryExecutionTone(gate.finalPaymentStatus)}>{factoryExecutionStatusLabel(gate.finalPaymentStatus)}</StatusChip> : null}
+      </header>
+
+      {error ? (
+        <p className="erp-form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {gate?.finalPaymentBlockedReason ? (
+        <p className="erp-form-error" role="status">
+          {gate.finalPaymentBlockedReason}
+        </p>
+      ) : null}
+      {message ? (
+        <p className="erp-form-success" role="status">
+          {message}
+        </p>
+      ) : null}
+
+      <dl className="erp-production-selected-plan-meta">
+        <div>
+          <dt>Claim mới nhất</dt>
+          <dd>{claim?.claimNo ?? "Không có claim"}</dd>
+        </div>
+        <div>
+          <dt>Trạng thái claim</dt>
+          <dd>{claim ? formatSubcontractFactoryClaimStatus(claim.status) : "-"}</dd>
+        </div>
+        <div>
+          <dt>Khóa thanh toán</dt>
+          <dd>{gate?.blockingClaimCount ?? 0} claim</dd>
+        </div>
+        <div>
+          <dt>Số lượng lỗi</dt>
+          <dd>{claim ? formatProductionPlanQuantity(claim.affectedQty, claim.uomCode) : "-"}</dd>
+        </div>
+        <div>
+          <dt>Nhà máy xác nhận</dt>
+          <dd>{claim?.acknowledgedBy ? `${claim.acknowledgedBy} · ${formatDate(claim.acknowledgedAt)}` : "-"}</dd>
+        </div>
+        <div>
+          <dt>Chốt xử lý</dt>
+          <dd>{claim?.resolvedBy ? `${claim.resolvedBy} · ${formatDate(claim.resolvedAt)}` : "-"}</dd>
+        </div>
+      </dl>
+
+      {claim ? (
+        <div className="erp-subcontract-line-item erp-subcontract-line-item--editable">
+          <label className="erp-field">
+            <span>Người xử lý claim</span>
+            <input className="erp-input" disabled={busy} value={actor} onChange={(event) => setActor(event.target.value)} />
+          </label>
+          <label className="erp-field">
+            <span>Ghi chú chốt claim</span>
+            <input className="erp-input" disabled={busy} value={resolutionNote} onChange={(event) => setResolutionNote(event.target.value)} />
+          </label>
+          <StatusChip tone={subcontractFactoryClaimStatusTone(claim.status)}>
+            {formatSubcontractFactoryClaimStatus(claim.status)}
+          </StatusChip>
+        </div>
+      ) : null}
+
+      <div className="erp-subcontract-line-item erp-subcontract-line-item--editable">
+        <label className="erp-field">
+          <span>Người mở thanh toán</span>
+          <input className="erp-input" disabled={busy} value={finalPaymentReadyBy} onChange={(event) => setFinalPaymentReadyBy(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Ghi chú thanh toán cuối</span>
+          <input className="erp-input" disabled={busy} value={finalPaymentNote} onChange={(event) => setFinalPaymentNote(event.target.value)} />
+        </label>
+      </div>
+
+      <div className="erp-subcontract-actions">
+        <button className="erp-button erp-button--secondary" type="button" disabled={!gate?.canAcknowledgeClaim || busy || actor.trim() === ""} onClick={onAcknowledge}>
+          Nhà máy xác nhận lỗi
+        </button>
+        <button className="erp-button erp-button--secondary" type="button" disabled={!gate?.canResolveClaim || busy || actor.trim() === "" || resolutionNote.trim() === ""} onClick={onResolve}>
+          Chốt xử lý claim
+        </button>
+        <button className="erp-button erp-button--primary" type="button" disabled={!gate?.canMarkFinalPaymentReady || busy || finalPaymentReadyBy.trim() === ""} onClick={onMarkFinalPaymentReady}>
+          Mở thanh toán cuối
+        </button>
+      </div>
+    </section>
+  );
+}
+
 const materialLineColumns: DataTableColumn<SubcontractOrderMaterialLine>[] = [
   {
     key: "sku",
@@ -2266,6 +2536,20 @@ function materialHandoverStatusTone(status: FactoryMaterialHandover["status"]) {
     case "blocked":
     default:
       return "warning" as const;
+  }
+}
+
+function factoryExecutionTone(status: FactoryExecutionWorkItem["status"]) {
+  switch (status) {
+    case "complete":
+      return "success";
+    case "current":
+      return "info";
+    case "blocked":
+      return "danger";
+    case "pending":
+    default:
+      return "normal";
   }
 }
 

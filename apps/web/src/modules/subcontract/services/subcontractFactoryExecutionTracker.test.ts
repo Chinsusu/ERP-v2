@@ -208,6 +208,36 @@ describe("subcontractFactoryExecutionTracker", () => {
       }
     });
   });
+
+  it("routes claim resolution and final payment to the factory order closeout section", () => {
+    const tracker = buildSubcontractFactoryExecutionTracker(
+      {
+        ...baseOrder,
+        status: "accepted",
+        acceptedQty: "994.000000",
+        rejectedQty: "5.000000"
+      },
+      {
+        blockingFactoryClaimCount: 1,
+        latestFactoryClaimStatus: "open"
+      }
+    );
+
+    expect(tracker.items.find((item) => item.id === "factory-claim-resolution")).toMatchObject({
+      status: "current",
+      action: {
+        href: "/production/factory-orders/sco-001#factory-claim-final-payment-closeout",
+        disabled: false
+      }
+    });
+    expect(tracker.items.find((item) => item.id === "final-payment")).toMatchObject({
+      status: "blocked",
+      action: {
+        href: "/production/factory-orders/sco-001#factory-claim-final-payment-closeout",
+        disabled: true
+      }
+    });
+  });
 });
 
 const baseOrder: SubcontractOrder = {

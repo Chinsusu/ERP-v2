@@ -64,6 +64,9 @@ Start with:
 - `docs/123_ERP_Coding_Task_Board_Sprint32_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md`
 - `docs/124_ERP_Factory_Finished_Goods_QC_Closeout_Flow_Sprint32_MyPham_v1.md`
 - `docs/125_ERP_Sprint32_Changelog_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md`
+- `docs/126_ERP_Coding_Task_Board_Sprint33_Factory_Claim_Final_Payment_Closeout_MyPham_v1.md`
+- `docs/127_ERP_Factory_Claim_Final_Payment_Closeout_Flow_Sprint33_MyPham_v1.md`
+- `docs/128_ERP_Sprint33_Changelog_Factory_Claim_Final_Payment_Closeout_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -71,7 +74,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 32 factory finished goods QC closeout for external-factory production.
+Current line: Sprint 33 factory claim resolution and final payment closeout for external-factory production.
 
 Latest release tag:
 
@@ -240,6 +243,19 @@ Screenshot evidence: output/playwright/s32-factory-finished-goods-qc-closeout.pn
 No v0.32 tag is planned.
 ```
 
+Sprint 33 implementation status:
+
+```text
+Sprint 33 is documented in file 126, and the factory claim/final payment closeout flow is locked in file 127.
+Scope is a production-facing claim and final payment closeout section on /production/factory-orders/:orderId#factory-claim-final-payment-closeout.
+The section uses factory claim list/acknowledge/resolve runtime APIs plus existing final payment readiness runtime.
+Tracker and timeline claim/payment actions point to #factory-claim-final-payment-closeout.
+Open or acknowledged factory claims block final payment; resolved claims can allow final payment only when accepted finished goods exist.
+Full QC fail remains blocked from final payment readiness until a later replacement/settlement flow exists.
+PR, CI, merge, dev deploy, and browser smoke are pending while Sprint 33 is in progress.
+No v0.33 tag is planned.
+```
+
 Phase 1 production scope:
 
 ```text
@@ -266,7 +282,7 @@ main baseline 020d6a13: Sprint 20 traceability cleanup merged after required-ci 
 required-migration after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed
 ```
 
-Completed focus through Sprint 31:
+Implementation focus through Sprint 33:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
@@ -281,6 +297,8 @@ Completed focus through Sprint 31:
 - External factory material handover: production-facing warehouse/source, receiver, lot/bin, evidence, transfer, stock movement, and order-status update flow before sample/mass-production gates
 - External factory sample and mass-production gate: production-facing sample submit/approve/reject and mass-production start controls backed by existing subcontract runtime APIs
 - External factory finished-goods receipt: production-facing receipt into QC hold with delivery note, batch/lot, expiry, packaging status, evidence, stock movement, and order-status update flow before QC closeout
+- External factory finished-goods QC closeout: production-facing full pass, partial pass, full fail, available-stock release, and factory-claim creation after QC hold receipt
+- External factory claim and final payment closeout: production-facing claim acknowledgement/resolution gate before final payment readiness
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 
@@ -322,6 +340,12 @@ Production runtime reference:
 - `docs/120_ERP_Coding_Task_Board_Sprint31_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md`
 - `docs/121_ERP_Factory_Finished_Goods_Receipt_QC_Hold_Flow_Sprint31_MyPham_v1.md`
 - `docs/122_ERP_Sprint31_Changelog_Factory_Finished_Goods_Receipt_QC_Hold_MyPham_v1.md`
+- `docs/123_ERP_Coding_Task_Board_Sprint32_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md`
+- `docs/124_ERP_Factory_Finished_Goods_QC_Closeout_Flow_Sprint32_MyPham_v1.md`
+- `docs/125_ERP_Sprint32_Changelog_Factory_Finished_Goods_QC_Closeout_MyPham_v1.md`
+- `docs/126_ERP_Coding_Task_Board_Sprint33_Factory_Claim_Final_Payment_Closeout_MyPham_v1.md`
+- `docs/127_ERP_Factory_Claim_Final_Payment_Closeout_Flow_Sprint33_MyPham_v1.md`
+- `docs/128_ERP_Sprint33_Changelog_Factory_Claim_Final_Payment_Closeout_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
