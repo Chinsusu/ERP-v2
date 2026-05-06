@@ -124,7 +124,7 @@ const timelineSteps: TimelineStep[] = [
     description: () => "Xu\u1ea5t nguy\u00ean li\u1ec7u/bao b\u00ec cho nh\u00e0 m\u00e1y v\u00e0 l\u01b0u b\u1eb1ng ch\u1ee9ng b\u00e0n giao.",
     action: (order, status) => ({
       label: "M\u1edf xu\u1ea5t v\u1eadt t\u01b0",
-      href: subcontractOperationsHref(order, "subcontract-transfer"),
+      href: `${productionFactoryOrderHref(order)}#factory-material-handover`,
       disabled: status === "pending" || status === "blocked"
     })
   },
