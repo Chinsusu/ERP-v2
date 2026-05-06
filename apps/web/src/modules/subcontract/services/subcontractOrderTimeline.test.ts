@@ -83,8 +83,19 @@ describe("subcontractOrderTimeline", () => {
       status: "sample_submitted"
     });
 
-    expect(timeline.find((item) => item.id === "sample")).toMatchObject({ status: "current" });
-    expect(timeline.find((item) => item.id === "mass-production")).toMatchObject({ status: "pending" });
+    expect(timeline.find((item) => item.id === "sample")).toMatchObject({
+      status: "current",
+      action: {
+        href: "/production/factory-orders/sco-001#factory-sample-approval",
+        disabled: false
+      }
+    });
+    expect(timeline.find((item) => item.id === "mass-production")).toMatchObject({
+      status: "pending",
+      action: {
+        href: "/production/factory-orders/sco-001#factory-mass-production"
+      }
+    });
   });
 
   it("links the current material issue step to the production factory order detail", () => {

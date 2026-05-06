@@ -21,7 +21,11 @@ import {
   issueSubcontractMaterials,
   markSubcontractFactoryDispatchReady,
   markSubcontractFactoryDispatchSent,
+  approveSubcontractSample,
   recordSubcontractFactoryDispatchResponse,
+  rejectSubcontractSample,
+  startMassProductionSubcontractOrder,
+  submitSubcontractSample,
   subcontractFactoryDispatchStatusTone,
   subcontractOrderStatusTone
 } from "../services/subcontractOrderService";
@@ -37,6 +41,13 @@ import {
   type FactoryExecutionWorkItem
 } from "../services/subcontractFactoryExecutionTracker";
 import {
+  buildFactorySampleDecisionInput,
+  buildFactorySampleSubmissionInput,
+  buildSubcontractFactorySampleMassProduction,
+  type FactoryMassProductionStatus,
+  type FactorySampleStatus
+} from "../services/subcontractFactorySampleMassProduction";
+import {
   buildFactoryMaterialHandoverIssueInput,
   buildSubcontractFactoryMaterialHandover,
   type FactoryMaterialHandover,
@@ -47,7 +58,8 @@ import type {
   SubcontractFinalPaymentStatus,
   SubcontractOrderMaterialLine,
   SubcontractOrder,
-  SubcontractMaterialTransfer
+  SubcontractMaterialTransfer,
+  SubcontractSampleApproval
 } from "../types";
 
 type SubcontractOrderDetailPrototypeProps = {
@@ -75,6 +87,19 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
   const [materialError, setMaterialError] = useState<string | undefined>();
   const [materialMessage, setMaterialMessage] = useState<string | undefined>();
   const [latestMaterialTransfer, setLatestMaterialTransfer] = useState<SubcontractMaterialTransfer>();
+  const [sampleCode, setSampleCode] = useState("");
+  const [sampleFormulaVersion, setSampleFormulaVersion] = useState("");
+  const [sampleEvidenceName, setSampleEvidenceName] = useState("");
+  const [sampleDecisionReason, setSampleDecisionReason] = useState("Mẫu đạt theo tiêu chuẩn lưu");
+  const [sampleStorageStatus, setSampleStorageStatus] = useState("retained_in_qa_cabinet");
+  const [sampleNote, setSampleNote] = useState("");
+  const [sampleBusy, setSampleBusy] = useState(false);
+  const [sampleError, setSampleError] = useState<string | undefined>();
+  const [sampleMessage, setSampleMessage] = useState<string | undefined>();
+  const [latestSampleApproval, setLatestSampleApproval] = useState<SubcontractSampleApproval>();
+  const [massBusy, setMassBusy] = useState(false);
+  const [massError, setMassError] = useState<string | undefined>();
+  const [massMessage, setMassMessage] = useState<string | undefined>();
 
   useEffect(() => {
     let active = true;
@@ -114,6 +139,10 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
     [latestDispatch?.status, order]
   );
   const materialHandover = useMemo(() => (order ? buildSubcontractFactoryMaterialHandover(order) : undefined), [order]);
+  const sampleMassGate = useMemo(
+    () => (order ? buildSubcontractFactorySampleMassProduction(order, latestSampleApproval) : undefined),
+    [latestSampleApproval, order]
+  );
   const sourcePlanHref = useMemo(() => (order ? productionFactoryOrderSourcePlanHref(order) : undefined), [order]);
   const missingLotCount = useMemo(
     () =>
@@ -129,6 +158,12 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
     handoverReceiver.trim() !== "" &&
     missingLotCount === 0 &&
     !materialBusy;
+  const canSubmitFactorySample =
+    Boolean(sampleMassGate?.canSubmitSample) && sampleCode.trim() !== "" && sampleEvidenceName.trim() !== "" && !sampleBusy;
+  const canApproveFactorySample =
+    Boolean(sampleMassGate?.canApproveSample) && sampleDecisionReason.trim() !== "" && sampleStorageStatus.trim() !== "" && !sampleBusy;
+  const canRejectFactorySample = Boolean(sampleMassGate?.canRejectSample) && sampleDecisionReason.trim() !== "" && !sampleBusy;
+  const canStartFactoryMassProduction = Boolean(sampleMassGate?.canStartMassProduction) && !massBusy;
 
   useEffect(() => {
     if (!order) {
@@ -149,6 +184,22 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
       )
     );
   }, [order?.id, order?.version]);
+
+  useEffect(() => {
+    if (!order) {
+      return;
+    }
+    setSampleCode(`${order.orderNo}-SAMPLE-A`);
+    setSampleFormulaVersion(order.specVersion);
+    setSampleEvidenceName("");
+    setSampleNote("");
+    setSampleDecisionReason(order.sampleRejectReason || "Mẫu đạt theo tiêu chuẩn lưu");
+    setSampleStorageStatus("retained_in_qa_cabinet");
+    setSampleError(undefined);
+    setSampleMessage(undefined);
+    setMassError(undefined);
+    setMassMessage(undefined);
+  }, [order?.id]);
 
   const reloadFactoryDispatches = async (nextOrder?: SubcontractOrder) => {
     const targetOrder = nextOrder ?? order;
@@ -228,6 +279,85 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
       setMaterialError(errorText(cause));
     } finally {
       setMaterialBusy(false);
+    }
+  };
+
+  const handleSubmitFactorySample = async () => {
+    if (!order) {
+      return;
+    }
+
+    setSampleBusy(true);
+    setSampleError(undefined);
+    setSampleMessage(undefined);
+    try {
+      const result = await submitSubcontractSample(
+        buildFactorySampleSubmissionInput({
+          order,
+          sampleCode,
+          formulaVersion: sampleFormulaVersion,
+          evidenceFileName: sampleEvidenceName,
+          note: sampleNote,
+          submittedAt: new Date().toISOString()
+        })
+      );
+
+      setOrder(result.order);
+      setLatestSampleApproval(result.sampleApproval);
+      setSampleMessage(`${result.sampleApproval.sampleCode} đã ghi nhận mẫu chờ duyệt.`);
+    } catch (cause) {
+      setSampleError(errorText(cause));
+    } finally {
+      setSampleBusy(false);
+    }
+  };
+
+  const handleDecideFactorySample = async (decision: "approve" | "reject") => {
+    if (!order) {
+      return;
+    }
+
+    setSampleBusy(true);
+    setSampleError(undefined);
+    setSampleMessage(undefined);
+    try {
+      const input = buildFactorySampleDecisionInput({
+        order,
+        sampleApproval: latestSampleApproval,
+        decision,
+        reason: sampleDecisionReason,
+        storageStatus: sampleStorageStatus,
+        decisionAt: new Date().toISOString()
+      });
+      const result =
+        decision === "approve" ? await approveSubcontractSample(input) : await rejectSubcontractSample(input);
+
+      setOrder(result.order);
+      setLatestSampleApproval(result.sampleApproval);
+      setSampleMessage(decision === "approve" ? "Mẫu đã đạt; có thể bắt đầu sản xuất hàng loạt." : "Mẫu đã bị từ chối; cần gửi lại mẫu.");
+    } catch (cause) {
+      setSampleError(errorText(cause));
+    } finally {
+      setSampleBusy(false);
+    }
+  };
+
+  const handleStartFactoryMassProduction = async () => {
+    if (!order) {
+      return;
+    }
+
+    setMassBusy(true);
+    setMassError(undefined);
+    setMassMessage(undefined);
+    try {
+      const result = await startMassProductionSubcontractOrder(order.id, order.version);
+      setOrder(result.order);
+      setMassMessage("Đã bắt đầu sản xuất hàng loạt.");
+    } catch (cause) {
+      setMassError(errorText(cause));
+    } finally {
+      setMassBusy(false);
     }
   };
 
@@ -386,6 +516,42 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
         sourceWarehouseId={sourceWarehouseId}
         updateMaterialDraft={updateMaterialDraft}
         onSubmit={handleFactoryMaterialHandover}
+      />
+
+      <FactorySampleApprovalSection
+        canApprove={canApproveFactorySample}
+        canReject={canRejectFactorySample}
+        canSubmit={canSubmitFactorySample}
+        decisionReason={sampleDecisionReason}
+        evidenceName={sampleEvidenceName}
+        formulaVersion={sampleFormulaVersion}
+        gate={sampleMassGate}
+        latestSample={latestSampleApproval}
+        note={sampleNote}
+        sampleBusy={sampleBusy}
+        sampleCode={sampleCode}
+        sampleError={sampleError}
+        sampleMessage={sampleMessage}
+        setDecisionReason={setSampleDecisionReason}
+        setEvidenceName={setSampleEvidenceName}
+        setFormulaVersion={setSampleFormulaVersion}
+        setNote={setSampleNote}
+        setSampleCode={setSampleCode}
+        setStorageStatus={setSampleStorageStatus}
+        storageStatus={sampleStorageStatus}
+        onApprove={() => handleDecideFactorySample("approve")}
+        onReject={() => handleDecideFactorySample("reject")}
+        onSubmit={handleSubmitFactorySample}
+      />
+
+      <FactoryMassProductionSection
+        canStart={canStartFactoryMassProduction}
+        gate={sampleMassGate}
+        massBusy={massBusy}
+        massError={massError}
+        massMessage={massMessage}
+        order={order}
+        onStart={handleStartFactoryMassProduction}
       />
 
       <section className="erp-masterdata-list-card" id="factory-dispatch">
@@ -724,6 +890,262 @@ function FactoryMaterialHandoverSection({
           </dl>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function FactorySampleApprovalSection({
+  canApprove,
+  canReject,
+  canSubmit,
+  decisionReason,
+  evidenceName,
+  formulaVersion,
+  gate,
+  latestSample,
+  note,
+  sampleBusy,
+  sampleCode,
+  sampleError,
+  sampleMessage,
+  setDecisionReason,
+  setEvidenceName,
+  setFormulaVersion,
+  setNote,
+  setSampleCode,
+  setStorageStatus,
+  storageStatus,
+  onApprove,
+  onReject,
+  onSubmit
+}: {
+  canApprove: boolean;
+  canReject: boolean;
+  canSubmit: boolean;
+  decisionReason: string;
+  evidenceName: string;
+  formulaVersion: string;
+  gate?: ReturnType<typeof buildSubcontractFactorySampleMassProduction>;
+  latestSample?: SubcontractSampleApproval;
+  note: string;
+  sampleBusy: boolean;
+  sampleCode: string;
+  sampleError?: string;
+  sampleMessage?: string;
+  setDecisionReason: (value: string) => void;
+  setEvidenceName: (value: string) => void;
+  setFormulaVersion: (value: string) => void;
+  setNote: (value: string) => void;
+  setSampleCode: (value: string) => void;
+  setStorageStatus: (value: string) => void;
+  storageStatus: string;
+  onApprove: () => void;
+  onReject: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <section className="erp-masterdata-list-card" id="factory-sample-approval">
+      <header className="erp-section-header">
+        <div>
+          <h2 className="erp-section-title">Duyệt mẫu nhà máy</h2>
+          <p className="erp-page-description">
+            Ghi nhận mẫu nhà máy gửi, lưu bằng chứng mẫu và chốt đạt/không đạt trước khi mở sản xuất hàng loạt.
+          </p>
+        </div>
+        {gate ? <StatusChip tone={sampleGateStatusTone(gate.sampleStatus)}>{sampleGateStatusLabel(gate.sampleStatus)}</StatusChip> : null}
+      </header>
+      {sampleError ? (
+        <p className="erp-form-error" role="alert">
+          {sampleError}
+        </p>
+      ) : null}
+      {gate?.sampleBlockedReason ? (
+        <p className="erp-form-error" role="status">
+          {gate.sampleBlockedReason}
+        </p>
+      ) : null}
+      {sampleMessage ? (
+        <p className="erp-form-success" role="status">
+          {sampleMessage}
+        </p>
+      ) : null}
+
+      <div className="erp-subcontract-transfer-controls">
+        <label className="erp-field">
+          <span>Mã mẫu</span>
+          <input className="erp-input" disabled={!gate?.canSubmitSample || sampleBusy} type="text" value={sampleCode} onChange={(event) => setSampleCode(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Phiên bản công thức</span>
+          <input
+            className="erp-input"
+            disabled={!gate?.canSubmitSample || sampleBusy}
+            type="text"
+            value={formulaVersion}
+            onChange={(event) => setFormulaVersion(event.target.value)}
+          />
+        </label>
+        <label className="erp-field">
+          <span>File / mã bằng chứng mẫu</span>
+          <input
+            className="erp-input"
+            disabled={!gate?.canSubmitSample || sampleBusy}
+            type="text"
+            value={evidenceName}
+            onChange={(event) => setEvidenceName(event.target.value)}
+          />
+        </label>
+      </div>
+      <label className="erp-field erp-subcontract-note-field">
+        <span>Ghi chú mẫu</span>
+        <input className="erp-input" disabled={!gate?.canSubmitSample || sampleBusy} type="text" value={note} onChange={(event) => setNote(event.target.value)} />
+      </label>
+
+      <div className="erp-subcontract-actions">
+        <button className="erp-button erp-button--primary" type="button" disabled={!canSubmit} onClick={onSubmit}>
+          Ghi nhận mẫu đã gửi
+        </button>
+        <StatusChip tone={gate ? sampleGateStatusTone(gate.sampleStatus) : "normal"}>
+          {gate ? sampleGateStatusLabel(gate.sampleStatus) : "Chưa có dữ liệu"}
+        </StatusChip>
+      </div>
+
+      {latestSample ? (
+        <div className="erp-production-selected-plan-main">
+          <div className="erp-production-selected-plan-badges">
+            <StatusChip tone={sampleApprovalStatusTone(latestSample.status)}>{sampleApprovalStatusLabel(latestSample.status)}</StatusChip>
+            <StatusChip tone="normal">{latestSample.sampleCode}</StatusChip>
+          </div>
+          <dl className="erp-production-selected-plan-meta">
+            <div>
+              <dt>Đã gửi</dt>
+              <dd>
+                {formatDate(latestSample.submittedAt)}
+                {latestSample.submittedBy ? ` / ${latestSample.submittedBy}` : ""}
+              </dd>
+            </div>
+            <div>
+              <dt>Công thức</dt>
+              <dd>{latestSample.formulaVersion ?? "-"}</dd>
+            </div>
+            <div>
+              <dt>Bằng chứng</dt>
+              <dd>{latestSample.evidence.length} dòng</dd>
+            </div>
+            <div>
+              <dt>Lý do quyết định</dt>
+              <dd>{latestSample.decisionReason ?? "-"}</dd>
+            </div>
+          </dl>
+        </div>
+      ) : null}
+
+      <div className="erp-subcontract-transfer-controls">
+        <label className="erp-field">
+          <span>Lý do quyết định</span>
+          <input
+            className="erp-input"
+            disabled={!gate?.canApproveSample || sampleBusy}
+            type="text"
+            value={decisionReason}
+            onChange={(event) => setDecisionReason(event.target.value)}
+          />
+        </label>
+        <label className="erp-field">
+          <span>Trạng thái lưu mẫu</span>
+          <input
+            className="erp-input"
+            disabled={!gate?.canApproveSample || sampleBusy}
+            type="text"
+            value={storageStatus}
+            onChange={(event) => setStorageStatus(event.target.value)}
+          />
+        </label>
+      </div>
+      <div className="erp-subcontract-actions">
+        <button className="erp-button erp-button--primary" type="button" disabled={!canApprove} onClick={onApprove}>
+          Duyệt mẫu đạt
+        </button>
+        <button className="erp-button erp-button--secondary" type="button" disabled={!canReject} onClick={onReject}>
+          Từ chối mẫu
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function FactoryMassProductionSection({
+  canStart,
+  gate,
+  massBusy,
+  massError,
+  massMessage,
+  order,
+  onStart
+}: {
+  canStart: boolean;
+  gate?: ReturnType<typeof buildSubcontractFactorySampleMassProduction>;
+  massBusy: boolean;
+  massError?: string;
+  massMessage?: string;
+  order: SubcontractOrder;
+  onStart: () => void;
+}) {
+  return (
+    <section className="erp-masterdata-list-card" id="factory-mass-production">
+      <header className="erp-section-header">
+        <div>
+          <h2 className="erp-section-title">Sản xuất hàng loạt</h2>
+          <p className="erp-page-description">
+            Chỉ bắt đầu khi vật tư đã bàn giao đủ và mẫu đạt hoặc lệnh không yêu cầu mẫu.
+          </p>
+        </div>
+        {gate ? <StatusChip tone={massGateStatusTone(gate.massStatus)}>{massGateStatusLabel(gate.massStatus)}</StatusChip> : null}
+      </header>
+      {massError ? (
+        <p className="erp-form-error" role="alert">
+          {massError}
+        </p>
+      ) : null}
+      {gate?.massBlockedReason ? (
+        <p className="erp-form-error" role="status">
+          {gate.massBlockedReason}
+        </p>
+      ) : null}
+      {massMessage ? (
+        <p className="erp-form-success" role="status">
+          {massMessage}
+        </p>
+      ) : null}
+
+      <dl className="erp-production-selected-plan-meta">
+        <div>
+          <dt>Lệnh</dt>
+          <dd>{order.orderNo}</dd>
+        </div>
+        <div>
+          <dt>Thành phẩm</dt>
+          <dd>
+            {order.sku} / {formatProductionPlanQuantity(String(order.quantity), order.uomCode ?? "PCS")}
+          </dd>
+        </div>
+        <div>
+          <dt>Nhà máy</dt>
+          <dd>{order.factoryName}</dd>
+        </div>
+        <div>
+          <dt>Cổng mẫu</dt>
+          <dd>{gate ? sampleGateStatusLabel(gate.sampleStatus) : "-"}</dd>
+        </div>
+      </dl>
+      <div className="erp-subcontract-actions">
+        <button className="erp-button erp-button--primary" type="button" disabled={!canStart || massBusy} onClick={onStart}>
+          Bắt đầu sản xuất hàng loạt
+        </button>
+        <StatusChip tone={gate ? massGateStatusTone(gate.massStatus) : "normal"}>
+          {gate ? massGateStatusLabel(gate.massStatus) : "Chưa có dữ liệu"}
+        </StatusChip>
+      </div>
     </section>
   );
 }
@@ -1094,6 +1516,95 @@ function factoryMaterialTransferStatusLabel(status: SubcontractMaterialTransfer[
     case "DRAFT":
     default:
       return "Nháp";
+  }
+}
+
+function sampleGateStatusTone(status: FactorySampleStatus) {
+  switch (status) {
+    case "approved":
+    case "not_required":
+      return "success" as const;
+    case "ready_to_submit":
+    case "submitted":
+      return "info" as const;
+    case "rejected":
+    case "blocked":
+      return "danger" as const;
+    case "pending":
+    default:
+      return "warning" as const;
+  }
+}
+
+function sampleGateStatusLabel(status: FactorySampleStatus) {
+  switch (status) {
+    case "approved":
+      return "Mẫu đạt";
+    case "not_required":
+      return "Không yêu cầu mẫu";
+    case "ready_to_submit":
+      return "Sẵn sàng gửi mẫu";
+    case "submitted":
+      return "Chờ duyệt mẫu";
+    case "rejected":
+      return "Mẫu không đạt";
+    case "blocked":
+      return "Đang chặn";
+    case "pending":
+    default:
+      return "Chờ vật tư";
+  }
+}
+
+function massGateStatusTone(status: FactoryMassProductionStatus) {
+  switch (status) {
+    case "started":
+      return "success" as const;
+    case "ready_to_start":
+      return "info" as const;
+    case "blocked":
+      return "danger" as const;
+    case "pending":
+    default:
+      return "warning" as const;
+  }
+}
+
+function massGateStatusLabel(status: FactoryMassProductionStatus) {
+  switch (status) {
+    case "started":
+      return "Đã bắt đầu";
+    case "ready_to_start":
+      return "Sẵn sàng bắt đầu";
+    case "blocked":
+      return "Đang chặn";
+    case "pending":
+    default:
+      return "Chờ đủ điều kiện";
+  }
+}
+
+function sampleApprovalStatusTone(status: SubcontractSampleApproval["status"]) {
+  switch (status) {
+    case "approved":
+      return "success" as const;
+    case "rejected":
+      return "danger" as const;
+    case "submitted":
+    default:
+      return "info" as const;
+  }
+}
+
+function sampleApprovalStatusLabel(status: SubcontractSampleApproval["status"]) {
+  switch (status) {
+    case "approved":
+      return "Mẫu đạt";
+    case "rejected":
+      return "Mẫu không đạt";
+    case "submitted":
+    default:
+      return "Đã gửi mẫu";
   }
 }
 

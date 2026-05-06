@@ -127,12 +127,41 @@ describe("subcontractFactoryExecutionTracker", () => {
       status: "blocked",
       action: {
         label: "Mở duyệt mẫu",
-        href: "/subcontract?source_production_plan_id=plan-001&search=PP-260505-0001#subcontract-sample",
+        href: "/production/factory-orders/sco-001#factory-sample-approval",
         disabled: false
       }
     });
     expect(tracker.items.find((item) => item.id === "mass-production")).toMatchObject({
       status: "blocked"
+    });
+  });
+
+  it("links sample and mass production gates to the production factory order detail", () => {
+    const tracker = buildSubcontractFactoryExecutionTracker(
+      {
+        ...baseOrder,
+        status: "materials_issued_to_factory",
+        materialLines: [
+          {
+            ...baseOrder.materialLines[0],
+            issuedQty: "0.099900"
+          }
+        ]
+      },
+      { dispatchStatus: "confirmed" }
+    );
+
+    expect(tracker.items.find((item) => item.id === "sample-gate")).toMatchObject({
+      status: "current",
+      action: {
+        href: "/production/factory-orders/sco-001#factory-sample-approval",
+        disabled: false
+      }
+    });
+    expect(tracker.items.find((item) => item.id === "mass-production")).toMatchObject({
+      action: {
+        href: "/production/factory-orders/sco-001#factory-mass-production"
+      }
     });
   });
 });

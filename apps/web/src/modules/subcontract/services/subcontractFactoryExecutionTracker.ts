@@ -185,7 +185,7 @@ function buildSampleGateItem(order: SubcontractOrder): FactoryExecutionWorkItem 
     metric: formatSampleMetric(order.status),
     action: {
       label: "Mở duyệt mẫu",
-      href: subcontractOperationsHref(order, "subcontract-sample"),
+      href: productionFactoryOrderSectionHref(order, "factory-sample-approval"),
       disabled: status === "pending"
     }
   });
@@ -208,8 +208,8 @@ function buildMassProductionItem(order: SubcontractOrder): FactoryExecutionWorkI
     status,
     metric: isAtLeast(order.status, "mass_production_started") ? "Đã bắt đầu" : "Chưa bắt đầu",
     action: {
-      label: "Mở xử lý lệnh",
-      href: subcontractOperationsHref(order, "subcontract-workflow"),
+      label: "Mở sản xuất hàng loạt",
+      href: productionFactoryOrderSectionHref(order, "factory-mass-production"),
       disabled: status === "pending" || status === "blocked"
     }
   });
