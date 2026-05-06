@@ -6,7 +6,7 @@ Sprint: Sprint 30 - Factory Sample Approval And Mass Production Start
 Document role: Changelog and verification evidence
 Version: v1
 Date: 2026-05-06
-Status: Draft; implementation, PR, CI, merge, dev deploy, and browser smoke pending
+Status: Completed and merged; CI, dev deploy, full dev smoke, and browser smoke passed
 
 ---
 
@@ -66,12 +66,12 @@ Local branch verification:
 Remote/dev verification:
 
 ```text
-- GitHub PR pending
-- GitHub CI pending
-- Manual merge pending
-- Dev deploy pending
-- Full dev smoke pending
-- Browser smoke pending
+- GitHub PR #599 required-api, required-web, required-openapi, required-migration, web, and e2e checks passed.
+- PR #599 was manually merged into main at bd645404.
+- Dev deploy passed with ./infra/scripts/deploy-dev-staging.sh dev on 2026-05-06.
+- Full dev smoke passed during deploy.
+- Browser smoke passed on /production/factory-orders/sco-s16-08-03-smoke-0063#factory-sample-approval.
+- Browser smoke verified #factory-sample-approval, #factory-mass-production, timeline/tracker hash links, sample heading/copy, mass-production heading/copy, and screenshot capture.
 ```
 
 ---
@@ -80,14 +80,14 @@ Remote/dev verification:
 
 ```text
 Runtime branch: codex/s30-sample-mass-production
-Runtime commit: pending
-PR number: pending
-Merge commit: pending
-GitHub CI: pending
-Dev deploy: pending
-Full dev smoke: pending
-Browser smoke: pending
-Screenshot: pending
+Runtime commit: 84a323b0
+PR number: #599
+Merge commit: bd645404
+GitHub CI: passed
+Dev deploy: passed
+Full dev smoke: passed
+Browser smoke: passed
+Screenshot: output/playwright/s30-factory-sample-mass-production.png
 ```
 
 ---
