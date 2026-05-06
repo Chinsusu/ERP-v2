@@ -3,9 +3,9 @@
 Project: Web ERP for cosmetics operations
 Phase: Phase 1
 Document role: Current master document index and traceability map
-Version: v2.12
+Version: v2.13
 Date: 2026-05-06
-Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, Sprint 25 subcontract closeout traceability evidence, Sprint 26 production IA cleanup evidence, Sprint 27 factory dispatch MVP, and Sprint 28 factory execution tracking
+Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, Sprint 25 subcontract closeout traceability evidence, Sprint 26 production IA cleanup evidence, Sprint 27 factory dispatch MVP, and Sprint 28 factory execution tracking closeout evidence
 
 ---
 
@@ -39,7 +39,7 @@ Sprint 24 implementation status: file 99 tracks the task board, file 100 locks t
 Sprint 25 implementation status: file 102 tracks the task board, file 103 locks the flow, and file 104 records changelog/evidence. PR #589 merged at a4b96c84 with GitHub CI green. Dev deploy passed on 2026-05-06 with migration 43 applied and full dev smoke passed. Browser smoke passed for Production Plan detail -> source-linked Subcontract Order visibility -> /subcontract source filter. No v0.25 tag exists.
 Sprint 26 implementation status: file 105 tracks the task board, file 106 locks the Production IA/external factory order detail flow, and file 107 records implementation evidence. PR #591 merged at 5e8003a9 with GitHub CI green; dev deploy, full dev smoke, and Production browser smoke passed on 2026-05-06. Production is the user-facing module; external factory/subcontract is the current production execution method. /subcontract remains a hidden technical/legacy execution route rather than a primary sidebar sibling. No v0.26 tag exists.
 Sprint 27 implementation status: file 108 tracks the task board, file 109 locks the factory dispatch flow, and file 110 records changelog/evidence. PR #593 merged at 3cc5852d with GitHub CI green. Dev deploy passed on 2026-05-06 with migration 44 applied and full dev smoke passed. Browser smoke passed for /production/factory-orders/:orderId factory dispatch create -> ready -> sent -> confirmed. Scope is manual factory dispatch pack creation, ready/sent evidence, and factory response on /production/factory-orders/:orderId. Email, Zalo, factory portal/API delivery, digital signatures, and internal MES production remain out of scope. No v0.27 tag exists.
-Sprint 28 implementation status: file 111 tracks the task board, file 112 locks the factory execution tracking flow, and file 113 tracks changelog/evidence. Scope is a production-facing current gate/worklist on /production/factory-orders/:orderId after factory dispatch confirmation. It links to deposit, material handover, sample, mass production, finished goods receipt, QC/claim, and final payment readiness through existing execution surfaces. Email, Zalo, factory portal/API delivery, and internal MES production remain out of scope. PR/CI/dev deploy/browser smoke evidence are pending until closeout. No v0.28 tag exists.
+Sprint 28 implementation status: file 111 tracks the task board, file 112 locks the factory execution tracking flow, and file 113 records changelog/evidence. Scope is a production-facing current gate/worklist on /production/factory-orders/:orderId after factory dispatch confirmation. It links to deposit, material handover, sample, mass production, finished goods receipt, QC/claim, and final payment readiness through existing execution surfaces. Email, Zalo, factory portal/API delivery, and internal MES production remain out of scope. PR #595 merged at cd3a5b18 with GitHub CI green. Dev deploy passed on 2026-05-06 with no new migration; full dev smoke passed. Browser smoke passed for /production/factory-orders/sco-s16-07-01-1777715855439203730. No v0.28 tag exists.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.

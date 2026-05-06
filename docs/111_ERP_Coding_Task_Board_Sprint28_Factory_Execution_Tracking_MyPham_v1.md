@@ -6,7 +6,7 @@ Sprint: Sprint 28 - Factory Execution Tracking
 Document role: Coding task board
 Version: v1
 Date: 2026-05-06
-Status: Implemented on branch; PR/CI/dev deploy evidence pending
+Status: Completed and merged; PR/CI/dev deploy/browser smoke evidence recorded in file 113
 
 ---
 
@@ -105,5 +105,5 @@ Follow-up backend work may be opened later if users need persisted factory daily
 - A sample-rejected order blocks mass production and links to sample handling.
 - The tracker links to existing execution surfaces without exposing /subcontract as a sidebar module.
 - No email/Zalo behavior is added or implied.
-- Local tests/build, PR CI, self-review, merge, dev deploy, and browser smoke are recorded before closeout.
+- Local tests/build, PR CI, self-review, merge, dev deploy, and browser smoke are recorded in the Sprint 28 changelog before closeout.
 ```
