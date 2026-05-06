@@ -164,6 +164,21 @@ describe("subcontractFactoryExecutionTracker", () => {
       }
     });
   });
+
+  it("links finished goods receipt to the production factory order detail", () => {
+    const tracker = buildSubcontractFactoryExecutionTracker({
+      ...baseOrder,
+      status: "mass_production_started"
+    });
+
+    expect(tracker.items.find((item) => item.id === "finished-goods-receipt")).toMatchObject({
+      status: "current",
+      action: {
+        href: "/production/factory-orders/sco-001#factory-finished-goods-receipt",
+        disabled: false
+      }
+    });
+  });
 });
 
 const baseOrder: SubcontractOrder = {

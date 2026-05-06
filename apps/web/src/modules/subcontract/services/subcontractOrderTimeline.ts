@@ -161,7 +161,7 @@ const timelineSteps: TimelineStep[] = [
     description: (order) => `Nh\u1eadn th\u00e0nh ph\u1ea9m t\u1eeb ${order.factoryName} v\u1ec1 khu QC hold.`,
     action: (order, status) => ({
       label: "M\u1edf nh\u1eadn th\u00e0nh ph\u1ea9m",
-      href: subcontractOperationsHref(order, "subcontract-inbound"),
+      href: `${productionFactoryOrderHref(order)}#factory-finished-goods-receipt`,
       disabled: status === "pending" || status === "blocked"
     })
   },

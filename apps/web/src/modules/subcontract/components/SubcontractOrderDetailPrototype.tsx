@@ -24,6 +24,7 @@ import {
   approveSubcontractSample,
   recordSubcontractFactoryDispatchResponse,
   rejectSubcontractSample,
+  receiveSubcontractFinishedGoods,
   startMassProductionSubcontractOrder,
   submitSubcontractSample,
   subcontractFactoryDispatchStatusTone,
@@ -53,9 +54,16 @@ import {
   type FactoryMaterialHandover,
   type FactoryMaterialHandoverLineDraft
 } from "../services/subcontractFactoryMaterialHandover";
+import {
+  buildFactoryFinishedGoodsReceiptInput,
+  buildSubcontractFactoryFinishedGoodsReceipt,
+  type FactoryFinishedGoodsReceiptDraft
+} from "../services/subcontractFactoryFinishedGoodsReceipt";
 import type {
   SubcontractFactoryDispatch,
   SubcontractFinalPaymentStatus,
+  SubcontractFinishedGoodsPackagingStatus,
+  SubcontractFinishedGoodsReceipt,
   SubcontractOrderMaterialLine,
   SubcontractOrder,
   SubcontractMaterialTransfer,
@@ -65,6 +73,8 @@ import type {
 type SubcontractOrderDetailPrototypeProps = {
   orderId: string;
 };
+
+const factoryFinishedGoodsLocationOptions = [{ label: "QC hold", value: "qc_hold", code: "QC-HOLD" }] as const;
 
 export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDetailPrototypeProps) {
   const [order, setOrder] = useState<SubcontractOrder>();
@@ -100,6 +110,24 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
   const [massBusy, setMassBusy] = useState(false);
   const [massError, setMassError] = useState<string | undefined>();
   const [massMessage, setMassMessage] = useState<string | undefined>();
+  const [receiptWarehouseId, setReceiptWarehouseId] = useState<string>(subcontractTransferWarehouseOptions[0].value);
+  const [receiptLocationId, setReceiptLocationId] = useState<string>(factoryFinishedGoodsLocationOptions[0].value);
+  const [receiptDeliveryNoteNo, setReceiptDeliveryNoteNo] = useState("");
+  const [receiptReceivedBy, setReceiptReceivedBy] = useState("warehouse-user");
+  const [receiptEvidenceName, setReceiptEvidenceName] = useState("");
+  const [receiptNote, setReceiptNote] = useState("");
+  const [receiptDraft, setReceiptDraft] = useState<FactoryFinishedGoodsReceiptDraft>({
+    receiveQty: "0",
+    batchNo: "",
+    lotNo: "",
+    expiryDate: "",
+    packagingStatus: "intact",
+    note: ""
+  });
+  const [receiptBusy, setReceiptBusy] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | undefined>();
+  const [receiptMessage, setReceiptMessage] = useState<string | undefined>();
+  const [latestFinishedGoodsReceipt, setLatestFinishedGoodsReceipt] = useState<SubcontractFinishedGoodsReceipt>();
 
   useEffect(() => {
     let active = true;
@@ -143,6 +171,10 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
     () => (order ? buildSubcontractFactorySampleMassProduction(order, latestSampleApproval) : undefined),
     [latestSampleApproval, order]
   );
+  const finishedGoodsReceiptGate = useMemo(
+    () => (order ? buildSubcontractFactoryFinishedGoodsReceipt(order) : undefined),
+    [order]
+  );
   const sourcePlanHref = useMemo(() => (order ? productionFactoryOrderSourcePlanHref(order) : undefined), [order]);
   const missingLotCount = useMemo(
     () =>
@@ -164,6 +196,15 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
     Boolean(sampleMassGate?.canApproveSample) && sampleDecisionReason.trim() !== "" && sampleStorageStatus.trim() !== "" && !sampleBusy;
   const canRejectFactorySample = Boolean(sampleMassGate?.canRejectSample) && sampleDecisionReason.trim() !== "" && !sampleBusy;
   const canStartFactoryMassProduction = Boolean(sampleMassGate?.canStartMassProduction) && !massBusy;
+  const canReceiveFinishedGoods =
+    Boolean(finishedGoodsReceiptGate?.canReceive) &&
+    receiptDeliveryNoteNo.trim() !== "" &&
+    receiptReceivedBy.trim() !== "" &&
+    receiptDraft.batchNo.trim() !== "" &&
+    receiptDraft.expiryDate.trim() !== "" &&
+    isPositiveQuantity(receiptDraft.receiveQty) &&
+    isWithinQuantity(receiptDraft.receiveQty, finishedGoodsReceiptGate?.remainingQty) &&
+    !receiptBusy;
 
   useEffect(() => {
     if (!order) {
@@ -200,6 +241,21 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
     setMassError(undefined);
     setMassMessage(undefined);
   }, [order?.id]);
+
+  useEffect(() => {
+    if (!order) {
+      return;
+    }
+    const gate = buildSubcontractFactoryFinishedGoodsReceipt(order);
+    setReceiptDraft({
+      receiveQty: compactQuantity(gate.remainingQty),
+      batchNo: "",
+      lotNo: "",
+      expiryDate: "",
+      packagingStatus: "intact",
+      note: ""
+    });
+  }, [order?.id, order?.version]);
 
   const reloadFactoryDispatches = async (nextOrder?: SubcontractOrder) => {
     const targetOrder = nextOrder ?? order;
@@ -242,6 +298,13 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
         note: current[lineId]?.note ?? "",
         [field]: value
       }
+    }));
+  };
+
+  const updateFinishedGoodsReceiptDraft = (field: keyof FactoryFinishedGoodsReceiptDraft, value: string) => {
+    setReceiptDraft((current) => ({
+      ...current,
+      [field]: value
     }));
   };
 
@@ -358,6 +421,50 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
       setMassError(errorText(cause));
     } finally {
       setMassBusy(false);
+    }
+  };
+
+  const handleFactoryFinishedGoodsReceipt = async () => {
+    if (!order) {
+      return;
+    }
+
+    setReceiptBusy(true);
+    setReceiptError(undefined);
+    setReceiptMessage(undefined);
+    try {
+      const warehouse =
+        subcontractTransferWarehouseOptions.find((option) => option.value === receiptWarehouseId) ??
+        subcontractTransferWarehouseOptions[0];
+      const location =
+        factoryFinishedGoodsLocationOptions.find((option) => option.value === receiptLocationId) ??
+        factoryFinishedGoodsLocationOptions[0];
+      const result = await receiveSubcontractFinishedGoods(
+        buildFactoryFinishedGoodsReceiptInput({
+          order,
+          warehouseId: warehouse.value,
+          warehouseCode: warehouse.code,
+          locationId: location.value,
+          locationCode: location.code,
+          deliveryNoteNo: receiptDeliveryNoteNo,
+          receivedBy: receiptReceivedBy,
+          evidenceFileName: receiptEvidenceName,
+          note: receiptNote,
+          receivedAt: new Date().toISOString(),
+          draft: receiptDraft
+        })
+      );
+
+      setOrder(result.order);
+      setLatestFinishedGoodsReceipt(result.receipt);
+      setReceiptMessage(`${result.receipt.receiptNo} đã nhận ${result.stockMovements.length} dòng vào QC hold.`);
+      setReceiptDeliveryNoteNo("");
+      setReceiptEvidenceName("");
+      setReceiptNote("");
+    } catch (cause) {
+      setReceiptError(errorText(cause));
+    } finally {
+      setReceiptBusy(false);
     }
   };
 
@@ -552,6 +659,30 @@ export function SubcontractOrderDetailPrototype({ orderId }: SubcontractOrderDet
         massMessage={massMessage}
         order={order}
         onStart={handleStartFactoryMassProduction}
+      />
+
+      <FactoryFinishedGoodsReceiptSection
+        canReceive={canReceiveFinishedGoods}
+        deliveryNoteNo={receiptDeliveryNoteNo}
+        draft={receiptDraft}
+        evidenceName={receiptEvidenceName}
+        gate={finishedGoodsReceiptGate}
+        latestReceipt={latestFinishedGoodsReceipt}
+        locationId={receiptLocationId}
+        note={receiptNote}
+        receiptBusy={receiptBusy}
+        receiptError={receiptError}
+        receiptMessage={receiptMessage}
+        receivedBy={receiptReceivedBy}
+        setDeliveryNoteNo={setReceiptDeliveryNoteNo}
+        setEvidenceName={setReceiptEvidenceName}
+        setLocationId={setReceiptLocationId}
+        setNote={setReceiptNote}
+        setReceivedBy={setReceiptReceivedBy}
+        setWarehouseId={setReceiptWarehouseId}
+        updateDraft={updateFinishedGoodsReceiptDraft}
+        warehouseId={receiptWarehouseId}
+        onReceive={handleFactoryFinishedGoodsReceipt}
       />
 
       <section className="erp-masterdata-list-card" id="factory-dispatch">
@@ -1150,6 +1281,239 @@ function FactoryMassProductionSection({
   );
 }
 
+function FactoryFinishedGoodsReceiptSection({
+  canReceive,
+  deliveryNoteNo,
+  draft,
+  evidenceName,
+  gate,
+  latestReceipt,
+  locationId,
+  note,
+  receiptBusy,
+  receiptError,
+  receiptMessage,
+  receivedBy,
+  setDeliveryNoteNo,
+  setEvidenceName,
+  setLocationId,
+  setNote,
+  setReceivedBy,
+  setWarehouseId,
+  updateDraft,
+  warehouseId,
+  onReceive
+}: {
+  canReceive: boolean;
+  deliveryNoteNo: string;
+  draft: FactoryFinishedGoodsReceiptDraft;
+  evidenceName: string;
+  gate?: ReturnType<typeof buildSubcontractFactoryFinishedGoodsReceipt>;
+  latestReceipt?: SubcontractFinishedGoodsReceipt;
+  locationId: string;
+  note: string;
+  receiptBusy: boolean;
+  receiptError?: string;
+  receiptMessage?: string;
+  receivedBy: string;
+  setDeliveryNoteNo: (value: string) => void;
+  setEvidenceName: (value: string) => void;
+  setLocationId: (value: string) => void;
+  setNote: (value: string) => void;
+  setReceivedBy: (value: string) => void;
+  setWarehouseId: (value: string) => void;
+  updateDraft: (field: keyof FactoryFinishedGoodsReceiptDraft, value: string) => void;
+  warehouseId: string;
+  onReceive: () => void;
+}) {
+  const overRemaining = gate?.remainingQty ? !isWithinQuantity(draft.receiveQty, gate.remainingQty) : false;
+
+  return (
+    <section className="erp-masterdata-list-card" id="factory-finished-goods-receipt">
+      <header className="erp-section-header">
+        <div>
+          <h2 className="erp-section-title">Nhận thành phẩm từ nhà máy</h2>
+          <p className="erp-page-description">
+            Nhận thành phẩm vào khu QC hold. Thành phẩm chưa vào tồn khả dụng cho tới khi QC đạt.
+          </p>
+        </div>
+        {gate ? (
+          <StatusChip tone={finishedGoodsReceiptGateTone(gate.status)}>
+            {finishedGoodsReceiptGateLabel(gate.status)}
+          </StatusChip>
+        ) : null}
+      </header>
+
+      {receiptError ? (
+        <p className="erp-form-error" role="alert">
+          {receiptError}
+        </p>
+      ) : null}
+      {gate?.blockedReason ? (
+        <p className="erp-form-error" role="status">
+          {gate.blockedReason}
+        </p>
+      ) : null}
+      {overRemaining ? (
+        <p className="erp-form-error" role="status">
+          Số lượng nhận không được vượt quá số lượng còn lại.
+        </p>
+      ) : null}
+      {receiptMessage ? (
+        <p className="erp-form-success" role="status">
+          {receiptMessage}
+        </p>
+      ) : null}
+
+      <dl className="erp-production-selected-plan-meta">
+        <div>
+          <dt>Cần nhận</dt>
+          <dd>{gate ? formatProductionPlanQuantity(gate.remainingQty, gate.uomCode) : "-"}</dd>
+        </div>
+        <div>
+          <dt>Đã nhận</dt>
+          <dd>{gate ? formatProductionPlanQuantity(gate.receivedQty, gate.uomCode) : "-"}</dd>
+        </div>
+        <div>
+          <dt>Tổng kế hoạch</dt>
+          <dd>{gate ? formatProductionPlanQuantity(gate.plannedQty, gate.uomCode) : "-"}</dd>
+        </div>
+        <div>
+          <dt>Đích nhận</dt>
+          <dd>QC hold</dd>
+        </div>
+      </dl>
+
+      <div className="erp-subcontract-line-item erp-subcontract-line-item--editable">
+        <label className="erp-field">
+          <span>Kho nhận</span>
+          <select className="erp-input" value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
+            {subcontractTransferWarehouseOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="erp-field">
+          <span>Vị trí QC</span>
+          <select className="erp-input" value={locationId} onChange={(event) => setLocationId(event.target.value)}>
+            {factoryFinishedGoodsLocationOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="erp-field">
+          <span>Số phiếu giao nhà máy</span>
+          <input className="erp-input" value={deliveryNoteNo} onChange={(event) => setDeliveryNoteNo(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Người nhận</span>
+          <input className="erp-input" value={receivedBy} onChange={(event) => setReceivedBy(event.target.value)} />
+        </label>
+      </div>
+
+      <div className="erp-subcontract-line-item erp-subcontract-line-item--editable">
+        <label className="erp-field">
+          <span>Số lượng nhận</span>
+          <input
+            className="erp-input"
+            min="0"
+            max={gate?.remainingQty}
+            step="1"
+            type="number"
+            value={draft.receiveQty}
+            onChange={(event) => updateDraft("receiveQty", event.target.value)}
+          />
+        </label>
+        <label className="erp-field">
+          <span>Lô / batch</span>
+          <input className="erp-input" value={draft.batchNo} onChange={(event) => updateDraft("batchNo", event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Mã lot</span>
+          <input className="erp-input" value={draft.lotNo} onChange={(event) => updateDraft("lotNo", event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Hạn dùng</span>
+          <input
+            className="erp-input"
+            type="date"
+            value={draft.expiryDate}
+            onChange={(event) => updateDraft("expiryDate", event.target.value)}
+          />
+        </label>
+        <label className="erp-field">
+          <span>Tình trạng kiện</span>
+          <select
+            className="erp-input"
+            value={draft.packagingStatus}
+            onChange={(event) => updateDraft("packagingStatus", event.target.value as SubcontractFinishedGoodsPackagingStatus)}
+          >
+            <option value="intact">Nguyên kiện</option>
+            <option value="damaged">Móp / hư hỏng</option>
+            <option value="mixed">Lẫn tình trạng</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="erp-subcontract-line-item erp-subcontract-line-item--editable">
+        <label className="erp-field">
+          <span>Bằng chứng</span>
+          <input className="erp-input" value={evidenceName} onChange={(event) => setEvidenceName(event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Ghi chú dòng</span>
+          <input className="erp-input" value={draft.note} onChange={(event) => updateDraft("note", event.target.value)} />
+        </label>
+        <label className="erp-field">
+          <span>Ghi chú phiếu</span>
+          <input className="erp-input" value={note} onChange={(event) => setNote(event.target.value)} />
+        </label>
+      </div>
+
+      <div className="erp-subcontract-actions">
+        <button className="erp-button erp-button--primary" type="button" disabled={!canReceive || receiptBusy} onClick={onReceive}>
+          Ghi nhận vào QC hold
+        </button>
+        <StatusChip tone={gate ? finishedGoodsReceiptGateTone(gate.status) : "normal"}>
+          {gate ? finishedGoodsReceiptGateLabel(gate.status) : "Chưa có dữ liệu"}
+        </StatusChip>
+      </div>
+
+      {latestReceipt ? (
+        <div className="erp-production-selected-plan-main">
+          <span className="erp-production-step-label">Phiếu nhận gần nhất</span>
+          <h3>{latestReceipt.receiptNo}</h3>
+          <p>
+            {latestReceipt.deliveryNoteNo} / {latestReceipt.warehouseCode}-{latestReceipt.locationCode} /{" "}
+            {finishedGoodsReceiptStatusLabel(latestReceipt.status)}
+          </p>
+          <div className="erp-production-selected-plan-badges">
+            <StatusChip tone="warning">{finishedGoodsReceiptStatusLabel(latestReceipt.status)}</StatusChip>
+            <StatusChip tone="normal">
+              {latestReceipt.lines.length} dòng / {latestReceipt.evidence.length} bằng chứng
+            </StatusChip>
+          </div>
+          <dl className="erp-production-selected-plan-meta">
+            {latestReceipt.lines.map((line) => (
+              <div key={line.id}>
+                <dt>{line.skuCode}</dt>
+                <dd>
+                  {formatProductionPlanQuantity(line.receiveQty, line.uomCode)} / {line.batchNo} /{" "}
+                  {finishedGoodsPackagingStatusLabel(line.packagingStatus)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 const materialLineColumns: DataTableColumn<SubcontractOrderMaterialLine>[] = [
   {
     key: "sku",
@@ -1608,6 +1972,54 @@ function sampleApprovalStatusLabel(status: SubcontractSampleApproval["status"]) 
   }
 }
 
+function finishedGoodsReceiptGateTone(status: ReturnType<typeof buildSubcontractFactoryFinishedGoodsReceipt>["status"]) {
+  switch (status) {
+    case "complete":
+      return "success" as const;
+    case "ready_to_receive":
+    case "partial":
+      return "info" as const;
+    case "blocked":
+    default:
+      return "warning" as const;
+  }
+}
+
+function finishedGoodsReceiptGateLabel(status: ReturnType<typeof buildSubcontractFactoryFinishedGoodsReceipt>["status"]) {
+  switch (status) {
+    case "complete":
+      return "Đã nhận đủ";
+    case "partial":
+      return "Đã nhận một phần";
+    case "ready_to_receive":
+      return "Sẵn sàng nhận";
+    case "blocked":
+    default:
+      return "Chưa thể nhận";
+  }
+}
+
+function finishedGoodsReceiptStatusLabel(status: SubcontractFinishedGoodsReceipt["status"]) {
+  switch (status) {
+    case "qc_hold":
+    default:
+      return "QC hold";
+  }
+}
+
+function finishedGoodsPackagingStatusLabel(status?: string) {
+  switch (status) {
+    case "intact":
+      return "Nguyên kiện";
+    case "damaged":
+      return "Móp / hư hỏng";
+    case "mixed":
+      return "Lẫn tình trạng";
+    default:
+      return "-";
+  }
+}
+
 function closeoutLabel(order: SubcontractOrder) {
   if (order.status === "closed") {
     return "Đã đóng";
@@ -1649,6 +2061,30 @@ function formatFinalPaymentStatus(status: SubcontractFinalPaymentStatus) {
     default:
       return "Chờ xử lý";
   }
+}
+
+function compactQuantity(value: string) {
+  const numericValue = Number.parseFloat(value.replace(",", "."));
+  if (!Number.isFinite(numericValue)) {
+    return "0";
+  }
+
+  return String(numericValue);
+}
+
+function isPositiveQuantity(value: string) {
+  const numericValue = Number.parseFloat(value.replace(",", "."));
+  return Number.isFinite(numericValue) && numericValue > 0;
+}
+
+function isWithinQuantity(value: string, maxValue?: string) {
+  if (!maxValue) {
+    return true;
+  }
+  const numericValue = Number.parseFloat(value.replace(",", "."));
+  const numericMax = Number.parseFloat(maxValue.replace(",", "."));
+
+  return Number.isFinite(numericValue) && Number.isFinite(numericMax) && numericValue <= numericMax + 0.000001;
 }
 
 function formatDate(value?: string) {

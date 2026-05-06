@@ -227,7 +227,7 @@ function buildFinishedGoodsReceiptItem(order: SubcontractOrder): FactoryExecutio
     metric: `${formatQty(order.receivedQty)} / ${formatQty(String(order.quantity))} ${order.uomCode ?? "PCS"}`,
     action: {
       label: "Mở nhận hàng",
-      href: subcontractOperationsHref(order, "subcontract-inbound"),
+      href: productionFactoryOrderSectionHref(order, "factory-finished-goods-receipt"),
       disabled: status === "pending"
     }
   });
