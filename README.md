@@ -73,6 +73,9 @@ Start with:
 - `docs/132_ERP_Coding_Task_Board_Sprint35_Factory_Final_Payment_Finance_Closeout_MyPham_v1.md`
 - `docs/133_ERP_Factory_Final_Payment_Finance_Closeout_Flow_Sprint35_MyPham_v1.md`
 - `docs/134_ERP_Sprint35_Changelog_Factory_Final_Payment_Finance_Closeout_MyPham_v1.md`
+- `docs/135_ERP_Coding_Task_Board_Sprint36_Factory_Final_Payment_Voucher_MyPham_v1.md`
+- `docs/136_ERP_Factory_Final_Payment_Voucher_Flow_Sprint36_MyPham_v1.md`
+- `docs/137_ERP_Sprint36_Changelog_Factory_Final_Payment_Voucher_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -80,7 +83,7 @@ Start with:
 
 ## Current Status
 
-Current line: Sprint 35 factory final-payment Finance closeout for external-factory production.
+Current line: Sprint 36 factory final-payment voucher / cash-out evidence for external-factory production.
 
 Latest release tag:
 
@@ -296,12 +299,24 @@ Screenshot evidence: output/playwright/s35-finance-factory-payment-closeout-paid
 No v0.35 tag is planned.
 ```
 
+Sprint 36 implementation status:
+
+```text
+Sprint 36 is documented in file 135, and the factory final-payment voucher flow is locked in file 136.
+Scope is Finance-side payment voucher / cash-out evidence after Sprint 35 factory AP closeout.
+The first implementation model should reuse CashTransaction as a posted cash_out transaction allocated to supplier_payable, rather than creating a separate PaymentVoucher entity.
+The voucher should link AP, supplier invoice evidence, factory order, payment method, reference no, business date, amount, and memo/source evidence.
+Matched supplier invoice and AP approval/payment controls remain unchanged.
+Runtime PR, CI, merge, dev deploy, and browser smoke are pending until Sprint 36 implementation is merged.
+No v0.36 tag is planned.
+```
+
 Phase 1 production scope:
 
 ```text
 The user-facing Production entrypoint at /production is for planning, active-formula snapshot, material demand, generated Purchase Request review, external-factory production navigation, factory order detail, dispatch tracking, execution tracking, material handover, sample approval, mass-production start, finished-goods receipt to QC hold, finished-goods QC closeout, claim/final-payment readiness, and final-payment AP handoff.
 PO creation belongs to the approved Purchase Request conversion flow, not a direct /production shortcut.
-Finance at /finance remains the final-payment invoice matching and AP payment closeout surface.
+Finance at /finance remains the final-payment invoice matching, AP payment closeout, and cash-out voucher evidence surface.
 External factory / subcontract is the current production execution method.
 /subcontract remains route-addressable for existing operational execution but is not the primary sidebar entrypoint.
 Internal work-center/MES production remains out of Phase 1 scope.
@@ -323,7 +338,7 @@ main baseline 020d6a13: Sprint 20 traceability cleanup merged after required-ci 
 required-migration after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed
 ```
 
-Implementation focus through Sprint 35:
+Implementation focus through Sprint 36:
 
 - Operational runtime persistence for warehouse, inventory, order, returns, purchase, subcontract, finance, and master data flows
 - Auth/session runtime persistence for access sessions, refresh rotation, failed login attempts, and lockout state
@@ -342,6 +357,7 @@ Implementation focus through Sprint 35:
 - External factory claim and final payment closeout: production-facing claim acknowledgement/resolution gate before final payment readiness
 - External factory final-payment AP handoff: production-facing AP evidence and Finance deep link after final payment readiness, while Finance retains invoice match and payment controls
 - External factory final-payment Finance closeout: Finance-side AP source evidence, invoice match state, payment request/approval/recording checklist, and back link to the source production factory order
+- External factory final-payment voucher scope: Finance-side cash_out voucher evidence allocated to supplier_payable, linking AP, invoice, factory order, payment method, reference no, business date, amount, and memo/source evidence
 - Backend/API/DB codes, routes, enum values, permission keys, and audit event codes remain English technical contracts
 - Manual PR review and merge flow, without GitHub auto-review or auto-merge
 
@@ -395,6 +411,9 @@ Production runtime reference:
 - `docs/132_ERP_Coding_Task_Board_Sprint35_Factory_Final_Payment_Finance_Closeout_MyPham_v1.md`
 - `docs/133_ERP_Factory_Final_Payment_Finance_Closeout_Flow_Sprint35_MyPham_v1.md`
 - `docs/134_ERP_Sprint35_Changelog_Factory_Final_Payment_Finance_Closeout_MyPham_v1.md`
+- `docs/135_ERP_Coding_Task_Board_Sprint36_Factory_Final_Payment_Voucher_MyPham_v1.md`
+- `docs/136_ERP_Factory_Final_Payment_Voucher_Flow_Sprint36_MyPham_v1.md`
+- `docs/137_ERP_Sprint36_Changelog_Factory_Final_Payment_Voucher_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`

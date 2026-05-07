@@ -3,9 +3,9 @@
 Project: Web ERP for cosmetics operations
 Phase: Phase 1
 Document role: Current master document index and traceability map
-Version: v2.23
+Version: v2.24
 Date: 2026-05-07
-Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, Sprint 25 subcontract closeout traceability evidence, Sprint 26 production IA cleanup evidence, Sprint 27 factory dispatch MVP, Sprint 28 factory execution tracking closeout evidence, Sprint 29 factory material handover closeout evidence, Sprint 30 factory sample/mass-production closeout evidence, Sprint 31 factory finished-goods receipt to QC hold closeout evidence, Sprint 32 factory finished-goods QC closeout scope, Sprint 33 factory claim/final-payment closeout scope, Sprint 34 factory final-payment AP handoff evidence, and Sprint 35 factory final-payment Finance closeout evidence
+Status: Current source-of-truth index for current Phase 1 docs, design addenda, Sprint 23 runtime bridge, Sprint 24 production material issue readiness runtime, Sprint 25 subcontract closeout traceability evidence, Sprint 26 production IA cleanup evidence, Sprint 27 factory dispatch MVP, Sprint 28 factory execution tracking closeout evidence, Sprint 29 factory material handover closeout evidence, Sprint 30 factory sample/mass-production closeout evidence, Sprint 31 factory finished-goods receipt to QC hold evidence, Sprint 32 factory finished-goods QC closeout scope, Sprint 33 factory claim/final-payment closeout scope, Sprint 34 factory final-payment AP handoff evidence, Sprint 35 factory final-payment Finance closeout evidence, and Sprint 36 factory final-payment voucher scope
 
 ---
 
@@ -29,7 +29,7 @@ Which document locks Vietnamese operational terminology?
 ## 2. Current Status Snapshot
 
 ```text
-Current line: Sprint 35 factory final-payment Finance closeout for external-factory production.
+Current line: Sprint 36 factory final-payment voucher / cash-out evidence for external-factory production.
 Latest release tag: v0.19.0-vietnamese-ui-localization.
 Sprint 21 tag status: hold; no v0.21.0-auth-ui-backend-integration-runtime-smoke tag has been created pending target staging/pilot smoke evidence.
 Sprint 21 merge evidence: PR #542 merged to main at c07409cc; CI, dev deploy, full dev smoke, and auth UI browser smoke passed.
@@ -47,6 +47,7 @@ Sprint 32 implementation status: file 123 tracks the task board, file 124 locks 
 Sprint 33 implementation status: file 126 tracks the task board, file 127 locks the factory claim/final payment closeout flow, and file 128 records changelog/evidence. Scope is a production-facing claim and final payment closeout section on /production/factory-orders/:orderId#factory-claim-final-payment-closeout using factory claim list/acknowledge/resolve runtime APIs plus existing final payment readiness runtime. Tracker and timeline claim/payment actions point to #factory-claim-final-payment-closeout. Open or acknowledged factory claims block final payment; resolved claims can allow final payment only when accepted finished goods exist. Full QC fail remains blocked from final payment readiness until a later replacement/settlement flow exists. PR #606 merged at 5ac8a1e with GitHub CI green. Dev deploy passed on 2026-05-07; full dev smoke passed. Browser smoke passed for /production/factory-orders/sco-s16-08-03-smoke-0068#factory-claim-final-payment-closeout with screenshot output/playwright/s33-factory-claim-final-payment-closeout.png. No v0.33 tag is planned.
 Sprint 34 implementation status: file 129 tracks the task board, file 130 locks the factory final-payment AP handoff flow, and file 131 records changelog/evidence. Scope is connecting final payment readiness on /production/factory-orders/:orderId#factory-claim-final-payment-closeout to Finance supplier payables via supplier_payable response evidence and /finance?ap_q=:payableNo#supplier-payables deep links. Finance remains the payment execution surface and matched supplier invoice remains required before AP payment request, approval, or recording. Runtime PR #608 merged at 602a7354 with GitHub CI green. Dev deploy passed on 2026-05-07; full dev smoke passed. Browser smoke passed for /production/factory-orders/sco-s34-ap-smoke-0507060226#factory-claim-final-payment-closeout -> /finance?ap_q=SCO-S34-AP-SMOKE-0507060226#supplier-payables, showing AP-SPM-S34-AP-SMOKE-0507060226-FINAL. Screenshots: output/playwright/s34-factory-final-payment-ap-handoff.png and output/playwright/s34-finance-ap-handoff.png. No v0.34 tag is planned.
 Sprint 35 implementation status: file 132 tracks the task board, file 133 locks the factory final-payment Finance closeout flow, and file 134 records changelog/evidence. Scope is Finance-side closeout guidance for factory final-payment AP records sourced from subcontract_payment_milestone and subcontract_order documents, with AP/invoice/payment closeout steps and a back link to the source production factory order. Runtime PR #610 merged at 68b4d3d5 with GitHub CI green. Follow-up PR #611 merged at 64851338 after S35 smoke found factory final-payment supplier invoice sources were blocked by invoice source validation. Dev deploy passed on 2026-05-07 after PR #611 and full dev smoke passed. Target S35 API smoke passed for AP-SPM-S34-AP-SMOKE-0507060226-FINAL with supplier invoice INV-S35-13609491 matched and AP status paid with 0.00 outstanding. Browser smoke passed for /finance?ap_q=AP-SPM-S34-AP-SMOKE-0507060226-FINAL#supplier-payables with 5 completed Finance closeout steps, backlink to /production/factory-orders/sco-s34-ap-smoke-0507060226#factory-claim-final-payment-closeout, and screenshot output/playwright/s35-finance-factory-payment-closeout-paid.png. Matched supplier invoice remains required before AP payment request, approval, or recording. No v0.35 tag is planned.
+Sprint 36 implementation status: file 135 tracks the task board, file 136 locks the factory final-payment voucher flow, and file 137 opens the changelog/evidence register. Scope is Finance-side payment voucher / cash-out evidence after Sprint 35 factory AP closeout. The first implementation model should reuse CashTransaction as a posted cash_out transaction allocated to supplier_payable, linking AP, supplier invoice evidence, factory order, payment method, reference no, business date, amount, and memo/source evidence. Matched supplier invoice and AP approval/payment controls remain unchanged. Runtime PR, CI, merge, dev deploy, and browser smoke are pending until Sprint 36 implementation is merged. No v0.36 tag is planned.
 Release tag migration gate: PostgreSQL 16 apply + rollback passed.
 Current main migration gate after Sprint 20: PostgreSQL 16 apply -> rollback -> reapply passed.
 Technical contract: English.
@@ -55,7 +56,7 @@ Routes: English.
 Locale: vi-VN.
 Currency: VND.
 Timezone: Asia/Ho_Chi_Minh.
-Phase 1 production entrypoints: /production is planning/material-demand/PR-draft review, external-factory production navigation, factory order detail, manual factory dispatch, factory execution tracking, material handover, sample approval, mass-production start, finished-goods receipt to QC hold, finished-goods QC closeout, factory claim resolution, final payment closeout, and final-payment AP handoff; /finance is final-payment invoice matching, AP payment closeout, and factory final-payment Finance closeout; /subcontract remains hidden route-addressable external factory execution.
+Phase 1 production entrypoints: /production is planning/material-demand/PR-draft review, external-factory production navigation, factory order detail, manual factory dispatch, factory execution tracking, material handover, sample approval, mass-production start, finished-goods receipt to QC hold, finished-goods QC closeout, factory claim resolution, final payment closeout, and final-payment AP handoff; /finance is final-payment invoice matching, AP payment closeout, factory final-payment Finance closeout, and cash-out voucher evidence; /subcontract remains hidden route-addressable external factory execution.
 Purchase flow boundary: /production opens generated Purchase Request; PO creation belongs to approved Purchase Request conversion, not direct production-page shortcut.
 Post-PO finance boundary: posted PO-linked goods receipts create supplier payable value only for QC PASS lines; supplier invoice and three-way match are locked in file 96 as separate vendor-bill evidence; AP payment readiness hard gate is locked in file 97.
 Warehouse document boundary: Stock Transfer is internal stock movement; Warehouse Issue Note is operational stock issue to factory/lab/manual destination; both are inventory documents, not costing documents.
@@ -133,11 +134,14 @@ For a new engineer or reviewer:
 53. 132_ERP_Coding_Task_Board_Sprint35_Factory_Final_Payment_Finance_Closeout_MyPham_v1.md
 54. 133_ERP_Factory_Final_Payment_Finance_Closeout_Flow_Sprint35_MyPham_v1.md
 55. 134_ERP_Sprint35_Changelog_Factory_Final_Payment_Finance_Closeout_MyPham_v1.md
-56. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
-57. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
-58. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
-59. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
-60. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
+56. 135_ERP_Coding_Task_Board_Sprint36_Factory_Final_Payment_Voucher_MyPham_v1.md
+57. 136_ERP_Factory_Final_Payment_Voucher_Flow_Sprint36_MyPham_v1.md
+58. 137_ERP_Sprint36_Changelog_Factory_Final_Payment_Voucher_MyPham_v1.md
+59. 88_ERP_BOM_Formula_Module_Design_MyPham_v1.md
+60. 78_ERP_Production_Runtime_Mode_Checklist_Sprint20_MyPham_v1.md
+61. 75_ERP_Coding_Task_Board_Sprint19_Vietnamese_UI_Localization_MyPham_v1.md
+62. 77_ERP_Sprint19_Changelog_Vietnamese_UI_Localization_MyPham_v1.md
+63. 81_ERP_Vietnamese_UI_Glossary_Operational_Copy_MyPham_v1.md
 ```
 
 For product or operations review:
@@ -276,6 +280,7 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | Sprint 33 | `126_ERP_Coding_Task_Board_Sprint33_Factory_Claim_Final_Payment_Closeout_MyPham_v1.md` | `128_ERP_Sprint33_Changelog_Factory_Claim_Final_Payment_Closeout_MyPham_v1.md` | Production-facing factory claim acknowledgement/resolution and final payment readiness gate |
 | Sprint 34 | `129_ERP_Coding_Task_Board_Sprint34_Factory_Final_Payment_AP_Handoff_MyPham_v1.md` | `131_ERP_Sprint34_Changelog_Factory_Final_Payment_AP_Handoff_MyPham_v1.md` | Production-facing final-payment AP handoff to Finance supplier payables |
 | Sprint 35 | `132_ERP_Coding_Task_Board_Sprint35_Factory_Final_Payment_Finance_Closeout_MyPham_v1.md` | `134_ERP_Sprint35_Changelog_Factory_Final_Payment_Finance_Closeout_MyPham_v1.md` | Finance-side final-payment AP invoice/payment closeout for external-factory production |
+| Sprint 36 | `135_ERP_Coding_Task_Board_Sprint36_Factory_Final_Payment_Voucher_MyPham_v1.md` | `137_ERP_Sprint36_Changelog_Factory_Final_Payment_Voucher_MyPham_v1.md` | Finance-side final-payment voucher / cash-out evidence for external-factory production |
 
 ---
 
@@ -337,6 +342,9 @@ Translate user-facing display labels, validation copy, status labels, empty stat
 | `132_ERP_Coding_Task_Board_Sprint35_Factory_Final_Payment_Finance_Closeout_MyPham_v1.md` | Sprint 35 task board | Before changing Finance-side factory final-payment AP closeout scope |
 | `133_ERP_Factory_Final_Payment_Finance_Closeout_Flow_Sprint35_MyPham_v1.md` | Sprint 35 flow design | Before changing factory AP invoice matching, payment checklist, or source production-order back links |
 | `134_ERP_Sprint35_Changelog_Factory_Final_Payment_Finance_Closeout_MyPham_v1.md` | Sprint 35 changelog and evidence | Before closing Sprint 35 or claiming factory final-payment Finance closeout evidence |
+| `135_ERP_Coding_Task_Board_Sprint36_Factory_Final_Payment_Voucher_MyPham_v1.md` | Sprint 36 task board | Before changing factory final-payment voucher or cash-out evidence scope |
+| `136_ERP_Factory_Final_Payment_Voucher_Flow_Sprint36_MyPham_v1.md` | Sprint 36 flow design | Before changing cash_out voucher creation, supplier_payable allocation, or AP/cash traceability |
+| `137_ERP_Sprint36_Changelog_Factory_Final_Payment_Voucher_MyPham_v1.md` | Sprint 36 changelog and evidence | Before closing Sprint 36 or claiming factory final-payment voucher evidence |
 
 ---
 
