@@ -1,0 +1,2 @@
+issue_id,reported_at,scenario_id,module,title,type,severity,priority,reported_by,owner,status,workaround,target_sprint,evidence_path,notes
+PFX-ISSUE-001,,,Production External Factory E2E,,bug,P0/P1/P2/P3,P0/P1/P2/P3,,,new,,,,
