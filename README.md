@@ -77,6 +77,7 @@ Start with:
 - `docs/136_ERP_Factory_Final_Payment_Voucher_Flow_Sprint36_MyPham_v1.md`
 - `docs/137_ERP_Sprint36_Changelog_Factory_Final_Payment_Voucher_MyPham_v1.md`
 - `docs/138_ERP_UAT_Pilot_Pack_Production_External_Factory_E2E_MyPham_v1.md`
+- `docs/139_ERP_Production_E2E_Discovery_Mode_S36_Blocker_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` for the historical Phase 1 handoff index
@@ -316,9 +317,11 @@ Production external-factory E2E UAT status:
 
 ```text
 File 138 is the official UAT pilot pack for the end-to-end external-factory production flow across Production, Purchasing, Warehouse, QC, Finance/AP, and cash-out evidence.
-Status is Draft for UAT preparation.
+File 139 clarifies Production E2E Discovery / Controlled Walkthrough mode and the Sprint 36 blocker for PFX-UAT-013.
+Status is discovery preparation only.
+PFX-UAT-013 AP handoff/payment voucher/cash-out evidence is BLOCKED_BY_S36 until Sprint 36 runtime is merged and smoke-tested.
 This is not business UAT pass evidence and does not replace Sprint 22 Warehouse/Sales/QC Go/No-Go.
-Production E2E UAT templates and sanitized evidence folders live under docs/uat/production-e2e/.
+Production E2E discovery templates and sanitized evidence folders live under docs/uat/production-e2e/.
 No production E2E release tag is planned from this documentation pack alone.
 ```
 
@@ -426,6 +429,7 @@ Production runtime reference:
 - `docs/136_ERP_Factory_Final_Payment_Voucher_Flow_Sprint36_MyPham_v1.md`
 - `docs/137_ERP_Sprint36_Changelog_Factory_Final_Payment_Voucher_MyPham_v1.md`
 - `docs/138_ERP_UAT_Pilot_Pack_Production_External_Factory_E2E_MyPham_v1.md`
+- `docs/139_ERP_Production_E2E_Discovery_Mode_S36_Blocker_MyPham_v1.md`
 - `docs/88_ERP_BOM_Formula_Module_Design_MyPham_v1.md`
 - `docs/82_ERP_Coding_Task_Board_Sprint21_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
 - `docs/83_ERP_Sprint21_Changelog_Auth_UI_Backend_Integration_Production_Runtime_Smoke_MyPham_v1.md`
