@@ -98,6 +98,7 @@ Tài liệu này nên được đọc cùng các tài liệu sau:
 124_ERP_Factory_Finished_Goods_QC_Closeout_Flow_Sprint32_MyPham_v1.md
 130_ERP_Factory_Final_Payment_AP_Handoff_Flow_Sprint34_MyPham_v1.md
 136_ERP_Factory_Final_Payment_Voucher_Flow_Sprint36_MyPham_v1.md
+139_ERP_Production_E2E_Discovery_Mode_S36_Blocker_MyPham_v1.md
 ```
 
 Workflow thực tế nền:
@@ -148,6 +149,14 @@ Not business UAT pass
 ```
 
 Không được tạo release tag hoặc claim production-ready từ Mode B.
+
+Mode B / Discovery rule:
+
+```text
+Production E2E Discovery may proceed without PFX-UAT-013 if Sprint 36 runtime is not ready.
+In that case, PFX-UAT-013 must be marked BLOCKED_BY_S36.
+The session result must be recorded as Discovery only — no business UAT decision.
+```
 
 ---
 
@@ -735,6 +744,16 @@ Objective:
 Xác nhận Finance có thể nhận AP handoff, kiểm payable, tạo cash-out/payment evidence và đóng tài chính.
 ```
 
+Dependency:
+
+```text
+This scenario depends on Sprint 36 runtime implementation for payment voucher / cash-out evidence.
+If Sprint 36 is not merged and smoke-tested, mark PFX-UAT-013 as BLOCKED with issue PFX-BLOCKER-001 and decision note BLOCKED_BY_S36.
+Do not fail the discovery session only because this scenario is not executable yet.
+Do not claim Business UAT Go while this scenario remains blocked unless the Business Owner explicitly waives it with a documented reason.
+No release tag may be created from a discovery session where this scenario is blocked or waived without business approval.
+```
+
 Steps:
 
 ```text
@@ -813,7 +832,7 @@ Use this table or create `scenario_results.csv`.
 | PFX-UAT-010 | Finished goods QC closeout | QC | Pending |  |  |  |
 | PFX-UAT-011 | Factory claim | QC/Production | Pending |  |  |  |
 | PFX-UAT-012 | Final payment readiness | Production/Finance | Pending |  |  |  |
-| PFX-UAT-013 | AP handoff/payment evidence | Finance | Pending |  |  |  |
+| PFX-UAT-013 | AP handoff/payment evidence | Finance | BLOCKED if Sprint 36 runtime is not ready |  | PFX-BLOCKER-001 | BLOCKED_BY_S36 |
 | PFX-UAT-014 | Negative controls | QA/UAT Lead | Pending |  |  |  |
 
 Status values:
@@ -825,6 +844,12 @@ BLOCKED
 FAIL
 WAIVED
 NOT_RUN
+```
+
+Discovery-mode rule:
+
+```text
+For Mode B, PFX-UAT-013 remains BLOCKED / PFX-BLOCKER-001 / BLOCKED_BY_S36 until Sprint 36 payment voucher / cash-out evidence runtime is merged and smoke-tested.
 ```
 
 ---

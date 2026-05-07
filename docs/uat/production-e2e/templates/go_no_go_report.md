@@ -1,96 +1,128 @@
-# Production External-Factory E2E UAT Go / Conditional Go / No-Go Report
+# Production External-Factory E2E Discovery Report
 
 Project: Web ERP for cosmetics operations
-UAT pack: Production External-Factory E2E
-Status: Draft; no decision recorded
+Area: Production / External Factory E2E
+Mode: Production E2E Discovery / Controlled Walkthrough
+Release tag: Not created
+Business UAT decision: Not claimed
 
 ---
 
-## 1. Environment
+## 1. Decision
 
-```text
-Environment URL:
-Commit:
-Tag:
-Branch:
-Deployment time:
-Smoke evidence:
-```
-
----
-
-## 2. Scenario Summary
-
-| Scenario | Status | Evidence | Open issues |
-| --- | --- | --- | --- |
-| PFX-UAT-001 Production plan + material demand | Not Run |  |  |
-| PFX-UAT-002 Shortage -> Purchase Request traceability | Not Run |  |  |
-| PFX-UAT-003 PO -> Receiving -> Inbound QC | Not Run |  |  |
-| PFX-UAT-004 Warehouse issue to factory | Not Run |  |  |
-| PFX-UAT-005 Factory dispatch confirmation | Not Run |  |  |
-| PFX-UAT-006 Material handover evidence | Not Run |  |  |
-| PFX-UAT-007 Sample approval / rework | Not Run |  |  |
-| PFX-UAT-008 Mass production progress | Not Run |  |  |
-| PFX-UAT-009 Finished goods receipt QC hold | Not Run |  |  |
-| PFX-UAT-010 Finished goods QC closeout | Not Run |  |  |
-| PFX-UAT-011 Factory claim | Not Run |  |  |
-| PFX-UAT-012 Final payment readiness | Not Run |  |  |
-| PFX-UAT-013 AP handoff + payment voucher evidence | Not Run |  |  |
-| PFX-UAT-014 Negative controls | Not Run |  |  |
-
----
-
-## 3. Open Issue Summary
-
-```text
-P0 open:
-P1 open:
-P2 open:
-P3 open:
-Change requests:
-Training/data issues:
-```
-
----
-
-## 4. Decision
-
-Choose one:
+Select exactly one:
 
 - [ ] Go
 - [ ] Conditional Go
 - [ ] No-Go
+- [x] Discovery only — no business UAT decision
 
-Decision rationale:
-
-```text
-No Go/Conditional Go/No-Go decision recorded.
-```
-
-Accepted workarounds:
+Reason:
 
 ```text
-None recorded.
-```
-
-Required next actions:
-
-```text
-1.
-2.
-3.
+This session was executed as Production E2E Discovery because full Business UAT is not being claimed from this walkthrough.
+PFX-UAT-013 depends on Sprint 36 runtime implementation for payment voucher / cash-out evidence and is marked BLOCKED_BY_S36.
+No release tag will be created from this discovery session.
 ```
 
 ---
 
-## 5. Sign-Off
+## 2. Scope executed
 
-| Role | Name | Decision | Date | Notes |
-| --- | --- | --- | --- | --- |
-| Business Owner |  |  |  |  |
-| Production Owner |  |  |  |  |
-| Warehouse Owner |  |  |  |  |
-| QC Owner |  |  |  |  |
-| Finance/AP Owner |  |  |  |  |
-| UAT Lead |  |  |  |  |
-| ERP Product Owner |  |  |  |  |
+Executed or planned discovery scenarios:
+
+```text
+PFX-UAT-001 — Production plan + material demand
+PFX-UAT-002 — Shortage -> Purchase Request traceability
+PFX-UAT-003 — PO -> Receiving -> Inbound QC
+PFX-UAT-004 — Warehouse issue NVL/bao bi to factory
+PFX-UAT-005 — Factory dispatch pack and confirmation
+PFX-UAT-006 — Factory material handover evidence
+PFX-UAT-007 — Sample approval / rework
+PFX-UAT-008 — Mass production progress
+PFX-UAT-009 — Finished goods receipt to QC hold
+PFX-UAT-010 — Finished goods QC closeout full/partial/fail
+PFX-UAT-011 — Factory claim within 3-7 days
+PFX-UAT-012 — Final payment readiness
+PFX-UAT-014 — Negative controls
+```
+
+Blocked:
+
+```text
+PFX-UAT-013 — AP handoff + payment voucher/cash-out evidence
+Status: BLOCKED
+Issue: PFX-BLOCKER-001
+Reason: BLOCKED_BY_S36
+```
+
+---
+
+## 3. Summary of results
+
+| Area | Result | Notes |
+|---|---|---|
+| Planning / demand | TBD |  |
+| Purchase / receiving / QC | TBD |  |
+| Warehouse issue to factory | TBD |  |
+| Factory dispatch / handover | TBD |  |
+| Sample / mass production | TBD |  |
+| Finished goods / QC closeout | TBD |  |
+| Factory claim | TBD |  |
+| Final payment readiness | TBD |  |
+| AP handoff / payment evidence | BLOCKED | PFX-BLOCKER-001 / BLOCKED_BY_S36 |
+| Negative controls | TBD |  |
+
+---
+
+## 4. Issues and observations
+
+Reference:
+
+```text
+docs/uat/production-e2e/templates/issue_triage_board.csv
+```
+
+Top issues:
+
+| Issue ID | Severity | Summary | Owner | Target |
+|---|---|---|---|---|
+| PFX-BLOCKER-001 | P1 | PFX-UAT-013 depends on Sprint 36 runtime implementation | Finance/ERP Product Owner | Sprint 36 |
+
+---
+
+## 5. Evidence
+
+Evidence folders:
+
+```text
+docs/uat/production-e2e/evidence/screenshots/
+docs/uat/production-e2e/evidence/logs/
+docs/uat/production-e2e/evidence/exports/
+docs/uat/production-e2e/evidence/session-notes/
+```
+
+All evidence must be sanitized before commit or sharing.
+
+---
+
+## 6. Release statement
+
+```text
+No release tag is created from this discovery session.
+This report does not claim Production Business UAT pass.
+This report does not override Sprint 22 Warehouse/Sales/QC Go-No-Go status.
+```
+
+---
+
+## 7. Next action
+
+Recommended next action after discovery:
+
+```text
+1. Review discovery issues.
+2. Decide whether to complete Sprint 36 runtime first or fix discovery issues first.
+3. Keep PFX-UAT-013 blocked until Sprint 36 is merged and smoke-tested.
+4. Plan formal Business UAT only after required runtime dependencies and business participants are ready.
+```
