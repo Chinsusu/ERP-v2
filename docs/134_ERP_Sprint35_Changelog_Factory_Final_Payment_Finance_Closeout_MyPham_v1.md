@@ -6,7 +6,7 @@ Sprint: 35
 Change type: Finance UI traceability and closeout guidance
 Version: v1
 Date: 2026-05-07
-Status: Implemented locally; PR, CI, merge, deploy, and browser smoke pending
+Status: Completed; runtime PRs merged, CI green, dev deploy passed, and S35 Finance browser smoke passed
 
 ---
 
@@ -28,7 +28,7 @@ Target production source route:
 
 ---
 
-## 2. Planned Runtime Surface
+## 2. Runtime Surface
 
 Implementation scope:
 
@@ -60,12 +60,21 @@ No v0.35 release tag is planned.
 Runtime PR:
 
 ```text
-Pending.
+PR #610 Add S35 factory payment finance closeout
+- Branch: codex/s35-finance-ap-invoice-payment-closeout
+- Commit: 49361e53917e01e8a221c45f227c72afa8be7ee1
+- Merge commit: 68b4d3d5
+
+PR #611 Allow factory AP supplier invoice sources
+- Branch: codex/s35-fix-factory-supplier-invoice-source
+- Commit: 7bda5a58a9dbddab66e55280f3eab6be481d1c8f
+- Merge commit: 64851338
 ```
 
 Local verification:
 
 ```text
+PR #610:
 git diff --check: passed
 Targeted Finance web Vitest: supplierPayableFactoryCloseout, supplierPayableService, supplierInvoiceService passed
 Full web Vitest: 62 files / 360 tests passed via D:\toolcache\node-v22.22.2-win-x64\node.exe
@@ -76,18 +85,50 @@ Full API tests: go test ./... passed
 API vet: go vet ./... passed
 OpenAPI contract check: passed
 OpenAPI Redocly lint: pending GitHub CI because local pnpm/redocly CLI is unavailable
+
+PR #611:
+Red test first reproduced the S35 smoke blocker: factory final-payment supplier invoice source documents were rejected.
+go test ./internal/modules/finance/domain ./internal/modules/finance/application -run 'SupplierInvoice.*Factory|FactoryFinalPayment' -count=1: passed
+go test ./internal/modules/finance/domain ./internal/modules/finance/application -run 'SupplierInvoice' -count=1: passed
+go test ./...: passed
+go vet ./...: passed
+node packages/openapi/contract-check.mjs: passed
+git diff --check: passed
 ```
 
 GitHub CI:
 
 ```text
-Pending.
+PR #610: e2e, required-api, required-web, required-openapi, required-migration, and web checks passed.
+PR #611: api, e2e, required-api, required-web, required-openapi, and required-migration checks passed.
 ```
 
 Dev deploy and smoke:
 
 ```text
-Pending.
+Dev deploy after PR #611 merge:
+- main commit: 64851338
+- command: ./infra/scripts/deploy-dev-staging.sh dev
+- result: passed
+- full ERP dev smoke: passed
+
+Target S35 API smoke:
+- AP: AP-SPM-S34-AP-SMOKE-0507060226-FINAL
+- AP source document: subcontract_payment_milestone
+- AP line source document: subcontract_order
+- Supplier invoice: INV-S35-13609491
+- Supplier invoice status: matched
+- Payment flow: request payment -> approve payment -> record payment
+- Final AP status: paid
+- Final outstanding amount: 0.00
+
+Target S35 Finance browser smoke:
+- Route: /finance?ap_q=AP-SPM-S34-AP-SMOKE-0507060226-FINAL#supplier-payables
+- Factory closeout card rendered.
+- Back link rendered to /production/factory-orders/sco-s34-ap-smoke-0507060226#factory-claim-final-payment-closeout.
+- Closeout checklist showed 5 completed steps.
+- Screenshot: output/playwright/s35-finance-factory-payment-closeout-paid.png
+- Browser automation caveat: local npx/Playwright CLI unavailable, so the browser smoke used Chrome headless CDP.
 ```
 
 ---

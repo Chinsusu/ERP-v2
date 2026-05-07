@@ -287,7 +287,12 @@ Sprint 35 is documented in file 132, and the factory final-payment Finance close
 Scope is Finance-side closeout guidance for factory final-payment AP records created by the Sprint 34 handoff.
 Finance supplier payables detect subcontract_payment_milestone and subcontract_order source evidence, show AP/invoice/payment closeout steps, and link back to the source production factory order.
 Matched supplier invoice remains required before AP payment request, approval, or recording.
-Runtime PR, CI, merge, dev deploy, and browser smoke are pending until Sprint 35 implementation is merged.
+Runtime PR #610 merged at 68b4d3d5 with GitHub CI green.
+Follow-up PR #611 merged at 64851338 after S35 smoke found factory final-payment supplier invoice sources were blocked by invoice source validation.
+Dev deploy passed on 2026-05-07 after PR #611; full dev smoke passed.
+Target S35 API smoke passed for AP-SPM-S34-AP-SMOKE-0507060226-FINAL: supplier invoice INV-S35-13609491 matched, payment requested, payment approved, payment recorded, and AP status became paid with 0.00 outstanding.
+Browser smoke passed for /finance?ap_q=AP-SPM-S34-AP-SMOKE-0507060226-FINAL#supplier-payables with 5 completed Finance closeout steps and backlink to /production/factory-orders/sco-s34-ap-smoke-0507060226#factory-claim-final-payment-closeout.
+Screenshot evidence: output/playwright/s35-finance-factory-payment-closeout-paid.png.
 No v0.35 tag is planned.
 ```
 
