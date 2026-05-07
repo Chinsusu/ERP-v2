@@ -1,0 +1,9 @@
+role,user_email,user_name,environment_url,can_login,me_payload_verified,menu_verified,route_guard_verified,status,notes
+Production Owner,,,,,,,,Pending,
+Purchasing User,,,,,,,,Pending,
+Warehouse User,,,,,,,,Pending,
+QC User,,,,,,,,Pending,
+Finance/AP User,,,,,,,,Pending,
+ERP Admin,,,,,,,,Pending,
+QA/UAT Lead,,,,,,,,Pending,
+Business Owner,,,,,,,,Pending,

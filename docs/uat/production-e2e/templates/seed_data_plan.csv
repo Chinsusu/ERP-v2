@@ -1,0 +1,11 @@
+data_type,required_case,record_key,record_name,source,status,owner,notes
+Finished goods,Minimum 2 finished-goods SKU,,,,Pending,,
+Raw materials,Minimum 3 raw materials including G/KG and ML/L cases,,,,Pending,,
+Packaging,Bottle/cap/box/label cases,,,,Pending,,
+Formula/BOM,One complete BOM for one finished good,,,,Pending,,
+Warehouses,WH-MAIN / WH-QA-HOLD / WH-FACTORY-OUT / WH-DAMAGED,,,,Pending,,
+Locations,Minimum 2 main warehouse locations and 1 QC hold area,,,,Pending,,
+Batches,QC_PASS / QC_HOLD / QC_FAIL / near-expiry,,,,Pending,,
+Suppliers,At least one raw-material or packaging supplier,,,,Pending,,
+Factory,At least one external factory,,,,Pending,,
+Payment method,Bank transfer or cash-out evidence placeholder,,,,Pending,,

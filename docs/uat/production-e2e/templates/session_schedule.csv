@@ -1,0 +1,6 @@
+session_id,session_name,scenario_ids,planned_at,actual_started_at,actual_completed_at,participants,facilitator,status,notes
+PFX-SESSION-01,Planning + material demand,"PFX-UAT-001;PFX-UAT-002",,,,,,Pending,
+PFX-SESSION-02,Purchase / receiving / QC + warehouse issue,"PFX-UAT-003;PFX-UAT-004",,,,,,Pending,
+PFX-SESSION-03,Factory execution,"PFX-UAT-005;PFX-UAT-006;PFX-UAT-007;PFX-UAT-008",,,,,,Pending,
+PFX-SESSION-04,Finished goods + claim,"PFX-UAT-009;PFX-UAT-010;PFX-UAT-011",,,,,,Pending,
+PFX-SESSION-05,Finance closeout,"PFX-UAT-012;PFX-UAT-013;PFX-UAT-014",,,,,,Pending,
