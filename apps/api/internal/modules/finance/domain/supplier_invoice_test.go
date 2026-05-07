@@ -21,6 +21,29 @@ func TestNewSupplierInvoiceMatched(t *testing.T) {
 	}
 }
 
+func TestNewSupplierInvoiceAcceptsFactoryFinalPaymentSources(t *testing.T) {
+	input := baseSupplierInvoiceInput("4250000.00")
+	input.SourceDocument = SourceDocumentRef{
+		Type: SourceDocumentTypeSubcontractPaymentMilestone,
+		ID:   "spm-s35-final",
+		No:   "SPM-S35-FINAL",
+	}
+	input.Lines[0].SourceDocument = SourceDocumentRef{
+		Type: SourceDocumentTypeSubcontractOrder,
+		ID:   "sco-s35-final",
+		No:   "SCO-S35-FINAL",
+	}
+
+	invoice, err := NewSupplierInvoice(input)
+	if err != nil {
+		t.Fatalf("new factory final payment supplier invoice: %v", err)
+	}
+	if invoice.SourceDocument.Type != SourceDocumentTypeSubcontractPaymentMilestone ||
+		invoice.Lines[0].SourceDocument.Type != SourceDocumentTypeSubcontractOrder {
+		t.Fatalf("source documents = %+v/%+v, want factory milestone/order sources", invoice.SourceDocument, invoice.Lines[0].SourceDocument)
+	}
+}
+
 func TestNewSupplierInvoiceMismatchAllowsNegativeVarianceLine(t *testing.T) {
 	input := baseSupplierInvoiceInput("4200000.00")
 	input.Status = SupplierInvoiceStatusMismatch
