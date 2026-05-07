@@ -194,7 +194,7 @@ export function getSupplierPayablePaymentReadiness(
   };
 }
 
-function supplierInvoiceMatchesPayable(invoice: SupplierInvoice, payable: SupplierPayable) {
+export function supplierInvoiceMatchesPayable(invoice: SupplierInvoice, payable: SupplierPayable) {
   return (
     invoice.payableId === payable.id &&
     invoice.supplierId === payable.supplierId &&
