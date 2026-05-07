@@ -48,6 +48,31 @@ func TestSupplierInvoiceServiceCreatesMatchedInvoiceFromPayable(t *testing.T) {
 	}
 }
 
+func TestSupplierInvoiceServiceCreatesMatchedInvoiceFromFactoryFinalPaymentPayable(t *testing.T) {
+	service := newTestSupplierInvoiceServiceWithPayable(t, factoryFinalPaymentPayableInput())
+
+	result, err := service.CreateSupplierInvoice(context.Background(), CreateSupplierInvoiceInput{
+		ID:            "si-s35-factory-final",
+		InvoiceNo:     "INV-S35-FINAL",
+		PayableID:     "ap-s35-factory-final",
+		InvoiceDate:   "2026-05-07",
+		InvoiceAmount: "29000.00",
+		CurrencyCode:  "VND",
+		ActorID:       "finance-user",
+		RequestID:     "req-si-s35-final",
+	})
+	if err != nil {
+		t.Fatalf("create factory final payment supplier invoice: %v", err)
+	}
+	invoice := result.SupplierInvoice
+	if invoice.Status != financedomain.SupplierInvoiceStatusMatched ||
+		invoice.SourceDocument.Type != financedomain.SourceDocumentTypeSubcontractPaymentMilestone ||
+		len(invoice.Lines) != 1 ||
+		invoice.Lines[0].SourceDocument.Type != financedomain.SourceDocumentTypeSubcontractOrder {
+		t.Fatalf("invoice = %+v, want matched factory final payment invoice with milestone/order sources", invoice)
+	}
+}
+
 func TestSupplierInvoiceServiceCreatesMismatchWithVarianceLine(t *testing.T) {
 	service, _ := newTestSupplierInvoiceService(t)
 
@@ -159,6 +184,60 @@ func TestSupplierInvoiceServiceVoidsInvoice(t *testing.T) {
 		voided.SupplierInvoice.VoidReason != "duplicate invoice" {
 		t.Fatalf("voided = %+v", voided)
 	}
+}
+
+func newTestSupplierInvoiceServiceWithPayable(
+	t *testing.T,
+	input CreateSupplierPayableInput,
+) SupplierInvoiceService {
+	t.Helper()
+	auditStore := audit.NewInMemoryLogStore()
+	payableStore := &PrototypeSupplierPayableStore{records: make(map[string]financedomain.SupplierPayable)}
+	payableService := NewSupplierPayableService(payableStore, auditStore).WithClock(func() time.Time {
+		return time.Date(2026, 5, 7, 9, 0, 0, 0, time.UTC)
+	})
+	created, err := payableService.CreateSupplierPayable(context.Background(), input)
+	if err != nil {
+		t.Fatalf("seed payable: %v", err)
+	}
+	payableStore.records[created.SupplierPayable.ID] = created.SupplierPayable.Clone()
+	invoiceStore := &PrototypeSupplierInvoiceStore{records: make(map[string]financedomain.SupplierInvoice)}
+
+	return NewSupplierInvoiceService(invoiceStore, payableStore, auditStore).WithClock(func() time.Time {
+		return time.Date(2026, 5, 7, 10, 0, 0, 0, time.UTC)
+	})
+}
+
+func factoryFinalPaymentPayableInput() CreateSupplierPayableInput {
+	input := baseCreateSupplierPayableInput()
+	input.ID = "ap-s35-factory-final"
+	input.PayableNo = "AP-S35-FACTORY-FINAL"
+	input.SupplierID = "factory-bd-002"
+	input.SupplierCode = "FACT-BD-002"
+	input.SupplierName = "Binh Duong Gia Cong"
+	input.SourceDocument = SourceDocumentInput{
+		Type: string(financedomain.SourceDocumentTypeSubcontractPaymentMilestone),
+		ID:   "spm-s35-factory-final",
+		No:   "SPM-S35-FACTORY-FINAL",
+	}
+	input.TotalAmount = "29000.00"
+	input.DueDate = "2026-05-14"
+	input.ActorID = "finance-user"
+	input.RequestID = "req-ap-s35-factory-final"
+	input.Lines = []SupplierPayableLineInput{
+		{
+			ID:          "ap-line-s35-factory-final",
+			Description: "Final subcontract payment for SCO-S35-FACTORY-FINAL",
+			SourceDocument: SourceDocumentInput{
+				Type: string(financedomain.SourceDocumentTypeSubcontractOrder),
+				ID:   "sco-s35-factory-final",
+				No:   "SCO-S35-FACTORY-FINAL",
+			},
+			Amount: "29000.00",
+		},
+	}
+
+	return input
 }
 
 func newTestSupplierInvoiceService(t *testing.T) (SupplierInvoiceService, *audit.InMemoryLogStore) {

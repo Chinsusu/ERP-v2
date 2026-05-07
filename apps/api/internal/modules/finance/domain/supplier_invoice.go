@@ -391,6 +391,8 @@ func isSupplierInvoiceSourceDocumentType(sourceType SourceDocumentType) bool {
 		SourceDocumentTypePurchaseOrder,
 		SourceDocumentTypeWarehouseReceipt,
 		SourceDocumentTypeQCInspection,
+		SourceDocumentTypeSubcontractOrder,
+		SourceDocumentTypeSubcontractPaymentMilestone,
 		SourceDocumentTypeManualAdjustment:
 		return true
 	default:
