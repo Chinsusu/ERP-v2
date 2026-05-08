@@ -100,12 +100,15 @@ const allocationColumns: DataTableColumn<CashTransactionAllocation>[] = [
   {
     key: "target",
     header: "Allocation",
-    render: (row) => (
-      <span className="erp-finance-receivable-cell">
-        <strong>{formatTargetType(row.targetType)}</strong>
-        <small>{row.targetNo}</small>
-      </span>
-    )
+    render: (row) => {
+      const targetHref = allocationTargetHref(row);
+      return (
+        <span className="erp-finance-receivable-cell">
+          <strong>{formatTargetType(row.targetType)}</strong>
+          <small>{targetHref ? <a href={targetHref}>{row.targetNo}</a> : row.targetNo}</small>
+        </span>
+      );
+    }
   },
   {
     key: "amount",
@@ -126,19 +129,7 @@ export function CashTransactionsPanel() {
   const [detailLoadingId, setDetailLoadingId] = useState("");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: StatusTone; message: string } | null>(null);
-  const [form, setForm] = useState<CashTransactionFormState>({
-    direction: "cash_in",
-    businessDate: "2026-04-30",
-    counterpartyId: "carrier-ghn",
-    counterpartyName: "GHN COD",
-    paymentMethod: "bank_transfer",
-    referenceNo: "BANK-COD-260430-LOCAL",
-    amount: "1250000",
-    targetType: "customer_receivable",
-    targetId: "ar-cod-260430-0001",
-    targetNo: "AR-COD-260430-0001",
-    memo: "COD receipt"
-  });
+  const [form, setForm] = useState<CashTransactionFormState>(() => defaultCashTransactionFormState());
   const query = useMemo<CashTransactionQuery>(
     () => ({
       search: search || undefined,
@@ -159,6 +150,23 @@ export function CashTransactionsPanel() {
   const allowedTargets = cashAllocationTargetOptions.filter((option) =>
     cashAllocationTargetAllowedForDirection(form.direction, option.value)
   );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cashSearch = params.get("cash_q")?.trim();
+    const cashDirection = cashTransactionDirectionFromParam(params.get("cash_direction"));
+    const hasCashPrefill = Array.from(params.keys()).some((key) => key.startsWith("cash_"));
+
+    if (cashSearch) {
+      setSearch(cashSearch);
+    }
+    if (cashDirection) {
+      setDirection(cashDirection);
+    }
+    if (hasCashPrefill) {
+      setForm(defaultCashTransactionFormState(params));
+    }
+  }, []);
 
   useEffect(() => {
     if (visibleTransactions.length > 0 && !visibleTransactions.some((transaction) => transaction.id === selectedTransactionId)) {
@@ -479,6 +487,49 @@ function FinanceCashKPI({ label, value, tone }: { label: string; value: string |
   );
 }
 
+function defaultCashTransactionFormState(params?: URLSearchParams): CashTransactionFormState {
+  const direction = cashTransactionDirectionFromParam(params?.get("cash_direction")) ?? "cash_in";
+  const requestedTargetType =
+    cashAllocationTargetTypeFromParam(params?.get("cash_target_type")) ??
+    (direction === "cash_in" ? "customer_receivable" : "supplier_payable");
+  const targetType = cashAllocationTargetAllowedForDirection(direction, requestedTargetType)
+    ? requestedTargetType
+    : direction === "cash_in"
+      ? "customer_receivable"
+      : "supplier_payable";
+
+  return {
+    direction,
+    businessDate: params?.get("cash_business_date") ?? "2026-04-30",
+    counterpartyId: params?.get("cash_counterparty_id") ?? (direction === "cash_in" ? "carrier-ghn" : "supplier-hcm-001"),
+    counterpartyName: params?.get("cash_counterparty_name") ?? (direction === "cash_in" ? "GHN COD" : "Nguyen Lieu HCM"),
+    paymentMethod: params?.get("cash_payment_method") ?? "bank_transfer",
+    referenceNo: params?.get("cash_reference_no") ?? (direction === "cash_in" ? "BANK-COD-260430-LOCAL" : "BANK-AP-260430-LOCAL"),
+    amount: params?.get("cash_amount") ?? (direction === "cash_in" ? "1250000" : "4250000"),
+    targetType,
+    targetId: params?.get("cash_target_id") ?? (direction === "cash_in" ? "ar-cod-260430-0001" : "ap-supplier-260430-0001"),
+    targetNo: params?.get("cash_target_no") ?? (direction === "cash_in" ? "AR-COD-260430-0001" : "AP-SUP-260430-0001"),
+    memo: params?.get("cash_memo") ?? (direction === "cash_in" ? "COD receipt" : "Supplier payment")
+  };
+}
+
+function cashTransactionDirectionFromParam(value: string | null | undefined): CashTransactionDirection | undefined {
+  return value === "cash_in" || value === "cash_out" ? value : undefined;
+}
+
+function cashAllocationTargetTypeFromParam(value: string | null | undefined): CashAllocationTargetType | undefined {
+  switch (value) {
+    case "customer_receivable":
+    case "supplier_payable":
+    case "cod_remittance":
+    case "payment_request":
+    case "manual_adjustment":
+      return value;
+    default:
+      return undefined;
+  }
+}
+
 function mergeTransactions(
   localTransactions: CashTransaction[],
   transactions: CashTransaction[],
@@ -496,7 +547,13 @@ function matchesTransactionQuery(transaction: CashTransaction, query: CashTransa
     (!query.status || transaction.status === query.status) &&
     (!query.direction || transaction.direction === query.direction) &&
     (!search ||
-      [transaction.transactionNo, transaction.counterpartyName, transaction.referenceNo]
+      [
+        transaction.transactionNo,
+        transaction.counterpartyId,
+        transaction.counterpartyName,
+        transaction.referenceNo,
+        ...transaction.allocations.flatMap((allocation) => [allocation.targetType, allocation.targetId, allocation.targetNo])
+      ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(search)))
   );
@@ -522,4 +579,12 @@ function formatTargetType(targetType: CashAllocationTargetType) {
     .split("_")
     .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
     .join(" ");
+}
+
+function allocationTargetHref(allocation: CashTransactionAllocation) {
+  if (allocation.targetType === "supplier_payable" && allocation.targetNo.trim() !== "") {
+    return `/finance?ap_q=${encodeURIComponent(allocation.targetNo)}#supplier-payables`;
+  }
+
+  return undefined;
 }

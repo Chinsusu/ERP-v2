@@ -1,5 +1,5 @@
 import type { StatusTone } from "../../../shared/design-system/components";
-import type { FinanceSourceDocument, SupplierInvoice, SupplierPayable } from "../types";
+import type { CashTransaction, FinanceSourceDocument, SupplierInvoice, SupplierPayable } from "../types";
 import { supplierInvoiceMatchesPayable } from "./supplierPayableService";
 
 export type SupplierPayableFactoryCloseoutStepKey =
@@ -7,7 +7,8 @@ export type SupplierPayableFactoryCloseoutStepKey =
   | "invoice-match"
   | "payment-request"
   | "payment-approval"
-  | "payment-recording";
+  | "payment-recording"
+  | "payment-voucher";
 
 export type SupplierPayableFactoryCloseoutStepStatus = "complete" | "current" | "pending" | "blocked";
 
@@ -26,6 +27,10 @@ export type SupplierPayableFactoryCloseout = {
   factoryMilestoneNo?: string;
   productionHref?: string;
   invoiceNo?: string;
+  voucherNo?: string;
+  voucherReferenceNo?: string;
+  voucherHref?: string;
+  createVoucherHref?: string;
   summaryLabel: string;
   summaryMessage: string;
   summaryTone: StatusTone;
@@ -35,7 +40,9 @@ export type SupplierPayableFactoryCloseout = {
 export function buildSupplierPayableFactoryCloseout(
   payable: SupplierPayable | null,
   invoices: SupplierInvoice[],
-  invoicesLoading: boolean
+  invoicesLoading: boolean,
+  cashTransactions: CashTransaction[] = [],
+  cashTransactionsLoading = false
 ): SupplierPayableFactoryCloseout | null {
   if (!payable) {
     return null;
@@ -53,11 +60,20 @@ export function buildSupplierPayableFactoryCloseout(
   const blockingInvoice = invoices.find((invoice) => invoice.payableId === payable.id && invoice.status !== "void");
   const paymentStage = supplierPayablePaymentStage(payable.status);
   const invoiceMatched = Boolean(matchedInvoice);
+  const paymentVoucher = findSupplierPayableCashOutVoucher(payable, cashTransactions);
   const invoiceStepStatus = invoiceMatched ? "complete" : "current";
   const paymentRequestStatus = paymentRequestStepStatus(invoiceMatched, paymentStage);
   const paymentApprovalStatus = paymentApprovalStepStatus(invoiceMatched, paymentStage);
   const paymentRecordingStatus = paymentRecordingStepStatus(invoiceMatched, paymentStage);
-  const summary = factoryCloseoutSummary(payable, matchedInvoice, blockingInvoice, invoicesLoading);
+  const paymentVoucherStatus = paymentVoucherStepStatus(invoiceMatched, paymentStage, paymentVoucher, cashTransactionsLoading);
+  const summary = factoryCloseoutSummary(
+    payable,
+    matchedInvoice,
+    blockingInvoice,
+    invoicesLoading,
+    paymentVoucher,
+    paymentVoucherStatus
+  );
 
   return {
     payableNo: payable.payableNo,
@@ -66,6 +82,13 @@ export function buildSupplierPayableFactoryCloseout(
     factoryMilestoneNo: factoryMilestone?.no,
     productionHref: factoryOrderHref(factoryOrder),
     invoiceNo: matchedInvoice?.invoiceNo,
+    voucherNo: paymentVoucher?.transactionNo,
+    voucherReferenceNo: paymentVoucher?.referenceNo,
+    voucherHref: paymentVoucherHref(paymentVoucher),
+    createVoucherHref:
+      !paymentVoucher && !cashTransactionsLoading && paymentVoucherStatus === "current"
+        ? buildSupplierPayableVoucherHref(payable, matchedInvoice, factoryOrder, factoryMilestone)
+        : undefined,
     summaryLabel: summary.label,
     summaryMessage: summary.message,
     summaryTone: summary.tone,
@@ -106,9 +129,37 @@ export function buildSupplierPayableFactoryCloseout(
         description: "Thủ quỹ/Finance ghi nhận chi tiền để đóng AP thanh toán cuối.",
         status: paymentRecordingStatus,
         tone: stepTone(paymentRecordingStatus)
+      },
+      {
+        key: "payment-voucher",
+        label: "Chứng từ chi",
+        description: paymentVoucherStepDescription(paymentVoucher, paymentVoucherStatus, cashTransactionsLoading),
+        status: paymentVoucherStatus,
+        tone: stepTone(paymentVoucherStatus)
       }
     ]
   };
+}
+
+export function findSupplierPayableCashOutVoucher(
+  payable: SupplierPayable,
+  transactions: CashTransaction[]
+): CashTransaction | undefined {
+  const payableID = payable.id.trim().toLowerCase();
+  const payableNo = payable.payableNo.trim().toLowerCase();
+
+  return transactions.find((transaction) => {
+    if (transaction.direction !== "cash_out" || transaction.status !== "posted") {
+      return false;
+    }
+
+    return transaction.allocations.some((allocation) => {
+      if (allocation.targetType !== "supplier_payable") {
+        return false;
+      }
+      return allocation.targetId.trim().toLowerCase() === payableID || allocation.targetNo.trim().toLowerCase() === payableNo;
+    });
+  });
 }
 
 function payableSourceDocuments(payable: SupplierPayable) {
@@ -158,17 +209,45 @@ function paymentRecordingStepStatus(invoiceMatched: boolean, paymentStage: numbe
   return paymentStage >= 4 ? "complete" : "current";
 }
 
+function paymentVoucherStepStatus(
+  invoiceMatched: boolean,
+  paymentStage: number,
+  voucher: CashTransaction | undefined,
+  cashTransactionsLoading: boolean
+): SupplierPayableFactoryCloseoutStepStatus {
+  if (!invoiceMatched || paymentStage < 4) {
+    return "pending";
+  }
+  if (voucher) {
+    return "complete";
+  }
+  if (cashTransactionsLoading) {
+    return "current";
+  }
+
+  return "current";
+}
+
 function factoryCloseoutSummary(
   payable: SupplierPayable,
   matchedInvoice: SupplierInvoice | undefined,
   blockingInvoice: SupplierInvoice | undefined,
-  invoicesLoading: boolean
+  invoicesLoading: boolean,
+  paymentVoucher: CashTransaction | undefined,
+  paymentVoucherStatus: SupplierPayableFactoryCloseoutStepStatus
 ) {
-  if (payable.status === "paid") {
+  if (payable.status === "paid" && paymentVoucher) {
     return {
-      label: "Đã đóng AP",
-      message: `${payable.payableNo} đã ghi nhận thanh toán cuối.`,
+      label: "Đã có chứng từ chi",
+      message: `${paymentVoucher.transactionNo} đã ghi nhận chứng từ chi cho ${payable.payableNo}.`,
       tone: "success" as StatusTone
+    };
+  }
+  if (payable.status === "paid" && paymentVoucherStatus === "current") {
+    return {
+      label: "Cần chứng từ chi",
+      message: `${payable.payableNo} đã ghi nhận thanh toán AP; Finance cần post chứng từ chi để đủ evidence cash/bank.`,
+      tone: "warning" as StatusTone
     };
   }
   if (matchedInvoice) {
@@ -218,6 +297,24 @@ function invoiceStepDescription(
   return "Tạo hóa đơn NCC từ AP và đối chiếu đến trạng thái đã khớp.";
 }
 
+function paymentVoucherStepDescription(
+  voucher: CashTransaction | undefined,
+  status: SupplierPayableFactoryCloseoutStepStatus,
+  cashTransactionsLoading: boolean
+) {
+  if (voucher) {
+    return `${voucher.transactionNo} / ${voucher.referenceNo ?? "chưa có số tham chiếu"} đã allocate vào AP.`;
+  }
+  if (cashTransactionsLoading) {
+    return "Đang kiểm tra chứng từ chi cash_out đã allocate vào AP.";
+  }
+  if (status === "current") {
+    return "Tạo hoặc mở chứng từ chi cash_out allocate vào AP để hoàn tất evidence thanh toán.";
+  }
+
+  return "Chờ AP được ghi nhận thanh toán trước khi chứng từ chi được xem là bắt buộc.";
+}
+
 function stepTone(status: SupplierPayableFactoryCloseoutStepStatus, override?: StatusTone): StatusTone {
   if (override) {
     return override;
@@ -242,4 +339,58 @@ function factoryOrderHref(factoryOrder: FinanceSourceDocument | undefined) {
   }
 
   return `/production/factory-orders/${encodeURIComponent(orderId)}#factory-claim-final-payment-closeout`;
+}
+
+function paymentVoucherHref(voucher: CashTransaction | undefined) {
+  if (!voucher) {
+    return undefined;
+  }
+  return `/finance?cash_q=${encodeURIComponent(voucher.transactionNo)}#cash-transactions`;
+}
+
+function buildSupplierPayableVoucherHref(
+  payable: SupplierPayable,
+  invoice: SupplierInvoice | undefined,
+  factoryOrder: FinanceSourceDocument | undefined,
+  factoryMilestone: FinanceSourceDocument | undefined
+) {
+  const params = new URLSearchParams({
+    cash_q: payable.payableNo,
+    cash_direction: "cash_out",
+    cash_counterparty_id: payable.supplierId,
+    cash_counterparty_name: payable.supplierName,
+    cash_payment_method: "bank_transfer",
+    cash_reference_no: `PAY-${payable.payableNo}`,
+    cash_amount: voucherAmount(payable),
+    cash_target_type: "supplier_payable",
+    cash_target_id: payable.id,
+    cash_target_no: payable.payableNo,
+    cash_memo: voucherMemo(payable, invoice, factoryOrder, factoryMilestone)
+  });
+
+  return `/finance?${params.toString()}#cash-transactions`;
+}
+
+function voucherAmount(payable: SupplierPayable) {
+  if (Number(payable.paidAmount) > 0) {
+    return payable.paidAmount;
+  }
+
+  return payable.outstandingAmount;
+}
+
+function voucherMemo(
+  payable: SupplierPayable,
+  invoice: SupplierInvoice | undefined,
+  factoryOrder: FinanceSourceDocument | undefined,
+  factoryMilestone: FinanceSourceDocument | undefined
+) {
+  return [
+    `Thanh toan AP ${payable.payableNo}`,
+    factoryOrder?.no ? `cho lenh ${factoryOrder.no}` : "",
+    invoice?.invoiceNo ? `hoa don ${invoice.invoiceNo}` : "",
+    factoryMilestone?.no ? `moc ${factoryMilestone.no}` : ""
+  ]
+    .filter(Boolean)
+    .join("; ");
 }

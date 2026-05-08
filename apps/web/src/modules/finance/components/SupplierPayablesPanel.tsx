@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { DataTable, EmptyState, StatusChip, type DataTableColumn, type StatusTone } from "@/shared/design-system/components";
+import { useCashTransactions } from "../hooks/useCashTransactions";
 import { useSupplierInvoices } from "../hooks/useSupplierInvoices";
 import { useSupplierPayables } from "../hooks/useSupplierPayables";
+import { getCashTransaction } from "../services/cashTransactionService";
 import {
   createSupplierInvoice,
   formatSupplierInvoiceStatus,
@@ -28,6 +30,8 @@ import {
 import { buildSupplierPayableFactoryCloseout } from "../services/supplierPayableFactoryCloseout";
 import { formatFinanceDate, formatFinanceMoney } from "../services/customerReceivableService";
 import type {
+  CashTransaction,
+  CashTransactionQuery,
   SupplierInvoice,
   SupplierInvoiceLine,
   SupplierInvoiceQuery,
@@ -151,6 +155,8 @@ export function SupplierPayablesPanel() {
   const [invoiceAmount, setInvoiceAmount] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(defaultFinanceDate());
   const [localInvoices, setLocalInvoices] = useState<SupplierInvoice[]>([]);
+  const [cashTransactionDetails, setCashTransactionDetails] = useState<Record<string, CashTransaction>>({});
+  const [cashTransactionDetailLoading, setCashTransactionDetailLoading] = useState(false);
   const [rejectReason, setRejectReason] = useState("Supplier invoice mismatch");
   const [voidReason, setVoidReason] = useState("Duplicate supplier invoice");
   const [busyAction, setBusyAction] = useState("");
@@ -178,14 +184,41 @@ export function SupplierPayablesPanel() {
     () => mergeSupplierInvoices(localInvoices, invoices, invoiceQuery),
     [invoiceQuery, invoices, localInvoices]
   );
+  const cashTransactionQuery = useMemo<CashTransactionQuery>(
+    () =>
+      selectedPayable
+        ? {
+            search: selectedPayable.payableNo,
+            direction: "cash_out",
+            status: "posted"
+          }
+        : {
+            search: "__no_selected_ap__",
+            direction: "cash_out",
+            status: "posted"
+          },
+    [selectedPayable?.id, selectedPayable?.payableNo]
+  );
+  const { transactions: cashTransactions, loading: cashTransactionsLoading } = useCashTransactions(cashTransactionQuery);
+  const voucherTransactions = useMemo(
+    () => cashTransactions.map((transaction) => cashTransactionDetails[transaction.id] ?? transaction),
+    [cashTransactionDetails, cashTransactions]
+  );
   const selectedInvoice = visibleInvoices[0] ?? null;
   const paymentReadiness = useMemo(
     () => getSupplierPayablePaymentReadiness(selectedPayable, visibleInvoices, invoicesLoading),
     [invoicesLoading, selectedPayable, visibleInvoices]
   );
   const factoryCloseout = useMemo(
-    () => buildSupplierPayableFactoryCloseout(selectedPayable, visibleInvoices, invoicesLoading),
-    [invoicesLoading, selectedPayable, visibleInvoices]
+    () =>
+      buildSupplierPayableFactoryCloseout(
+        selectedPayable,
+        visibleInvoices,
+        invoicesLoading,
+        voucherTransactions,
+        cashTransactionsLoading || cashTransactionDetailLoading
+      ),
+    [cashTransactionDetailLoading, cashTransactionsLoading, invoicesLoading, selectedPayable, visibleInvoices, voucherTransactions]
   );
   const totals = useMemo(() => summarizePayables(visiblePayables), [visiblePayables]);
 
@@ -195,6 +228,43 @@ export function SupplierPayablesPanel() {
       setSearch(initialSearch);
     }
   }, []);
+
+  useEffect(() => {
+    const missingDetailTransactions = cashTransactions.filter(
+      (transaction) => transaction.allocations.length === 0 && !cashTransactionDetails[transaction.id]
+    );
+    if (missingDetailTransactions.length === 0) {
+      return;
+    }
+
+    let active = true;
+    setCashTransactionDetailLoading(true);
+    Promise.all(
+      missingDetailTransactions.map((transaction) =>
+        getCashTransaction(transaction.id).catch(() => transaction)
+      )
+    )
+      .then((details) => {
+        if (active) {
+          setCashTransactionDetails((current) => {
+            const next = { ...current };
+            details.forEach((detail) => {
+              next[detail.id] = detail;
+            });
+            return next;
+          });
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setCashTransactionDetailLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [cashTransactionDetails, cashTransactions]);
 
   useEffect(() => {
     if (visiblePayables.length > 0 && !visiblePayables.some((payable) => payable.id === selectedPayableId)) {
@@ -536,12 +606,32 @@ export function SupplierPayablesPanel() {
                     <dt>Hóa đơn NCC</dt>
                     <dd>{factoryCloseout.invoiceNo ?? "Chưa có hóa đơn khớp"}</dd>
                   </div>
+                  <div>
+                    <dt>Chứng từ chi</dt>
+                    <dd>{factoryCloseout.voucherNo ?? "Chưa có chứng từ chi"}</dd>
+                  </div>
+                  <div>
+                    <dt>Tham chiếu chi</dt>
+                    <dd>{factoryCloseout.voucherReferenceNo ?? "-"}</dd>
+                  </div>
                 </dl>
-                {factoryCloseout.productionHref ? (
+                {factoryCloseout.productionHref || factoryCloseout.voucherHref || factoryCloseout.createVoucherHref ? (
                   <div className="erp-finance-action-links">
-                    <a className="erp-button erp-button--secondary" href={factoryCloseout.productionHref}>
-                      Mở lệnh sản xuất
-                    </a>
+                    {factoryCloseout.productionHref ? (
+                      <a className="erp-button erp-button--secondary" href={factoryCloseout.productionHref}>
+                        Mở lệnh sản xuất
+                      </a>
+                    ) : null}
+                    {factoryCloseout.voucherHref ? (
+                      <a className="erp-button erp-button--primary" href={factoryCloseout.voucherHref}>
+                        Mở chứng từ chi
+                      </a>
+                    ) : null}
+                    {!factoryCloseout.voucherHref && factoryCloseout.createVoucherHref ? (
+                      <a className="erp-button erp-button--secondary" href={factoryCloseout.createVoucherHref}>
+                        Tạo chứng từ chi
+                      </a>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

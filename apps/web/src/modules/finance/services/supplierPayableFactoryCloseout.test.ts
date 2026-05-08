@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildSupplierPayableFactoryCloseout } from "./supplierPayableFactoryCloseout";
-import type { SupplierInvoice, SupplierPayable } from "../types";
+import type { CashTransaction, SupplierInvoice, SupplierPayable } from "../types";
 
 describe("supplierPayableFactoryCloseout", () => {
   it("builds a factory final-payment checklist from subcontract AP source evidence", () => {
@@ -17,7 +17,8 @@ describe("supplierPayableFactoryCloseout", () => {
       { key: "invoice-match", status: "current" },
       { key: "payment-request", status: "blocked" },
       { key: "payment-approval", status: "pending" },
-      { key: "payment-recording", status: "pending" }
+      { key: "payment-recording", status: "pending" },
+      { key: "payment-voucher", status: "pending" }
     ]);
   });
 
@@ -37,7 +38,8 @@ describe("supplierPayableFactoryCloseout", () => {
       { key: "invoice-match", status: "complete" },
       { key: "payment-request", status: "current" },
       { key: "payment-approval", status: "pending" },
-      { key: "payment-recording", status: "pending" }
+      { key: "payment-recording", status: "pending" },
+      { key: "payment-voucher", status: "pending" }
     ]);
   });
 
@@ -53,7 +55,8 @@ describe("supplierPayableFactoryCloseout", () => {
       { key: "invoice-match", status: "complete" },
       { key: "payment-request", status: "complete" },
       { key: "payment-approval", status: "current" },
-      { key: "payment-recording", status: "pending" }
+      { key: "payment-recording", status: "pending" },
+      { key: "payment-voucher", status: "pending" }
     ]);
 
     expect(
@@ -67,7 +70,59 @@ describe("supplierPayableFactoryCloseout", () => {
       { key: "invoice-match", status: "complete" },
       { key: "payment-request", status: "complete" },
       { key: "payment-approval", status: "complete" },
-      { key: "payment-recording", status: "current" }
+      { key: "payment-recording", status: "current" },
+      { key: "payment-voucher", status: "pending" }
+    ]);
+  });
+
+  it("makes the voucher step current for paid factory AP without a posted cash-out voucher", () => {
+    const closeout = buildSupplierPayableFactoryCloseout(
+      paidFactoryFinalPaymentPayable,
+      [matchedFactoryInvoice],
+      false,
+      [],
+      false
+    );
+
+    expect(closeout).toMatchObject({
+      summaryLabel: "Cần chứng từ chi",
+      summaryTone: "warning",
+      createVoucherHref:
+        "/finance?cash_q=AP-SPM-S35-CLOSEOUT-FINAL&cash_direction=cash_out&cash_counterparty_id=factory-bd-002&cash_counterparty_name=Binh+Duong+Gia+Cong&cash_payment_method=bank_transfer&cash_reference_no=PAY-AP-SPM-S35-CLOSEOUT-FINAL&cash_amount=29000000.00&cash_target_type=supplier_payable&cash_target_id=ap-spm-s35-closeout-final&cash_target_no=AP-SPM-S35-CLOSEOUT-FINAL&cash_memo=Thanh+toan+AP+AP-SPM-S35-CLOSEOUT-FINAL%3B+cho+lenh+SCO-S35-CLOSEOUT%3B+hoa+don+INV-AP-SPM-S35-CLOSEOUT-FINAL%3B+moc+SPM-S35-CLOSEOUT-FINAL#cash-transactions"
+    });
+    expect(closeout?.steps.map(({ key, status }) => ({ key, status }))).toEqual([
+      { key: "ap-created", status: "complete" },
+      { key: "invoice-match", status: "complete" },
+      { key: "payment-request", status: "complete" },
+      { key: "payment-approval", status: "complete" },
+      { key: "payment-recording", status: "complete" },
+      { key: "payment-voucher", status: "current" }
+    ]);
+  });
+
+  it("completes factory closeout when a posted cash-out voucher allocates to the AP", () => {
+    const closeout = buildSupplierPayableFactoryCloseout(
+      paidFactoryFinalPaymentPayable,
+      [matchedFactoryInvoice],
+      false,
+      [factoryPaymentVoucher],
+      false
+    );
+
+    expect(closeout).toMatchObject({
+      summaryLabel: "Đã có chứng từ chi",
+      summaryTone: "success",
+      voucherNo: "CASH-OUT-S35-CLOSEOUT-FINAL",
+      voucherReferenceNo: "BANK-S35-CLOSEOUT-FINAL",
+      voucherHref: "/finance?cash_q=CASH-OUT-S35-CLOSEOUT-FINAL#cash-transactions"
+    });
+    expect(closeout?.steps.map(({ key, status }) => ({ key, status }))).toEqual([
+      { key: "ap-created", status: "complete" },
+      { key: "invoice-match", status: "complete" },
+      { key: "payment-request", status: "complete" },
+      { key: "payment-approval", status: "complete" },
+      { key: "payment-recording", status: "complete" },
+      { key: "payment-voucher", status: "complete" }
     ]);
   });
 
@@ -123,6 +178,13 @@ const factoryFinalPaymentPayable: SupplierPayable = {
   version: 1
 };
 
+const paidFactoryFinalPaymentPayable: SupplierPayable = {
+  ...factoryFinalPaymentPayable,
+  status: "paid",
+  paidAmount: "29000000.00",
+  outstandingAmount: "0.00"
+};
+
 const matchedFactoryInvoice: SupplierInvoice = {
   id: "si-s35-closeout",
   invoiceNo: "INV-AP-SPM-S35-CLOSEOUT-FINAL",
@@ -153,5 +215,33 @@ const matchedFactoryInvoice: SupplierInvoice = {
   invoiceDate: "2026-05-07",
   createdAt: "2026-05-07T08:30:00Z",
   updatedAt: "2026-05-07T08:30:00Z",
+  version: 1
+};
+
+const factoryPaymentVoucher: CashTransaction = {
+  id: "cash-s35-closeout-final",
+  transactionNo: "CASH-OUT-S35-CLOSEOUT-FINAL",
+  direction: "cash_out",
+  status: "posted",
+  businessDate: "2026-05-07",
+  counterpartyId: "factory-bd-002",
+  counterpartyName: "Binh Duong Gia Cong",
+  paymentMethod: "bank_transfer",
+  referenceNo: "BANK-S35-CLOSEOUT-FINAL",
+  totalAmount: "29000000.00",
+  currencyCode: "VND",
+  allocations: [
+    {
+      id: "cash-s35-closeout-final-line-1",
+      targetType: "supplier_payable",
+      targetId: "ap-spm-s35-closeout-final",
+      targetNo: "AP-SPM-S35-CLOSEOUT-FINAL",
+      amount: "29000000.00"
+    }
+  ],
+  postedBy: "finance-user",
+  postedAt: "2026-05-07T09:00:00Z",
+  createdAt: "2026-05-07T09:00:00Z",
+  updatedAt: "2026-05-07T09:00:00Z",
   version: 1
 };

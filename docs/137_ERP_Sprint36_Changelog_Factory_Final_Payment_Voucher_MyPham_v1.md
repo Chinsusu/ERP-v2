@@ -6,7 +6,7 @@ Sprint: 36
 Change type: Finance cash/bank evidence and payment voucher traceability
 Version: v1
 Date: 2026-05-07
-Status: Opened; implementation, PR, CI, merge, deploy, and browser smoke pending
+Status: PR CI passed; manual merge, dev deploy, and browser smoke pending
 
 ---
 
@@ -69,19 +69,30 @@ No v0.36 release tag is planned unless explicitly requested.
 Runtime PR:
 
 ```text
-Pending.
+PR #616: Wire factory final payment voucher evidence.
+Implementation branch: codex/s36-factory-final-payment-voucher-runtime.
 ```
 
 Local verification:
 
 ```text
-Pending.
+git diff --check: pass.
+Targeted web test command attempted:
+pnpm --filter web test -- apps/web/src/modules/finance/services/supplierPayableFactoryCloseout.test.ts
+Result: blocked locally because pnpm is not installed on this workstation.
+node --version: blocked locally by WindowsApps Access is denied.
 ```
 
 GitHub CI:
 
 ```text
-Pending.
+PR #616 CI passed after follow-up test expectation fix:
+- required-api: pass
+- required-web: pass
+- required-openapi: pass
+- required-migration: pass
+- e2e: pass
+- web: pass
 ```
 
 Dev deploy and smoke:
@@ -92,7 +103,23 @@ Pending.
 
 ---
 
-## 5. Known Limits
+## 5. Runtime Implementation Notes
+
+Implemented branch scope:
+
+```text
+1. Finance factory AP closeout detects posted cash_out CashTransaction records allocated to supplier_payable by AP ID or AP number.
+2. Paid factory final-payment AP records without a posted voucher show the current step as payment voucher evidence required.
+3. The AP closeout surface exposes a prefilled cash transaction link for creating the voucher from AP, supplier, invoice, factory order, amount, and memo evidence.
+4. Existing voucher evidence links from AP closeout to /finance?cash_q=:cashTransactionNo#cash-transactions.
+5. Cash transaction allocation detail links supplier_payable allocations back to /finance?ap_q=:payableNo#supplier-payables.
+6. Cash transaction form accepts cash_* URL query parameters for direction, counterparty, method, reference, amount, allocation target, and memo prefill.
+7. Matched supplier invoice and AP request/approval/payment controls remain unchanged.
+```
+
+---
+
+## 6. Known Limits
 
 ```text
 Binary payment attachment upload/OCR remains out of scope.
