@@ -6,7 +6,7 @@ Sprint: 36
 Change type: Finance cash/bank evidence and payment voucher traceability
 Version: v1
 Date: 2026-05-07
-Status: Implementation branch prepared; PR, CI, merge, deploy, and browser smoke pending
+Status: PR CI passed; manual merge, dev deploy, and browser smoke pending
 
 ---
 
@@ -69,7 +69,7 @@ No v0.36 release tag is planned unless explicitly requested.
 Runtime PR:
 
 ```text
-Pending.
+PR #616: Wire factory final payment voucher evidence.
 Implementation branch: codex/s36-factory-final-payment-voucher-runtime.
 ```
 
@@ -86,7 +86,13 @@ node --version: blocked locally by WindowsApps Access is denied.
 GitHub CI:
 
 ```text
-Pending.
+PR #616 CI passed after follow-up test expectation fix:
+- required-api: pass
+- required-web: pass
+- required-openapi: pass
+- required-migration: pass
+- e2e: pass
+- web: pass
 ```
 
 Dev deploy and smoke:
