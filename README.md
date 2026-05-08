@@ -306,10 +306,13 @@ Sprint 36 implementation status:
 ```text
 Sprint 36 is documented in file 135, and the factory final-payment voucher flow is locked in file 136.
 Scope is Finance-side payment voucher / cash-out evidence after Sprint 35 factory AP closeout.
-The first implementation model should reuse CashTransaction as a posted cash_out transaction allocated to supplier_payable, rather than creating a separate PaymentVoucher entity.
-The voucher should link AP, supplier invoice evidence, factory order, payment method, reference no, business date, amount, and memo/source evidence.
+Runtime reuses CashTransaction as a posted cash_out transaction allocated to supplier_payable, rather than creating a separate PaymentVoucher entity.
+The voucher links AP, supplier invoice evidence, factory order, payment method, reference no, business date, amount, and memo/source evidence.
 Matched supplier invoice and AP approval/payment controls remain unchanged.
-Runtime PR, CI, merge, dev deploy, and browser smoke are pending until Sprint 36 implementation is merged.
+Runtime PR #616 merged at f97bc0d9 with GitHub CI green.
+Dev deploy passed on 2026-05-08; full dev smoke passed.
+Browser smoke passed for /finance cash voucher prefill -> Record cash -> AP closeout voucher evidence.
+Screenshots: output/playwright/s36-finance-cash-voucher-created.png and output/playwright/s36-finance-ap-voucher-closeout.png.
 No v0.36 tag is planned.
 ```
 
@@ -319,7 +322,7 @@ Production external-factory E2E UAT status:
 File 138 is the official UAT pilot pack for the end-to-end external-factory production flow across Production, Purchasing, Warehouse, QC, Finance/AP, and cash-out evidence.
 File 139 clarifies Production E2E Discovery / Controlled Walkthrough mode and the Sprint 36 blocker for PFX-UAT-013.
 Status is discovery preparation only.
-PFX-UAT-013 AP handoff/payment voucher/cash-out evidence is BLOCKED_BY_S36 until Sprint 36 runtime is merged and smoke-tested.
+PFX-UAT-013 AP handoff/payment voucher/cash-out evidence is unblocked for controlled discovery after Sprint 36 PR #616 merge, dev deploy, full dev smoke, and browser smoke.
 This is not business UAT pass evidence and does not replace Sprint 22 Warehouse/Sales/QC Go/No-Go.
 Production E2E discovery templates and sanitized evidence folders live under docs/uat/production-e2e/.
 No production E2E release tag is planned from this documentation pack alone.

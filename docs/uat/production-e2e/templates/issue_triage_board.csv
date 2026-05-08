@@ -1,2 +1,2 @@
 Issue ID,Scenario ID,Type,Severity,Summary,Owner,Target sprint,Decision,Status
-PFX-BLOCKER-001,PFX-UAT-013,Dependency,P1,PFX-UAT-013 depends on Sprint 36 payment voucher/cash-out evidence runtime implementation,Finance/ERP Product Owner,Sprint 36,Blocked until S36 is merged and smoke-tested,OPEN
+PFX-BLOCKER-001,PFX-UAT-013,Dependency,P1,PFX-UAT-013 depended on Sprint 36 payment voucher/cash-out evidence runtime implementation,Finance/ERP Product Owner,Sprint 36,Resolved by PR #616 merge plus dev/browser smoke,CLOSED
