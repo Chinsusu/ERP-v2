@@ -88,7 +88,7 @@ describe("supplierPayableFactoryCloseout", () => {
       summaryLabel: "Cần chứng từ chi",
       summaryTone: "warning",
       createVoucherHref:
-        "/finance?cash_q=AP-SPM-S35-CLOSEOUT-FINAL&cash_direction=cash_out&cash_counterparty_id=factory-bd-002&cash_counterparty_name=Binh+Duong+Gia+Cong&cash_payment_method=bank_transfer&cash_reference_no=PAY-AP-SPM-S35-CLOSEOUT-FINAL&cash_amount=29000000.00&cash_target_type=supplier_payable&cash_target_id=ap-spm-s35-closeout-final&cash_target_no=AP-SPM-S35-CLOSEOUT-FINAL&cash_memo=Thanh+toan+AP+AP-SPM-S35-CLOSEOUT-FINAL+cho+lenh+SCO-S35-CLOSEOUT%3B+hoa+don+INV-AP-SPM-S35-CLOSEOUT-FINAL%3B+moc+SPM-S35-CLOSEOUT-FINAL#cash-transactions"
+        "/finance?cash_q=AP-SPM-S35-CLOSEOUT-FINAL&cash_direction=cash_out&cash_counterparty_id=factory-bd-002&cash_counterparty_name=Binh+Duong+Gia+Cong&cash_payment_method=bank_transfer&cash_reference_no=PAY-AP-SPM-S35-CLOSEOUT-FINAL&cash_amount=29000000.00&cash_target_type=supplier_payable&cash_target_id=ap-spm-s35-closeout-final&cash_target_no=AP-SPM-S35-CLOSEOUT-FINAL&cash_memo=Thanh+toan+AP+AP-SPM-S35-CLOSEOUT-FINAL%3B+cho+lenh+SCO-S35-CLOSEOUT%3B+hoa+don+INV-AP-SPM-S35-CLOSEOUT-FINAL%3B+moc+SPM-S35-CLOSEOUT-FINAL#cash-transactions"
     });
     expect(closeout?.steps.map(({ key, status }) => ({ key, status }))).toEqual([
       { key: "ap-created", status: "complete" },
