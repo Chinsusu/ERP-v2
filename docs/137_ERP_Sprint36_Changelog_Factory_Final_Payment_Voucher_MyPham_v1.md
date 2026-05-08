@@ -6,7 +6,7 @@ Sprint: 36
 Change type: Finance cash/bank evidence and payment voucher traceability
 Version: v1
 Date: 2026-05-07
-Status: PR CI passed; manual merge, dev deploy, and browser smoke pending
+Status: Completed and merged; dev deploy and browser smoke passed
 
 ---
 
@@ -71,6 +71,7 @@ Runtime PR:
 ```text
 PR #616: Wire factory final payment voucher evidence.
 Implementation branch: codex/s36-factory-final-payment-voucher-runtime.
+Merge commit: f97bc0d9.
 ```
 
 Local verification:
@@ -98,7 +99,14 @@ PR #616 CI passed after follow-up test expectation fix:
 Dev deploy and smoke:
 
 ```text
-Pending.
+Dev deploy: deploy-dev-staging.sh dev passed on 2026-05-08.
+Full dev smoke: passed.
+Browser smoke: passed for /finance cash voucher prefill -> Record cash -> AP closeout voucher evidence.
+Browser smoke AP: AP-SPM-S34-AP-SMOKE-0507060226-FINAL.
+API evidence: cash-transactions query by AP number returned one posted cash_out supplier_payable allocation.
+Screenshots:
+- output/playwright/s36-finance-cash-voucher-created.png
+- output/playwright/s36-finance-ap-voucher-closeout.png
 ```
 
 ---

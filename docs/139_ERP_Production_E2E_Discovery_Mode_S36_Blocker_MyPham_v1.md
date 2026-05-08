@@ -19,7 +19,7 @@ This means:
 Production E2E Discovery: allowed
 Business UAT Pass: not claimed
 Release tag: not created
-PFX-UAT-013: BLOCKED by Sprint 36 runtime dependency
+PFX-UAT-013: READY_TO_RUN after Sprint 36 PR #616 merge and dev/browser smoke
 Sprint 22 Warehouse/Sales/QC Go-No-Go: still separate and pending
 ```
 
@@ -48,9 +48,9 @@ Production Plan
 -> Cash-out Voucher Evidence
 ```
 
-However, the payment voucher / cash-out evidence scenario depends on Sprint 36 runtime implementation.
+The payment voucher / cash-out evidence scenario depended on Sprint 36 runtime implementation.
 
-Therefore, until Sprint 36 is merged and smoke-tested, `PFX-UAT-013` must not be treated as an executable pass/fail scenario for discovery mode.
+Sprint 36 is now merged and smoke-tested, so `PFX-UAT-013` can be treated as executable for controlled discovery mode. This still does not claim business UAT pass.
 
 ---
 
@@ -113,7 +113,7 @@ Mode B rules:
 
 ```text
 - Run PFX-UAT-001 through PFX-UAT-012 and PFX-UAT-014 if executable.
-- Mark PFX-UAT-013 as BLOCKED with issue PFX-BLOCKER-001 until Sprint 36 runtime is ready.
+- Mark PFX-UAT-013 as READY_TO_RUN after Sprint 36 PR #616 smoke evidence.
 - Do not create a release tag from this discovery session.
 - Do not mark Production E2E as business accepted.
 - Do not use Go/Conditional Go/No-Go as the final decision.
@@ -142,7 +142,7 @@ PFX-UAT-012 — Final payment readiness
 PFX-UAT-014 — Negative controls
 ```
 
-Do not run as pass/fail yet:
+Now ready to run in controlled discovery mode:
 
 ```text
 PFX-UAT-013 — AP handoff + payment voucher/cash-out evidence
@@ -151,9 +151,9 @@ PFX-UAT-013 — AP handoff + payment voucher/cash-out evidence
 Mark `PFX-UAT-013` as:
 
 ```text
-Status: BLOCKED
+Status: NOT_RUN / READY_TO_RUN
 Issue ID: PFX-BLOCKER-001
-Decision note: BLOCKED_BY_S36
+Decision note: S36_RUNTIME_READY_PR616
 ```
 
 ---
@@ -164,11 +164,10 @@ Decision note: BLOCKED_BY_S36
 
 ```text
 Dependency:
-This scenario depends on Sprint 36 runtime implementation for payment voucher / cash-out evidence.
-If Sprint 36 is not merged and smoke-tested, mark PFX-UAT-013 as BLOCKED with issue PFX-BLOCKER-001 and decision note BLOCKED_BY_S36.
-Do not fail the discovery session only because this scenario is not executable yet.
-Do not claim Business UAT Go while this scenario remains blocked unless the Business Owner explicitly waives it with a documented reason.
-No release tag may be created from a discovery session where this scenario is blocked or waived without business approval.
+This scenario depended on Sprint 36 runtime implementation for payment voucher / cash-out evidence.
+Sprint 36 PR #616 is merged and smoke-tested, so PFX-UAT-013 is ready to run in controlled discovery mode.
+Do not claim Business UAT Go until the scenario is actually executed or explicitly waived by the Business Owner with a documented reason.
+No release tag may be created from discovery preparation alone.
 ```
 
 The UAT mode section in file 138 must also carry this discovery rule:
@@ -176,7 +175,7 @@ The UAT mode section in file 138 must also carry this discovery rule:
 ```text
 Mode B / Discovery rule:
 Production E2E Discovery may proceed without PFX-UAT-013 if Sprint 36 runtime is not ready.
-In that case, PFX-UAT-013 must be marked BLOCKED_BY_S36.
+In older snapshots where Sprint 36 runtime was not ready, PFX-UAT-013 was marked BLOCKED_BY_S36.
 The session result must be recorded as Discovery only — no business UAT decision.
 ```
 
@@ -240,7 +239,7 @@ PFX-UAT-012
 PFX-UAT-014
 ```
 
-`PFX-UAT-013` remains blocked until Sprint 36 runtime is ready.
+`PFX-UAT-013` was blocked until Sprint 36 runtime was ready. After PR #616 and dev/browser smoke, it is ready to run in controlled discovery.
 
 ---
 
@@ -287,9 +286,9 @@ Use these statuses in `scenario_results.csv`:
 For `PFX-UAT-013`, use:
 
 ```text
-Status: BLOCKED
-Issue IDs: PFX-BLOCKER-001
-Decision note: BLOCKED_BY_S36
+Status: NOT_RUN / READY_TO_RUN
+Issue IDs: PFX-BLOCKER-001 closed history
+Decision note: S36_RUNTIME_READY_PR616
 ```
 
 ---
@@ -314,7 +313,7 @@ Optional wording for README or Master Index:
 
 ```text
 Production External-Factory E2E Discovery can proceed in controlled walkthrough mode.
-PFX-UAT-013 AP handoff/payment voucher scenario is blocked until Sprint 36 runtime implementation is merged and smoke-tested.
+PFX-UAT-013 AP handoff/payment voucher scenario is ready to run after Sprint 36 PR #616 merge and smoke evidence.
 No Business UAT Go or release tag is claimed from the discovery session.
 Sprint 22 Warehouse/Sales/QC Go/No-Go remains a separate pending business-validation gate.
 ```
@@ -342,10 +341,10 @@ Sprint 22 Warehouse/Sales/QC Go/No-Go remains a separate pending business-valida
 This docs update is complete when:
 
 ```text
-- PFX-UAT-013 clearly states Sprint 36 dependency.
+- PFX-UAT-013 clearly states Sprint 36 dependency and current ready-to-run status.
 - Discovery mode explicitly says no business UAT decision.
-- Scenario template marks PFX-UAT-013 as BLOCKED / PFX-BLOCKER-001.
-- Issue triage template contains PFX-BLOCKER-001.
+- Scenario template marks PFX-UAT-013 as NOT_RUN / S36_RUNTIME_READY_PR616.
+- Issue triage template contains resolved PFX-BLOCKER-001 history.
 - Go/No-Go template includes Discovery only option.
 - README or Master Index does not imply Production E2E UAT has passed.
 - No v0.xx release tag is created from docs-only discovery prep.
@@ -361,6 +360,6 @@ After merging the docs update:
 1. Run Production E2E Discovery sessions 1-4.
 2. Record results in scenario_results.csv.
 3. Record observations and issues.
-4. Keep PFX-UAT-013 BLOCKED until Sprint 36 runtime is complete.
-5. Decide whether to finish Sprint 36 next or fix discovery issues first.
+4. Run PFX-UAT-013 in controlled discovery after Sprint 36 runtime smoke evidence.
+5. Decide whether discovery issues require fixes before business UAT or Go/No-Go.
 ```

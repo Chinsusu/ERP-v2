@@ -9,7 +9,7 @@ docs/139_ERP_Production_E2E_Discovery_Mode_S36_Blocker_MyPham_v1.md
 
 The current templates are prepared for Production E2E Discovery / Controlled Walkthrough mode. They do not claim Business UAT pass.
 
-`PFX-UAT-013` is marked `BLOCKED_BY_S36` until Sprint 36 payment voucher / cash-out evidence runtime is merged and smoke-tested.
+`PFX-UAT-013` is ready to run in controlled discovery after Sprint 36 PR #616 merge plus dev/browser smoke. It is still `NOT_RUN` until business/discovery execution records actual evidence.
 
 Commit templates and sanitized evidence only. Do not commit raw screenshots, exports, logs, passwords, tokens, customer PII, private addresses, phone numbers, bank details, supplier pricing secrets, or commercial secrets.
 
