@@ -13,7 +13,7 @@ Status: Current source-of-truth index for current Phase 1 docs, design addenda, 
 
 This v2 index is the current navigation map for the ERP documentation set.
 
-The original file `32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` remains the historical handoff index for the early Phase 1 documents. This file extends the map through Sprint 22 UAT pilot pack preparation after Sprint 21 auth UI backend integration and records current design addenda.
+The original file `32_ERP_Master_Document_Index_Traceability_Handoff_Phase1_MyPham_v1.md` remains the historical handoff index for the early Phase 1 documents. This file extends the map through Sprint 36 factory final-payment voucher evidence and Production External-Factory E2E Discovery readiness, while preserving Sprint 22 Warehouse/Sales/QC UAT as a pending business-validation gate.
 
 Use this file when a reader needs to answer:
 
